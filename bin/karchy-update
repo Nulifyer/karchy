@@ -1,0 +1,68 @@
+#!/bin/bash
+set -e
+
+trap 'echo ""; echo -e "\033[0;31mSomething went wrong during the update!\nPlease review the output above and retry.\033[0m"' ERR
+
+# ── Confirm ──────────────────────────────────────────────────────────────────
+confirm() {
+  gum style --border normal --border-foreground 6 --padding "1 2" \
+    "Ready to update?" \
+    "" \
+    "• You cannot stop the update once you start!" \
+    "• Make sure you're connected to power or have a full battery"
+
+  echo
+  if ! gum confirm "Continue with update?"; then
+    echo "Update cancelled"
+    exit 0
+  fi
+}
+
+# ── System packages ──────────────────────────────────────────────────────────
+update_system() {
+  echo -e "\e[32m\nUpdate system packages\e[0m"
+  sudo pacman -Syu --noconfirm
+}
+
+# ── AUR packages ─────────────────────────────────────────────────────────────
+update_aur() {
+  if pacman -Qem &>/dev/null; then
+    echo -e "\e[32m\nUpdate AUR packages\e[0m"
+    paru -Sua --noconfirm --cleanafter
+    echo
+  fi
+}
+
+# ── Orphan cleanup ───────────────────────────────────────────────────────────
+cleanup_orphans() {
+  orphans=$(pacman -Qtdq 2>/dev/null || true)
+  if [[ -n $orphans ]]; then
+    echo -e "\e[32m\nRemove orphan packages\e[0m"
+    for pkg in $orphans; do
+      sudo pacman -Rs --noconfirm "$pkg" || true
+    done
+    echo
+  fi
+}
+
+# ── Reboot check ─────────────────────────────────────────────────────────────
+check_reboot() {
+  echo
+  if [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
+    gum confirm "Kernel has been updated. Reboot now?" && sudo reboot
+  fi
+}
+
+# ── Main ─────────────────────────────────────────────────────────────────────
+if [[ "${1:-}" == "-y" ]]; then
+  : # skip confirm
+else
+  confirm
+fi
+
+update_system
+update_aur
+cleanup_orphans
+check_reboot
+
+echo -e "\n\e[32mAll done!\e[0m"
