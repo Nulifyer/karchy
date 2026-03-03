@@ -1,9 +1,15 @@
 #!/bin/bash
-# Launch a floating centered Alacritty window running a command.
+# Launch a borderless centered Alacritty popup running a command.
 # Usage: karchy-present-terminal "command to run"
+# Requires KWin rule for karchy-float class (created by install.sh)
 
 exec alacritty \
   --class "karchy-float,karchy-float" \
+  --option "window.decorations=None" \
+  --option "window.padding.x=16" \
+  --option "window.padding.y=12" \
   --option "window.dimensions.columns=100" \
   --option "window.dimensions.lines=30" \
-  -e bash -c "$1; echo; echo 'Press any key to close...'; read -rsn1"
+  --option "colors.primary.background=#1e1e2e" \
+  --option "colors.primary.foreground=#cdd6f4" \
+  -e bash -c "$1; echo; echo -e '\033[36mPress any key to close...\033[0m'; read -rsn1"

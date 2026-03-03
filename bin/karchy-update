@@ -1,55 +1,81 @@
 #!/bin/bash
 set -e
 
-trap 'echo ""; echo -e "\033[0;31mSomething went wrong during the update!\nPlease review the output above and retry.\033[0m"' ERR
+BOLD="\033[1m"
+DIM="\033[2m"
+CYAN="\033[36m"
+GREEN="\033[32m"
+RED="\033[31m"
+YELLOW="\033[33m"
+RESET="\033[0m"
+
+trap 'echo ""; gum style --foreground 1 --bold "Something went wrong during the update!" "Please review the output above and retry."' ERR
 
 # ── Confirm ──────────────────────────────────────────────────────────────────
 confirm() {
-  gum style --border normal --border-foreground 6 --padding "1 2" \
-    "Ready to update?" \
+  echo
+  gum style --border rounded --border-foreground 6 --padding "1 3" --margin "0 2" \
+    "$(gum style --bold --foreground 6 '  Karchy System Update')" \
     "" \
-    "• You cannot stop the update once you start!" \
-    "• Make sure you're connected to power or have a full battery"
+    "$(gum style --foreground 7 '  You cannot stop the update once you start')" \
+    "$(gum style --foreground 7 '  Make sure you are connected to power')"
 
   echo
-  if ! gum confirm "Continue with update?"; then
-    echo "Update cancelled"
+  if ! gum confirm --prompt.foreground 6 "  Continue with update?"; then
+    gum style --foreground 3 "  Update cancelled"
     exit 0
   fi
+  echo
 }
 
-# ── System packages ──────────────────────────────────────────────────────────
+# ── Step runner ──────────────────────────────────────────────────────────────
+step() {
+  local icon="$1" label="$2"
+  shift 2
+  echo
+  gum style --bold --foreground 6 "$icon $label"
+  echo -e "${DIM}────────────────────────────────────────${RESET}"
+  "$@"
+}
+
+# ── Steps ────────────────────────────────────────────────────────────────────
+update_keyrings() {
+  step "" "Refresh keyrings" \
+    sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring
+}
+
 update_system() {
-  echo -e "\e[32m\nUpdate system packages\e[0m"
-  sudo pacman -Syu --noconfirm
+  step "" "Update system packages" \
+    sudo pacman -Syu --noconfirm
 }
 
-# ── AUR packages ─────────────────────────────────────────────────────────────
 update_aur() {
   if pacman -Qem &>/dev/null; then
-    echo -e "\e[32m\nUpdate AUR packages\e[0m"
-    paru -Sua --noconfirm --cleanafter
-    echo
+    step "󰣇" "Update AUR packages" \
+      paru -Sua --noconfirm --cleanafter
   fi
 }
 
-# ── Orphan cleanup ───────────────────────────────────────────────────────────
 cleanup_orphans() {
+  local orphans
   orphans=$(pacman -Qtdq 2>/dev/null || true)
   if [[ -n $orphans ]]; then
-    echo -e "\e[32m\nRemove orphan packages\e[0m"
-    for pkg in $orphans; do
-      sudo pacman -Rs --noconfirm "$pkg" || true
-    done
     echo
+    gum style --bold --foreground 6 " Remove orphan packages"
+    echo -e "${DIM}────────────────────────────────────────${RESET}"
+    echo "$orphans" | sudo pacman -Rs --noconfirm - || true
   fi
 }
 
-# ── Reboot check ─────────────────────────────────────────────────────────────
 check_reboot() {
   echo
   if [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
-    gum confirm "Kernel has been updated. Reboot now?" && sudo reboot
+    gum style --border rounded --border-foreground 3 --padding "1 3" --margin "0 2" \
+      "$(gum style --bold --foreground 3 '  Kernel Updated')" \
+      "" \
+      "$(gum style --foreground 7 'A reboot is required to load the new kernel.')"
+    echo
+    gum confirm --prompt.foreground 3 "  Reboot now?" && sudo reboot
   fi
 }
 
@@ -60,9 +86,13 @@ else
   confirm
 fi
 
+update_keyrings
 update_system
 update_aur
 cleanup_orphans
 check_reboot
 
-echo -e "\n\e[32mAll done!\e[0m"
+echo
+gum style --border rounded --border-foreground 2 --padding "1 3" --margin "0 2" \
+  "$(gum style --bold --foreground 2 '  All done!')"
+echo

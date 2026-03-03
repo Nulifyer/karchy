@@ -4,77 +4,139 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$SCRIPT_DIR:$PATH"
 
+BACK_TO_EXIT=false
+
+back_to() {
+  if [[ $BACK_TO_EXIT == "true" ]]; then
+    exit 0
+  elif [[ -n ${1:-} ]]; then
+    "$1"
+  else
+    show_main_menu
+  fi
+}
+
+entry() {
+  printf '%s %s' "$1" "$2"
+}
+
 menu() {
   local prompt="$1"
   shift
-  printf '%s\n' "$@" | fuzzel --dmenu --prompt "$prompt> " --width 30 --lines 10
+  printf '%s\n' "$@" | fuzzel --dmenu \
+    --prompt "$prompt  " \
+    --width 32 \
+    --lines 10 \
+    --inner-pad 12 \
+    --horizontal-pad 20 \
+    --border-width 2 \
+    --border-radius 12 \
+    --border-color 89b4faff \
+    --background 1e1e2eee \
+    --text-color cdd6f4ff \
+    --match-color 89b4faff \
+    --selection-color 313244ff \
+    --selection-text-color 89b4faff \
+    --selection-match-color 74c7ecff \
+    --prompt-color 89b4faff \
+    --placeholder-color 6c7086ff \
+    --font "CaskaydiaCove Nerd Font:size=13" \
+    --line-height 24 \
+    --letter-spacing 1
 }
 
 present_terminal() {
   karchy-present-terminal "$1"
 }
 
+# ── Update Menu ─────────────────────────────────────────────────────────────
 show_update_menu() {
   case $(menu "Update" \
-    "  System Update" \
-    "  Mirror Ranking" \
-    "  Package Cache Clean" \
+    "$(entry "󰚰" "System Update")" \
+    "$(entry "󰒋" "Mirror Ranking")" \
+    "$(entry "󰃢" "Package Cache Clean")" \
   ) in
   *System*) present_terminal karchy-update ;;
   *Mirror*) present_terminal "sudo cachyos-rate-mirrors" ;;
   *Cache*) present_terminal "sudo pacman -Scc" ;;
-  *) show_main_menu ;;
+  *) back_to show_main_menu ;;
   esac
 }
 
-show_system_menu() {
-  case $(menu "System" \
-    "  Lock" \
-    "󰍃  Logout" \
-    "󰜉  Restart" \
-    "󰐥  Shutdown" \
-  ) in
-  *Lock*) loginctl lock-session ;;
-  *Logout*) qdbus org.kde.ksmserver /KSMServer logout 0 0 0 ;;
-  *Restart*) systemctl reboot ;;
-  *Shutdown*) systemctl poweroff ;;
-  *) show_main_menu ;;
-  esac
-}
-
+# ── Setup Menu ──────────────────────────────────────────────────────────────
 show_setup_menu() {
   case $(menu "Setup" \
-    "  Audio" \
-    "  Wifi" \
-    "󰂯  Bluetooth" \
-    "󰍹  Monitors" \
+    "$(entry "󰕾" "Audio")" \
+    "$(entry "󰖩" "Wifi")" \
+    "$(entry "󰂯" "Bluetooth")" \
+    "$(entry "󰍹" "Monitors")" \
   ) in
   *Audio*) pavucontrol & ;;
-  *Wifi*) present_terminal nmtui ;;
-  *Bluetooth*) present_terminal bluetuith ;;
+  *Wifi*) present_terminal gazelle ;;
+  *Bluetooth*) kcmshell6 kcm_bluetooth & ;;
   *Monitors*) kcmshell6 kcm_kscreen & ;;
-  *) show_main_menu ;;
+  *) back_to show_main_menu ;;
   esac
 }
 
+# ── Install Menu ────────────────────────────────────────────────────────────
 show_install_menu() {
   case $(menu "Install" \
-    "󰣇  Package (pacman)" \
-    "󰣇  AUR (paru)" \
+    "$(entry "󰣇" "Package (pacman)")" \
+    "$(entry "󰣇" "AUR (paru)")" \
   ) in
   *pacman*) present_terminal "sudo pacman -S" ;;
   *paru*) present_terminal "paru" ;;
-  *) show_main_menu ;;
+  *) back_to show_main_menu ;;
   esac
 }
 
+# ── System Menu ─────────────────────────────────────────────────────────────
+show_system_menu() {
+  case $(menu "System" \
+    "$(entry "󰌾" "Lock")" \
+    "$(entry "󰒲" "Suspend")" \
+    "$(entry "󰍃" "Logout")" \
+    "$(entry "󰜉" "Restart")" \
+    "$(entry "󰐥" "Shutdown")" \
+  ) in
+  *Lock*) loginctl lock-session ;;
+  *Suspend*) systemctl suspend ;;
+  *Logout*) qdbus6 org.kde.ksmserver /KSMServer logout 0 0 0 ;;
+  *Restart*) systemctl reboot ;;
+  *Shutdown*) systemctl poweroff ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+# ── Main Menu ───────────────────────────────────────────────────────────────
 show_main_menu() {
   case $(menu "Karchy" \
-    "  Update" \
-    "  Setup" \
-    "󰉉  Install" \
-    "  System" \
+    "$(entry "󰀻" "Apps")" \
+    "$(entry "󰚰" "Update")" \
+    "$(entry "󰒓" "Setup")" \
+    "$(entry "󰉉" "Install")" \
+    "$(entry "󰌢" "System")" \
   ) in
+  *Apps*) fuzzel \
+    --width 32 \
+    --lines 10 \
+    --inner-pad 12 \
+    --horizontal-pad 20 \
+    --border-width 2 \
+    --border-radius 12 \
+    --border-color 89b4faff \
+    --background 1e1e2eee \
+    --text-color cdd6f4ff \
+    --match-color 89b4faff \
+    --selection-color 313244ff \
+    --selection-text-color 89b4faff \
+    --selection-match-color 74c7ecff \
+    --prompt-color 89b4faff \
+    --placeholder-color 6c7086ff \
+    --font "CaskaydiaCove Nerd Font:size=13" \
+    --line-height 24 \
+    --letter-spacing 1 ;;
   *Update*) show_update_menu ;;
   *Setup*) show_setup_menu ;;
   *Install*) show_install_menu ;;
@@ -82,8 +144,18 @@ show_main_menu() {
   esac
 }
 
+# ── Entry point ─────────────────────────────────────────────────────────────
 if [[ -n ${1:-} ]]; then
+  BACK_TO_EXIT=true
   case "${1,,}" in
+    apps) fuzzel \
+      --width 32 --lines 10 --inner-pad 12 --horizontal-pad 20 \
+      --border-width 2 --border-radius 12 --border-color 89b4faff \
+      --background 1e1e2eee --text-color cdd6f4ff --match-color 89b4faff \
+      --selection-color 313244ff --selection-text-color 89b4faff \
+      --selection-match-color 74c7ecff --prompt-color 89b4faff \
+      --placeholder-color 6c7086ff --font "CaskaydiaCove Nerd Font:size=13" \
+      --line-height 24 --letter-spacing 1 ;;
     update) show_update_menu ;;
     setup) show_setup_menu ;;
     install) show_install_menu ;;
