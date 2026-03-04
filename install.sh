@@ -43,6 +43,8 @@ for script in "$REPO_DIR"/bin/*; do
 done
 
 # ── PATH (detect user's shell) ───────────────────────────────────────────────
+KDE_TERMINAL=$(kreadconfig6 --file kdeglobals --group General --key TerminalApplication 2>/dev/null)
+KDE_TERMINAL="${KDE_TERMINAL:-alacritty}"
 USER_SHELL="$(basename "$SHELL")"
 
 case "$USER_SHELL" in
@@ -70,6 +72,17 @@ case "$USER_SHELL" in
     echo "  warning: unknown shell ($USER_SHELL), add $INSTALL_DIR to your PATH manually"
     ;;
 esac
+
+# ── Fuzzel config (set terminal for Terminal=true apps) ──────────────────────
+FUZZEL_INI="$HOME/.config/fuzzel/fuzzel.ini"
+mkdir -p "$(dirname "$FUZZEL_INI")"
+if [[ ! -f "$FUZZEL_INI" ]]; then
+  printf '[main]\nterminal=%s -e\n' "$KDE_TERMINAL" > "$FUZZEL_INI"
+  echo "  created fuzzel config with terminal=$KDE_TERMINAL"
+elif ! grep -q '^terminal=' "$FUZZEL_INI"; then
+  sed -i '/^\[main\]/a terminal='"$KDE_TERMINAL"' -e' "$FUZZEL_INI"
+  echo "  added terminal=$KDE_TERMINAL to fuzzel config"
+fi
 
 # ── KWin rule (borderless centered popup for karchy-float) ──────────────────
 KWINRULES="$HOME/.config/kwinrulesrc"
@@ -99,8 +112,35 @@ if [[ "$existing_rules" != *"$KARCHY_RULE_ID"* ]]; then
   kwriteconfig6 --file "$KWINRULES" --group General --key count $((existing_count + 1))
 fi
 
-qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
 echo "  applied KWin rule for borderless centered popups"
+
+# ── KWin rule (default size for karchy web apps) ─────────────────────────────
+WEBAPP_RULE_ID="karchy-webapp-size-rule"
+
+# Brave/Chromium --app= mode generates class like "brave-site.com__path-Default"
+# Regular Brave is just "brave-browser", so matching "-Default" suffix is safe
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key Description "Karchy Web App Default Size"
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key wmclass -- '-Default$'
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key wmclassmatch 3
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key size "1280,800"
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key sizerule 4
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key placement 5
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key placementrule 4
+
+existing_rules=$(kreadconfig6 --file "$KWINRULES" --group General --key rules 2>/dev/null || true)
+if [[ "$existing_rules" != *"$WEBAPP_RULE_ID"* ]]; then
+  existing_count=$(kreadconfig6 --file "$KWINRULES" --group General --key count 2>/dev/null || echo 0)
+  if [[ -n "$existing_rules" ]]; then
+    new_rules="${existing_rules},${WEBAPP_RULE_ID}"
+  else
+    new_rules="$WEBAPP_RULE_ID"
+  fi
+  kwriteconfig6 --file "$KWINRULES" --group General --key rules "$new_rules"
+  kwriteconfig6 --file "$KWINRULES" --group General --key count $((existing_count + 1))
+fi
+
+qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
+echo "  applied KWin rules"
 
 # ── Desktop entry (for KDE shortcut binding) ────────────────────────────────
 DESKTOP_FILE="$HOME/.local/share/applications/karchy-menu.desktop"

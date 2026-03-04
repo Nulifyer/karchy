@@ -4,8 +4,9 @@
 # Chromium-based browsers. Falls back to xdg-open for unsupported browsers.
 
 URL="$1"
+CLASS="$2"
 if [[ -z $URL ]]; then
-  echo "Usage: karchy-webapp-launch <url>"
+  echo "Usage: karchy-webapp-launch <url> [class-name]"
   exit 1
 fi
 
@@ -30,7 +31,9 @@ case "$DEFAULT_BROWSER" in
   google-chrome*.desktop|chromium*.desktop|brave*.desktop|microsoft-edge*.desktop|vivaldi*.desktop|ungoogled-chromium*.desktop)
     BROWSER_EXEC=$(get_browser_exec "$DEFAULT_BROWSER")
     if [[ -n $BROWSER_EXEC ]]; then
-      exec "$BROWSER_EXEC" --app="$URL"
+      ARGS=(--app="$URL")
+      [[ -n $CLASS ]] && ARGS+=(--class="$CLASS")
+      exec "$BROWSER_EXEC" "${ARGS[@]}"
     fi
     ;;
 esac
