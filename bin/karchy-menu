@@ -3,6 +3,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$SCRIPT_DIR:$PATH"
+source "$SCRIPT_DIR/karchy-colors"
 
 BACK_TO_EXIT=false
 
@@ -31,15 +32,37 @@ menu() {
     --horizontal-pad 20 \
     --border-width 2 \
     --border-radius 12 \
-    --border-color 89b4faff \
-    --background 1e1e2eee \
-    --text-color cdd6f4ff \
-    --match-color 89b4faff \
-    --selection-color 313244ff \
-    --selection-text-color 89b4faff \
-    --selection-match-color 74c7ecff \
-    --prompt-color 89b4faff \
-    --placeholder-color 6c7086ff \
+    --border-color "$KARCHY_ACCENT_FUZZEL" \
+    --background "$KARCHY_BG_FUZZEL" \
+    --text-color "$KARCHY_FG_FUZZEL" \
+    --match-color "$KARCHY_ACCENT_FUZZEL" \
+    --selection-color "$KARCHY_COLOR0_FUZZEL" \
+    --selection-text-color "$KARCHY_ACCENT_FUZZEL" \
+    --selection-match-color "$KARCHY_COLOR6_FUZZEL" \
+    --prompt-color "$KARCHY_ACCENT_FUZZEL" \
+    --placeholder-color "$KARCHY_COLOR7_FUZZEL" \
+    --font "CaskaydiaCove Nerd Font:size=13" \
+    --line-height 24 \
+    --letter-spacing 1
+}
+
+fuzzel_apps() {
+  fuzzel \
+    --width 32 \
+    --lines 10 \
+    --inner-pad 12 \
+    --horizontal-pad 20 \
+    --border-width 2 \
+    --border-radius 12 \
+    --border-color "$KARCHY_ACCENT_FUZZEL" \
+    --background "$KARCHY_BG_FUZZEL" \
+    --text-color "$KARCHY_FG_FUZZEL" \
+    --match-color "$KARCHY_ACCENT_FUZZEL" \
+    --selection-color "$KARCHY_COLOR0_FUZZEL" \
+    --selection-text-color "$KARCHY_ACCENT_FUZZEL" \
+    --selection-match-color "$KARCHY_COLOR6_FUZZEL" \
+    --prompt-color "$KARCHY_ACCENT_FUZZEL" \
+    --placeholder-color "$KARCHY_COLOR7_FUZZEL" \
     --font "CaskaydiaCove Nerd Font:size=13" \
     --line-height 24 \
     --letter-spacing 1
@@ -72,7 +95,7 @@ show_setup_menu() {
     "$(entry "󰍹" "Monitors")" \
   ) in
   *Audio*) pavucontrol & ;;
-  *Wifi*) present_terminal gazelle ;;
+  *Wifi*) kcmshell6 kcm_networkmanagement & ;;
   *Bluetooth*) kcmshell6 kcm_bluetooth & ;;
   *Monitors*) kcmshell6 kcm_kscreen & ;;
   *) back_to show_main_menu ;;
@@ -85,8 +108,8 @@ show_install_menu() {
     "$(entry "󰣇" "Package (pacman)")" \
     "$(entry "󰣇" "AUR (paru)")" \
   ) in
-  *pacman*) present_terminal "sudo pacman -S" ;;
-  *paru*) present_terminal "paru" ;;
+  *pacman*) karchy-present-terminal karchy-pkg-install 40 ;;
+  *paru*) karchy-present-terminal karchy-pkg-aur-install 40 ;;
   *) back_to show_main_menu ;;
   esac
 }
@@ -118,25 +141,7 @@ show_main_menu() {
     "$(entry "󰉉" "Install")" \
     "$(entry "󰌢" "System")" \
   ) in
-  *Apps*) fuzzel \
-    --width 32 \
-    --lines 10 \
-    --inner-pad 12 \
-    --horizontal-pad 20 \
-    --border-width 2 \
-    --border-radius 12 \
-    --border-color 89b4faff \
-    --background 1e1e2eee \
-    --text-color cdd6f4ff \
-    --match-color 89b4faff \
-    --selection-color 313244ff \
-    --selection-text-color 89b4faff \
-    --selection-match-color 74c7ecff \
-    --prompt-color 89b4faff \
-    --placeholder-color 6c7086ff \
-    --font "CaskaydiaCove Nerd Font:size=13" \
-    --line-height 24 \
-    --letter-spacing 1 ;;
+  *Apps*) fuzzel_apps ;;
   *Update*) show_update_menu ;;
   *Setup*) show_setup_menu ;;
   *Install*) show_install_menu ;;
@@ -148,14 +153,7 @@ show_main_menu() {
 if [[ -n ${1:-} ]]; then
   BACK_TO_EXIT=true
   case "${1,,}" in
-    apps) fuzzel \
-      --width 32 --lines 10 --inner-pad 12 --horizontal-pad 20 \
-      --border-width 2 --border-radius 12 --border-color 89b4faff \
-      --background 1e1e2eee --text-color cdd6f4ff --match-color 89b4faff \
-      --selection-color 313244ff --selection-text-color 89b4faff \
-      --selection-match-color 74c7ecff --prompt-color 89b4faff \
-      --placeholder-color 6c7086ff --font "CaskaydiaCove Nerd Font:size=13" \
-      --line-height 24 --letter-spacing 1 ;;
+    apps) fuzzel_apps ;;
     update) show_update_menu ;;
     setup) show_setup_menu ;;
     install) show_install_menu ;;

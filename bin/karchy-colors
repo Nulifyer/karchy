@@ -1,0 +1,71 @@
+#!/bin/bash
+# Read colors from KDE's active color scheme.
+# Source this script to get KARCHY_* variables for theming.
+
+_rgb_to_hex() { printf '#%02x%02x%02x' $1 $2 $3; }
+
+_lighten() {
+  local r=$1 g=$2 b=$3 n=${4:-30}
+  (( r = r + n > 255 ? 255 : r + n ))
+  (( g = g + n > 255 ? 255 : g + n ))
+  (( b = b + n > 255 ? 255 : b + n ))
+  printf '#%02x%02x%02x' $r $g $b
+}
+
+_kde() {
+  local val
+  val=$(kreadconfig6 --group "$1" --key "$2" 2>/dev/null)
+  echo "${val:-$3}"
+}
+
+# ── Read KDE palette (R,G,B) ────────────────────────────────────────────────
+IFS=',' read -r _bg_r    _bg_g    _bg_b    <<< "$(_kde "Colors:View"   "BackgroundNormal"    "30,30,46")"
+IFS=',' read -r _fg_r    _fg_g    _fg_b    <<< "$(_kde "Colors:View"   "ForegroundNormal"    "205,214,244")"
+IFS=',' read -r _alt_r   _alt_g   _alt_b   <<< "$(_kde "Colors:View"   "BackgroundAlternate" "49,50,68")"
+IFS=',' read -r _red_r   _red_g   _red_b   <<< "$(_kde "Colors:View"   "ForegroundNegative"  "243,139,168")"
+IFS=',' read -r _grn_r   _grn_g   _grn_b   <<< "$(_kde "Colors:View"   "ForegroundPositive"  "166,227,161")"
+IFS=',' read -r _yel_r   _yel_g   _yel_b   <<< "$(_kde "Colors:View"   "ForegroundNeutral"   "249,226,175")"
+IFS=',' read -r _blu_r   _blu_g   _blu_b   <<< "$(_kde "Colors:View"   "DecorationFocus"     "137,180,250")"
+IFS=',' read -r _mag_r   _mag_g   _mag_b   <<< "$(_kde "Colors:View"   "ForegroundVisited"   "245,194,231")"
+IFS=',' read -r _lnk_r   _lnk_g   _lnk_b   <<< "$(_kde "Colors:View"   "ForegroundLink"      "29,153,243")"
+IFS=',' read -r _dim_r   _dim_g   _dim_b   <<< "$(_kde "Colors:View"   "ForegroundInactive"  "186,194,222")"
+IFS=',' read -r _sel_r   _sel_g   _sel_b   <<< "$(_kde "Colors:Selection" "BackgroundNormal"  "61,174,233")"
+
+# Derive cyan by shifting blue toward green
+_cyn_r=$(( _lnk_r / 2 ))
+_cyn_g=$(( (_lnk_g + _grn_g) / 2 ))
+_cyn_b=$(( (_lnk_b + _blu_b) / 2 ))
+
+# ── Export hex colors ────────────────────────────────────────────────────────
+export KARCHY_BG=$(_rgb_to_hex   $_bg_r  $_bg_g  $_bg_b)
+export KARCHY_FG=$(_rgb_to_hex   $_fg_r  $_fg_g  $_fg_b)
+export KARCHY_ACCENT=$(_rgb_to_hex $_sel_r $_sel_g $_sel_b)
+
+# Normal ANSI colors
+export KARCHY_COLOR0=$(_rgb_to_hex  $_alt_r $_alt_g $_alt_b)   # black  (bg alternate)
+export KARCHY_COLOR1=$(_rgb_to_hex  $_red_r $_red_g $_red_b)   # red    (negative)
+export KARCHY_COLOR2=$(_rgb_to_hex  $_grn_r $_grn_g $_grn_b)   # green  (positive)
+export KARCHY_COLOR3=$(_rgb_to_hex  $_yel_r $_yel_g $_yel_b)   # yellow (neutral)
+export KARCHY_COLOR4=$(_rgb_to_hex  $_blu_r $_blu_g $_blu_b)   # blue   (decoration focus)
+export KARCHY_COLOR5=$(_rgb_to_hex  $_mag_r $_mag_g $_mag_b)   # magenta(visited)
+export KARCHY_COLOR6=$(_rgb_to_hex  $_cyn_r $_cyn_g $_cyn_b)   # cyan   (derived)
+export KARCHY_COLOR7=$(_rgb_to_hex  $_dim_r $_dim_g $_dim_b)   # white  (inactive text)
+
+# Bright ANSI colors (lightened normals)
+export KARCHY_COLOR8=$(_lighten   $_alt_r $_alt_g $_alt_b 25)
+export KARCHY_COLOR9=$(_lighten   $_red_r $_red_g $_red_b 20)
+export KARCHY_COLOR10=$(_lighten  $_grn_r $_grn_g $_grn_b 20)
+export KARCHY_COLOR11=$(_lighten  $_yel_r $_yel_g $_yel_b 20)
+export KARCHY_COLOR12=$(_lighten  $_blu_r $_blu_g $_blu_b 20)
+export KARCHY_COLOR13=$(_lighten  $_mag_r $_mag_g $_mag_b 20)
+export KARCHY_COLOR14=$(_lighten  $_cyn_r $_cyn_g $_cyn_b 20)
+export KARCHY_COLOR15=$(_rgb_to_hex $_fg_r $_fg_g $_fg_b)
+
+# Strip # for fuzzel (expects RRGGBBff)
+export KARCHY_BG_FUZZEL="${KARCHY_BG#\#}ee"
+export KARCHY_FG_FUZZEL="${KARCHY_FG#\#}ff"
+export KARCHY_ACCENT_FUZZEL="${KARCHY_ACCENT#\#}ff"
+export KARCHY_COLOR0_FUZZEL="${KARCHY_COLOR0#\#}ff"
+export KARCHY_COLOR4_FUZZEL="${KARCHY_COLOR4#\#}ff"
+export KARCHY_COLOR6_FUZZEL="${KARCHY_COLOR6#\#}ff"
+export KARCHY_COLOR7_FUZZEL="${KARCHY_COLOR7#\#}ff"

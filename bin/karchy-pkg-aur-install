@@ -1,0 +1,24 @@
+#!/bin/bash
+# Interactive AUR package browser using fzf
+
+fzf_args=(
+  --multi
+  --preview 'paru -Siia {1}'
+  --preview-label='alt-p: toggle description, alt-b/B: toggle PKGBUILD, alt-j/k: scroll, tab: multi-select'
+  --preview-label-pos='bottom'
+  --preview-window 'down:65%:wrap'
+  --bind 'alt-p:toggle-preview'
+  --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
+  --bind 'alt-k:preview-up,alt-j:preview-down'
+  --bind 'alt-b:change-preview:paru -Gpa {1} | tail -n +5'
+  --bind 'alt-B:change-preview:paru -Siia {1}'
+  --color 'pointer:green,marker:green'
+)
+
+pkg_names=$(paru -Slqa 2>/dev/null | fzf "${fzf_args[@]}") || exit $?
+
+if [[ -n $pkg_names ]]; then
+  sudo -v
+  echo "$pkg_names" | sed 's/^/aur\//' | tr '\n' ' ' | xargs paru -S --noconfirm
+  karchy-show-done
+fi

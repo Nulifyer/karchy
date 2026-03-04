@@ -1,7 +1,12 @@
 #!/bin/bash
 # Launch a borderless centered Alacritty popup running a command.
-# Usage: karchy-present-terminal "command to run"
+# Usage: karchy-present-terminal "command to run" [lines]
 # Requires KWin rule for karchy-float class (created by install.sh)
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/karchy-colors"
+
+LINES="${2:-30}"
 
 exec alacritty \
   --class "karchy-float,karchy-float" \
@@ -9,7 +14,25 @@ exec alacritty \
   --option "window.padding.x=16" \
   --option "window.padding.y=12" \
   --option "window.dimensions.columns=100" \
-  --option "window.dimensions.lines=30" \
-  --option "colors.primary.background=#1e1e2e" \
-  --option "colors.primary.foreground=#cdd6f4" \
-  -e bash -c "$1; echo; echo -e '\033[36mPress any key to close...\033[0m'; read -rsn1"
+  --option "window.dimensions.lines=$LINES" \
+  --option "font.normal.family=CaskaydiaCove Nerd Font" \
+  --option "font.size=13" \
+  --option "colors.primary.background=$KARCHY_BG" \
+  --option "colors.primary.foreground=$KARCHY_FG" \
+  --option "colors.normal.black=$KARCHY_COLOR0" \
+  --option "colors.normal.red=$KARCHY_COLOR1" \
+  --option "colors.normal.green=$KARCHY_COLOR2" \
+  --option "colors.normal.yellow=$KARCHY_COLOR3" \
+  --option "colors.normal.blue=$KARCHY_COLOR4" \
+  --option "colors.normal.magenta=$KARCHY_COLOR5" \
+  --option "colors.normal.cyan=$KARCHY_COLOR6" \
+  --option "colors.normal.white=$KARCHY_COLOR7" \
+  --option "colors.bright.black=$KARCHY_COLOR8" \
+  --option "colors.bright.red=$KARCHY_COLOR9" \
+  --option "colors.bright.green=$KARCHY_COLOR10" \
+  --option "colors.bright.yellow=$KARCHY_COLOR11" \
+  --option "colors.bright.blue=$KARCHY_COLOR12" \
+  --option "colors.bright.magenta=$KARCHY_COLOR13" \
+  --option "colors.bright.cyan=$KARCHY_COLOR14" \
+  --option "colors.bright.white=$KARCHY_COLOR15" \
+  -e bash -c "$1; if (( \$? != 130 )); then karchy-show-done; fi"

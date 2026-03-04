@@ -3,16 +3,22 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="$HOME/.local/share/karchy/bin"
+SKIP_DEPS=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --no-deps) SKIP_DEPS=true ;;
+  esac
+done
 
 echo "Installing karchy..."
 
 # ── Dependencies ────────────────────────────────────────────────────────────
-PACKAGES=(fuzzel gum alacritty paru networkmanager)
-AUR_PACKAGES=(gazelle-tui)
-
-echo "Checking dependencies..."
-sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
-paru -S --needed --noconfirm "${AUR_PACKAGES[@]}"
+if [[ "$SKIP_DEPS" == false ]]; then
+  PACKAGES=(fuzzel gum alacritty paru networkmanager)
+  echo "Checking dependencies..."
+  sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+fi
 
 # ── Scripts ─────────────────────────────────────────────────────────────────
 echo ""
@@ -26,31 +32,34 @@ for script in "$REPO_DIR"/bin/*; do
   echo "  installed $name"
 done
 
-# ── PATH (fish) ─────────────────────────────────────────────────────────────
-FISH_CONFIG="$HOME/.config/fish/config.fish"
-if [[ -f "$FISH_CONFIG" ]] || [[ "$(basename "$SHELL")" == "fish" ]]; then
-  mkdir -p "$(dirname "$FISH_CONFIG")"
-  if ! grep -q 'karchy/bin' "$FISH_CONFIG" 2>/dev/null; then
-    printf '\n# Karchy\nfish_add_path -g $HOME/.local/share/karchy/bin\n' >> "$FISH_CONFIG"
-    echo "  added karchy/bin to PATH in config.fish"
-  fi
-fi
+# ── PATH (detect user's shell) ───────────────────────────────────────────────
+USER_SHELL="$(basename "$SHELL")"
 
-# ── PATH (zsh) ──────────────────────────────────────────────────────────────
-if [[ -f "$HOME/.zshrc" ]]; then
-  if ! grep -q 'karchy/bin' "$HOME/.zshrc" 2>/dev/null; then
-    printf '\n# Karchy\nexport PATH="$HOME/.local/share/karchy/bin:$PATH"\n' >> "$HOME/.zshrc"
-    echo "  added karchy/bin to PATH in .zshrc"
-  fi
-fi
-
-# ── PATH (bash) ─────────────────────────────────────────────────────────────
-if [[ -f "$HOME/.bashrc" ]]; then
-  if ! grep -q 'karchy/bin' "$HOME/.bashrc" 2>/dev/null; then
-    printf '\n# Karchy\nexport PATH="$HOME/.local/share/karchy/bin:$PATH"\n' >> "$HOME/.bashrc"
-    echo "  added karchy/bin to PATH in .bashrc"
-  fi
-fi
+case "$USER_SHELL" in
+  fish)
+    FISH_CONFIG="$HOME/.config/fish/config.fish"
+    mkdir -p "$(dirname "$FISH_CONFIG")"
+    if ! grep -q 'karchy/bin' "$FISH_CONFIG" 2>/dev/null; then
+      printf '\n# Karchy\nfish_add_path -g $HOME/.local/share/karchy/bin\n' >> "$FISH_CONFIG"
+      echo "  added karchy/bin to PATH in config.fish"
+    fi
+    ;;
+  zsh)
+    if ! grep -q 'karchy/bin' "$HOME/.zshrc" 2>/dev/null; then
+      printf '\n# Karchy\nexport PATH="$HOME/.local/share/karchy/bin:$PATH"\n' >> "$HOME/.zshrc"
+      echo "  added karchy/bin to PATH in .zshrc"
+    fi
+    ;;
+  bash)
+    if ! grep -q 'karchy/bin' "$HOME/.bashrc" 2>/dev/null; then
+      printf '\n# Karchy\nexport PATH="$HOME/.local/share/karchy/bin:$PATH"\n' >> "$HOME/.bashrc"
+      echo "  added karchy/bin to PATH in .bashrc"
+    fi
+    ;;
+  *)
+    echo "  warning: unknown shell ($USER_SHELL), add $INSTALL_DIR to your PATH manually"
+    ;;
+esac
 
 # ── KWin rule (borderless centered popup for karchy-float) ──────────────────
 KWINRULES="$HOME/.config/kwinrulesrc"
@@ -93,6 +102,7 @@ Exec=$INSTALL_DIR/karchy-menu
 Icon=utilities-terminal
 Type=Application
 Categories=System;Utility;
+StartupNotify=false
 EOF
 echo "  created karchy-menu.desktop"
 
@@ -116,4 +126,4 @@ qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
 echo "  bound Super+Space to karchy-menu (may need logout/login)"
 
 echo ""
-echo "Done! Restart your shell or run: source ~/.config/fish/config.fish"
+echo "Done! Restart your shell to pick up PATH changes."
