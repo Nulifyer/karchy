@@ -2,7 +2,138 @@
 set -e
 
 ICON_DIR="$HOME/.local/share/applications/icons"
+CACHE_DIR="/tmp/karchy-dashboard-icons"
+METADATA_CACHE="$CACHE_DIR/metadata.json"
+ETAG_CACHE="$CACHE_DIR/metadata.etag"
+ICONS_LIST_CACHE="$CACHE_DIR/icons_list.txt"
+PREVIEW_DIR="$CACHE_DIR/preview"
+CACHE_MAX_AGE=$((7 * 24 * 60 * 60)) # 7 days
 
+# ── Dashboard Icons Cache ──────────────────────────────────────────────────
+is_cache_valid() {
+  [[ -f "$1" ]] || return 1
+  local file_time current_time
+  file_time=$(stat -c %Y "$1" 2>/dev/null) || return 1
+  current_time=$(date +%s)
+  (( current_time - file_time < CACHE_MAX_AGE ))
+}
+
+fetch_metadata() {
+  mkdir -p "$CACHE_DIR"
+  local url="https://raw.githubusercontent.com/homarr-labs/dashboard-icons/refs/heads/main/metadata.json"
+  local etag_header=""
+
+  if [[ -f "$ETAG_CACHE" && -f "$METADATA_CACHE" ]]; then
+    etag_header="-H If-None-Match: $(cat "$ETAG_CACHE")"
+    echo "Checking for icon updates..."
+  else
+    echo "Fetching dashboard icons metadata..."
+  fi
+
+  local http_code
+  http_code=$(curl -sL -w "%{http_code}" \
+    $etag_header \
+    -D "$CACHE_DIR/headers.tmp" \
+    -o "$METADATA_CACHE.tmp" \
+    "$url")
+
+  case "$http_code" in
+    304)
+      touch "$METADATA_CACHE"
+      rm -f "$METADATA_CACHE.tmp" "$CACHE_DIR/headers.tmp"
+      ;;
+    200)
+      mv "$METADATA_CACHE.tmp" "$METADATA_CACHE"
+      if [[ -f "$CACHE_DIR/headers.tmp" ]]; then
+        grep -i '^etag:' "$CACHE_DIR/headers.tmp" | cut -d' ' -f2- | tr -d '\r\n' > "$ETAG_CACHE"
+        rm -f "$CACHE_DIR/headers.tmp"
+      fi
+      # Invalidate icons list so it gets rebuilt
+      rm -f "$ICONS_LIST_CACHE"
+      ;;
+    *)
+      rm -f "$METADATA_CACHE.tmp" "$CACHE_DIR/headers.tmp"
+      [[ -f "$METADATA_CACHE" ]] && return 0
+      echo "Failed to fetch icon metadata (HTTP $http_code)"
+      return 1
+      ;;
+  esac
+}
+
+build_icons_list() {
+  [[ -f "$METADATA_CACHE" ]] || return 1
+  echo "Building icon index..."
+
+  local base_url="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons"
+  > "$ICONS_LIST_CACHE.tmp"
+
+  while IFS= read -r line; do
+    if [[ $line =~ ^[[:space:]]*\"([^\"]+)\":[[:space:]]*\{ ]]; then
+      local icon_name="${BASH_REMATCH[1]}"
+      local icon_block
+      icon_block=$(grep -A 15 "\"$icon_name\":" "$METADATA_CACHE" | head -15)
+
+      local png_filename
+      if [[ $icon_block =~ \"light\":[[:space:]]*\"([^\"]+)\" ]]; then
+        png_filename="${BASH_REMATCH[1]}.png"
+      else
+        png_filename="${icon_name}.png"
+      fi
+
+      local display_name
+      display_name=$(echo "$icon_name" | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
+      echo "${display_name}|${icon_name}|${base_url}/png/${png_filename}" >> "$ICONS_LIST_CACHE.tmp"
+    fi
+  done < "$METADATA_CACHE"
+
+  mv "$ICONS_LIST_CACHE.tmp" "$ICONS_LIST_CACHE"
+  echo "Indexed $(wc -l < "$ICONS_LIST_CACHE") icons"
+}
+
+ensure_icons_cache() {
+  if ! is_cache_valid "$METADATA_CACHE"; then
+    fetch_metadata || return 1
+    build_icons_list
+  elif [[ ! -f "$ICONS_LIST_CACHE" ]] || ! is_cache_valid "$ICONS_LIST_CACHE"; then
+    build_icons_list
+  fi
+  [[ -f "$ICONS_LIST_CACHE" ]]
+}
+
+search_icons() {
+  ensure_icons_cache || return 1
+
+  local preview_cmd='echo {1}'
+  if command -v chafa &>/dev/null; then
+    preview_cmd='
+      icon_name=$(echo {} | cut -d"|" -f2)
+      url=$(echo {} | cut -d"|" -f3)
+      cached="'"$PREVIEW_DIR"'/${icon_name}.png"
+      if [[ ! -f "$cached" ]]; then
+        mkdir -p "'"$PREVIEW_DIR"'"
+        curl -sL "$url" -o "$cached" 2>/dev/null
+      fi
+      if [[ -s "$cached" ]]; then
+        chafa -s 24x24 --symbols block "$cached"
+      else
+        echo "Preview unavailable"
+      fi'
+  fi
+
+  local selection
+  selection=$(cat "$ICONS_LIST_CACHE" | \
+    fzf --query="${1:-}" \
+        --prompt="Search icons: " \
+        --header="Enter: select | Esc: cancel" \
+        --preview="$preview_cmd" \
+        --preview-window='right:30%' \
+        --delimiter="|" \
+        --with-nth=1) || return 1
+
+  echo "$selection" | cut -d'|' -f3
+}
+
+# ── Main ───────────────────────────────────────────────────────────────────
 if (( $# < 3 )); then
   echo -e "\e[32mLet's create a new web app you can start with the app launcher.\n\e[0m"
   APP_NAME=$(gum input --prompt "Name> " --placeholder "My favorite web app")
@@ -11,13 +142,26 @@ if (( $# < 3 )); then
     APP_URL="https://$APP_URL"
   fi
 
-  FAVICON_URL="https://www.google.com/s2/favicons?domain=${APP_URL}&sz=128"
-  mkdir -p "$ICON_DIR"
-  if curl -fsSL -o "$ICON_DIR/$APP_NAME.png" "$FAVICON_URL" && [[ -s $ICON_DIR/$APP_NAME.png ]]; then
-    ICON_REF="$APP_NAME.png"
-  else
-    ICON_REF=$(gum input --prompt "Icon URL> " --placeholder "Could not fetch favicon. Enter PNG icon URL")
-  fi
+  ICON_SOURCE=$(gum choose --header "Icon source" \
+    "Search dashboard icons" \
+    "Auto-detect favicon" \
+    "Enter URL manually")
+
+  case "$ICON_SOURCE" in
+    Search*)
+      echo ""
+      ICON_REF=$(search_icons "$APP_NAME") || {
+        echo "No icon selected, falling back to favicon."
+        ICON_REF="https://www.google.com/s2/favicons?domain=${APP_URL}&sz=128"
+      }
+      ;;
+    Auto*)
+      ICON_REF="https://www.google.com/s2/favicons?domain=${APP_URL}&sz=128"
+      ;;
+    Enter*)
+      ICON_REF=$(gum input --prompt "Icon URL> " --placeholder "https://example.com/icon.png")
+      ;;
+  esac
 
   CUSTOM_EXEC=""
   MIME_TYPES=""
@@ -51,6 +195,9 @@ if [[ $ICON_REF =~ ^https?:// ]]; then
     echo "Error: Failed to download icon."
     exit 1
   fi
+elif [[ -f $ICON_REF ]]; then
+  ICON_PATH="$ICON_DIR/$APP_NAME.png"
+  cp "$ICON_REF" "$ICON_PATH"
 else
   ICON_PATH="$ICON_DIR/$ICON_REF"
 fi
@@ -69,6 +216,7 @@ Terminal=false
 Type=Application
 Icon=$ICON_PATH
 StartupNotify=true
+Categories=Network;WebBrowser;
 EOF
 
 if [[ -n $MIME_TYPES ]]; then
@@ -78,5 +226,5 @@ fi
 chmod +x "$DESKTOP_FILE"
 
 if [[ $INTERACTIVE_MODE == "true" ]]; then
-  echo -e "You can now find $APP_NAME using the app launcher (Super + Space)\n"
+  echo -e "\nYou can now find $APP_NAME using the app launcher (Super + Space)\n"
 fi
