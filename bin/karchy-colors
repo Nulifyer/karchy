@@ -96,6 +96,16 @@ else
   export KARCHY_COLOR15=$(_rgb_to_hex $_fg_r $_fg_g $_fg_b)
 fi
 
+# ── fzf color string ──────────────────────────────────────────────────────────
+get_fzf_color_string() {
+  echo "bg:$KARCHY_BG,fg:$KARCHY_FG,hl:$KARCHY_ACCENT,"\
+"bg+:$KARCHY_COLOR0,fg+:$KARCHY_FG,hl+:$KARCHY_ACCENT,"\
+"pointer:$KARCHY_ACCENT,marker:$KARCHY_ACCENT,"\
+"prompt:$KARCHY_ACCENT,info:$KARCHY_COLOR7,"\
+"spinner:$KARCHY_ACCENT,header:$KARCHY_COLOR7,"\
+"border:$KARCHY_ACCENT"
+}
+
 # Strip # for fuzzel (expects RRGGBBff)
 export KARCHY_BG_FUZZEL="${KARCHY_BG#\#}ee"
 export KARCHY_FG_FUZZEL="${KARCHY_FG#\#}ff"

@@ -529,7 +529,7 @@ show_main_menu() {
     "$(entry "󰌢" "System")" \
   ) in
   *Apps*) fuzzel_apps ;;
-  *Projects*) karchy-project-open ;;
+  *Projects*) present_terminal karchy-project-open ;;
   *Learn*) show_learn_menu ;;
   *Setup*) show_setup_menu ;;
   *Install*) show_install_menu ;;
