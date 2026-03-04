@@ -210,9 +210,9 @@ show_install_service_menu() {
 # ── Install > Development > JavaScript Submenu ────────────────────────────
 show_install_dev_js_menu() {
   case $(menu "JavaScript" \
-    "$(entry "" "Node.js")" \
-    "$(entry "" "Bun")" \
-    "$(entry "" "Deno")" \
+    "$(entry "󰎙" "Node.js")" \
+    "$(entry "󰌞" "Bun")" \
+    "$(entry "󰌞" "Deno")" \
   ) in
   *Node*) present_terminal "karchy-install-dev-env node" ;;
   *Bun*) present_terminal "karchy-install-dev-env bun" ;;
@@ -224,9 +224,9 @@ show_install_dev_js_menu() {
 # ── Install > Development > PHP Submenu ───────────────────────────────────
 show_install_dev_php_menu() {
   case $(menu "PHP" \
-    "$(entry "" "PHP")" \
-    "$(entry "" "Laravel")" \
-    "$(entry "" "Symfony")" \
+    "$(entry "󰌟" "PHP")" \
+    "$(entry "󰌟" "Laravel")" \
+    "$(entry "󰌟" "Symfony")" \
   ) in
   *PHP) present_terminal "karchy-install-dev-env php" ;;
   *Laravel*) present_terminal "karchy-install-dev-env laravel" ;;
@@ -238,8 +238,8 @@ show_install_dev_php_menu() {
 # ── Install > Development > Elixir Submenu ────────────────────────────────
 show_install_dev_elixir_menu() {
   case $(menu "Elixir" \
-    "$(entry "" "Elixir")" \
-    "$(entry "" "Phoenix")" \
+    "$(entry "󰈸" "Elixir")" \
+    "$(entry "󰈸" "Phoenix")" \
   ) in
   *Elixir*) present_terminal "karchy-install-dev-env elixir" ;;
   *Phoenix*) present_terminal "karchy-install-dev-env phoenix" ;;
@@ -251,18 +251,18 @@ show_install_dev_elixir_menu() {
 show_install_dev_menu() {
   case $(menu "Development" \
     "$(entry "󰴭" "Ruby")" \
-    "$(entry "" "JavaScript")" \
+    "$(entry "󰌞" "JavaScript")" \
     "$(entry "󰟓" "Go")" \
-    "$(entry "" "PHP")" \
+    "$(entry "󰌟" "PHP")" \
     "$(entry "󰌠" "Python")" \
-    "$(entry "" "Elixir")" \
-    "$(entry "" "Rust")" \
-    "$(entry "" "Java")" \
-    "$(entry "" "Zig")" \
+    "$(entry "󰈸" "Elixir")" \
+    "$(entry "󱘗" "Rust")" \
+    "$(entry "󰬷" "Java")" \
+    "$(entry "󰘦" "Zig")" \
     "$(entry "󰌛" ".NET")" \
     "$(entry "λ" "OCaml")" \
-    "$(entry "" "Clojure")" \
-    "$(entry "" "Scala")" \
+    "$(entry "󰅩" "Clojure")" \
+    "$(entry "󰘨" "Scala")" \
   ) in
   *Ruby*) present_terminal "karchy-install-dev-env ruby" ;;
   *JavaScript*) show_install_dev_js_menu ;;
@@ -336,12 +336,12 @@ show_install_ai_menu() {
 # ── Install > Font Submenu ────────────────────────────────────────────────
 show_install_font_menu() {
   case $(menu "Font" \
-    "$(entry "" "CaskaydiaCove")" \
-    "$(entry "" "Meslo")" \
-    "$(entry "" "FiraCode")" \
-    "$(entry "" "Victor Mono")" \
-    "$(entry "" "Bitstream Vera")" \
-    "$(entry "" "Iosevka")" \
+    "$(entry "󰛖" "CaskaydiaCove")" \
+    "$(entry "󰛖" "Meslo")" \
+    "$(entry "󰛖" "FiraCode")" \
+    "$(entry "󰛖" "Victor Mono")" \
+    "$(entry "󰛖" "Bitstream Vera")" \
+    "$(entry "󰛖" "Iosevka")" \
   ) in
   *CaskaydiaCove*) install_font "CaskaydiaCove" ttf-cascadia-code-nerd ;;
   *Meslo*) install_font "Meslo" ttf-meslo-nerd ;;
@@ -374,11 +374,11 @@ show_install_menu() {
     "$(entry "󰣇" "AUR (paru)")" \
     "$(entry "󰖟" "Web App")" \
     "$(entry "󰒍" "Service")" \
-    "$(entry "" "Development")" \
+    "$(entry "󰅩" "Development")" \
     "$(entry "󰨞" "Editor")" \
     "$(entry "󰆍" "Terminal")" \
     "$(entry "󰊭" "AI")" \
-    "$(entry "" "Font")" \
+    "$(entry "󰛖" "Font")" \
     "$(entry "󰊗" "Gaming")" \
   ) in
   *pacman*) karchy-present-terminal karchy-pkg-install 40 ;;
@@ -398,9 +398,9 @@ show_install_menu() {
 # ── Remove > Development > JavaScript Submenu ─────────────────────────────
 show_remove_dev_js_menu() {
   case $(menu "JavaScript" \
-    "$(entry "" "Node.js")" \
-    "$(entry "" "Bun")" \
-    "$(entry "" "Deno")" \
+    "$(entry "󰎙" "Node.js")" \
+    "$(entry "󰌞" "Bun")" \
+    "$(entry "󰌞" "Deno")" \
   ) in
   *Node*) present_terminal "karchy-remove-dev-env node" ;;
   *Bun*) present_terminal "karchy-remove-dev-env bun" ;;
@@ -412,9 +412,9 @@ show_remove_dev_js_menu() {
 # ── Remove > Development > PHP Submenu ────────────────────────────────────
 show_remove_dev_php_menu() {
   case $(menu "PHP" \
-    "$(entry "" "PHP")" \
-    "$(entry "" "Laravel")" \
-    "$(entry "" "Symfony")" \
+    "$(entry "󰌟" "PHP")" \
+    "$(entry "󰌟" "Laravel")" \
+    "$(entry "󰌟" "Symfony")" \
   ) in
   *PHP) present_terminal "karchy-remove-dev-env php" ;;
   *Laravel*) present_terminal "karchy-remove-dev-env laravel" ;;
@@ -426,8 +426,8 @@ show_remove_dev_php_menu() {
 # ── Remove > Development > Elixir Submenu ─────────────────────────────────
 show_remove_dev_elixir_menu() {
   case $(menu "Elixir" \
-    "$(entry "" "Elixir")" \
-    "$(entry "" "Phoenix")" \
+    "$(entry "󰈸" "Elixir")" \
+    "$(entry "󰈸" "Phoenix")" \
   ) in
   *Elixir*) present_terminal "karchy-remove-dev-env elixir" ;;
   *Phoenix*) present_terminal "karchy-remove-dev-env phoenix" ;;
@@ -439,18 +439,18 @@ show_remove_dev_elixir_menu() {
 show_remove_dev_menu() {
   case $(menu "Development" \
     "$(entry "󰴭" "Ruby")" \
-    "$(entry "" "JavaScript")" \
+    "$(entry "󰌞" "JavaScript")" \
     "$(entry "󰟓" "Go")" \
-    "$(entry "" "PHP")" \
+    "$(entry "󰌟" "PHP")" \
     "$(entry "󰌠" "Python")" \
-    "$(entry "" "Elixir")" \
-    "$(entry "" "Rust")" \
-    "$(entry "" "Java")" \
-    "$(entry "" "Zig")" \
+    "$(entry "󰈸" "Elixir")" \
+    "$(entry "󱘗" "Rust")" \
+    "$(entry "󰬷" "Java")" \
+    "$(entry "󰘦" "Zig")" \
     "$(entry "󰌛" ".NET")" \
     "$(entry "λ" "OCaml")" \
-    "$(entry "" "Clojure")" \
-    "$(entry "" "Scala")" \
+    "$(entry "󰅩" "Clojure")" \
+    "$(entry "󰘨" "Scala")" \
   ) in
   *Ruby*) present_terminal "karchy-remove-dev-env ruby" ;;
   *JavaScript*) show_remove_dev_js_menu ;;
@@ -474,7 +474,7 @@ show_remove_menu() {
   case $(menu "Remove" \
     "$(entry "󰣇" "Package")" \
     "$(entry "󰖟" "Web App")" \
-    "$(entry "" "Development")" \
+    "$(entry "󰅩" "Development")" \
   ) in
   *Package*) karchy-present-terminal karchy-pkg-remove 40 ;;
   *Web\ App*) present_terminal karchy-webapp-remove ;;
