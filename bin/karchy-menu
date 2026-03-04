@@ -78,7 +78,7 @@ install() {
 }
 
 install_and_launch() {
-  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-add $2 && setsid gtk-launch $3 &>/dev/null &"
+  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-add $2 && karchy-detach gtk-launch $3"
 }
 
 aur_install() {
@@ -86,7 +86,7 @@ aur_install() {
 }
 
 aur_install_and_launch() {
-  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-aur-add $2 && setsid gtk-launch $3 &>/dev/null &"
+  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-aur-add $2 && karchy-detach gtk-launch $3"
 }
 
 install_font() {

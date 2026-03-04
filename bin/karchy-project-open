@@ -104,10 +104,10 @@ while true; do
 
   editor=$(get_preferred_editor)
   if [[ -n "$editor" ]]; then
-    setsid "$editor" "$project_path" &>/dev/null &
+    karchy-detach "$editor" "$project_path"
     exit 130
   fi
 
-  setsid xdg-open "$project_path" &>/dev/null &
+  karchy-detach xdg-open "$project_path"
   exit 130
 done

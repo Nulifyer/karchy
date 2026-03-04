@@ -1,0 +1,4 @@
+#!/bin/bash
+# Launch a command as a fully detached process via systemd.
+# Usage: karchy-detach <command> [args...]
+exec systemd-run --user --no-block "$@" &>/dev/null

@@ -20,4 +20,4 @@ elif ! grep -q '"update.mode"' "$VSCODE_SETTINGS"; then
 fi
 
 echo -e "\nLaunching VSCode..."
-setsid gtk-launch code &>/dev/null &
+karchy-detach gtk-launch code
