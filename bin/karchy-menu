@@ -93,6 +93,10 @@ install_font() {
   present_terminal "echo -e '\e[32mInstalling $1 font...\e[0m'; karchy-pkg-add $2"
 }
 
+remove_font() {
+  present_terminal "echo -e '\e[31mRemoving $1 font...\e[0m'; sudo pacman -Rns --noconfirm $2"
+}
+
 # ── Learn Menu ─────────────────────────────────────────────────────────────
 show_learn_menu() {
   case $(menu "Learn" \
@@ -555,16 +559,41 @@ show_remove_dev_menu() {
   esac
 }
 
+# ── Remove > Font Submenu ─────────────────────────────────────────────────
+show_remove_font_menu() {
+  local installed=() pkg name
+  while IFS= read -r pkg; do
+    name="${pkg#ttf-}"
+    name="${name%-nerd}"
+    installed+=("$(entry "󰛖" "$name ($pkg)")")
+  done < <(pacman -Qqe | grep '^ttf-.*-nerd$' | sort)
+
+  if [[ ${#installed[@]} -eq 0 ]]; then
+    present_terminal "echo 'No nerd fonts installed.'"
+    return
+  fi
+
+  local choice
+  choice=$(menu "Remove Font" "${installed[@]}") || { back_to show_remove_menu; return; }
+  local pkg_name
+  pkg_name=$(echo "$choice" | grep -oP '\(ttf-[^)]+\)')
+  pkg_name="${pkg_name#(}"
+  pkg_name="${pkg_name%)}"
+  [[ -n "$pkg_name" ]] && remove_font "$pkg_name" "$pkg_name"
+}
+
 # ── Remove Menu ────────────────────────────────────────────────────────────
 show_remove_menu() {
   case $(menu "Remove" \
     "$(entry "󰣇" "Package")" \
     "$(entry "󰖟" "Web App")" \
     "$(entry "󰅩" "Development")" \
+    "$(entry "󰛖" "Font")" \
   ) in
   *Package*) karchy-present-terminal karchy-pkg-remove 40 ;;
   *Web\ App*) present_terminal karchy-webapp-remove ;;
   *Development*) show_remove_dev_menu ;;
+  *Font*) show_remove_font_menu ;;
   *) back_to show_main_menu ;;
   esac
 }
