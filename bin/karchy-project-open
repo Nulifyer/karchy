@@ -15,7 +15,7 @@ entries=()
 while IFS= read -r desktop; do
   name=$(grep -oP '^Name=\K.*' "$desktop")
   path=$(grep -oP '^Comment=\K.*' "$desktop")
-  [[ -n "$name" && -n "$path" ]] && entries+=("$name | $path")
+  [[ -n "$name" && -n "$path" && -d "$path" ]] && entries+=("$name | $path")
 done < <(find "$PROJECTS_DIR" -name '*.desktop' -print 2>/dev/null | sort)
 
 if [[ ${#entries[@]} -eq 0 ]]; then
@@ -23,9 +23,12 @@ if [[ ${#entries[@]} -eq 0 ]]; then
   exit 0
 fi
 
+# Add rescan option at the end
+entries+=("󰑐 Rescan projects")
+
 choice=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu \
   --prompt "Project  " \
-  --width 50 \
+  --width 64 \
   --lines 15 \
   --inner-pad 12 \
   --horizontal-pad 20 \
@@ -45,6 +48,12 @@ choice=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu \
   --letter-spacing 1)
 
 [[ -z "$choice" ]] && exit 0
+
+# Handle rescan
+if [[ "$choice" == *"Rescan"* ]]; then
+  "$SCRIPT_DIR/karchy-project-scan"
+  exec "$0"
+fi
 
 project_path="${choice##* | }"
 
