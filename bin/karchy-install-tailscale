@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+echo -e "\e[32mInstalling Tailscale\e[0m"
+
+curl -fsSL https://tailscale.com/install.sh | sh
+
+sudo systemctl enable --now tailscaled
+sudo tailscale up
+
+echo -e "\nCreating Tailscale admin console web app..."
+karchy-webapp-install "Tailscale" "https://login.tailscale.com/admin/machines" "https://tailscale.com/files/favicon-32x32.png"
+
+echo -e "\nTailscale installed and connected."

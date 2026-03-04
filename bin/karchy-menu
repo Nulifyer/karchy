@@ -69,62 +69,444 @@ fuzzel_apps() {
 }
 
 present_terminal() {
-  karchy-present-terminal "$1"
+  karchy-present-terminal "$1" "${2:-}"
 }
 
-# ── Update Menu ─────────────────────────────────────────────────────────────
+# ── Install helpers ────────────────────────────────────────────────────────
+install() {
+  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-add $2"
+}
+
+install_and_launch() {
+  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-add $2 && setsid gtk-launch $3 &>/dev/null &"
+}
+
+aur_install() {
+  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-aur-add $2"
+}
+
+aur_install_and_launch() {
+  present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-aur-add $2 && setsid gtk-launch $3 &>/dev/null &"
+}
+
+install_font() {
+  present_terminal "echo -e '\e[32mInstalling $1 font...\e[0m'; karchy-pkg-add $2"
+}
+
+# ── Learn Menu ─────────────────────────────────────────────────────────────
+show_learn_menu() {
+  case $(menu "Learn" \
+    "$(entry "󰌌" "Keybindings")" \
+    "$(entry "󰋜" "KDE Plasma")" \
+    "$(entry "󰣇" "Arch Wiki")" \
+    "$(entry "󰆍" "Bash")" \
+  ) in
+  *Keybindings*) kcmshell6 kcm_keys & ;;
+  *KDE*) xdg-open "https://userbase.kde.org/Plasma" & ;;
+  *Arch*) xdg-open "https://wiki.archlinux.org" & ;;
+  *Bash*) xdg-open "https://devhints.io/bash" & ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+# ── Update > Hardware Submenu ──────────────────────────────────────────────
+show_update_hardware_menu() {
+  case $(menu "Hardware" \
+    "$(entry "󰕾" "Restart Audio")" \
+    "$(entry "󰖩" "Restart Wi-Fi")" \
+    "$(entry "󰂯" "Restart Bluetooth")" \
+  ) in
+  *Audio*) present_terminal "systemctl --user restart pipewire pipewire-pulse wireplumber && echo 'Audio restarted.'" ;;
+  *Wi-Fi*) present_terminal "sudo rfkill unblock wifi && sudo systemctl restart NetworkManager && echo 'Wi-Fi restarted.'" ;;
+  *Bluetooth*) present_terminal "sudo rfkill unblock bluetooth && sudo systemctl restart bluetooth && echo 'Bluetooth restarted.'" ;;
+  *) back_to show_update_menu ;;
+  esac
+}
+
+# ── Update Menu ────────────────────────────────────────────────────────────
 show_update_menu() {
   case $(menu "Update" \
     "$(entry "󰚰" "System Update")" \
     "$(entry "󰒋" "Mirror Ranking")" \
     "$(entry "󰃢" "Package Cache Clean")" \
+    "$(entry "󰘚" "Firmware")" \
+    "$(entry "󰟵" "Password")" \
+    "$(entry "󰥔" "Timezone")" \
+    "$(entry "󰒓" "Hardware")" \
   ) in
-  *System*) present_terminal karchy-update ;;
+  *System\ Update*) present_terminal karchy-update ;;
   *Mirror*) present_terminal "sudo cachyos-rate-mirrors" ;;
   *Cache*) present_terminal "sudo pacman -Scc" ;;
+  *Firmware*) present_terminal karchy-update-firmware ;;
+  *Password*) present_terminal passwd ;;
+  *Timezone*) present_terminal karchy-tz-select ;;
+  *Hardware*) show_update_hardware_menu ;;
   *) back_to show_main_menu ;;
   esac
 }
 
-# ── Setup Menu ──────────────────────────────────────────────────────────────
+# ── Setup > Power Profile Submenu ─────────────────────────────────────────
+show_setup_power_menu() {
+  local profiles
+  profiles=$(powerprofilesctl list 2>/dev/null | grep -oP '^\s*\*?\s*\K[a-z][-a-z]*(?=:\s*$)') || {
+    present_terminal "echo 'power-profiles-daemon not available.'"
+    return
+  }
+
+  if [[ -z $profiles ]]; then
+    present_terminal "echo 'No power profiles found.'"
+    return
+  fi
+
+  local entries=()
+  while IFS= read -r p; do
+    entries+=("$(entry "⚡" "$p")")
+  done <<< "$profiles"
+
+  local choice
+  choice=$(menu "Power" "${entries[@]}") || { back_to show_setup_menu; return; }
+  local profile="${choice#* }"
+  present_terminal "powerprofilesctl set '$profile' && echo 'Power profile set to $profile'"
+}
+
+# ── Setup Menu ─────────────────────────────────────────────────────────────
 show_setup_menu() {
   case $(menu "Setup" \
     "$(entry "󰕾" "Audio")" \
     "$(entry "󰖩" "Wifi")" \
     "$(entry "󰂯" "Bluetooth")" \
     "$(entry "󰍹" "Monitors")" \
+    "$(entry "⚡" "Power Profile")" \
+    "$(entry "󰇖" "DNS")" \
+    "$(entry "󰹑" "Screenshot")" \
   ) in
   *Audio*) pavucontrol & ;;
   *Wifi*) kcmshell6 kcm_networkmanagement & ;;
   *Bluetooth*) kcmshell6 kcm_bluetooth & ;;
   *Monitors*) kcmshell6 kcm_kscreen & ;;
+  *Power*) show_setup_power_menu ;;
+  *DNS*) present_terminal karchy-setup-dns ;;
+  *Screenshot*) spectacle & ;;
   *) back_to show_main_menu ;;
   esac
 }
 
-# ── Install Menu ────────────────────────────────────────────────────────────
+# ── Install > Service Submenu ─────────────────────────────────────────────
+show_install_service_menu() {
+  case $(menu "Service" \
+    "$(entry "󰒍" "Tailscale")" \
+    "$(entry "󰊀" "Bitwarden")" \
+    "$(entry "󰒍" "NordVPN")" \
+    "$(entry "󰇣" "Dropbox")" \
+  ) in
+  *Tailscale*) present_terminal karchy-install-tailscale ;;
+  *Bitwarden*) install_and_launch "Bitwarden" bitwarden bitwarden ;;
+  *NordVPN*) present_terminal karchy-install-nordvpn ;;
+  *Dropbox*) present_terminal karchy-install-dropbox ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install > Development > JavaScript Submenu ────────────────────────────
+show_install_dev_js_menu() {
+  case $(menu "JavaScript" \
+    "$(entry "" "Node.js")" \
+    "$(entry "" "Bun")" \
+    "$(entry "" "Deno")" \
+  ) in
+  *Node*) present_terminal "karchy-install-dev-env node" ;;
+  *Bun*) present_terminal "karchy-install-dev-env bun" ;;
+  *Deno*) present_terminal "karchy-install-dev-env deno" ;;
+  *) back_to show_install_dev_menu ;;
+  esac
+}
+
+# ── Install > Development > PHP Submenu ───────────────────────────────────
+show_install_dev_php_menu() {
+  case $(menu "PHP" \
+    "$(entry "" "PHP")" \
+    "$(entry "" "Laravel")" \
+    "$(entry "" "Symfony")" \
+  ) in
+  *PHP) present_terminal "karchy-install-dev-env php" ;;
+  *Laravel*) present_terminal "karchy-install-dev-env laravel" ;;
+  *Symfony*) present_terminal "karchy-install-dev-env symfony" ;;
+  *) back_to show_install_dev_menu ;;
+  esac
+}
+
+# ── Install > Development > Elixir Submenu ────────────────────────────────
+show_install_dev_elixir_menu() {
+  case $(menu "Elixir" \
+    "$(entry "" "Elixir")" \
+    "$(entry "" "Phoenix")" \
+  ) in
+  *Elixir*) present_terminal "karchy-install-dev-env elixir" ;;
+  *Phoenix*) present_terminal "karchy-install-dev-env phoenix" ;;
+  *) back_to show_install_dev_menu ;;
+  esac
+}
+
+# ── Install > Development Submenu ─────────────────────────────────────────
+show_install_dev_menu() {
+  case $(menu "Development" \
+    "$(entry "󰴭" "Ruby")" \
+    "$(entry "" "JavaScript")" \
+    "$(entry "󰟓" "Go")" \
+    "$(entry "" "PHP")" \
+    "$(entry "󰌠" "Python")" \
+    "$(entry "" "Elixir")" \
+    "$(entry "" "Rust")" \
+    "$(entry "" "Java")" \
+    "$(entry "" "Zig")" \
+    "$(entry "󰌛" ".NET")" \
+    "$(entry "λ" "OCaml")" \
+    "$(entry "" "Clojure")" \
+    "$(entry "" "Scala")" \
+  ) in
+  *Ruby*) present_terminal "karchy-install-dev-env ruby" ;;
+  *JavaScript*) show_install_dev_js_menu ;;
+  *Go) present_terminal "karchy-install-dev-env go" ;;
+  *PHP*) show_install_dev_php_menu ;;
+  *Python*) present_terminal "karchy-install-dev-env python" ;;
+  *Elixir*) show_install_dev_elixir_menu ;;
+  *Rust*) present_terminal "karchy-install-dev-env rust" ;;
+  *Java*) present_terminal "karchy-install-dev-env java" ;;
+  *Zig*) present_terminal "karchy-install-dev-env zig" ;;
+  *.NET*) present_terminal "karchy-install-dev-env dotnet" ;;
+  *OCaml*) present_terminal "karchy-install-dev-env ocaml" ;;
+  *Clojure*) present_terminal "karchy-install-dev-env clojure" ;;
+  *Scala*) present_terminal "karchy-install-dev-env scala" ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install > Editor Submenu ──────────────────────────────────────────────
+show_install_editor_menu() {
+  case $(menu "Editor" \
+    "$(entry "󰨞" "VSCode")" \
+    "$(entry "󰨞" "Cursor")" \
+    "$(entry "󰨞" "Zed")" \
+    "$(entry "󰨞" "Sublime Text")" \
+    "$(entry "󰨞" "Helix")" \
+    "$(entry "󰨞" "Emacs")" \
+  ) in
+  *VSCode*) present_terminal karchy-install-vscode ;;
+  *Cursor*) aur_install "Cursor" cursor-bin ;;
+  *Zed*) install "Zed" zed ;;
+  *Sublime*) aur_install "Sublime Text" sublime-text-4 ;;
+  *Helix*) install "Helix" helix ;;
+  *Emacs*) install "Emacs" emacs ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install > Terminal Submenu ────────────────────────────────────────────
+show_install_terminal_menu() {
+  case $(menu "Terminal" \
+    "$(entry "󰆍" "Alacritty")" \
+    "$(entry "󰆍" "Ghostty")" \
+    "$(entry "󰆍" "Kitty")" \
+  ) in
+  *Alacritty*) install "Alacritty" alacritty ;;
+  *Ghostty*) aur_install "Ghostty" ghostty ;;
+  *Kitty*) install "Kitty" kitty ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install > AI Submenu ──────────────────────────────────────────────────
+show_install_ai_menu() {
+  case $(menu "AI" \
+    "$(entry "󰊭" "Claude Code")" \
+    "$(entry "󰊭" "Codex")" \
+    "$(entry "󰊭" "Gemini CLI")" \
+    "$(entry "󰊭" "LM Studio")" \
+    "$(entry "󰊭" "Ollama")" \
+  ) in
+  *Claude*) present_terminal "npm install -g @anthropic-ai/claude-code" ;;
+  *Codex*) present_terminal "npm install -g @openai/codex" ;;
+  *Gemini*) present_terminal "npm install -g @google/gemini-cli" ;;
+  *LM\ Studio*) aur_install "LM Studio" lmstudio ;;
+  *Ollama*) install "Ollama" ollama ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install > Font Submenu ────────────────────────────────────────────────
+show_install_font_menu() {
+  case $(menu "Font" \
+    "$(entry "" "CaskaydiaCove")" \
+    "$(entry "" "Meslo")" \
+    "$(entry "" "FiraCode")" \
+    "$(entry "" "Victor Mono")" \
+    "$(entry "" "Bitstream Vera")" \
+    "$(entry "" "Iosevka")" \
+  ) in
+  *CaskaydiaCove*) install_font "CaskaydiaCove" ttf-cascadia-code-nerd ;;
+  *Meslo*) install_font "Meslo" ttf-meslo-nerd ;;
+  *FiraCode*) install_font "FiraCode" ttf-firacode-nerd ;;
+  *Victor*) install_font "Victor Mono" ttf-victor-mono-nerd ;;
+  *Bitstream*) install_font "Bitstream Vera" ttf-bitstream-vera-mono-nerd ;;
+  *Iosevka*) install_font "Iosevka" ttf-iosevka-nerd ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install > Gaming Submenu ──────────────────────────────────────────────
+show_install_gaming_menu() {
+  case $(menu "Gaming" \
+    "$(entry "󰓓" "Steam")" \
+    "$(entry "󰊗" "RetroArch")" \
+    "$(entry "󰍳" "Minecraft")" \
+  ) in
+  *Steam*) present_terminal karchy-install-steam ;;
+  *RetroArch*) install "RetroArch" retroarch ;;
+  *Minecraft*) aur_install "Minecraft" minecraft-launcher ;;
+  *) back_to show_install_menu ;;
+  esac
+}
+
+# ── Install Menu ───────────────────────────────────────────────────────────
 show_install_menu() {
   case $(menu "Install" \
     "$(entry "󰣇" "Package (pacman)")" \
     "$(entry "󰣇" "AUR (paru)")" \
+    "$(entry "󰖟" "Web App")" \
+    "$(entry "󰒍" "Service")" \
+    "$(entry "" "Development")" \
+    "$(entry "󰨞" "Editor")" \
+    "$(entry "󰆍" "Terminal")" \
+    "$(entry "󰊭" "AI")" \
+    "$(entry "" "Font")" \
+    "$(entry "󰊗" "Gaming")" \
   ) in
   *pacman*) karchy-present-terminal karchy-pkg-install 40 ;;
   *paru*) karchy-present-terminal karchy-pkg-aur-install 40 ;;
+  *Web\ App*) present_terminal karchy-webapp-install ;;
+  *Service*) show_install_service_menu ;;
+  *Development*) show_install_dev_menu ;;
+  *Editor*) show_install_editor_menu ;;
+  *Terminal*) show_install_terminal_menu ;;
+  *AI*) show_install_ai_menu ;;
+  *Font*) show_install_font_menu ;;
+  *Gaming*) show_install_gaming_menu ;;
   *) back_to show_main_menu ;;
   esac
 }
 
-# ── System Menu ─────────────────────────────────────────────────────────────
-show_system_menu() {
-  case $(menu "System" \
-    "$(entry "󰌾" "Lock")" \
-    "$(entry "󰒲" "Suspend")" \
-    "$(entry "󰍃" "Logout")" \
-    "$(entry "󰜉" "Restart")" \
-    "$(entry "󰐥" "Shutdown")" \
+# ── Remove > Development > JavaScript Submenu ─────────────────────────────
+show_remove_dev_js_menu() {
+  case $(menu "JavaScript" \
+    "$(entry "" "Node.js")" \
+    "$(entry "" "Bun")" \
+    "$(entry "" "Deno")" \
   ) in
+  *Node*) present_terminal "karchy-remove-dev-env node" ;;
+  *Bun*) present_terminal "karchy-remove-dev-env bun" ;;
+  *Deno*) present_terminal "karchy-remove-dev-env deno" ;;
+  *) back_to show_remove_dev_menu ;;
+  esac
+}
+
+# ── Remove > Development > PHP Submenu ────────────────────────────────────
+show_remove_dev_php_menu() {
+  case $(menu "PHP" \
+    "$(entry "" "PHP")" \
+    "$(entry "" "Laravel")" \
+    "$(entry "" "Symfony")" \
+  ) in
+  *PHP) present_terminal "karchy-remove-dev-env php" ;;
+  *Laravel*) present_terminal "karchy-remove-dev-env laravel" ;;
+  *Symfony*) present_terminal "karchy-remove-dev-env symfony" ;;
+  *) back_to show_remove_dev_menu ;;
+  esac
+}
+
+# ── Remove > Development > Elixir Submenu ─────────────────────────────────
+show_remove_dev_elixir_menu() {
+  case $(menu "Elixir" \
+    "$(entry "" "Elixir")" \
+    "$(entry "" "Phoenix")" \
+  ) in
+  *Elixir*) present_terminal "karchy-remove-dev-env elixir" ;;
+  *Phoenix*) present_terminal "karchy-remove-dev-env phoenix" ;;
+  *) back_to show_remove_dev_menu ;;
+  esac
+}
+
+# ── Remove > Development Submenu ──────────────────────────────────────────
+show_remove_dev_menu() {
+  case $(menu "Development" \
+    "$(entry "󰴭" "Ruby")" \
+    "$(entry "" "JavaScript")" \
+    "$(entry "󰟓" "Go")" \
+    "$(entry "" "PHP")" \
+    "$(entry "󰌠" "Python")" \
+    "$(entry "" "Elixir")" \
+    "$(entry "" "Rust")" \
+    "$(entry "" "Java")" \
+    "$(entry "" "Zig")" \
+    "$(entry "󰌛" ".NET")" \
+    "$(entry "λ" "OCaml")" \
+    "$(entry "" "Clojure")" \
+    "$(entry "" "Scala")" \
+  ) in
+  *Ruby*) present_terminal "karchy-remove-dev-env ruby" ;;
+  *JavaScript*) show_remove_dev_js_menu ;;
+  *Go) present_terminal "karchy-remove-dev-env go" ;;
+  *PHP*) show_remove_dev_php_menu ;;
+  *Python*) present_terminal "karchy-remove-dev-env python" ;;
+  *Elixir*) show_remove_dev_elixir_menu ;;
+  *Rust*) present_terminal "karchy-remove-dev-env rust" ;;
+  *Java*) present_terminal "karchy-remove-dev-env java" ;;
+  *Zig*) present_terminal "karchy-remove-dev-env zig" ;;
+  *.NET*) present_terminal "karchy-remove-dev-env dotnet" ;;
+  *OCaml*) present_terminal "karchy-remove-dev-env ocaml" ;;
+  *Clojure*) present_terminal "karchy-remove-dev-env clojure" ;;
+  *Scala*) present_terminal "karchy-remove-dev-env scala" ;;
+  *) back_to show_remove_menu ;;
+  esac
+}
+
+# ── Remove Menu ────────────────────────────────────────────────────────────
+show_remove_menu() {
+  case $(menu "Remove" \
+    "$(entry "󰣇" "Package")" \
+    "$(entry "󰖟" "Web App")" \
+    "$(entry "" "Development")" \
+  ) in
+  *Package*) karchy-present-terminal karchy-pkg-remove 40 ;;
+  *Web\ App*) present_terminal karchy-webapp-remove ;;
+  *Development*) show_remove_dev_menu ;;
+  *) back_to show_main_menu ;;
+  esac
+}
+
+# ── System Menu ────────────────────────────────────────────────────────────
+show_system_menu() {
+  local entries=(
+    "$(entry "󰌾" "Lock")"
+    "$(entry "󰒲" "Suspend")"
+  )
+
+  # Add Hibernate if swap is available
+  local swap_total
+  swap_total=$(awk '/SwapTotal/{print $2}' /proc/meminfo)
+  if (( swap_total > 0 )); then
+    entries+=("$(entry "󰤄" "Hibernate")")
+  fi
+
+  entries+=(
+    "$(entry "󰍃" "Logout")"
+    "$(entry "󰜉" "Restart")"
+    "$(entry "󰐥" "Shutdown")"
+  )
+
+  case $(menu "System" "${entries[@]}") in
   *Lock*) loginctl lock-session ;;
   *Suspend*) systemctl suspend ;;
+  *Hibernate*) systemctl hibernate ;;
   *Logout*) qdbus6 org.kde.ksmserver /KSMServer logout 0 0 0 ;;
   *Restart*) systemctl reboot ;;
   *Shutdown*) systemctl poweroff ;;
@@ -132,31 +514,37 @@ show_system_menu() {
   esac
 }
 
-# ── Main Menu ───────────────────────────────────────────────────────────────
+# ── Main Menu ──────────────────────────────────────────────────────────────
 show_main_menu() {
   case $(menu "Karchy" \
     "$(entry "󰀻" "Apps")" \
-    "$(entry "󰚰" "Update")" \
+    "$(entry "󰂺" "Learn")" \
     "$(entry "󰒓" "Setup")" \
     "$(entry "󰉉" "Install")" \
+    "$(entry "󰆍" "Remove")" \
+    "$(entry "󰚰" "Update")" \
     "$(entry "󰌢" "System")" \
   ) in
   *Apps*) fuzzel_apps ;;
-  *Update*) show_update_menu ;;
+  *Learn*) show_learn_menu ;;
   *Setup*) show_setup_menu ;;
   *Install*) show_install_menu ;;
+  *Remove*) show_remove_menu ;;
+  *Update*) show_update_menu ;;
   *System*) show_system_menu ;;
   esac
 }
 
-# ── Entry point ─────────────────────────────────────────────────────────────
+# ── Entry point ────────────────────────────────────────────────────────────
 if [[ -n ${1:-} ]]; then
   BACK_TO_EXIT=true
   case "${1,,}" in
     apps) fuzzel_apps ;;
+    learn) show_learn_menu ;;
     update) show_update_menu ;;
     setup) show_setup_menu ;;
     install) show_install_menu ;;
+    remove) show_remove_menu ;;
     system) show_system_menu ;;
     *) show_main_menu ;;
   esac

@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+echo -e "\e[32mUpdate Firmware\e[0m"
+
+if ! command -v fwupdmgr &>/dev/null; then
+  karchy-pkg-add fwupd
+fi
+
+fwupdmgr refresh --force
+sudo fwupdmgr update

@@ -1,0 +1,39 @@
+#!/bin/bash
+# Launch a URL in webapp mode (standalone window without browser chrome).
+# Detects the default browser from KDE/xdg settings and uses --app= for
+# Chromium-based browsers. Falls back to xdg-open for unsupported browsers.
+
+URL="$1"
+if [[ -z $URL ]]; then
+  echo "Usage: karchy-webapp-launch <url>"
+  exit 1
+fi
+
+# Get the default browser .desktop filename
+DEFAULT_BROWSER=$(xdg-settings get default-web-browser 2>/dev/null)
+
+# Extract the Exec binary from a .desktop file
+get_browser_exec() {
+  local desktop_file
+  for dir in /usr/share/applications "$HOME/.local/share/applications"; do
+    if [[ -f "$dir/$1" ]]; then
+      desktop_file="$dir/$1"
+      break
+    fi
+  done
+  [[ -z $desktop_file ]] && return 1
+  grep -oP '^Exec=\K[^ %]+' "$desktop_file" | head -1
+}
+
+# Chromium-based browsers support --app= for webapp mode
+case "$DEFAULT_BROWSER" in
+  google-chrome*.desktop|chromium*.desktop|brave*.desktop|microsoft-edge*.desktop|vivaldi*.desktop|ungoogled-chromium*.desktop)
+    BROWSER_EXEC=$(get_browser_exec "$DEFAULT_BROWSER")
+    if [[ -n $BROWSER_EXEC ]]; then
+      exec "$BROWSER_EXEC" --app="$URL"
+    fi
+    ;;
+esac
+
+# Fallback: open as a regular page in the default browser
+exec xdg-open "$URL"

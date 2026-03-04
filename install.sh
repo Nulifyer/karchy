@@ -15,7 +15,7 @@ echo "Installing karchy..."
 
 # ── Dependencies ────────────────────────────────────────────────────────────
 if [[ "$SKIP_DEPS" == false ]]; then
-  PACKAGES=(fuzzel gum alacritty paru networkmanager)
+  PACKAGES=(fuzzel gum alacritty paru networkmanager fzf)
   echo "Checking dependencies..."
   sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
 fi

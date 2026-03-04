@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+echo -e "\e[32mInstalling Dropbox\e[0m"
+
+karchy-pkg-aur-add dropbox
+
+if command -v systemctl &>/dev/null; then
+  systemctl --user enable --now dropbox 2>/dev/null || true
+fi
+
+echo -e "\nDropbox installed. Sign in through the app to start syncing."

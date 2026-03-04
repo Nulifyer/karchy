@@ -1,0 +1,8 @@
+#!/bin/bash
+set -e
+echo -e "\e[32mInstalling Steam\e[0m"
+
+karchy-pkg-add steam
+
+echo -e "\nLaunching Steam..."
+setsid gtk-launch steam &>/dev/null &

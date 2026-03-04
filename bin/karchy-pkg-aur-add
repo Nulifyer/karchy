@@ -1,0 +1,12 @@
+#!/bin/bash
+# Install the named AUR packages if missing. Verifies installation succeeded.
+if karchy-pkg-missing "$@"; then
+  paru -S --noconfirm --needed "$@" || exit 1
+fi
+
+for pkg in "$@"; do
+  if ! pacman -Q "$pkg" &>/dev/null; then
+    echo -e "\033[31mError: Package '$pkg' did not install\033[0m" >&2
+    exit 1
+  fi
+done
