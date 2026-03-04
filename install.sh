@@ -43,8 +43,6 @@ for script in "$REPO_DIR"/bin/*; do
 done
 
 # ── PATH (detect user's shell) ───────────────────────────────────────────────
-KDE_TERMINAL=$(kreadconfig6 --file kdeglobals --group General --key TerminalApplication 2>/dev/null)
-KDE_TERMINAL="${KDE_TERMINAL:-alacritty}"
 USER_SHELL="$(basename "$SHELL")"
 
 case "$USER_SHELL" in
@@ -77,11 +75,11 @@ esac
 FUZZEL_INI="$HOME/.config/fuzzel/fuzzel.ini"
 mkdir -p "$(dirname "$FUZZEL_INI")"
 if [[ ! -f "$FUZZEL_INI" ]]; then
-  printf '[main]\nterminal=%s -e\n' "$KDE_TERMINAL" > "$FUZZEL_INI"
-  echo "  created fuzzel config with terminal=$KDE_TERMINAL"
+  printf '[main]\nterminal=%s/karchy-terminal -e\n' "$INSTALL_DIR" > "$FUZZEL_INI"
+  echo "  created fuzzel config with karchy-terminal wrapper"
 elif ! grep -q '^terminal=' "$FUZZEL_INI"; then
-  sed -i '/^\[main\]/a terminal='"$KDE_TERMINAL"' -e' "$FUZZEL_INI"
-  echo "  added terminal=$KDE_TERMINAL to fuzzel config"
+  sed -i '/^\[main\]/a terminal='"$INSTALL_DIR"'/karchy-terminal -e' "$FUZZEL_INI"
+  echo "  added karchy-terminal to fuzzel config"
 fi
 
 # ── KWin rule (borderless centered popup for karchy-float) ──────────────────

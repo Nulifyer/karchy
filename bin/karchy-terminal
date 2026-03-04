@@ -1,0 +1,5 @@
+#!/bin/bash
+# Launch the KDE-configured terminal emulator.
+# Used by fuzzel for Terminal=true apps.
+TERM_APP=$(kreadconfig6 --file kdeglobals --group General --key TerminalApplication 2>/dev/null)
+exec "${TERM_APP:-alacritty}" "$@"
