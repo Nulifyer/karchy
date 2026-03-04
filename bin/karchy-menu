@@ -160,7 +160,7 @@ show_setup_power_menu() {
 
   local entries=()
   while IFS= read -r p; do
-    entries+=("$(entry "⚡" "$p")")
+    entries+=("$(entry "󰚥" "$p")")
   done <<< "$profiles"
 
   local choice
@@ -176,7 +176,7 @@ show_setup_menu() {
     "$(entry "󰖩" "Wifi")" \
     "$(entry "󰂯" "Bluetooth")" \
     "$(entry "󰍹" "Monitors")" \
-    "$(entry "⚡" "Power Profile")" \
+    "$(entry "󰚥" "Power Profile")" \
     "$(entry "󰇖" "DNS")" \
     "$(entry "󰹑" "Screenshot")" \
   ) in
@@ -260,7 +260,7 @@ show_install_dev_menu() {
     "$(entry "󰬷" "Java")" \
     "$(entry "󰘦" "Zig")" \
     "$(entry "󰌛" ".NET")" \
-    "$(entry "λ" "OCaml")" \
+    "$(entry "󰘧" "OCaml")" \
     "$(entry "󰅩" "Clojure")" \
     "$(entry "󰘨" "Scala")" \
   ) in
@@ -448,7 +448,7 @@ show_remove_dev_menu() {
     "$(entry "󰬷" "Java")" \
     "$(entry "󰘦" "Zig")" \
     "$(entry "󰌛" ".NET")" \
-    "$(entry "λ" "OCaml")" \
+    "$(entry "󰘧" "OCaml")" \
     "$(entry "󰅩" "Clojure")" \
     "$(entry "󰘨" "Scala")" \
   ) in

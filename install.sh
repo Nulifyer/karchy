@@ -15,9 +15,19 @@ echo "Installing karchy..."
 
 # ── Dependencies ────────────────────────────────────────────────────────────
 if [[ "$SKIP_DEPS" == false ]]; then
-  PACKAGES=(fuzzel gum alacritty paru networkmanager fzf)
+  PACKAGES=(fuzzel gum alacritty networkmanager fzf chafa)
+  AUR_PACKAGES=(paru-git)
   echo "Checking dependencies..."
   sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+  if command -v paru &>/dev/null; then
+    paru -S --needed --noconfirm "${AUR_PACKAGES[@]}"
+  else
+    echo "  paru not found, installing paru-git from AUR manually..."
+    tmpdir=$(mktemp -d)
+    git clone https://aur.archlinux.org/paru-git.git "$tmpdir/paru-git"
+    (cd "$tmpdir/paru-git" && makepkg -si --noconfirm)
+    rm -rf "$tmpdir"
+  fi
 fi
 
 # ── Scripts ─────────────────────────────────────────────────────────────────

@@ -25,9 +25,6 @@ fetch_metadata() {
 
   if [[ -f "$ETAG_CACHE" && -f "$METADATA_CACHE" ]]; then
     etag_header="-H If-None-Match: $(cat "$ETAG_CACHE")"
-    echo "Checking for icon updates..."
-  else
-    echo "Fetching dashboard icons metadata..."
   fi
 
   local http_code
@@ -54,7 +51,7 @@ fetch_metadata() {
     *)
       rm -f "$METADATA_CACHE.tmp" "$CACHE_DIR/headers.tmp"
       [[ -f "$METADATA_CACHE" ]] && return 0
-      echo "Failed to fetch icon metadata (HTTP $http_code)"
+      echo "Failed to fetch icon metadata (HTTP $http_code)" >&2
       return 1
       ;;
   esac
@@ -62,7 +59,6 @@ fetch_metadata() {
 
 build_icons_list() {
   [[ -f "$METADATA_CACHE" ]] || return 1
-  echo "Building icon index..."
 
   local base_url="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons"
   > "$ICONS_LIST_CACHE.tmp"
@@ -73,21 +69,20 @@ build_icons_list() {
       local icon_block
       icon_block=$(grep -A 15 "\"$icon_name\":" "$METADATA_CACHE" | head -15)
 
-      local png_filename
+      local svg_filename
       if [[ $icon_block =~ \"light\":[[:space:]]*\"([^\"]+)\" ]]; then
-        png_filename="${BASH_REMATCH[1]}.png"
+        svg_filename="${BASH_REMATCH[1]}.svg"
       else
-        png_filename="${icon_name}.png"
+        svg_filename="${icon_name}.svg"
       fi
 
       local display_name
       display_name=$(echo "$icon_name" | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
-      echo "${display_name}|${icon_name}|${base_url}/png/${png_filename}" >> "$ICONS_LIST_CACHE.tmp"
+      echo "${display_name}|${icon_name}|${base_url}/svg/${svg_filename}" >> "$ICONS_LIST_CACHE.tmp"
     fi
   done < "$METADATA_CACHE"
 
   mv "$ICONS_LIST_CACHE.tmp" "$ICONS_LIST_CACHE"
-  echo "Indexed $(wc -l < "$ICONS_LIST_CACHE") icons"
 }
 
 ensure_icons_cache() {
@@ -101,23 +96,34 @@ ensure_icons_cache() {
 }
 
 search_icons() {
-  ensure_icons_cache || return 1
+  if ! [[ -f "$ICONS_LIST_CACHE" ]] || ! is_cache_valid "$METADATA_CACHE" || ! is_cache_valid "$ICONS_LIST_CACHE"; then
+    export -f is_cache_valid fetch_metadata build_icons_list ensure_icons_cache
+    export CACHE_DIR METADATA_CACHE ETAG_CACHE ICONS_LIST_CACHE CACHE_MAX_AGE
+    gum spin --spinner dot --title "Loading dashboard icons..." -- \
+      bash -c 'ensure_icons_cache' || return 1
+  fi
+  [[ -f "$ICONS_LIST_CACHE" ]] || return 1
 
-  local preview_cmd='echo {1}'
+  local preview_cmd preview_window
   if command -v chafa &>/dev/null; then
     preview_cmd='
       icon_name=$(echo {} | cut -d"|" -f2)
       url=$(echo {} | cut -d"|" -f3)
+      png_url=$(echo "$url" | sed "s|/svg/|/png/|; s|\.svg$|.png|")
       cached="'"$PREVIEW_DIR"'/${icon_name}.png"
       if [[ ! -f "$cached" ]]; then
         mkdir -p "'"$PREVIEW_DIR"'"
-        curl -sL "$url" -o "$cached" 2>/dev/null
+        curl -sL "$png_url" -o "$cached" 2>/dev/null
       fi
       if [[ -s "$cached" ]]; then
-        chafa -s 24x24 --symbols block "$cached"
+        chafa -s 8x8 "$cached" 2>/dev/null || echo "${icon_name}"
       else
-        echo "Preview unavailable"
+        echo "No preview"
       fi'
+    preview_window='right:20:noborder'
+  else
+    preview_cmd='echo {} | cut -d"|" -f3'
+    preview_window='down:1:noborder'
   fi
 
   local selection
@@ -126,7 +132,7 @@ search_icons() {
         --prompt="Search icons: " \
         --header="Enter: select | Esc: cancel" \
         --preview="$preview_cmd" \
-        --preview-window='right:30%' \
+        --preview-window="$preview_window" \
         --delimiter="|" \
         --with-nth=1) || return 1
 
@@ -190,13 +196,20 @@ if [[ -z $ICON_REF ]]; then
 fi
 
 if [[ $ICON_REF =~ ^https?:// ]]; then
-  ICON_PATH="$ICON_DIR/$APP_NAME.png"
+  # Determine extension from URL
+  case "$ICON_REF" in
+    *.svg) ICON_EXT="svg" ;;
+    *.png) ICON_EXT="png" ;;
+    *)     ICON_EXT="png" ;;
+  esac
+  ICON_PATH="$ICON_DIR/$APP_NAME.$ICON_EXT"
   if ! curl -fsSL -o "$ICON_PATH" "$ICON_REF" || [[ ! -s $ICON_PATH ]]; then
     echo "Error: Failed to download icon."
     exit 1
   fi
 elif [[ -f $ICON_REF ]]; then
-  ICON_PATH="$ICON_DIR/$APP_NAME.png"
+  ICON_EXT="${ICON_REF##*.}"
+  ICON_PATH="$ICON_DIR/$APP_NAME.$ICON_EXT"
   cp "$ICON_REF" "$ICON_PATH"
 else
   ICON_PATH="$ICON_DIR/$ICON_REF"
