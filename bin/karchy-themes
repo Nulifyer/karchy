@@ -1,0 +1,86 @@
+#!/bin/bash
+# Hardcoded theme definitions for karchy.
+# Each theme sets: BG, FG, ACCENT, COLOR0–COLOR7
+# Bright colors (COLOR8–15) are auto-derived by karchy-colors.
+
+karchy_theme_list() {
+  echo "auto"
+  echo "catppuccin-mocha"
+  echo "gruvbox-dark"
+  echo "tokyo-night"
+  echo "nord"
+  echo "dracula"
+  echo "solarized-dark"
+  echo "one-dark"
+  echo "rose-pine"
+  echo "everforest-dark"
+  echo "kanagawa"
+}
+
+karchy_theme_load() {
+  case "$1" in
+    catppuccin-mocha)
+      KARCHY_BG="#1e1e2e"  KARCHY_FG="#cdd6f4"  KARCHY_ACCENT="#89b4fa"
+      KARCHY_COLOR0="#313244" KARCHY_COLOR1="#f38ba8" KARCHY_COLOR2="#a6e3a1"
+      KARCHY_COLOR3="#f9e2af" KARCHY_COLOR4="#89b4fa" KARCHY_COLOR5="#f5c2e7"
+      KARCHY_COLOR6="#94e2d5" KARCHY_COLOR7="#bac2de"
+      ;;
+    gruvbox-dark)
+      KARCHY_BG="#282828"  KARCHY_FG="#ebdbb2"  KARCHY_ACCENT="#d79921"
+      KARCHY_COLOR0="#3c3836" KARCHY_COLOR1="#cc241d" KARCHY_COLOR2="#98971a"
+      KARCHY_COLOR3="#d79921" KARCHY_COLOR4="#458588" KARCHY_COLOR5="#b16286"
+      KARCHY_COLOR6="#689d6a" KARCHY_COLOR7="#a89984"
+      ;;
+    tokyo-night)
+      KARCHY_BG="#1a1b26"  KARCHY_FG="#c0caf5"  KARCHY_ACCENT="#7aa2f7"
+      KARCHY_COLOR0="#414868" KARCHY_COLOR1="#f7768e" KARCHY_COLOR2="#9ece6a"
+      KARCHY_COLOR3="#e0af68" KARCHY_COLOR4="#7aa2f7" KARCHY_COLOR5="#bb9af7"
+      KARCHY_COLOR6="#7dcfff" KARCHY_COLOR7="#a9b1d6"
+      ;;
+    nord)
+      KARCHY_BG="#2e3440"  KARCHY_FG="#eceff4"  KARCHY_ACCENT="#88c0d0"
+      KARCHY_COLOR0="#3b4252" KARCHY_COLOR1="#bf616a" KARCHY_COLOR2="#a3be8c"
+      KARCHY_COLOR3="#ebcb8b" KARCHY_COLOR4="#81a1c1" KARCHY_COLOR5="#b48ead"
+      KARCHY_COLOR6="#88c0d0" KARCHY_COLOR7="#d8dee9"
+      ;;
+    dracula)
+      KARCHY_BG="#282a36"  KARCHY_FG="#f8f8f2"  KARCHY_ACCENT="#bd93f9"
+      KARCHY_COLOR0="#44475a" KARCHY_COLOR1="#ff5555" KARCHY_COLOR2="#50fa7b"
+      KARCHY_COLOR3="#f1fa8c" KARCHY_COLOR4="#6272a4" KARCHY_COLOR5="#ff79c6"
+      KARCHY_COLOR6="#8be9fd" KARCHY_COLOR7="#bfbfbf"
+      ;;
+    solarized-dark)
+      KARCHY_BG="#002b36"  KARCHY_FG="#839496"  KARCHY_ACCENT="#268bd2"
+      KARCHY_COLOR0="#073642" KARCHY_COLOR1="#dc322f" KARCHY_COLOR2="#859900"
+      KARCHY_COLOR3="#b58900" KARCHY_COLOR4="#268bd2" KARCHY_COLOR5="#d33682"
+      KARCHY_COLOR6="#2aa198" KARCHY_COLOR7="#93a1a1"
+      ;;
+    one-dark)
+      KARCHY_BG="#282c34"  KARCHY_FG="#abb2bf"  KARCHY_ACCENT="#61afef"
+      KARCHY_COLOR0="#3e4452" KARCHY_COLOR1="#e06c75" KARCHY_COLOR2="#98c379"
+      KARCHY_COLOR3="#e5c07b" KARCHY_COLOR4="#61afef" KARCHY_COLOR5="#c678dd"
+      KARCHY_COLOR6="#56b6c2" KARCHY_COLOR7="#5c6370"
+      ;;
+    rose-pine)
+      KARCHY_BG="#191724"  KARCHY_FG="#e0def4"  KARCHY_ACCENT="#c4a7e7"
+      KARCHY_COLOR0="#26233a" KARCHY_COLOR1="#eb6f92" KARCHY_COLOR2="#31748f"
+      KARCHY_COLOR3="#f6c177" KARCHY_COLOR4="#9ccfd8" KARCHY_COLOR5="#c4a7e7"
+      KARCHY_COLOR6="#ebbcba" KARCHY_COLOR7="#908caa"
+      ;;
+    everforest-dark)
+      KARCHY_BG="#2d353b"  KARCHY_FG="#d3c6aa"  KARCHY_ACCENT="#a7c080"
+      KARCHY_COLOR0="#475258" KARCHY_COLOR1="#e67e80" KARCHY_COLOR2="#a7c080"
+      KARCHY_COLOR3="#dbbc7f" KARCHY_COLOR4="#7fbbb3" KARCHY_COLOR5="#d699b6"
+      KARCHY_COLOR6="#83c092" KARCHY_COLOR7="#859289"
+      ;;
+    kanagawa)
+      KARCHY_BG="#1f1f28"  KARCHY_FG="#dcd7ba"  KARCHY_ACCENT="#7e9cd8"
+      KARCHY_COLOR0="#2a2a37" KARCHY_COLOR1="#c34043" KARCHY_COLOR2="#76946a"
+      KARCHY_COLOR3="#c0a36e" KARCHY_COLOR4="#7e9cd8" KARCHY_COLOR5="#957fb8"
+      KARCHY_COLOR6="#6a9589" KARCHY_COLOR7="#727169"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}

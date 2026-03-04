@@ -179,6 +179,7 @@ show_setup_menu() {
     "$(entry "󰚥" "Power Profile")" \
     "$(entry "󰇖" "DNS")" \
     "$(entry "󰹑" "Screenshot")" \
+    "$(entry "󰏘" "Theme")" \
   ) in
   *Audio*) pavucontrol & ;;
   *Wifi*) kcmshell6 kcm_networkmanagement & ;;
@@ -187,6 +188,7 @@ show_setup_menu() {
   *Power*) show_setup_power_menu ;;
   *DNS*) present_terminal karchy-setup-dns ;;
   *Screenshot*) spectacle & ;;
+  *Theme*) karchy-theme-select && source "$SCRIPT_DIR/karchy-colors" && show_main_menu ;;
   *) back_to show_main_menu ;;
   esac
 }
