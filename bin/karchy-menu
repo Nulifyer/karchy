@@ -509,7 +509,7 @@ show_system_menu() {
   *Lock*) loginctl lock-session ;;
   *Suspend*) systemctl suspend ;;
   *Hibernate*) systemctl hibernate ;;
-  *Logout*) qdbus6 org.kde.ksmserver /KSMServer logout 0 0 0 ;;
+  *Logout*) qdbus6 org.kde.Shutdown /Shutdown logout ;;
   *Restart*) systemctl reboot ;;
   *Shutdown*) systemctl poweroff ;;
   *) back_to show_main_menu ;;
