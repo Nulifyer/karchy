@@ -338,19 +338,103 @@ show_install_ai_menu() {
 # ── Install > Font Submenu ────────────────────────────────────────────────
 show_install_font_menu() {
   case $(menu "Font" \
-    "$(entry "󰛖" "CaskaydiaCove")" \
-    "$(entry "󰛖" "Meslo")" \
-    "$(entry "󰛖" "FiraCode")" \
-    "$(entry "󰛖" "Victor Mono")" \
+    "$(entry "󰛖" "0xProto")" \
+    "$(entry "󰛖" "3270")" \
+    "$(entry "󰛖" "Agave")" \
+    "$(entry "󰛖" "Anonymous Pro")" \
+    "$(entry "󰛖" "BigBlueTerminal")" \
     "$(entry "󰛖" "Bitstream Vera")" \
+    "$(entry "󰛖" "CaskaydiaCove")" \
+    "$(entry "󰛖" "Cascadia Mono")" \
+    "$(entry "󰛖" "Cousine")" \
+    "$(entry "󰛖" "D2Coding")" \
+    "$(entry "󰛖" "DaddyTime Mono")" \
+    "$(entry "󰛖" "DejaVu")" \
+    "$(entry "󰛖" "EnvyCodeR")" \
+    "$(entry "󰛖" "Fantasque")" \
+    "$(entry "󰛖" "FiraCode")" \
+    "$(entry "󰛖" "Go Mono")" \
+    "$(entry "󰛖" "Gohu")" \
+    "$(entry "󰛖" "Hack")" \
+    "$(entry "󰛖" "iA Writer")" \
+    "$(entry "󰛖" "IBM Plex Mono")" \
+    "$(entry "󰛖" "Inconsolata")" \
+    "$(entry "󰛖" "Input")" \
+    "$(entry "󰛖" "IntoneMono")" \
     "$(entry "󰛖" "Iosevka")" \
+    "$(entry "󰛖" "Iosevka Term")" \
+    "$(entry "󰛖" "Iosevka Term Slab")" \
+    "$(entry "󰛖" "JetBrains Mono")" \
+    "$(entry "󰛖" "Lekton")" \
+    "$(entry "󰛖" "Liberation Mono")" \
+    "$(entry "󰛖" "Lilex")" \
+    "$(entry "󰛖" "Martian Mono")" \
+    "$(entry "󰛖" "Meslo")" \
+    "$(entry "󰛖" "Monofur")" \
+    "$(entry "󰛖" "Monoid")" \
+    "$(entry "󰛖" "Mononoki")" \
+    "$(entry "󰛖" "M+")" \
+    "$(entry "󰛖" "Noto")" \
+    "$(entry "󰛖" "ProFont")" \
+    "$(entry "󰛖" "ProggyClean")" \
+    "$(entry "󰛖" "Recursive")" \
+    "$(entry "󰛖" "Roboto Mono")" \
+    "$(entry "󰛖" "Source Code Pro")" \
+    "$(entry "󰛖" "Space Mono")" \
+    "$(entry "󰛖" "Terminus")" \
+    "$(entry "󰛖" "Ubuntu")" \
+    "$(entry "󰛖" "Ubuntu Mono")" \
+    "$(entry "󰛖" "Victor Mono")" \
+    "$(entry "󰛖" "Zed Mono")" \
   ) in
-  *CaskaydiaCove*) install_font "CaskaydiaCove" ttf-cascadia-code-nerd ;;
-  *Meslo*) install_font "Meslo" ttf-meslo-nerd ;;
-  *FiraCode*) install_font "FiraCode" ttf-firacode-nerd ;;
-  *Victor*) install_font "Victor Mono" ttf-victor-mono-nerd ;;
+  *0xProto*) install_font "0xProto" ttf-0xproto-nerd ;;
+  *3270*) install_font "3270" ttf-3270-nerd ;;
+  *Agave*) install_font "Agave" ttf-agave-nerd ;;
+  *Anonymous*) install_font "Anonymous Pro" ttf-anonymouspro-nerd ;;
+  *BigBlue*) install_font "BigBlueTerminal" ttf-bigblueterminal-nerd ;;
   *Bitstream*) install_font "Bitstream Vera" ttf-bitstream-vera-mono-nerd ;;
+  *CaskaydiaCove*) install_font "CaskaydiaCove" ttf-cascadia-code-nerd ;;
+  *Cascadia\ Mono*) install_font "Cascadia Mono" ttf-cascadia-mono-nerd ;;
+  *Cousine*) install_font "Cousine" ttf-cousine-nerd ;;
+  *D2Coding*) install_font "D2Coding" ttf-d2coding-nerd ;;
+  *DaddyTime*) install_font "DaddyTime Mono" ttf-daddytime-mono-nerd ;;
+  *DejaVu*) install_font "DejaVu" ttf-dejavu-nerd ;;
+  *EnvyCodeR*) install_font "EnvyCodeR" ttf-envycoder-nerd ;;
+  *Fantasque*) install_font "Fantasque" ttf-fantasque-nerd ;;
+  *FiraCode*) install_font "FiraCode" ttf-firacode-nerd ;;
+  *Go\ Mono*) install_font "Go Mono" ttf-go-nerd ;;
+  *Gohu*) install_font "Gohu" ttf-gohu-nerd ;;
+  *Hack*) install_font "Hack" ttf-hack-nerd ;;
+  *iA\ Writer*) install_font "iA Writer" ttf-iawriter-nerd ;;
+  *IBM*) install_font "IBM Plex Mono" ttf-ibmplex-mono-nerd ;;
+  *Inconsolata*) install_font "Inconsolata" ttf-inconsolata-nerd ;;
+  *Input*) install_font "Input" ttf-input-nerd ;;
+  *IntoneMono*) install_font "IntoneMono" ttf-intone-nerd ;;
+  *Iosevka\ Term\ Slab*) install_font "Iosevka Term Slab" ttf-iosevkatermslab-nerd ;;
+  *Iosevka\ Term*) install_font "Iosevka Term" ttf-iosevkaterm-nerd ;;
   *Iosevka*) install_font "Iosevka" ttf-iosevka-nerd ;;
+  *JetBrains*) install_font "JetBrains Mono" ttf-jetbrains-mono-nerd ;;
+  *Lekton*) install_font "Lekton" ttf-lekton-nerd ;;
+  *Liberation*) install_font "Liberation Mono" ttf-liberation-mono-nerd ;;
+  *Lilex*) install_font "Lilex" ttf-lilex-nerd ;;
+  *Martian*) install_font "Martian Mono" ttf-martian-mono-nerd ;;
+  *Meslo*) install_font "Meslo" ttf-meslo-nerd ;;
+  *Monofur*) install_font "Monofur" ttf-monofur-nerd ;;
+  *Monoid*) install_font "Monoid" ttf-monoid-nerd ;;
+  *Mononoki*) install_font "Mononoki" ttf-mononoki-nerd ;;
+  *M+*) install_font "M+" ttf-mplus-nerd ;;
+  *Noto*) install_font "Noto" ttf-noto-nerd ;;
+  *ProFont*) install_font "ProFont" ttf-profont-nerd ;;
+  *ProggyClean*) install_font "ProggyClean" ttf-proggyclean-nerd ;;
+  *Recursive*) install_font "Recursive" ttf-recursive-nerd ;;
+  *Roboto*) install_font "Roboto Mono" ttf-roboto-mono-nerd ;;
+  *Source\ Code*) install_font "Source Code Pro" ttf-sourcecodepro-nerd ;;
+  *Space*) install_font "Space Mono" ttf-space-mono-nerd ;;
+  *Terminus*) install_font "Terminus" ttf-terminus-nerd ;;
+  *Ubuntu\ Mono*) install_font "Ubuntu Mono" ttf-ubuntu-mono-nerd ;;
+  *Ubuntu*) install_font "Ubuntu" ttf-ubuntu-nerd ;;
+  *Victor*) install_font "Victor Mono" ttf-victor-mono-nerd ;;
+  *Zed*) install_font "Zed Mono" ttf-zed-mono-nerd ;;
   *) back_to show_install_menu ;;
   esac
 }
