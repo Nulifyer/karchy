@@ -33,12 +33,12 @@ class UpdateNotifier:
         self.tray.setIcon(QIcon.fromTheme("system-software-update"))
         self.tray.activated.connect(self.on_click)
 
-        menu = QMenu()
-        menu.addAction("Update now", self.run_update)
-        menu.addAction("Check now", self.refresh)
-        menu.addSeparator()
-        menu.addAction("Quit", self.app.quit)
-        self.tray.setContextMenu(menu)
+        self.menu = QMenu()
+        self.menu.addAction("Update now", self.run_update)
+        self.menu.addAction("Check now", self.refresh)
+        self.menu.addSeparator()
+        self.menu.addAction("Quit", self.app.quit)
+        self.tray.setContextMenu(self.menu)
 
         self.update_proc = None
         self.poll_timer = None
@@ -73,8 +73,12 @@ class UpdateNotifier:
             self.tray.setVisible(False)
 
     def on_click(self, reason):
-        """Left-click opens the update terminal."""
-        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+        """Left-click or middle-click opens the update terminal."""
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+            QSystemTrayIcon.ActivationReason.MiddleClick,
+        ):
             self.run_update()
 
     def run_update(self):
