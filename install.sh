@@ -169,6 +169,7 @@ kwriteconfig6 --file "$SHORTCUTS" \
 
 # Reload
 update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+kbuildsycoca6 2>/dev/null || true
 systemctl --user restart plasma-krunner.service 2>/dev/null || true
 qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
 echo "  bound Super+Space to karchy-menu (may need logout/login)"

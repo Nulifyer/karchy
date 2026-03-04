@@ -38,3 +38,6 @@ for APP_NAME in "${APP_NAMES[@]}"; do
   rm -f "$ICON_DIR/$APP_NAME.png" "$ICON_DIR/$APP_NAME.svg"
   echo "Removed $APP_NAME"
 done
+
+update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+kbuildsycoca6 2>/dev/null || true

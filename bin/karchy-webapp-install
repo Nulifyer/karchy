@@ -216,7 +216,8 @@ else
 fi
 
 WM_CLASS="karchy-webapp-${APP_NAME// /-}"
-EXEC_COMMAND="${CUSTOM_EXEC:-karchy-webapp-launch $APP_URL $WM_CLASS}"
+KARCHY_BIN="$HOME/.local/share/karchy/bin"
+EXEC_COMMAND="${CUSTOM_EXEC:-$KARCHY_BIN/karchy-webapp-launch $APP_URL $WM_CLASS}"
 
 DESKTOP_FILE="$HOME/.local/share/applications/$APP_NAME.desktop"
 
@@ -239,6 +240,8 @@ if [[ -n $MIME_TYPES ]]; then
 fi
 
 chmod +x "$DESKTOP_FILE"
+update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+kbuildsycoca6 2>/dev/null || true
 
 if [[ $INTERACTIVE_MODE == "true" ]]; then
   echo -e "\nYou can now find $APP_NAME using the app launcher (Super + Space)\n"
