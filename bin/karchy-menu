@@ -379,7 +379,7 @@ show_install_menu() {
     "$(entry "󰅩" "Development")" \
     "$(entry "󰨞" "Editor")" \
     "$(entry "󰆍" "Terminal")" \
-    "$(entry "󰊭" "AI")" \
+    "$(entry "󰚩" "AI")" \
     "$(entry "󰛖" "Font")" \
     "$(entry "󰊗" "Gaming")" \
   ) in
