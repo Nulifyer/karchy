@@ -1,0 +1,12 @@
+[Unit]
+Description=Karchy Update Notifier
+PartOf=graphical-session.target
+
+[Service]
+Environment=PATH=%h/.local/share/karchy/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.local/share/karchy/bin/karchy-update-notifier
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=graphical-session.target

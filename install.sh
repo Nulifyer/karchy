@@ -15,7 +15,7 @@ echo "Installing karchy..."
 
 # ── Dependencies ────────────────────────────────────────────────────────────
 if [[ "$SKIP_DEPS" == false ]]; then
-  PACKAGES=(fuzzel gum alacritty networkmanager fzf chafa)
+  PACKAGES=(fuzzel gum alacritty networkmanager fzf chafa python-pyqt6 pacman-contrib)
   AUR_PACKAGES=(paru-git)
   echo "Checking dependencies..."
   sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
@@ -134,6 +134,20 @@ update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
 systemctl --user restart plasma-krunner.service 2>/dev/null || true
 qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
 echo "  bound Super+Space to karchy-menu (may need logout/login)"
+
+# ── Update notifier (systemd user units) ─────────────────────────────────
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+
+for unit in "$REPO_DIR"/systemd/*; do
+  cp "$unit" "$SYSTEMD_USER_DIR/"
+  echo "  installed $(basename "$unit")"
+done
+
+systemctl --user daemon-reload
+systemctl --user enable --now karchy-update-notifier.service 2>/dev/null || true
+systemctl --user enable --now karchy-update-check.timer 2>/dev/null || true
+echo "  enabled update notifier and check timer"
 
 echo ""
 echo "Done! Restart your shell to pick up PATH changes."

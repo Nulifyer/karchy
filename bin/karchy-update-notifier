@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+"""Karchy Update Notifier — KDE system tray icon for available package updates."""
+
+import signal
+import socket
+import subprocess
+import sys
+
+from PyQt6.QtCore import QSocketNotifier, QTimer
+from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
+
+
+def check_updates():
+    """Return list of available updates using checkupdates + paru."""
+    lines = []
+    for cmd in (["checkupdates"], ["paru", "-Qua"]):
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if result.stdout.strip():
+                lines.extend(result.stdout.strip().splitlines())
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pass
+    return lines
+
+
+class UpdateNotifier:
+    def __init__(self):
+        self.app = QApplication(sys.argv)
+        self.app.setQuitOnLastWindowClosed(False)
+
+        self.tray = QSystemTrayIcon()
+        self.tray.setIcon(QIcon.fromTheme("system-software-update"))
+        self.tray.activated.connect(self.on_click)
+
+        menu = QMenu()
+        menu.addAction("Update now", self.run_update)
+        menu.addAction("Check now", self.refresh)
+        menu.addSeparator()
+        menu.addAction("Quit", self.app.quit)
+        self.tray.setContextMenu(menu)
+
+        self.update_proc = None
+        self.poll_timer = None
+
+        # Bridge SIGUSR1 into Qt event loop via socket pair
+        self.sig_read, self.sig_write = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.sig_read.setblocking(False)
+        self.sig_write.setblocking(False)
+        self.sig_notifier = QSocketNotifier(self.sig_read.fileno(), QSocketNotifier.Type.Read)
+        self.sig_notifier.activated.connect(self._handle_signal)
+        signal.signal(signal.SIGUSR1, lambda *_: self.sig_write.send(b"\x00"))
+
+        self.refresh()
+
+    def _handle_signal(self):
+        """Called by Qt when SIGUSR1 arrives via the socket bridge."""
+        self.sig_read.recv(64)
+        self.refresh()
+
+    def refresh(self):
+        """Check for updates and show/hide tray icon."""
+        updates = check_updates()
+        count = len(updates)
+
+        if count > 0:
+            preview = "\n".join(updates[:15])
+            if count > 15:
+                preview += f"\n...and {count - 15} more"
+            self.tray.setToolTip(f"{count} update(s) available\n{preview}")
+            self.tray.setVisible(True)
+        else:
+            self.tray.setVisible(False)
+
+    def on_click(self, reason):
+        """Left-click opens the update terminal."""
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self.run_update()
+
+    def run_update(self):
+        """Launch karchy-update in the floating terminal, re-check when done."""
+        if self.update_proc and self.update_proc.poll() is None:
+            return
+
+        self.update_proc = subprocess.Popen(
+            ["karchy-present-terminal", "karchy-update"]
+        )
+
+        def poll():
+            if self.update_proc and self.update_proc.poll() is not None:
+                self.poll_timer.stop()
+                self.update_proc = None
+                self.refresh()
+
+        self.poll_timer = QTimer()
+        self.poll_timer.timeout.connect(poll)
+        self.poll_timer.start(2000)
+
+    def run(self):
+        sys.exit(self.app.exec())
+
+
+if __name__ == "__main__":
+    UpdateNotifier().run()
