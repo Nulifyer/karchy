@@ -1,0 +1,59 @@
+#!/bin/bash
+# Browse and open discovered projects in a code editor.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/karchy-colors"
+
+PROJECTS_DIR="$HOME/.local/share/applications/karchy-projects"
+
+# Auto-scan if no projects found yet
+if [[ ! -d "$PROJECTS_DIR" ]] || [[ -z "$(ls -A "$PROJECTS_DIR" 2>/dev/null)" ]]; then
+  "$SCRIPT_DIR/karchy-project-scan"
+fi
+
+# Build list: "name | path"
+entries=()
+while IFS= read -r desktop; do
+  name=$(grep -oP '^Name=\K.*' "$desktop")
+  path=$(grep -oP '^Comment=\K.*' "$desktop")
+  [[ -n "$name" && -n "$path" ]] && entries+=("$name | $path")
+done < <(find "$PROJECTS_DIR" -name '*.desktop' -print 2>/dev/null | sort)
+
+if [[ ${#entries[@]} -eq 0 ]]; then
+  echo "No projects found. Run karchy-project-scan first."
+  exit 0
+fi
+
+choice=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu \
+  --prompt "Project  " \
+  --width 50 \
+  --lines 15 \
+  --inner-pad 12 \
+  --horizontal-pad 20 \
+  --border-width 2 \
+  --border-radius 12 \
+  --border-color "$KARCHY_ACCENT_FUZZEL" \
+  --background "$KARCHY_BG_FUZZEL" \
+  --text-color "$KARCHY_FG_FUZZEL" \
+  --match-color "$KARCHY_ACCENT_FUZZEL" \
+  --selection-color "$KARCHY_COLOR0_FUZZEL" \
+  --selection-text-color "$KARCHY_ACCENT_FUZZEL" \
+  --selection-match-color "$KARCHY_COLOR6_FUZZEL" \
+  --prompt-color "$KARCHY_ACCENT_FUZZEL" \
+  --placeholder-color "$KARCHY_COLOR7_FUZZEL" \
+  --font "CaskaydiaCove Nerd Font:size=13" \
+  --line-height 24 \
+  --letter-spacing 1)
+
+[[ -z "$choice" ]] && exit 0
+
+project_path="${choice##* | }"
+
+# Open in preferred editor
+for editor in cursor code zed helix; do
+  if command -v "$editor" &>/dev/null; then
+    exec "$editor" "$project_path"
+  fi
+done
+
+# Fallback to file manager
+exec xdg-open "$project_path"

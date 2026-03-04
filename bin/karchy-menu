@@ -520,6 +520,7 @@ show_system_menu() {
 show_main_menu() {
   case $(menu "Karchy" \
     "$(entry "󰀻" "Apps")" \
+    "$(entry "󰲋" "Projects")" \
     "$(entry "󰂺" "Learn")" \
     "$(entry "󰒓" "Setup")" \
     "$(entry "󰉉" "Install")" \
@@ -528,6 +529,7 @@ show_main_menu() {
     "$(entry "󰌢" "System")" \
   ) in
   *Apps*) fuzzel_apps ;;
+  *Projects*) karchy-project-open ;;
   *Learn*) show_learn_menu ;;
   *Setup*) show_setup_menu ;;
   *Install*) show_install_menu ;;

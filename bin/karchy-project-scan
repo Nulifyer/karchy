@@ -1,0 +1,61 @@
+#!/bin/bash
+# Scan $HOME for .git and .vscode directories to discover projects.
+# Generates .desktop files in ~/.local/share/applications/karchy-projects/
+
+PROJECTS_DIR="$HOME/.local/share/applications/karchy-projects"
+
+# Wipe previous scan
+rm -rf "$PROJECTS_DIR"
+mkdir -p "$PROJECTS_DIR"
+
+# Directories to skip (matched by -name, single component only)
+PRUNE_NAMES=(
+  node_modules .cache .local .cargo .rustup .npm .nvm .bun
+  .pyenv .conda .venv venv __pycache__
+  .gradle .m2 .docker .podman
+  snap .steam .wine .Trash .Trash-1000
+  Downloads
+  .mozilla .thunderbird .var .flatpak
+  pkg mod  # catches go/pkg, go/pkg/mod
+)
+
+# Build find -prune expression: \( -name X -o -name Y ... \) -prune
+prune_expr=()
+for d in "${PRUNE_NAMES[@]}"; do
+  [[ ${#prune_expr[@]} -gt 0 ]] && prune_expr+=(-o)
+  prune_expr+=(-name "$d")
+done
+
+# Find .git and .vscode, pruning junk dirs
+# Don't descend into a dir once we find .git or .vscode in it
+declare -A seen
+while IFS= read -r match; do
+  parent="$(dirname "$match")"
+  # Skip home dir itself and anything inside .vscode extensions
+  [[ "$parent" == "$HOME" ]] && continue
+  [[ "$parent" == */.vscode/* ]] && continue
+  [[ -n "${seen[$parent]:-}" ]] && continue
+  seen[$parent]=1
+done < <(find "$HOME" -maxdepth 6 \
+  \( "${prune_expr[@]}" \) -prune -o \
+  \( -name ".git" -o -name ".vscode" \) -print 2>/dev/null)
+
+count=0
+while IFS= read -r project_path; do
+  name="$(basename "$project_path")"
+  safe_name="$(echo "$project_path" | sed 's|/|__|g')"
+
+  cat > "$PROJECTS_DIR/karchy-project-${safe_name}.desktop" << EOF
+[Desktop Entry]
+Name=$name
+Comment=$project_path
+Exec=xdg-open $project_path
+Icon=folder-development
+Type=Application
+Categories=Development;
+NoDisplay=true
+EOF
+  ((count++))
+done < <(for p in "${!seen[@]}"; do echo "$p"; done | sort -f)
+
+echo "Found $count projects"
