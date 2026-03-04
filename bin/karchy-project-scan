@@ -40,8 +40,27 @@ done < <(find "$HOME" -maxdepth 6 \
   \( "${prune_expr[@]}" \) -prune -o \
   \( -name ".git" -o -name ".vscode" \) -print 2>/dev/null)
 
+# Filter out nested projects (subdir of another project)
+projects=()
+while IFS= read -r p; do
+  projects+=("$p")
+done < <(for p in "${!seen[@]}"; do echo "$p"; done | sort -f)
+
+filtered=()
+for p in "${projects[@]}"; do
+  nested=false
+  for other in "${projects[@]}"; do
+    [[ "$p" == "$other" ]] && continue
+    if [[ "$p" == "$other"/* ]]; then
+      nested=true
+      break
+    fi
+  done
+  $nested || filtered+=("$p")
+done
+
 count=0
-while IFS= read -r project_path; do
+for project_path in "${filtered[@]}"; do
   name="$(basename "$project_path")"
   safe_name="$(echo "$project_path" | sed 's|/|__|g')"
 
@@ -56,6 +75,6 @@ Categories=Development;
 NoDisplay=true
 EOF
   ((count++))
-done < <(for p in "${!seen[@]}"; do echo "$p"; done | sort -f)
+done
 
 echo "Found $count projects"
