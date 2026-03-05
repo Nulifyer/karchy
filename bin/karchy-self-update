@@ -11,8 +11,16 @@ if [[ ! -d "$INSTALL_DIR/.git" ]]; then
 fi
 
 echo -e '\e[32mUpdating karchy...\e[0m'
+OLD_HEAD=$(git -C "$INSTALL_DIR" rev-parse HEAD)
 git -C "$INSTALL_DIR" pull --ff-only
+NEW_HEAD=$(git -C "$INSTALL_DIR" rev-parse HEAD)
 chmod +x "$BIN_DIR"/*
+
+# Re-exec the updated script if the pull changed anything
+if [[ "$OLD_HEAD" != "$NEW_HEAD" && "${KARCHY_REEXEC:-}" != "1" ]]; then
+  echo "  re-running updated self-update script..."
+  KARCHY_REEXEC=1 exec "$BIN_DIR/karchy-self-update" "$@"
+fi
 
 # ── Sync KWin rules ─────────────────────────────────────────────────────────
 echo -e '\n\e[32mSyncing KWin rules...\e[0m'
