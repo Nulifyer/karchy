@@ -105,7 +105,8 @@ while true; do
   editor=$(get_preferred_editor)
   if [[ -n "$editor" ]]; then
     case "$editor" in
-      code|cursor) karchy-detach "$editor" --new-window "$project_path" ;;
+      code|cursor) "$editor" --new-window "$project_path" &>/dev/null &
+      zed) "$editor" "$project_path" &>/dev/null &
       *)           karchy-detach "$editor" "$project_path" ;;
     esac
     exit 130

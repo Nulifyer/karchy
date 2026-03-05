@@ -1,9 +1,12 @@
 #!/bin/bash
-# Launch a command as a fully detached GUI process.
+# Launch a command as a fully detached GUI process via systemd scope.
 # Usage: karchy-detach <command> [args...]
 #
-# Double-fork pattern: the subshell backgrounds the command and exits
-# immediately, orphaning it so init/systemd adopts it. This survives
-# terminal closure because the process is in no shell's job table and
-# has no controlling terminal dependency.
-( "$@" &>/dev/null & )
+# Uses --scope for proper KDE Plasma cgroup integration:
+#   - Inherits the caller's full environment
+#   - Gets its own scope under app.slice
+#   - Scope survives after the launching terminal/script exits
+#
+# nohup prevents SIGHUP when the parent shell/terminal exits.
+# The & backgrounds so the caller doesn't block.
+nohup systemd-run --user --scope -- "$@" &>/dev/null &
