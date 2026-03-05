@@ -6,4 +6,7 @@
 #   - Inherits the caller's full environment
 #   - Gets its own scope under app.slice
 #   - Scope survives after the launching terminal/script exits
-systemd-run --user --scope -- "$@" &>/dev/null &
+#
+# nohup prevents SIGHUP when the parent shell/terminal exits.
+# The & backgrounds so the caller doesn't block.
+nohup systemd-run --user --scope -- "$@" &>/dev/null &
