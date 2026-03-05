@@ -94,8 +94,6 @@ aur_install_and_launch() {
   present_terminal "echo -e '\e[32mInstalling $1...\e[0m'; karchy-pkg-aur-add $2 && karchy-detach gtk-launch $3"
 }
 
-
-
 # ── Learn Menu ─────────────────────────────────────────────────────────────
 show_learn_menu() {
   case $(menu "Learn" \
@@ -196,73 +194,16 @@ show_setup_menu() {
   esac
 }
 
-# ── Install > Service Submenu ─────────────────────────────────────────────
-show_install_service_menu() {
-  case $(menu "Service" \
-    "$(entry $'\ueb53' "Tailscale")" \
-    "$(entry $'\ueb11' "Bitwarden")" \
-    "$(entry $'\ueb53' "NordVPN")" \
-    "$(entry $'\uf16b' "Dropbox")" \
-  ) in
-  *Tailscale*) present_terminal karchy-install-tailscale ;;
-  *Bitwarden*) install_and_launch "Bitwarden" bitwarden bitwarden ;;
-  *NordVPN*) present_terminal karchy-install-nordvpn ;;
-  *Dropbox*) present_terminal karchy-install-dropbox ;;
-  *) back_to show_install_menu ;;
-  esac
-}
-
-# ── Install > Development > JavaScript Submenu ────────────────────────────
-show_install_dev_js_menu() {
-  case $(menu "JavaScript" \
-    "$(entry $'\ue719' "Node.js")" \
-    "$(entry $'\ue76f' "Bun")" \
-    "$(entry $'\ue7c0' "Deno")" \
-  ) in
-  *Node*) present_terminal "karchy-install-dev-env node" ;;
-  *Bun*) present_terminal "karchy-install-dev-env bun" ;;
-  *Deno*) present_terminal "karchy-install-dev-env deno" ;;
-  *) back_to show_install_dev_menu ;;
-  esac
-}
-
-# ── Install > Development > PHP Submenu ───────────────────────────────────
-show_install_dev_php_menu() {
-  case $(menu "PHP" \
-    "$(entry $'\ue73d' "PHP")" \
-    "$(entry $'\ue73f' "Laravel")" \
-    "$(entry $'\ue757' "Symfony")" \
-  ) in
-  *PHP) present_terminal "karchy-install-dev-env php" ;;
-  *Laravel*) present_terminal "karchy-install-dev-env laravel" ;;
-  *Symfony*) present_terminal "karchy-install-dev-env symfony" ;;
-  *) back_to show_install_dev_menu ;;
-  esac
-}
-
-# ── Install > Development > Elixir Submenu ────────────────────────────────
-show_install_dev_elixir_menu() {
-  case $(menu "Elixir" \
-    "$(entry $'\ue7cd' "Elixir")" \
-    "$(entry $'\ue860' "Phoenix")" \
-  ) in
-  *Elixir*) present_terminal "karchy-install-dev-env elixir" ;;
-  *Phoenix*) present_terminal "karchy-install-dev-env phoenix" ;;
-  *) back_to show_install_dev_menu ;;
-  esac
-}
-
-# ── Install > Development > .NET Submenu ─────────────────────────────────
-show_install_dev_dotnet_menu() {
+# ── Install > .NET Submenu ────────────────────────────────────────────────
+show_install_dotnet_menu() {
   local icon=$'\ue77f'
-  local -A ver_map=() pkg_map=()  # major -> version, major -> package
+  local -A ver_map=() pkg_map=()
   while IFS= read -r line; do
     local repo_pkg ver pkg major
     repo_pkg="${line%% *}"
     ver="${line#* }"; ver="${ver%% *}"
     pkg="${repo_pkg##*/}"
     major="${ver%%.*}"
-    # Keep first match per major (prefer -bin/unversioned for latest)
     if [[ -z ${ver_map[$major]+x} ]]; then
       ver_map[$major]="$ver"
       pkg_map[$major]="$pkg"
@@ -281,25 +222,105 @@ show_install_dev_dotnet_menu() {
   done < <(printf '%s\n' "${!ver_map[@]}" | sort -rn)
 
   local choice
-  choice=$(menu ".NET (dotnet)" --width 48 "${labels[@]}") || { back_to show_install_dev_menu; return; }
+  choice=$(menu ".NET (dotnet)" --width 48 "${labels[@]}") || { back_to show_install_menu; return; }
   local i
   for i in "${!labels[@]}"; do
     if [[ "${labels[$i]}" == "$choice" ]]; then
-      present_terminal "karchy-install-dev-env '${pkg_map[${majors[$i]}]}'"
+      present_terminal "echo -e '\e[32mInstalling .NET ${majors[$i]} SDK...\e[0m'; karchy-pkg-add '${pkg_map[${majors[$i]}]}'"
       return
     fi
   done
 }
 
-# ── Install > Development Submenu ─────────────────────────────────────────
-show_install_dev_menu() {
-  case $(menu "Development" \
+# ── Install > Java Submenu ────────────────────────────────────────────────
+show_install_java_menu() {
+  local choice
+  choice=$(menu "Java" \
+    "$(entry $'\ue738' "JDK (Development Kit)")" \
+    "$(entry $'\ue738' "JRE (Runtime)")" \
+  ) || { back_to show_featured_menu; return; }
+
+  local type prefix
+  if [[ $choice == *JDK* ]]; then
+    type="JDK"; prefix="jdk"
+  else
+    type="JRE"; prefix="jre"
+  fi
+
+  local icon=$'\ue738'
+  local -A ver_map=() pkg_map=()
+  while IFS= read -r line; do
+    local repo_pkg ver pkg major
+    repo_pkg="${line%% *}"
+    ver="${line#* }"; ver="${ver%% *}"
+    pkg="${repo_pkg##*/}"
+    # Extract major version from package name (jdk17-openjdk -> 17, jdk-openjdk -> latest)
+    local num="${pkg#${prefix}}"
+    num="${num%%-*}"
+    if [[ -z $num ]]; then
+      major="${ver%%.*}"
+    else
+      major="$num"
+    fi
+    # Skip headless/doc/src/debug variants
+    [[ $pkg == *-headless* || $pkg == *-doc* || $pkg == *-src* || $pkg == *-debug* ]] && continue
+    if [[ -z ${ver_map[$major]+x} ]]; then
+      ver_map[$major]="$ver"
+      pkg_map[$major]="$pkg"
+    fi
+  done < <(pacman -Ss "^${prefix}[0-9]*-openjdk\$\|^${prefix}-openjdk\$" 2>/dev/null | grep -v '^ ' | sort -t' ' -k2 -rV)
+
+  if [[ ${#ver_map[@]} -eq 0 ]]; then
+    present_terminal "echo 'No OpenJDK $type packages found in repositories.'"
+    return
+  fi
+
+  local -a labels=() majors=()
+  while IFS= read -r m; do
+    majors+=("$m")
+    labels+=("$(entry "$icon" "OpenJDK $m $type (${ver_map[$m]}) — ${pkg_map[$m]}")")
+  done < <(printf '%s\n' "${!ver_map[@]}" | sort -rn)
+
+  local pick
+  pick=$(menu "Java $type" --width 48 "${labels[@]}") || { show_install_java_menu; return; }
+  local i
+  for i in "${!labels[@]}"; do
+    if [[ "${labels[$i]}" == "$pick" ]]; then
+      present_terminal "echo -e '\e[32mInstalling OpenJDK ${majors[$i]} $type...\e[0m'; karchy-pkg-add '${pkg_map[${majors[$i]}]}'"
+      return
+    fi
+  done
+}
+
+# ── Install > Featured Menu ──────────────────────────────────────────────
+show_featured_menu() {
+  local choice
+  choice=$(menu "Featured" --width 36 \
+    "$(entry $'\ue8da' "VSCode")" \
+    "$(entry $'\uea73' "Cursor")" \
+    "$(entry $'\uea73' "Zed")" \
+    "$(entry $'\ue7aa' "Sublime Text")" \
+    "$(entry $'\uea73' "Helix")" \
+    "$(entry $'\ue7cf' "Emacs")" \
+    "$(entry $'\uea85' "Alacritty")" \
+    "$(entry $'\uea85' "Ghostty")" \
+    "$(entry $'\uea85' "Kitty")" \
+    "$(entry $'\uec10' "Claude Code")" \
+    "$(entry $'\uec10' "Codex")" \
+    "$(entry $'\uec10' "Gemini CLI")" \
+    "$(entry $'\uec10' "LM Studio")" \
+    "$(entry $'\uec10' "Ollama")" \
     "$(entry $'\ue739' "Ruby")" \
-    "$(entry $'\ue781' "JavaScript")" \
+    "$(entry $'\ue719' "Node.js")" \
+    "$(entry $'\ue76f' "Bun")" \
+    "$(entry $'\ue7c0' "Deno")" \
     "$(entry $'\ue724' "Go")" \
     "$(entry $'\ue73d' "PHP")" \
+    "$(entry $'\ue73f' "Laravel")" \
+    "$(entry $'\ue757' "Symfony")" \
     "$(entry $'\ue73c' "Python")" \
     "$(entry $'\ue7cd' "Elixir")" \
+    "$(entry $'\ue860' "Phoenix")" \
     "$(entry $'\ue7a8' "Rust")" \
     "$(entry $'\ue738' "Java")" \
     "$(entry $'\ue8ef' "Zig")" \
@@ -307,92 +328,140 @@ show_install_dev_menu() {
     "$(entry $'\ue84e' "OCaml")" \
     "$(entry $'\ue768' "Clojure")" \
     "$(entry $'\ue737' "Scala")" \
-  ) in
-  *Ruby*) present_terminal "karchy-install-dev-env ruby" ;;
-  *JavaScript*) show_install_dev_js_menu ;;
-  *Go) present_terminal "karchy-install-dev-env go" ;;
-  *PHP*) show_install_dev_php_menu ;;
-  *Python*) present_terminal "karchy-install-dev-env python" ;;
-  *Elixir*) show_install_dev_elixir_menu ;;
-  *Rust*) present_terminal "karchy-install-dev-env rust" ;;
-  *Java*) present_terminal "karchy-install-dev-env java" ;;
-  *Zig*) present_terminal "karchy-install-dev-env zig" ;;
-  *.NET*) show_install_dev_dotnet_menu ;;
-  *OCaml*) present_terminal "karchy-install-dev-env ocaml" ;;
-  *Clojure*) present_terminal "karchy-install-dev-env clojure" ;;
-  *Scala*) present_terminal "karchy-install-dev-env scala" ;;
-  *) back_to show_install_menu ;;
-  esac
-}
-
-# ── Install > Editor Submenu ──────────────────────────────────────────────
-show_install_editor_menu() {
-  case $(menu "Editor" \
-    "$(entry $'\ue8da' "VSCode")" \
-    "$(entry $'\uea73' "Cursor")" \
-    "$(entry $'\uea73' "Zed")" \
-    "$(entry $'\ue7aa' "Sublime Text")" \
-    "$(entry $'\uea73' "Helix")" \
-    "$(entry $'\ue7cf' "Emacs")" \
-  ) in
+    "$(entry $'\ueb53' "Tailscale")" \
+    "$(entry $'\ueb53' "WireGuard")" \
+    "$(entry $'\ueb11' "Bitwarden")" \
+    "$(entry $'\ueb53' "NordVPN")" \
+    "$(entry $'\uf16b' "Dropbox")" \
+    "$(entry $'\uf1b6' "Steam")" \
+    "$(entry $'\uf11b' "RetroArch")" \
+    "$(entry $'\uf11b' "Minecraft")" \
+  ) || { back_to show_install_menu; return; }
+  case "$choice" in
+  # Editors
   *VSCode*) present_terminal karchy-install-vscode ;;
   *Cursor*) aur_install "Cursor" cursor-bin ;;
   *Zed*) install "Zed" zed ;;
   *Sublime*) aur_install "Sublime Text" sublime-text-4 ;;
   *Helix*) install "Helix" helix ;;
   *Emacs*) install "Emacs" emacs ;;
-  *) back_to show_install_menu ;;
-  esac
-}
-
-# ── Install > Terminal Submenu ────────────────────────────────────────────
-show_install_terminal_menu() {
-  case $(menu "Terminal" \
-    "$(entry $'\uea85' "Alacritty")" \
-    "$(entry $'\uea85' "Ghostty")" \
-    "$(entry $'\uea85' "Kitty")" \
-  ) in
+  # Terminals
   *Alacritty*) install "Alacritty" alacritty ;;
   *Ghostty*) aur_install "Ghostty" ghostty ;;
   *Kitty*) install "Kitty" kitty ;;
-  *) back_to show_install_menu ;;
-  esac
-}
-
-# ── Install > AI Submenu ──────────────────────────────────────────────────
-show_install_ai_menu() {
-  case $(menu "AI" \
-    "$(entry $'\uec10' "Claude Code")" \
-    "$(entry $'\uec10' "Codex")" \
-    "$(entry $'\uec10' "Gemini CLI")" \
-    "$(entry $'\uec10' "LM Studio")" \
-    "$(entry $'\uec10' "Ollama")" \
-  ) in
+  # AI
   *Claude*) present_terminal "npm install -g @anthropic-ai/claude-code" ;;
   *Codex*) present_terminal "npm install -g @openai/codex" ;;
   *Gemini*) present_terminal "npm install -g @google/gemini-cli" ;;
   *LM\ Studio*) aur_install "LM Studio" lmstudio ;;
   *Ollama*) install "Ollama" ollama ;;
-  *) back_to show_install_menu ;;
-  esac
-}
-
-# ── Install > Font ────────────────────────────────────────────────────────
-show_install_font_menu() {
-  karchy-present-terminal karchy-font-install 40
-}
-
-# ── Install > Gaming Submenu ──────────────────────────────────────────────
-show_install_gaming_menu() {
-  case $(menu "Gaming" \
-    "$(entry $'\uf1b6' "Steam")" \
-    "$(entry $'\uf11b' "RetroArch")" \
-    "$(entry $'\uf11b' "Minecraft")" \
-  ) in
+  # Development
+  *Ruby*)
+    present_terminal "echo -e '\e[32mInstalling Ruby on Rails...\e[0m'
+karchy-pkg-add libyaml
+mise use --global ruby@latest
+mise settings add idiomatic_version_file_enable_tools ruby
+mise settings add ruby.compile false
+echo 'gem: --no-document' >~/.gemrc
+mise x ruby -- gem install rails --no-document
+echo -e '\nYou can now run: rails new myproject'" ;;
+  *Node.js*) present_terminal "echo -e '\e[32mInstalling Node.js...\e[0m'; mise use --global node" ;;
+  *Bun*) present_terminal "echo -e '\e[32mInstalling Bun...\e[0m'; mise use -g bun@latest" ;;
+  *Deno*) present_terminal "echo -e '\e[32mInstalling Deno...\e[0m'; mise use -g deno@latest" ;;
+  *Go) present_terminal "echo -e '\e[32mInstalling Go...\e[0m'; mise use --global go@latest" ;;
+  *PHP) present_terminal "echo -e '\e[32mInstalling PHP...\e[0m'
+karchy-pkg-add php composer php-sqlite xdebug
+if [[ :\$PATH: != *:\$HOME/.config/composer/vendor/bin:* ]]; then
+  echo 'export PATH=\"\$HOME/.config/composer/vendor/bin:\$PATH\"' >>\"\$HOME/.bashrc\"
+  source \"\$HOME/.bashrc\"
+  echo 'Added Composer global bin directory to PATH.'
+else
+  echo 'Composer global bin directory already in PATH.'
+fi
+sudo sed -i -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' -e 's/^;xdebug.mode=debug/xdebug.mode=debug/' /etc/php/conf.d/xdebug.ini
+for ext in bcmath intl iconv openssl pdo_sqlite pdo_mysql; do
+  sudo sed -i \"s/^;extension=\${ext}/extension=\${ext}/\" /etc/php/php.ini
+done" ;;
+  *Laravel*)
+    present_terminal "echo -e '\e[32mInstalling PHP and Laravel...\e[0m'
+karchy-pkg-add php composer php-sqlite xdebug
+if [[ :\$PATH: != *:\$HOME/.config/composer/vendor/bin:* ]]; then
+  echo 'export PATH=\"\$HOME/.config/composer/vendor/bin:\$PATH\"' >>\"\$HOME/.bashrc\"
+  source \"\$HOME/.bashrc\"
+  echo 'Added Composer global bin directory to PATH.'
+fi
+sudo sed -i -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' -e 's/^;xdebug.mode=debug/xdebug.mode=debug/' /etc/php/conf.d/xdebug.ini
+for ext in bcmath intl iconv openssl pdo_sqlite pdo_mysql; do
+  sudo sed -i \"s/^;extension=\${ext}/extension=\${ext}/\" /etc/php/php.ini
+done
+echo -e '\e[32mInstalling Node.js...\e[0m'
+mise use --global node
+composer global require laravel/installer
+echo -e '\nYou can now run: laravel new myproject'" ;;
+  *Symfony*)
+    present_terminal "echo -e '\e[32mInstalling PHP and Symfony...\e[0m'
+karchy-pkg-add php composer php-sqlite xdebug
+if [[ :\$PATH: != *:\$HOME/.config/composer/vendor/bin:* ]]; then
+  echo 'export PATH=\"\$HOME/.config/composer/vendor/bin:\$PATH\"' >>\"\$HOME/.bashrc\"
+  source \"\$HOME/.bashrc\"
+  echo 'Added Composer global bin directory to PATH.'
+fi
+sudo sed -i -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' -e 's/^;xdebug.mode=debug/xdebug.mode=debug/' /etc/php/conf.d/xdebug.ini
+for ext in bcmath intl iconv openssl pdo_sqlite pdo_mysql; do
+  sudo sed -i \"s/^;extension=\${ext}/extension=\${ext}/\" /etc/php/php.ini
+done
+karchy-pkg-add symfony-cli
+echo -e '\nYou can now run: symfony new --webapp myproject'" ;;
+  *Python*)
+    present_terminal "echo -e '\e[32mInstalling Python...\e[0m'
+mise use --global python@latest
+echo -e '\nInstalling uv...\n'
+curl -fsSL https://astral.sh/uv/install.sh | sh" ;;
+  *Elixir*)
+    present_terminal "echo -e '\e[32mInstalling Elixir...\e[0m'
+mise use --global erlang@latest
+mise use --global elixir@latest
+mise x elixir -- mix local.hex --force" ;;
+  *Phoenix*)
+    present_terminal "echo -e '\e[32mInstalling Phoenix Framework...\e[0m'
+mise use --global erlang@latest
+mise use --global elixir@latest
+mise x elixir -- mix local.hex --force
+mise x elixir -- mix local.rebar --force
+mise x elixir -- mix archive.install hex phx_new --force
+echo -e '\nYou can now run: mix phx.new my_app'" ;;
+  *Rust*) present_terminal "echo -e '\e[32mInstalling Rust...\e[0m'; bash -c \"\$(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs)\" -- -y" ;;
+  *Java*) show_install_java_menu ;;
+  *Zig*)
+    present_terminal "echo -e '\e[32mInstalling Zig...\e[0m'
+mise use --global zig@latest
+mise use -g zls@latest" ;;
+  *.NET*) show_install_dotnet_menu ;;
+  *OCaml*)
+    present_terminal "echo -e '\e[32mInstalling OCaml...\e[0m'
+bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)\"
+opam init --yes
+eval \"\$(opam env)\"
+opam install ocaml-lsp-server odoc ocamlformat utop --yes" ;;
+  *Clojure*)
+    present_terminal "echo -e '\e[32mInstalling Clojure...\e[0m'
+karchy-pkg-add rlwrap
+mise use --global clojure@latest" ;;
+  *Scala*)
+    present_terminal "echo -e '\e[32mInstalling Scala...\e[0m'
+mise use --global java@latest
+mise use --global scala@latest
+mise use --global scala-cli@latest" ;;
+  # Services
+  *Tailscale*) present_terminal karchy-install-tailscale ;;
+  *WireGuard*) install "WireGuard" wireguard-tools ;;
+  *Bitwarden*) install_and_launch "Bitwarden" bitwarden bitwarden ;;
+  *NordVPN*) present_terminal karchy-install-nordvpn ;;
+  *Dropbox*) present_terminal karchy-install-dropbox ;;
+  # Gaming
   *Steam*) present_terminal karchy-install-steam ;;
   *RetroArch*) install "RetroArch" retroarch ;;
   *Minecraft*) aur_install "Minecraft" minecraft-launcher ;;
-  *) back_to show_install_menu ;;
   esac
 }
 
@@ -402,142 +471,16 @@ show_install_menu() {
     "$(entry $'\U000f08ce' "Package (pacman)")" \
     "$(entry $'\U000f08ce' "AUR (paru)")" \
     "$(entry $'\U000f059f' "Web App")" \
-    "$(entry $'\ueb53' "Service")" \
-    "$(entry $'\ueac4' "Development")" \
-    "$(entry $'\uea73' "Editor")" \
-    "$(entry $'\uea85' "Terminal")" \
-    "$(entry $'\uec10' "AI")" \
+    "$(entry $'\uec10' "Featured")" \
     "$(entry $'\U000f06d6' "Font")" \
-    "$(entry $'\uf11b' "Gaming")" \
   ) in
   *pacman*) karchy-present-terminal karchy-pkg-install 40 ;;
   *paru*) karchy-present-terminal karchy-pkg-aur-install 40 ;;
   *Web\ App*) present_terminal karchy-webapp-install ;;
-  *Service*) show_install_service_menu ;;
-  *Development*) show_install_dev_menu ;;
-  *Editor*) show_install_editor_menu ;;
-  *Terminal*) show_install_terminal_menu ;;
-  *AI*) show_install_ai_menu ;;
-  *Font*) show_install_font_menu ;;
-  *Gaming*) show_install_gaming_menu ;;
+  *Featured*) show_featured_menu ;;
+  *Font*) karchy-present-terminal karchy-font-install 40 ;;
   *) back_to show_main_menu ;;
   esac
-}
-
-# ── Remove > Development > JavaScript Submenu ─────────────────────────────
-show_remove_dev_js_menu() {
-  case $(menu "JavaScript" \
-    "$(entry $'\ue719' "Node.js")" \
-    "$(entry $'\ue76f' "Bun")" \
-    "$(entry $'\ue7c0' "Deno")" \
-  ) in
-  *Node*) present_terminal "karchy-remove-dev-env node" ;;
-  *Bun*) present_terminal "karchy-remove-dev-env bun" ;;
-  *Deno*) present_terminal "karchy-remove-dev-env deno" ;;
-  *) back_to show_remove_dev_menu ;;
-  esac
-}
-
-# ── Remove > Development > PHP Submenu ────────────────────────────────────
-show_remove_dev_php_menu() {
-  case $(menu "PHP" \
-    "$(entry $'\ue73d' "PHP")" \
-    "$(entry $'\ue73f' "Laravel")" \
-    "$(entry $'\ue757' "Symfony")" \
-  ) in
-  *PHP) present_terminal "karchy-remove-dev-env php" ;;
-  *Laravel*) present_terminal "karchy-remove-dev-env laravel" ;;
-  *Symfony*) present_terminal "karchy-remove-dev-env symfony" ;;
-  *) back_to show_remove_dev_menu ;;
-  esac
-}
-
-# ── Remove > Development > Elixir Submenu ─────────────────────────────────
-show_remove_dev_elixir_menu() {
-  case $(menu "Elixir" \
-    "$(entry $'\ue7cd' "Elixir")" \
-    "$(entry $'\ue860' "Phoenix")" \
-  ) in
-  *Elixir*) present_terminal "karchy-remove-dev-env elixir" ;;
-  *Phoenix*) present_terminal "karchy-remove-dev-env phoenix" ;;
-  *) back_to show_remove_dev_menu ;;
-  esac
-}
-
-# ── Remove > Development > .NET Submenu ──────────────────────────────────
-show_remove_dev_dotnet_menu() {
-  local icon=$'\ue77f'
-  local -A ver_map=() pkg_map=()
-  while IFS= read -r line; do
-    local pkg ver major
-    pkg="${line%% *}"
-    ver="${line#* }"
-    major="${ver%%.*}"
-    if [[ -z ${ver_map[$major]+x} ]]; then
-      ver_map[$major]="$ver"
-      pkg_map[$major]="$pkg"
-    fi
-  done < <(pacman -Q 2>/dev/null | grep '^dotnet-sdk' | sort -k2 -rV)
-
-  if [[ ${#ver_map[@]} -eq 0 ]]; then
-    present_terminal "echo 'No .NET SDKs are currently installed.'"
-    return
-  fi
-
-  local -a labels=() majors=()
-  while IFS= read -r m; do
-    majors+=("$m")
-    labels+=("$(entry "$icon" ".NET $m SDK (${ver_map[$m]}) — ${pkg_map[$m]}")")
-  done < <(printf '%s\n' "${!ver_map[@]}" | sort -rn)
-
-  local choice
-  choice=$(menu ".NET (dotnet)" --width 48 "${labels[@]}") || { back_to show_remove_dev_menu; return; }
-  local i
-  for i in "${!labels[@]}"; do
-    if [[ "${labels[$i]}" == "$choice" ]]; then
-      present_terminal "karchy-remove-dev-env '${pkg_map[${majors[$i]}]}'"
-      return
-    fi
-  done
-}
-
-# ── Remove > Development Submenu ──────────────────────────────────────────
-show_remove_dev_menu() {
-  case $(menu "Development" \
-    "$(entry $'\ue739' "Ruby")" \
-    "$(entry $'\ue781' "JavaScript")" \
-    "$(entry $'\ue724' "Go")" \
-    "$(entry $'\ue73d' "PHP")" \
-    "$(entry $'\ue73c' "Python")" \
-    "$(entry $'\ue7cd' "Elixir")" \
-    "$(entry $'\ue7a8' "Rust")" \
-    "$(entry $'\ue738' "Java")" \
-    "$(entry $'\ue8ef' "Zig")" \
-    "$(entry $'\ue77f' ".NET (dotnet)")" \
-    "$(entry $'\ue84e' "OCaml")" \
-    "$(entry $'\ue768' "Clojure")" \
-    "$(entry $'\ue737' "Scala")" \
-  ) in
-  *Ruby*) present_terminal "karchy-remove-dev-env ruby" ;;
-  *JavaScript*) show_remove_dev_js_menu ;;
-  *Go) present_terminal "karchy-remove-dev-env go" ;;
-  *PHP*) show_remove_dev_php_menu ;;
-  *Python*) present_terminal "karchy-remove-dev-env python" ;;
-  *Elixir*) show_remove_dev_elixir_menu ;;
-  *Rust*) present_terminal "karchy-remove-dev-env rust" ;;
-  *Java*) present_terminal "karchy-remove-dev-env java" ;;
-  *Zig*) present_terminal "karchy-remove-dev-env zig" ;;
-  *.NET*) show_remove_dev_dotnet_menu ;;
-  *OCaml*) present_terminal "karchy-remove-dev-env ocaml" ;;
-  *Clojure*) present_terminal "karchy-remove-dev-env clojure" ;;
-  *Scala*) present_terminal "karchy-remove-dev-env scala" ;;
-  *) back_to show_remove_menu ;;
-  esac
-}
-
-# ── Remove > Font ─────────────────────────────────────────────────────────
-show_remove_font_menu() {
-  karchy-present-terminal karchy-font-remove 40
 }
 
 # ── Remove Menu ────────────────────────────────────────────────────────────
@@ -545,13 +488,11 @@ show_remove_menu() {
   case $(menu "Remove" \
     "$(entry $'\U000f08ce' "Package")" \
     "$(entry $'\U000f059f' "Web App")" \
-    "$(entry $'\ueac4' "Development")" \
     "$(entry $'\U000f06d6' "Font")" \
   ) in
   *Package*) karchy-present-terminal karchy-pkg-remove 40 ;;
   *Web\ App*) present_terminal karchy-webapp-remove ;;
-  *Development*) show_remove_dev_menu ;;
-  *Font*) show_remove_font_menu ;;
+  *Font*) karchy-present-terminal karchy-font-remove 40 ;;
   *) back_to show_main_menu ;;
   esac
 }
