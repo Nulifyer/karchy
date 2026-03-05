@@ -42,6 +42,14 @@ for script in "$REPO_DIR"/bin/*; do
   echo "  installed $name"
 done
 
+# ── Profile files (copied for use by karchy-setup-profile) ──────────────────
+if [[ -d "$REPO_DIR/profile" ]]; then
+  PROFILE_INSTALL_DIR="${INSTALL_DIR%/bin}/profile"
+  mkdir -p "$PROFILE_INSTALL_DIR"
+  cp "$REPO_DIR"/profile/* "$PROFILE_INSTALL_DIR/"
+  echo "  installed profile files"
+fi
+
 # ── PATH (detect user's shell) ───────────────────────────────────────────────
 USER_SHELL="$(basename "$SHELL")"
 

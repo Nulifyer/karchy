@@ -1,0 +1,80 @@
+#!/bin/bash
+# Set up the Karchy shell profile: zsh, alacritty, oh-my-posh, plugins, and tools.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROFILE_DIR="${SCRIPT_DIR%/bin}/profile"
+
+if [[ ! -d "$PROFILE_DIR" ]]; then
+  PROFILE_DIR="$HOME/.cache/karchy/profile"
+fi
+
+if [[ ! -d "$PROFILE_DIR" ]]; then
+  echo "Profile directory not found." >&2
+  exit 1
+fi
+
+echo -e '\e[32mInstalling shell profile...\e[0m\n'
+
+# ── Packages ──────────────────────────────────────────────────────────────
+echo "Installing packages..."
+karchy-pkg-add \
+  zsh alacritty \
+  eza bat fzf wget \
+  zsh-syntax-highlighting zsh-autosuggestions zsh-history-substring-search \
+  oh-my-zsh-git pkgfile expac hwinfo openbsd-netcat \
+  ttf-cascadia-code-nerd ttf-cascadia-mono-nerd
+
+echo ""
+echo "Installing AUR packages..."
+karchy-pkg-aur-add oh-my-posh-bin
+
+# ── Alacritty config ─────────────────────────────────────────────────────
+echo ""
+echo "Setting up Alacritty config..."
+mkdir -p "$HOME/.config/alacritty"
+if [[ -f "$HOME/.config/alacritty/alacritty.toml" ]]; then
+  cp "$HOME/.config/alacritty/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml.bak"
+  echo "  backed up existing config to alacritty.toml.bak"
+fi
+cp "$PROFILE_DIR/alacritty.toml" "$HOME/.config/alacritty/alacritty.toml"
+echo "  installed alacritty.toml"
+
+# ── Oh My Posh theme ─────────────────────────────────────────────────────
+echo ""
+echo "Setting up Oh My Posh..."
+mkdir -p "$HOME/.config/ohmyposh"
+cp "$PROFILE_DIR/catppuccin_mocha.omp.json" "$HOME/.config/ohmyposh/catppuccin_mocha.omp.json"
+echo "  installed catppuccin_mocha.omp.json"
+
+# ── Zsh config ───────────────────────────────────────────────────────────
+echo ""
+echo "Setting up .zshrc..."
+if [[ -f "$HOME/.zshrc" ]]; then
+  cp "$HOME/.zshrc" "$HOME/.zshrc.bak"
+  echo "  backed up existing .zshrc to .zshrc.bak"
+fi
+cp "$PROFILE_DIR/zshrc" "$HOME/.zshrc"
+
+# Re-add karchy PATH if it was set by install.sh
+if ! grep -q 'karchy/bin' "$HOME/.zshrc" 2>/dev/null; then
+  printf '\n# Karchy\nexport PATH="$HOME/.local/share/karchy/bin:$PATH"\n' >> "$HOME/.zshrc"
+fi
+echo "  installed .zshrc"
+
+# ── Set zsh as default shell ─────────────────────────────────────────────
+if [[ "$(basename "$SHELL")" != "zsh" ]]; then
+  echo ""
+  echo "Setting zsh as default shell..."
+  chsh -s /usr/bin/zsh
+  echo "  default shell changed to zsh (takes effect on next login)"
+fi
+
+# ── Update pkgfile database ──────────────────────────────────────────────
+echo ""
+echo "Updating pkgfile database..."
+sudo pkgfile --update
+
+echo ""
+echo -e '\e[32mDone!\e[0m Restart your terminal to apply changes.'

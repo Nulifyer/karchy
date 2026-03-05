@@ -183,6 +183,7 @@ show_setup_menu() {
     "$(entry $'\ueb53' "DNS")" \
     "$(entry $'\ueada' "Screenshot")" \
     "$(entry $'\U000f0218' "Theme")" \
+    "$(entry $'\ue795' "Shell Profile")" \
   ) in
   *Audio*) pavucontrol & ;;
   *Wifi*) kcmshell6 kcm_networkmanagement & ;;
@@ -192,6 +193,7 @@ show_setup_menu() {
   *DNS*) present_terminal karchy-setup-dns ;;
   *Screenshot*) spectacle & ;;
   *Theme*) karchy-theme-select && source "$SCRIPT_DIR/karchy-colors" && show_main_menu ;;
+  *Shell\ Profile*) present_terminal karchy-setup-profile ;;
   *) back_to show_main_menu ;;
   esac
 }
