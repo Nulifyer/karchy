@@ -1,4 +1,0 @@
-#!/bin/bash
-echo -e '\e[32mInstalling Scala...\e[0m'
-karchy-pkg-aur-add scala scala3
-echo -e '\nYou can now run: scala-cli repl'

@@ -1,6 +1,0 @@
-#!/bin/bash
-echo -e '\e[32mInstalling Ruby on Rails...\e[0m'
-karchy-pkg-add ruby libyaml
-echo 'gem: --no-document' >~/.gemrc
-gem install rails --no-document
-echo -e '\nYou can now run: rails new myproject'

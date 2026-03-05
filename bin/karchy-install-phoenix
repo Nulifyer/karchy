@@ -1,7 +1,0 @@
-#!/bin/bash
-echo -e '\e[32mInstalling Phoenix Framework...\e[0m'
-karchy-pkg-add erlang elixir
-mix local.hex --force
-mix local.rebar --force
-mix archive.install hex phx_new --force
-echo -e '\nYou can now run: mix phx.new my_app'

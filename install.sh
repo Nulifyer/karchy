@@ -1,8 +1,12 @@
 #!/bin/bash
+# Karchy installer
+# Clones the repo and sets up PATH, keybinding, and desktop entry.
+# Run: curl -fsSL https://raw.githubusercontent.com/Nulifyer/karchy/main/install.sh | bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-INSTALL_DIR="$HOME/.local/share/karchy/bin"
+REPO_URL="https://github.com/Nulifyer/karchy.git"
+INSTALL_DIR="$HOME/.local/share/karchy"
+BIN_DIR="$INSTALL_DIR/bin"
 SKIP_DEPS=false
 
 for arg in "$@"; do
@@ -30,25 +34,20 @@ if [[ "$SKIP_DEPS" == false ]]; then
   fi
 fi
 
-# ── Scripts ─────────────────────────────────────────────────────────────────
+# ── Clone / update repo ───────────────────────────────────────────────────
 echo ""
-echo "Installing scripts to $INSTALL_DIR"
-mkdir -p "$INSTALL_DIR"
-
-for script in "$REPO_DIR"/bin/*; do
-  name=$(basename "$script")
-  cp "$script" "$INSTALL_DIR/$name"
-  chmod +x "$INSTALL_DIR/$name"
-  echo "  installed $name"
-done
-
-# ── Profile files (copied for use by karchy-setup-profile) ──────────────────
-if [[ -d "$REPO_DIR/profile" ]]; then
-  PROFILE_INSTALL_DIR="${INSTALL_DIR%/bin}/profile"
-  mkdir -p "$PROFILE_INSTALL_DIR"
-  cp "$REPO_DIR"/profile/* "$PROFILE_INSTALL_DIR/"
-  echo "  installed profile files"
+if [[ -d "$INSTALL_DIR/.git" ]]; then
+  echo "Updating existing installation..."
+  git -C "$INSTALL_DIR" pull --ff-only
+else
+  if [[ -d "$INSTALL_DIR" ]]; then
+    rm -rf "$INSTALL_DIR"
+  fi
+  echo "Cloning karchy to $INSTALL_DIR"
+  git clone "$REPO_URL" "$INSTALL_DIR"
 fi
+
+chmod +x "$BIN_DIR"/*
 
 # ── PATH (detect user's shell) ───────────────────────────────────────────────
 USER_SHELL="$(basename "$SHELL")"
@@ -75,7 +74,7 @@ case "$USER_SHELL" in
     fi
     ;;
   *)
-    echo "  warning: unknown shell ($USER_SHELL), add $INSTALL_DIR to your PATH manually"
+    echo "  warning: unknown shell ($USER_SHELL), add $BIN_DIR to your PATH manually"
     ;;
 esac
 
@@ -83,10 +82,10 @@ esac
 FUZZEL_INI="$HOME/.config/fuzzel/fuzzel.ini"
 mkdir -p "$(dirname "$FUZZEL_INI")"
 if [[ ! -f "$FUZZEL_INI" ]]; then
-  printf '[main]\nterminal=%s/karchy-terminal -e\n' "$INSTALL_DIR" > "$FUZZEL_INI"
+  printf '[main]\nterminal=%s/karchy-terminal -e\n' "$BIN_DIR" > "$FUZZEL_INI"
   echo "  created fuzzel config with karchy-terminal wrapper"
 elif ! grep -q '^terminal=' "$FUZZEL_INI"; then
-  sed -i '/^\[main\]/a terminal='"$INSTALL_DIR"'/karchy-terminal -e' "$FUZZEL_INI"
+  sed -i '/^\[main\]/a terminal='"$BIN_DIR"'/karchy-terminal -e' "$FUZZEL_INI"
   echo "  added karchy-terminal to fuzzel config"
 fi
 
@@ -94,7 +93,6 @@ fi
 KWINRULES="$HOME/.config/kwinrulesrc"
 KARCHY_RULE_ID="karchy-float-popup-rule"
 
-# Always write/update the rule values
 kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key Description "Karchy Popup"
 kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key wmclass "karchy-float"
 kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key wmclassmatch 2
@@ -105,7 +103,6 @@ kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key placementrule 
 kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key above true
 kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key aboverule 2
 
-# Register the rule if not already in the list
 existing_rules=$(kreadconfig6 --file "$KWINRULES" --group General --key rules 2>/dev/null || true)
 if [[ "$existing_rules" != *"$KARCHY_RULE_ID"* ]]; then
   existing_count=$(kreadconfig6 --file "$KWINRULES" --group General --key count 2>/dev/null || echo 0)
@@ -123,8 +120,6 @@ echo "  applied KWin rule for borderless centered popups"
 # ── KWin rule (default size for karchy web apps) ─────────────────────────────
 WEBAPP_RULE_ID="karchy-webapp-size-rule"
 
-# Brave/Chromium --app= mode generates class like "brave-site.com__path-Default"
-# Regular Brave is just "brave-browser", so matching "-Default" suffix is safe
 kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key Description "Karchy Web App Default Size"
 kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key wmclass -- '-Default$'
 kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key wmclassmatch 3
@@ -154,7 +149,7 @@ cat > "$DESKTOP_FILE" << EOF
 [Desktop Entry]
 Name=Karchy Menu
 Comment=Karchy system menu launcher
-Exec=$INSTALL_DIR/karchy-menu
+Exec=$BIN_DIR/karchy-menu
 Icon=utilities-terminal
 Type=Application
 Categories=System;Utility;
@@ -165,17 +160,14 @@ echo "  created karchy-menu.desktop"
 # ── Keybinding (Super+Space → karchy-menu) ──────────────────────────────────
 SHORTCUTS="$HOME/.config/kglobalshortcutsrc"
 
-# Unbind Meta+Space from KRunner
 kwriteconfig6 --file "$SHORTCUTS" \
   --group "services" --group "org.kde.krunner.desktop" \
   --key "_launch" "none"
 
-# Bind Meta+Space to karchy-menu
 kwriteconfig6 --file "$SHORTCUTS" \
   --group "services" --group "karchy-menu.desktop" \
   --key "_launch" "Meta+Space"
 
-# Reload
 update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
 kbuildsycoca6 2>/dev/null || true
 systemctl --user restart plasma-krunner.service 2>/dev/null || true
@@ -186,7 +178,7 @@ echo "  bound Super+Space to karchy-menu (may need logout/login)"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
 mkdir -p "$SYSTEMD_USER_DIR"
 
-for unit in "$REPO_DIR"/systemd/*; do
+for unit in "$INSTALL_DIR"/systemd/*; do
   cp "$unit" "$SYSTEMD_USER_DIR/"
   echo "  installed $(basename "$unit")"
 done

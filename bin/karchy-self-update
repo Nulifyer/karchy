@@ -1,19 +1,16 @@
 #!/bin/bash
-# Update karchy to the latest version from GitHub.
+# Update karchy to the latest version.
 
-REPO_URL="https://github.com/Nulifyer/karchy.git"
-CACHE_DIR="$HOME/.cache/karchy"
+INSTALL_DIR="$HOME/.local/share/karchy"
 
-echo -e '\e[32mUpdating karchy...\e[0m'
-
-if [[ -d "$CACHE_DIR/.git" ]]; then
-  git -C "$CACHE_DIR" pull --ff-only
-else
-  rm -rf "$CACHE_DIR"
-  git clone "$REPO_URL" "$CACHE_DIR"
+if [[ ! -d "$INSTALL_DIR/.git" ]]; then
+  echo "Karchy install directory not found at $INSTALL_DIR"
+  echo "Run the installer first."
+  exit 1
 fi
 
-bash "$CACHE_DIR/install.sh"
+echo -e '\e[32mUpdating karchy...\e[0m'
+git -C "$INSTALL_DIR" pull --ff-only
 
 echo ""
 echo "karchy updated to latest version."
