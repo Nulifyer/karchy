@@ -2,22 +2,57 @@
 
 A system menu and toolkit for CachyOS KDE Plasma, inspired by [omarchy](https://github.com/basecamp/omarchy).
 
-Launch everything from a single `Super+Space` menu — apps, package management, web apps, system settings, updates, and more.
+Launch everything from a single `Super+Space` menu — apps, package management, web apps, dev environments, system settings, updates, and more.
 
 ## Features
 
-- **App Launcher** — fuzzel-powered app search with KDE integration
-- **Package Management** — install/remove packages from pacman and AUR (paru) with fzf search
-- **Web Apps** — install web apps from Dashboard Icons, launch in browser app mode, remove with one click
-- **Featured Installs** — one-click setup for editors, terminals, AI tools, dev environments, services, and games
-- **Development Environments** — Ruby, Node.js, Bun, Deno, Go, PHP, Laravel, Symfony, Python, Elixir, Phoenix, Rust, Java, Zig, .NET, OCaml, Clojure, Scala
-- **Dynamic Version Menus** — .NET and Java versions are queried from pacman, not hardcoded
-- **System Updates** — update pacman + AUR packages, with a system tray notifier icon
-- **Self-Update** — update karchy itself from the menu
-- **Cleanup** — remove orphaned packages and clean the package cache
-- **Theming** — auto-reads KDE colors or manually override with 10 built-in themes (Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula, etc.)
-- **Setup Utilities** — audio, wifi, bluetooth, monitors, DNS, power profiles, screenshots, timezone
-- **System Controls** — lock, suspend, hibernate, logout, restart, shutdown
+| | Feature | Description |
+|---|---|---|
+| 🚀 | **App Launcher** | fuzzel-powered app search with KDE integration |
+| 📦 | **Package Management** | Install/remove packages from pacman and AUR (paru) with fzf fuzzy search |
+| 🌐 | **Web Apps** | Create desktop shortcuts that launch in browser app mode |
+| ⭐ | **Featured Installs** | One-click setup for editors, terminals, AI tools, dev environments, services, and games |
+| 🔍 | **Project Discovery** | Scan for projects and open them in your preferred editor |
+| 🔄 | **System Updates** | Update pacman + AUR packages, with a system tray notifier icon |
+| 🔄 | **Self-Update** | Update karchy itself from the menu |
+| 🧹 | **Cleanup** | Remove orphaned packages and clean the package cache |
+| 🎨 | **10 Color Themes** | Applied to all menus — Catppuccin, Tokyo Night, Nord, Dracula, and more |
+| ⚙️ | **Setup Utilities** | Audio, Wi-Fi, Bluetooth, monitors, DNS, power profiles, screenshots, timezone |
+| 🔒 | **System Controls** | Lock, suspend, hibernate, logout, restart, shutdown |
+
+### Dev Environments
+
+All installed via **pacman** or dedicated installers — no version managers needed.
+
+| | Language | Packages |
+|---|---|---|
+| 💎 | Ruby + Rails | `ruby`, `libyaml`, `gem install rails` |
+| 🟢 | Node.js | `nodejs`, `npm` |
+| 🍞 | Bun | `bun` |
+| 🦕 | Deno | `deno` |
+| 🐹 | Go | `go` |
+| 🐘 | PHP + Laravel/Symfony | `php`, `composer`, `xdebug` |
+| 🐍 | Python + uv | `python`, `uv` |
+| 💧 | Elixir + Phoenix | `erlang`, `elixir`, `mix` |
+| 🦀 | Rust | `rustup` |
+| ☕ | Java (JDK/JRE) | Dynamic — queries pacman for available OpenJDK versions |
+| ⚡ | Zig | `zig`, `zls` |
+| 🟣 | .NET | Dynamic — queries pacman for available SDK versions |
+| 🐫 | OCaml | `opam` |
+| 🔵 | Clojure | `clojure`, `rlwrap` |
+| 🔴 | Scala | `scala`, `scala3` (AUR) |
+
+### Featured Menu
+
+Editors, terminals, AI tools, dev environments, services, and games — all in one searchable list.
+
+| Category | Items |
+|---|---|
+| ✏️ Editor | VSCode, Cursor, Zed, Sublime Text, Helix, Emacs |
+| 💻 Terminal | Alacritty, Ghostty, Kitty |
+| 🤖 AI | Claude Code, Codex, Gemini CLI, LM Studio, Ollama |
+| 🛡️ Service | Tailscale, WireGuard, Bitwarden, NordVPN, Dropbox |
+| 🎮 Gaming | Steam, RetroArch, Minecraft |
 
 ## Requirements
 
@@ -63,7 +98,7 @@ karchy-self-update
 bash uninstall.sh
 ```
 
-This removes all scripts, keybindings, KWin rules, desktop entries, systemd units, and PATH entries.
+Removes all scripts, keybindings, KWin rules, desktop entries, systemd units, and PATH entries.
 
 ## Usage
 
@@ -79,8 +114,42 @@ karchy-menu remove   # jump to remove menu
 karchy-menu system   # jump to system menu
 ```
 
+### Menu Structure
+
+```
+Karchy
+├── Apps             — fuzzel app launcher
+├── Projects         — scan & open projects in editor
+├── Learn            — keybindings, KDE Plasma, Arch Wiki, Bash
+├── Setup            — audio, wifi, bluetooth, monitors, power, DNS, theme
+├── Install
+│   ├── Package      — interactive pacman browser
+│   ├── AUR          — interactive paru browser
+│   ├── Web App      — create browser app shortcuts
+│   ├── Featured     — editors, terminals, AI, dev envs, services, games
+│   └── Font         — Nerd Fonts installer
+├── Remove
+│   ├── Package      — interactive package remover
+│   ├── Web App      — remove created shortcuts
+│   └── Font         — remove installed fonts
+├── Update
+│   ├── System       — pacman + AUR upgrade
+│   ├── Mirror       — rank fastest mirrors
+│   ├── Firmware     — fwupd firmware update
+│   ├── Password     — change user password
+│   ├── Timezone     — select timezone
+│   ├── Hardware     — restart audio, wifi, bluetooth
+│   ├── Cleanup      — remove orphans + clean cache
+│   └── Karchy       — self-update from GitHub
+└── System           — lock, suspend, hibernate, logout, restart, shutdown
+```
+
 ### Themes
 
 Go to **Setup > Theme** to pick a color theme. Choose `auto` to follow your KDE color scheme, or select a hardcoded theme:
 
 Catppuccin Mocha, Gruvbox Dark, Tokyo Night, Nord, Dracula, Solarized Dark, One Dark, Rose Pine, Everforest Dark, Kanagawa
+
+## License
+
+MIT
