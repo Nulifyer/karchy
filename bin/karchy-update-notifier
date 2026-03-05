@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """Karchy Update Notifier — KDE system tray icon for available package updates."""
 
+import os
 import signal
 import socket
 import subprocess
 import sys
+
+BIN_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from PyQt6.QtCore import QSocketNotifier, QThread, QTimer, pyqtSignal
 from PyQt6.QtGui import QCursor, QIcon
@@ -106,9 +109,12 @@ class UpdateNotifier:
             return
 
         try:
+            env = os.environ.copy()
+            env["PATH"] = BIN_DIR + ":" + env.get("PATH", "")
             self.update_proc = subprocess.Popen(
-                ["karchy-present-terminal", "karchy-update"],
+                [os.path.join(BIN_DIR, "karchy-present-terminal"), "karchy-update"],
                 start_new_session=True,
+                env=env,
             )
         except Exception as e:
             print(f"karchy-update-notifier: failed to launch update: {e}", file=sys.stderr)
