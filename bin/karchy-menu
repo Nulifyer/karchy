@@ -215,6 +215,8 @@ show_system_menu() {
 
 # ── Main Menu ──────────────────────────────────────────────────────────────
 show_main_menu() {
+  local commit
+  commit=$(git -C "$HOME/.local/share/karchy" rev-parse --short HEAD 2>/dev/null)
   case $(menu "Karchy" \
     "$(entry $'\U000f003b' "Apps")" \
     "$(entry $'\U000f04bb' "Projects")" \
