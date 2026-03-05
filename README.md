@@ -9,10 +9,14 @@ Launch everything from a single `Super+Space` menu — apps, package management,
 - **App Launcher** — fuzzel-powered app search with KDE integration
 - **Package Management** — install/remove packages from pacman and AUR (paru) with fzf search
 - **Web Apps** — install web apps from Dashboard Icons, launch in browser app mode, remove with one click
-- **Development Environments** — one-click setup for Ruby, Node.js, Go, Python, Rust, and more
+- **Featured Installs** — one-click setup for editors, terminals, AI tools, dev environments, services, and games
+- **Development Environments** — Ruby, Node.js, Bun, Deno, Go, PHP, Laravel, Symfony, Python, Elixir, Phoenix, Rust, Java, Zig, .NET, OCaml, Clojure, Scala
+- **Dynamic Version Menus** — .NET and Java versions are queried from pacman, not hardcoded
 - **System Updates** — update pacman + AUR packages, with a system tray notifier icon
+- **Self-Update** — update karchy itself from the menu
+- **Cleanup** — remove orphaned packages and clean the package cache
 - **Theming** — auto-reads KDE colors or manually override with 10 built-in themes (Catppuccin, Gruvbox, Tokyo Night, Nord, Dracula, etc.)
-- **Setup Utilities** — audio, wifi, bluetooth, monitors, DNS, power profiles, timezone
+- **Setup Utilities** — audio, wifi, bluetooth, monitors, DNS, power profiles, screenshots, timezone
 - **System Controls** — lock, suspend, hibernate, logout, restart, shutdown
 
 ## Requirements
@@ -22,8 +26,16 @@ Launch everything from a single `Super+Space` menu — apps, package management,
 
 ## Install
 
+One-liner from GitHub:
+
 ```bash
-git clone https://github.com/youruser/karchy.git
+bash <(curl -fsSL https://raw.githubusercontent.com/Nulifyer/karchy/main/remote-install.sh)
+```
+
+Or clone and install manually:
+
+```bash
+git clone https://github.com/Nulifyer/karchy.git
 cd karchy
 bash install.sh
 ```
@@ -35,7 +47,23 @@ This will:
 - Set up KWin window rules for popups and web apps
 - Enable the update notifier tray icon
 
-Re-run `bash install.sh` to update. Use `bash install.sh --no-deps` to skip package installation.
+## Update
+
+From the menu: **Update > Update Karchy**
+
+Or from the command line:
+
+```bash
+karchy-self-update
+```
+
+## Uninstall
+
+```bash
+bash uninstall.sh
+```
+
+This removes all scripts, keybindings, KWin rules, desktop entries, systemd units, and PATH entries.
 
 ## Usage
 
@@ -47,6 +75,8 @@ karchy-menu apps     # jump to app launcher
 karchy-menu install  # jump to install menu
 karchy-menu update   # jump to update menu
 karchy-menu setup    # jump to setup menu
+karchy-menu remove   # jump to remove menu
+karchy-menu system   # jump to system menu
 ```
 
 ### Themes
