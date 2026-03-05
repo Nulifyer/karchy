@@ -16,4 +16,3 @@ echo -e '\e[32mCleaning package cache...\e[0m'
 sudo pacman -Sc --noconfirm
 
 echo ""
-echo "Done!"
