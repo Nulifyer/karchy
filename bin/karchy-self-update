@@ -1,7 +1,8 @@
 #!/bin/bash
-# Update karchy to the latest version.
+# Update karchy to the latest version and re-sync config.
 
 INSTALL_DIR="$HOME/.local/share/karchy"
+BIN_DIR="$INSTALL_DIR/bin"
 
 if [[ ! -d "$INSTALL_DIR/.git" ]]; then
   echo "Karchy install directory not found at $INSTALL_DIR"
@@ -11,6 +12,88 @@ fi
 
 echo -e '\e[32mUpdating karchy...\e[0m'
 git -C "$INSTALL_DIR" pull --ff-only
+chmod +x "$BIN_DIR"/*
+
+# ── Sync KWin rules ─────────────────────────────────────────────────────────
+echo -e '\n\e[32mSyncing KWin rules...\e[0m'
+KWINRULES="$HOME/.config/kwinrulesrc"
+
+KARCHY_RULE_ID="karchy-float-popup-rule"
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key Description "Karchy Popup"
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key wmclass "karchy-float"
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key wmclassmatch 2
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key noborder true
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key noborderrule 2
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key placement 5
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key placementrule 2
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key above true
+kwriteconfig6 --file "$KWINRULES" --group "$KARCHY_RULE_ID" --key aboverule 2
+
+existing_rules=$(kreadconfig6 --file "$KWINRULES" --group General --key rules 2>/dev/null || true)
+if [[ "$existing_rules" != *"$KARCHY_RULE_ID"* ]]; then
+  existing_count=$(kreadconfig6 --file "$KWINRULES" --group General --key count 2>/dev/null || echo 0)
+  if [[ -n "$existing_rules" ]]; then
+    new_rules="${existing_rules},${KARCHY_RULE_ID}"
+  else
+    new_rules="$KARCHY_RULE_ID"
+  fi
+  kwriteconfig6 --file "$KWINRULES" --group General --key rules "$new_rules"
+  kwriteconfig6 --file "$KWINRULES" --group General --key count $((existing_count + 1))
+fi
+
+WEBAPP_RULE_ID="karchy-webapp-size-rule"
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key Description "Karchy Web App Default Size"
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key wmclass -- '-Default$'
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key wmclassmatch 3
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key size "1280,800"
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key sizerule 4
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key placement 5
+kwriteconfig6 --file "$KWINRULES" --group "$WEBAPP_RULE_ID" --key placementrule 4
+
+existing_rules=$(kreadconfig6 --file "$KWINRULES" --group General --key rules 2>/dev/null || true)
+if [[ "$existing_rules" != *"$WEBAPP_RULE_ID"* ]]; then
+  existing_count=$(kreadconfig6 --file "$KWINRULES" --group General --key count 2>/dev/null || echo 0)
+  if [[ -n "$existing_rules" ]]; then
+    new_rules="${existing_rules},${WEBAPP_RULE_ID}"
+  else
+    new_rules="$WEBAPP_RULE_ID"
+  fi
+  kwriteconfig6 --file "$KWINRULES" --group General --key rules "$new_rules"
+  kwriteconfig6 --file "$KWINRULES" --group General --key count $((existing_count + 1))
+fi
+
+qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || true
+echo "  KWin rules synced"
+
+# ── Sync desktop entry ──────────────────────────────────────────────────────
+echo -e '\e[32mSyncing desktop entry...\e[0m'
+DESKTOP_FILE="$HOME/.local/share/applications/karchy-menu.desktop"
+cat > "$DESKTOP_FILE" << EOF
+[Desktop Entry]
+Name=Karchy Menu
+Comment=Karchy system menu launcher
+Exec=$BIN_DIR/karchy-menu
+Icon=utilities-terminal
+Type=Application
+Categories=System;Utility;
+StartupNotify=false
+EOF
+update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
+echo "  desktop entry synced"
+
+# ── Sync systemd units ──────────────────────────────────────────────────────
+echo -e '\e[32mSyncing systemd units...\e[0m'
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+
+for unit in "$INSTALL_DIR"/systemd/*; do
+  cp "$unit" "$SYSTEMD_USER_DIR/"
+done
+
+systemctl --user daemon-reload
+systemctl --user enable --now karchy-update-check.timer 2>/dev/null || true
+systemctl --user restart karchy-update-notifier.service 2>/dev/null || true
+echo "  systemd units synced and notifier restarted"
 
 echo ""
-echo "karchy updated to latest version."
+echo -e '\e[32mKarchy updated to latest version.\e[0m'
