@@ -23,10 +23,15 @@ entry() {
 
 menu() {
   local prompt="$1"
+  local width=32
   shift
+  if [[ "$1" == --width ]]; then
+    width="$2"
+    shift 2
+  fi
   printf '%s\n' "$@" | fuzzel --dmenu \
     --prompt "$prompt  " \
-    --width 32 \
+    --width "$width" \
     --lines 10 \
     --inner-pad 12 \
     --horizontal-pad 20 \
@@ -94,7 +99,7 @@ aur_install_and_launch() {
 # ── Learn Menu ─────────────────────────────────────────────────────────────
 show_learn_menu() {
   case $(menu "Learn" \
-    "$(entry $'\uf030c' "Keybindings")" \
+    "$(entry $'\U000f030c' "Keybindings")" \
     "$(entry $'\ue86c' "KDE Plasma")" \
     "$(entry $'\ue732' "Arch Wiki")" \
     "$(entry $'\ue760' "Bash")" \
@@ -110,9 +115,9 @@ show_learn_menu() {
 # ── Update > Hardware Submenu ──────────────────────────────────────────────
 show_update_hardware_menu() {
   case $(menu "Hardware" \
-    "$(entry $'\uf0d7e' "Restart Audio")" \
-    "$(entry $'\uf05a9' "Restart Wi-Fi")" \
-    "$(entry $'\uf00af' "Restart Bluetooth")" \
+    "$(entry $'\U000f0d7e' "Restart Audio")" \
+    "$(entry $'\U000f05a9' "Restart Wi-Fi")" \
+    "$(entry $'\U000f00af' "Restart Bluetooth")" \
   ) in
   *Audio*) present_terminal "systemctl --user restart pipewire pipewire-pulse wireplumber && echo 'Audio restarted.'" ;;
   *Wi-Fi*) present_terminal "sudo rfkill unblock wifi && sudo systemctl restart NetworkManager && echo 'Wi-Fi restarted.'" ;;
@@ -124,12 +129,12 @@ show_update_hardware_menu() {
 # ── Update Menu ────────────────────────────────────────────────────────────
 show_update_menu() {
   case $(menu "Update" \
-    "$(entry $'\uf06b0' "System Update")" \
+    "$(entry $'\U000f06b0' "System Update")" \
     "$(entry $'\uea69' "Mirror Ranking")" \
-    "$(entry $'\uf08ce' "Package Cache Clean")" \
+    "$(entry $'\U000f08ce' "Package Cache Clean")" \
     "$(entry $'\ueb53' "Firmware")" \
-    "$(entry $'\uf07f5' "Password")" \
-    "$(entry $'\uf0694' "Timezone")" \
+    "$(entry $'\U000f07f5' "Password")" \
+    "$(entry $'\U000f0694' "Timezone")" \
     "$(entry $'\ueaf8' "Hardware")" \
   ) in
   *System\ Update*) present_terminal karchy-update ;;
@@ -158,7 +163,7 @@ show_setup_power_menu() {
 
   local entries=()
   while IFS= read -r p; do
-    entries+=("$(entry $'\uf06a5' "$p")")
+    entries+=("$(entry $'\U000f06a5' "$p")")
   done <<< "$profiles"
 
   local choice
@@ -170,14 +175,14 @@ show_setup_power_menu() {
 # ── Setup Menu ─────────────────────────────────────────────────────────────
 show_setup_menu() {
   case $(menu "Setup" \
-    "$(entry $'\uf0d7e' "Audio")" \
-    "$(entry $'\uf05a9' "Wifi")" \
-    "$(entry $'\uf00af' "Bluetooth")" \
-    "$(entry $'\uf0379' "Monitors")" \
-    "$(entry $'\uf06a5' "Power Profile")" \
+    "$(entry $'\U000f0d7e' "Audio")" \
+    "$(entry $'\U000f05a9' "Wifi")" \
+    "$(entry $'\U000f00af' "Bluetooth")" \
+    "$(entry $'\U000f0379' "Monitors")" \
+    "$(entry $'\U000f06a5' "Power Profile")" \
     "$(entry $'\ueb53' "DNS")" \
     "$(entry $'\ueada' "Screenshot")" \
-    "$(entry $'\uf0218' "Theme")" \
+    "$(entry $'\U000f0218' "Theme")" \
   ) in
   *Audio*) pavucontrol & ;;
   *Wifi*) kcmshell6 kcm_networkmanagement & ;;
@@ -249,20 +254,41 @@ show_install_dev_elixir_menu() {
 
 # ── Install > Development > .NET Submenu ─────────────────────────────────
 show_install_dev_dotnet_menu() {
-  case $(menu ".NET (dotnet)" \
-    "$(entry $'\ue77f' ".NET (dotnet) 10 SDK (latest)")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 9 SDK")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 8 SDK (LTS)")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 7 SDK")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 6 SDK (LTS)")" \
-  ) in
-  *.NET*10*) present_terminal "karchy-install-dev-env dotnet10" ;;
-  *.NET*9*) present_terminal "karchy-install-dev-env dotnet9" ;;
-  *.NET*8*) present_terminal "karchy-install-dev-env dotnet8" ;;
-  *.NET*7*) present_terminal "karchy-install-dev-env dotnet7" ;;
-  *.NET*6*) present_terminal "karchy-install-dev-env dotnet6" ;;
-  *) back_to show_install_dev_menu ;;
-  esac
+  local icon=$'\ue77f'
+  local -A ver_map=() pkg_map=()  # major -> version, major -> package
+  while IFS= read -r line; do
+    local repo_pkg ver pkg major
+    repo_pkg="${line%% *}"
+    ver="${line#* }"; ver="${ver%% *}"
+    pkg="${repo_pkg##*/}"
+    major="${ver%%.*}"
+    # Keep first match per major (prefer -bin/unversioned for latest)
+    if [[ -z ${ver_map[$major]+x} ]]; then
+      ver_map[$major]="$ver"
+      pkg_map[$major]="$pkg"
+    fi
+  done < <(pacman -Ss '^dotnet-sdk' 2>/dev/null | grep -v '^ ' | sort -t' ' -k2 -rV)
+
+  if [[ ${#ver_map[@]} -eq 0 ]]; then
+    present_terminal "echo 'No .NET SDK packages found in repositories.'"
+    return
+  fi
+
+  local -a labels=() majors=()
+  while IFS= read -r m; do
+    majors+=("$m")
+    labels+=("$(entry "$icon" ".NET $m SDK (${ver_map[$m]}) — ${pkg_map[$m]}")")
+  done < <(printf '%s\n' "${!ver_map[@]}" | sort -rn)
+
+  local choice
+  choice=$(menu ".NET (dotnet)" --width 48 "${labels[@]}") || { back_to show_install_dev_menu; return; }
+  local i
+  for i in "${!labels[@]}"; do
+    if [[ "${labels[$i]}" == "$choice" ]]; then
+      present_terminal "karchy-install-dev-env '${pkg_map[${majors[$i]}]}'"
+      return
+    fi
+  done
 }
 
 # ── Install > Development Submenu ─────────────────────────────────────────
@@ -373,15 +399,15 @@ show_install_gaming_menu() {
 # ── Install Menu ───────────────────────────────────────────────────────────
 show_install_menu() {
   case $(menu "Install" \
-    "$(entry $'\uf08ce' "Package (pacman)")" \
-    "$(entry $'\uf08ce' "AUR (paru)")" \
-    "$(entry $'\uf059f' "Web App")" \
+    "$(entry $'\U000f08ce' "Package (pacman)")" \
+    "$(entry $'\U000f08ce' "AUR (paru)")" \
+    "$(entry $'\U000f059f' "Web App")" \
     "$(entry $'\ueb53' "Service")" \
     "$(entry $'\ueac4' "Development")" \
     "$(entry $'\uea73' "Editor")" \
     "$(entry $'\uea85' "Terminal")" \
     "$(entry $'\uec10' "AI")" \
-    "$(entry $'\uf06d6' "Font")" \
+    "$(entry $'\U000f06d6' "Font")" \
     "$(entry $'\uf11b' "Gaming")" \
   ) in
   *pacman*) karchy-present-terminal karchy-pkg-install 40 ;;
@@ -440,20 +466,39 @@ show_remove_dev_elixir_menu() {
 
 # ── Remove > Development > .NET Submenu ──────────────────────────────────
 show_remove_dev_dotnet_menu() {
-  case $(menu ".NET (dotnet)" \
-    "$(entry $'\ue77f' ".NET (dotnet) 10 SDK")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 9 SDK")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 8 SDK")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 7 SDK")" \
-    "$(entry $'\ue77f' ".NET (dotnet) 6 SDK")" \
-  ) in
-  *.NET*10*) present_terminal "karchy-remove-dev-env dotnet10" ;;
-  *.NET*9*) present_terminal "karchy-remove-dev-env dotnet9" ;;
-  *.NET*8*) present_terminal "karchy-remove-dev-env dotnet8" ;;
-  *.NET*7*) present_terminal "karchy-remove-dev-env dotnet7" ;;
-  *.NET*6*) present_terminal "karchy-remove-dev-env dotnet6" ;;
-  *) back_to show_remove_dev_menu ;;
-  esac
+  local icon=$'\ue77f'
+  local -A ver_map=() pkg_map=()
+  while IFS= read -r line; do
+    local pkg ver major
+    pkg="${line%% *}"
+    ver="${line#* }"
+    major="${ver%%.*}"
+    if [[ -z ${ver_map[$major]+x} ]]; then
+      ver_map[$major]="$ver"
+      pkg_map[$major]="$pkg"
+    fi
+  done < <(pacman -Q 2>/dev/null | grep '^dotnet-sdk' | sort -k2 -rV)
+
+  if [[ ${#ver_map[@]} -eq 0 ]]; then
+    present_terminal "echo 'No .NET SDKs are currently installed.'"
+    return
+  fi
+
+  local -a labels=() majors=()
+  while IFS= read -r m; do
+    majors+=("$m")
+    labels+=("$(entry "$icon" ".NET $m SDK (${ver_map[$m]}) — ${pkg_map[$m]}")")
+  done < <(printf '%s\n' "${!ver_map[@]}" | sort -rn)
+
+  local choice
+  choice=$(menu ".NET (dotnet)" --width 48 "${labels[@]}") || { back_to show_remove_dev_menu; return; }
+  local i
+  for i in "${!labels[@]}"; do
+    if [[ "${labels[$i]}" == "$choice" ]]; then
+      present_terminal "karchy-remove-dev-env '${pkg_map[${majors[$i]}]}'"
+      return
+    fi
+  done
 }
 
 # ── Remove > Development Submenu ──────────────────────────────────────────
@@ -498,10 +543,10 @@ show_remove_font_menu() {
 # ── Remove Menu ────────────────────────────────────────────────────────────
 show_remove_menu() {
   case $(menu "Remove" \
-    "$(entry $'\uf08ce' "Package")" \
-    "$(entry $'\uf059f' "Web App")" \
+    "$(entry $'\U000f08ce' "Package")" \
+    "$(entry $'\U000f059f' "Web App")" \
     "$(entry $'\ueac4' "Development")" \
-    "$(entry $'\uf06d6' "Font")" \
+    "$(entry $'\U000f06d6' "Font")" \
   ) in
   *Package*) karchy-present-terminal karchy-pkg-remove 40 ;;
   *Web\ App*) present_terminal karchy-webapp-remove ;;
@@ -514,21 +559,21 @@ show_remove_menu() {
 # ── System Menu ────────────────────────────────────────────────────────────
 show_system_menu() {
   local entries=(
-    "$(entry $'\uf033e' "Lock")"
-    "$(entry $'\uf04b2' "Suspend")"
+    "$(entry $'\U000f033e' "Lock")"
+    "$(entry $'\U000f04b2' "Suspend")"
   )
 
   # Add Hibernate if swap is available
   local swap_total
   swap_total=$(awk '/SwapTotal/{print $2}' /proc/meminfo)
   if (( swap_total > 0 )); then
-    entries+=("$(entry $'\uf0904' "Hibernate")")
+    entries+=("$(entry $'\U000f0904' "Hibernate")")
   fi
 
   entries+=(
-    "$(entry $'\uf0343' "Logout")"
-    "$(entry $'\uf0709' "Restart")"
-    "$(entry $'\uf0425' "Shutdown")"
+    "$(entry $'\U000f0343' "Logout")"
+    "$(entry $'\U000f0709' "Restart")"
+    "$(entry $'\U000f0425' "Shutdown")"
   )
 
   case $(menu "System" "${entries[@]}") in
@@ -545,14 +590,14 @@ show_system_menu() {
 # ── Main Menu ──────────────────────────────────────────────────────────────
 show_main_menu() {
   case $(menu "Karchy" \
-    "$(entry $'\uf003b' "Apps")" \
-    "$(entry $'\uf04bb' "Projects")" \
-    "$(entry $'\uf00ba' "Learn")" \
+    "$(entry $'\U000f003b' "Apps")" \
+    "$(entry $'\U000f04bb' "Projects")" \
+    "$(entry $'\U000f00ba' "Learn")" \
     "$(entry $'\ueaf8' "Setup")" \
     "$(entry $'\uf019' "Install")" \
     "$(entry $'\uea81' "Remove")" \
-    "$(entry $'\uf06b0' "Update")" \
-    "$(entry $'\uf0322' "System")" \
+    "$(entry $'\U000f06b0' "Update")" \
+    "$(entry $'\U000f0322' "System")" \
   ) in
   *Apps*) fuzzel_apps ;;
   *Projects*) karchy-present-terminal karchy-project-open 30 --no-padding ;;
