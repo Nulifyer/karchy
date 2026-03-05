@@ -1,10 +1,7 @@
 #!/bin/bash
-# Launch a command as a fully detached process via systemd.
+# Launch a command as a fully detached process via systemd scope.
 # Usage: karchy-detach <command> [args...]
-# Passes essential session environment so GUI apps (VS Code, etc.) work.
-env_args=()
-for var in DISPLAY WAYLAND_DISPLAY XDG_RUNTIME_DIR XDG_SESSION_TYPE \
-           XDG_CURRENT_DESKTOP DBUS_SESSION_BUS_ADDRESS; do
-  [[ -n "${!var}" ]] && env_args+=(--setenv="$var=${!var}")
-done
-exec systemd-run --user --no-block "${env_args[@]}" "$@" &>/dev/null
+# Uses --scope so the child inherits the caller's full environment
+# (DISPLAY, WAYLAND_DISPLAY, DBUS_SESSION_BUS_ADDRESS, etc.)
+# instead of running in systemd's clean service environment.
+systemd-run --user --scope -- "$@" &>/dev/null &
