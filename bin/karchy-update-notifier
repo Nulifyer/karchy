@@ -6,22 +6,26 @@ import socket
 import subprocess
 import sys
 
-from PyQt6.QtCore import QSocketNotifier, QTimer
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QSocketNotifier, QThread, QTimer, pyqtSignal
+from PyQt6.QtGui import QCursor, QIcon
 from PyQt6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 
-def check_updates():
-    """Return list of available updates using checkupdates + paru."""
-    lines = []
-    for cmd in (["checkupdates"], ["paru", "-Qua"]):
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-            if result.stdout.strip():
-                lines.extend(result.stdout.strip().splitlines())
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-    return lines
+class UpdateCheckThread(QThread):
+    """Run update checks off the main thread to avoid blocking the UI."""
+
+    finished = pyqtSignal(list)
+
+    def run(self):
+        lines = []
+        for cmd in (["checkupdates"], ["paru", "-Qua"]):
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if result.stdout.strip():
+                    lines.extend(result.stdout.strip().splitlines())
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                pass
+        self.finished.emit(lines)
 
 
 class UpdateNotifier:
@@ -33,15 +37,20 @@ class UpdateNotifier:
         self.tray.setIcon(QIcon.fromTheme("system-software-update"))
         self.tray.activated.connect(self.on_click)
 
+        # Build context menu but do NOT call setContextMenu().
+        # On KDE Plasma, setContextMenu causes left-click to show the menu
+        # (via SNI ItemIsMenu) instead of firing the Activate signal.
+        # Without it, left-click fires Trigger so we can launch the update
+        # directly. Right-click menu is shown manually via on_click(Context).
         self.menu = QMenu()
         self.menu.addAction("Update now", self.run_update)
         self.menu.addAction("Check now", self.refresh)
         self.menu.addSeparator()
         self.menu.addAction("Quit", self.app.quit)
-        self.tray.setContextMenu(self.menu)
 
         self.update_proc = None
         self.poll_timer = None
+        self.check_thread = None
 
         # Bridge SIGUSR1 into Qt event loop via socket pair
         self.sig_read, self.sig_write = socket.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -59,8 +68,16 @@ class UpdateNotifier:
         self.refresh()
 
     def refresh(self):
-        """Check for updates and show/hide tray icon."""
-        updates = check_updates()
+        """Check for updates and show/hide tray icon (non-blocking)."""
+        if self.check_thread and self.check_thread.isRunning():
+            return
+
+        self.check_thread = UpdateCheckThread()
+        self.check_thread.finished.connect(self._on_updates_checked)
+        self.check_thread.start()
+
+    def _on_updates_checked(self, updates):
+        """Handle update check results on the main thread."""
         count = len(updates)
 
         if count > 0:
@@ -73,22 +90,30 @@ class UpdateNotifier:
             self.tray.setVisible(False)
 
     def on_click(self, reason):
-        """Left-click or middle-click opens the update terminal."""
+        """Left/middle-click opens update terminal, right-click shows menu."""
         if reason in (
             QSystemTrayIcon.ActivationReason.Trigger,
             QSystemTrayIcon.ActivationReason.DoubleClick,
             QSystemTrayIcon.ActivationReason.MiddleClick,
         ):
             self.run_update()
+        elif reason == QSystemTrayIcon.ActivationReason.Context:
+            self.menu.popup(QCursor.pos())
 
     def run_update(self):
         """Launch karchy-update in the floating terminal, re-check when done."""
         if self.update_proc and self.update_proc.poll() is None:
             return
 
-        self.update_proc = subprocess.Popen(
-            ["karchy-present-terminal", "karchy-update"]
-        )
+        try:
+            self.update_proc = subprocess.Popen(
+                ["karchy-present-terminal", "karchy-update"],
+                start_new_session=True,
+            )
+        except Exception as e:
+            print(f"karchy-update-notifier: failed to launch update: {e}", file=sys.stderr)
+            self.update_proc = None
+            return
 
         def poll():
             if self.update_proc and self.update_proc.poll() is not None:
