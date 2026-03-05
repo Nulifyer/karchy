@@ -162,11 +162,11 @@ SHORTCUTS="$HOME/.config/kglobalshortcutsrc"
 
 kwriteconfig6 --file "$SHORTCUTS" \
   --group "services" --group "org.kde.krunner.desktop" \
-  --key "_launch" "none"
+  --key "_launch" "none,Meta+Space,KRunner"
 
 kwriteconfig6 --file "$SHORTCUTS" \
   --group "services" --group "karchy-menu.desktop" \
-  --key "_launch" "Meta+Space"
+  --key "_launch" "Meta+Space,none,Karchy Menu"
 
 update-desktop-database "$HOME/.local/share/applications/" 2>/dev/null || true
 kbuildsycoca6 2>/dev/null || true
