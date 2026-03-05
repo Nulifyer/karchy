@@ -1,0 +1,47 @@
+#!/bin/bash
+# Interactive nerd font installer using fzf with multi-select.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/karchy-colors"
+source "$SCRIPT_DIR/karchy-font-names"
+
+fzf_colors=$(get_fzf_color_string)
+
+# List available nerd font packages, excluding already installed ones
+installed=$(pacman -Qqe 2>/dev/null | grep '.*-nerd$')
+
+entries=()
+while IFS= read -r pkg; do
+  echo "$installed" | grep -qx "$pkg" && continue
+  name="${FONT_NAMES[$pkg]:-$pkg}"
+  entries+=("$(printf '%-24s %s' "$name" "$pkg")")
+done < <({ pacman -Ssq '^ttf-.*-nerd$'; pacman -Ssq '^otf-.*-nerd$'; } 2>/dev/null | grep -E '^(ttf|otf)-.*-nerd$' | sort -u)
+
+if [[ ${#entries[@]} -eq 0 ]]; then
+  echo "All nerd fonts already installed."
+  exit 0
+fi
+
+selection=$(printf '%s\n' "${entries[@]}" | fzf \
+  --multi \
+  --prompt "Install Fonts > " \
+  --header "tab: multi-select | enter: install" \
+  --color "$fzf_colors" \
+  --layout reverse --no-border \
+  --color 'pointer:green,marker:green') || exit $?
+
+# Extract package names (last field on each line)
+pkg_names=$(echo "$selection" | awk '{print $NF}')
+
+if [[ -n $pkg_names ]]; then
+  echo "$pkg_names" | tr '\n' ' ' | xargs sudo pacman -S --noconfirm
+  echo ""
+  echo "Installed font families:"
+  while IFS= read -r pkg; do
+    font_file=$(pacman -Ql "$pkg" 2>/dev/null | grep -m1 -E '\.(ttf|otf)$' | awk '{print $2}')
+    if [[ -n "$font_file" ]]; then
+      family=$(fc-query -f '%{family}\n' "$font_file" 2>/dev/null | head -1)
+      [[ -n "$family" ]] && echo "  $family"
+    fi
+  done <<< "$pkg_names"
+  karchy-show-done
+fi

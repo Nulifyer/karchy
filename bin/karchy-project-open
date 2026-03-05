@@ -82,7 +82,7 @@ while true; do
     --prompt "Project > " \
     --color "$fzf_colors" \
     --header "ctrl-r: rescan | ctrl-e: editor ($editor_label)" \
-    --layout reverse --border rounded --no-info \
+    --layout reverse --no-border --no-info \
     --expect "ctrl-r,ctrl-e")
 
   key=$(head -1 <<< "$result")
