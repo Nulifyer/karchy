@@ -356,102 +356,24 @@ show_featured_menu() {
   *LM\ Studio*) aur_install "LM Studio" lmstudio ;;
   *Ollama*) install "Ollama" ollama ;;
   # Development
-  *Ruby*)
-    present_terminal "echo -e '\e[32mInstalling Ruby on Rails...\e[0m'
-karchy-pkg-add libyaml
-mise use --global ruby@latest
-mise settings add idiomatic_version_file_enable_tools ruby
-mise settings add ruby.compile false
-echo 'gem: --no-document' >~/.gemrc
-mise x ruby -- gem install rails --no-document
-echo -e '\nYou can now run: rails new myproject'" ;;
-  *Node.js*) present_terminal "echo -e '\e[32mInstalling Node.js...\e[0m'; mise use --global node" ;;
-  *Bun*) present_terminal "echo -e '\e[32mInstalling Bun...\e[0m'; mise use -g bun@latest" ;;
-  *Deno*) present_terminal "echo -e '\e[32mInstalling Deno...\e[0m'; mise use -g deno@latest" ;;
-  *Go) present_terminal "echo -e '\e[32mInstalling Go...\e[0m'; mise use --global go@latest" ;;
-  *PHP) present_terminal "echo -e '\e[32mInstalling PHP...\e[0m'
-karchy-pkg-add php composer php-sqlite xdebug
-if [[ :\$PATH: != *:\$HOME/.config/composer/vendor/bin:* ]]; then
-  echo 'export PATH=\"\$HOME/.config/composer/vendor/bin:\$PATH\"' >>\"\$HOME/.bashrc\"
-  source \"\$HOME/.bashrc\"
-  echo 'Added Composer global bin directory to PATH.'
-else
-  echo 'Composer global bin directory already in PATH.'
-fi
-sudo sed -i -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' -e 's/^;xdebug.mode=debug/xdebug.mode=debug/' /etc/php/conf.d/xdebug.ini
-for ext in bcmath intl iconv openssl pdo_sqlite pdo_mysql; do
-  sudo sed -i \"s/^;extension=\${ext}/extension=\${ext}/\" /etc/php/php.ini
-done" ;;
-  *Laravel*)
-    present_terminal "echo -e '\e[32mInstalling PHP and Laravel...\e[0m'
-karchy-pkg-add php composer php-sqlite xdebug
-if [[ :\$PATH: != *:\$HOME/.config/composer/vendor/bin:* ]]; then
-  echo 'export PATH=\"\$HOME/.config/composer/vendor/bin:\$PATH\"' >>\"\$HOME/.bashrc\"
-  source \"\$HOME/.bashrc\"
-  echo 'Added Composer global bin directory to PATH.'
-fi
-sudo sed -i -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' -e 's/^;xdebug.mode=debug/xdebug.mode=debug/' /etc/php/conf.d/xdebug.ini
-for ext in bcmath intl iconv openssl pdo_sqlite pdo_mysql; do
-  sudo sed -i \"s/^;extension=\${ext}/extension=\${ext}/\" /etc/php/php.ini
-done
-echo -e '\e[32mInstalling Node.js...\e[0m'
-mise use --global node
-composer global require laravel/installer
-echo -e '\nYou can now run: laravel new myproject'" ;;
-  *Symfony*)
-    present_terminal "echo -e '\e[32mInstalling PHP and Symfony...\e[0m'
-karchy-pkg-add php composer php-sqlite xdebug
-if [[ :\$PATH: != *:\$HOME/.config/composer/vendor/bin:* ]]; then
-  echo 'export PATH=\"\$HOME/.config/composer/vendor/bin:\$PATH\"' >>\"\$HOME/.bashrc\"
-  source \"\$HOME/.bashrc\"
-  echo 'Added Composer global bin directory to PATH.'
-fi
-sudo sed -i -e 's/^;zend_extension=xdebug.so/zend_extension=xdebug.so/' -e 's/^;xdebug.mode=debug/xdebug.mode=debug/' /etc/php/conf.d/xdebug.ini
-for ext in bcmath intl iconv openssl pdo_sqlite pdo_mysql; do
-  sudo sed -i \"s/^;extension=\${ext}/extension=\${ext}/\" /etc/php/php.ini
-done
-karchy-pkg-add symfony-cli
-echo -e '\nYou can now run: symfony new --webapp myproject'" ;;
-  *Python*)
-    present_terminal "echo -e '\e[32mInstalling Python...\e[0m'
-mise use --global python@latest
-echo -e '\nInstalling uv...\n'
-curl -fsSL https://astral.sh/uv/install.sh | sh" ;;
-  *Elixir*)
-    present_terminal "echo -e '\e[32mInstalling Elixir...\e[0m'
-mise use --global erlang@latest
-mise use --global elixir@latest
-mise x elixir -- mix local.hex --force" ;;
-  *Phoenix*)
-    present_terminal "echo -e '\e[32mInstalling Phoenix Framework...\e[0m'
-mise use --global erlang@latest
-mise use --global elixir@latest
-mise x elixir -- mix local.hex --force
-mise x elixir -- mix local.rebar --force
-mise x elixir -- mix archive.install hex phx_new --force
-echo -e '\nYou can now run: mix phx.new my_app'" ;;
-  *Rust*) present_terminal "echo -e '\e[32mInstalling Rust...\e[0m'; bash -c \"\$(curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs)\" -- -y" ;;
+  *Ruby*) present_terminal karchy-install-ruby ;;
+  *Node.js*) install "Node.js" "nodejs npm" ;;
+  *Bun*) install "Bun" bun ;;
+  *Deno*) install "Deno" deno ;;
+  *Go) install "Go" go ;;
+  *PHP) present_terminal karchy-install-php ;;
+  *Laravel*) present_terminal karchy-install-laravel ;;
+  *Symfony*) present_terminal karchy-install-symfony ;;
+  *Python*) present_terminal karchy-install-python ;;
+  *Elixir*) present_terminal karchy-install-elixir ;;
+  *Phoenix*) present_terminal karchy-install-phoenix ;;
+  *Rust*) present_terminal karchy-install-rust ;;
   *Java*) show_install_java_menu ;;
-  *Zig*)
-    present_terminal "echo -e '\e[32mInstalling Zig...\e[0m'
-mise use --global zig@latest
-mise use -g zls@latest" ;;
+  *Zig*) install "Zig" "zig zls" ;;
   *.NET*) show_install_dotnet_menu ;;
-  *OCaml*)
-    present_terminal "echo -e '\e[32mInstalling OCaml...\e[0m'
-bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/ocaml/opam/master/shell/install.sh)\"
-opam init --yes
-eval \"\$(opam env)\"
-opam install ocaml-lsp-server odoc ocamlformat utop --yes" ;;
-  *Clojure*)
-    present_terminal "echo -e '\e[32mInstalling Clojure...\e[0m'
-karchy-pkg-add rlwrap
-mise use --global clojure@latest" ;;
-  *Scala*)
-    present_terminal "echo -e '\e[32mInstalling Scala...\e[0m'
-mise use --global java@latest
-mise use --global scala@latest
-mise use --global scala-cli@latest" ;;
+  *OCaml*) present_terminal karchy-install-ocaml ;;
+  *Clojure*) install "Clojure" "rlwrap clojure" ;;
+  *Scala*) present_terminal karchy-install-scala ;;
   # Services
   *Tailscale*) present_terminal karchy-install-tailscale ;;
   *WireGuard*) install "WireGuard" wireguard-tools ;;

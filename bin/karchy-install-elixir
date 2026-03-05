@@ -1,0 +1,4 @@
+#!/bin/bash
+echo -e '\e[32mInstalling Elixir...\e[0m'
+karchy-pkg-add erlang elixir
+mix local.hex --force
