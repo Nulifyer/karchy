@@ -1,7 +1,9 @@
 #!/bin/bash
-# Launch a command as a fully detached process via systemd scope.
+# Launch a command as a fully detached GUI process via systemd scope.
 # Usage: karchy-detach <command> [args...]
-# Uses --scope so the child inherits the caller's full environment
-# (DISPLAY, WAYLAND_DISPLAY, DBUS_SESSION_BUS_ADDRESS, etc.)
-# instead of running in systemd's clean service environment.
+#
+# Uses --scope for proper KDE Plasma cgroup integration:
+#   - Inherits the caller's full environment
+#   - Gets its own scope under app.slice
+#   - Scope survives after the launching terminal/script exits
 systemd-run --user --scope -- "$@" &>/dev/null &
