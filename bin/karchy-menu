@@ -129,19 +129,19 @@ show_update_menu() {
   case $(menu "Update" \
     "$(entry $'\U000f06b0' "System Update")" \
     "$(entry $'\uea69' "Mirror Ranking")" \
-    "$(entry $'\U000f08ce' "Package Cache Clean")" \
     "$(entry $'\ueb53' "Firmware")" \
     "$(entry $'\U000f07f5' "Password")" \
     "$(entry $'\U000f0694' "Timezone")" \
     "$(entry $'\ueaf8' "Hardware")" \
+    "$(entry $'\U000f04bb' "Cleanup")" \
   ) in
   *System\ Update*) present_terminal karchy-update ;;
   *Mirror*) present_terminal "sudo cachyos-rate-mirrors" ;;
-  *Cache*) present_terminal "sudo pacman -Scc" ;;
   *Firmware*) present_terminal karchy-update-firmware ;;
   *Password*) present_terminal passwd ;;
   *Timezone*) present_terminal karchy-tz-select ;;
   *Hardware*) show_update_hardware_menu ;;
+  *Cleanup*) present_terminal karchy-pkg-cleanup ;;
   *) back_to show_main_menu ;;
   esac
 }
