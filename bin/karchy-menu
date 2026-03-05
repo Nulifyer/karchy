@@ -134,6 +134,7 @@ show_update_menu() {
     "$(entry $'\U000f0694' "Timezone")" \
     "$(entry $'\ueaf8' "Hardware")" \
     "$(entry $'\U000f04bb' "Cleanup")" \
+    "$(entry $'\U000f06b0' "Update Karchy")" \
   ) in
   *System\ Update*) present_terminal karchy-update ;;
   *Mirror*) present_terminal "sudo cachyos-rate-mirrors" ;;
@@ -142,6 +143,7 @@ show_update_menu() {
   *Timezone*) present_terminal karchy-tz-select ;;
   *Hardware*) show_update_hardware_menu ;;
   *Cleanup*) present_terminal karchy-pkg-cleanup ;;
+  *Karchy*) present_terminal karchy-self-update ;;
   *) back_to show_main_menu ;;
   esac
 }
