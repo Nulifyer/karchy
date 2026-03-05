@@ -22,10 +22,13 @@ entry() {
 }
 
 menu() {
-  local prompt="$1"
-  shift
+  local prompt="$1" placeholder="${2:-}"
+  shift; [[ -n "$placeholder" ]] && shift
+  local ph_args=()
+  [[ -n "$placeholder" ]] && ph_args=(--placeholder "$placeholder")
   printf '%s\n' "$@" | fuzzel --dmenu \
     --prompt "$prompt  " \
+    "${ph_args[@]}" \
     --width 32 \
     --lines 10 \
     --inner-pad 12 \
@@ -217,7 +220,7 @@ show_system_menu() {
 show_main_menu() {
   local commit
   commit=$(git -C "$HOME/.local/share/karchy" rev-parse --short HEAD 2>/dev/null)
-  case $(menu "Karchy" \
+  case $(menu "Karchy" "${commit:-}" \
     "$(entry $'\U000f003b' "Apps")" \
     "$(entry $'\U000f04bb' "Projects")" \
     "$(entry $'\ueaf8' "Setup")" \
