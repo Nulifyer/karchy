@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Install one of the supported development environments.
-# Usage: karchy-install-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|rust|java|zig|ocaml|dotnet|clojure|scala>
+# Usage: karchy-install-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|rust|java|zig|ocaml|dotnet10|dotnet9|dotnet8|dotnet7|dotnet6|clojure|scala>
 
 if [[ -z $1 ]]; then
-  echo "Usage: karchy-install-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|rust|java|zig|ocaml|dotnet|clojure|scala>" >&2
+  echo "Usage: karchy-install-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|rust|java|zig|ocaml|dotnet10|dotnet9|dotnet8|dotnet7|dotnet6|clojure|scala>" >&2
   exit 1
 fi
 
@@ -121,9 +121,25 @@ ocaml)
   eval "$(opam env)"
   opam install ocaml-lsp-server odoc ocamlformat utop --yes
   ;;
-dotnet)
-  echo -e "Installing .NET...\n"
-  mise use --global dotnet@latest
+dotnet10)
+  echo -e "Installing .NET 10 SDK...\n"
+  karchy-pkg-add dotnet-sdk-10.0
+  ;;
+dotnet9)
+  echo -e "Installing .NET 9 SDK...\n"
+  karchy-pkg-add dotnet-sdk-9.0
+  ;;
+dotnet8)
+  echo -e "Installing .NET 8 SDK...\n"
+  karchy-pkg-add dotnet-sdk-8.0
+  ;;
+dotnet7)
+  echo -e "Installing .NET 7 SDK...\n"
+  karchy-pkg-add dotnet-sdk-7.0
+  ;;
+dotnet6)
+  echo -e "Installing .NET 6 SDK...\n"
+  karchy-pkg-add dotnet-sdk-6.0
   ;;
 clojure)
   echo -e "Installing Clojure...\n"

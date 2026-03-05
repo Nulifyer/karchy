@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Remove a development environment previously installed via karchy-install-dev-env.
-# Usage: karchy-remove-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|zig|rust|java|dotnet|ocaml|clojure|scala>
+# Usage: karchy-remove-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|zig|rust|java|dotnet10|dotnet9|dotnet8|dotnet7|dotnet6|ocaml|clojure|scala>
 
 if [[ -z $1 ]]; then
-  echo "Usage: karchy-remove-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|zig|rust|java|dotnet|ocaml|clojure|scala>" >&2
+  echo "Usage: karchy-remove-dev-env <ruby|node|bun|deno|go|php|laravel|symfony|python|elixir|phoenix|zig|rust|java|dotnet10|dotnet9|dotnet8|dotnet7|dotnet6|ocaml|clojure|scala>" >&2
   exit 1
 fi
 
@@ -80,10 +80,25 @@ java)
   mise uninstall java --all
   mise rm -g java
   ;;
-dotnet)
-  echo -e "Removing .NET...\n"
-  mise uninstall dotnet --all
-  mise rm -g dotnet
+dotnet10)
+  echo -e "Removing .NET 10 SDK...\n"
+  sudo pacman -Rns --noconfirm dotnet-sdk-10.0 2>/dev/null || true
+  ;;
+dotnet9)
+  echo -e "Removing .NET 9 SDK...\n"
+  sudo pacman -Rns --noconfirm dotnet-sdk-9.0 2>/dev/null || true
+  ;;
+dotnet8)
+  echo -e "Removing .NET 8 SDK...\n"
+  sudo pacman -Rns --noconfirm dotnet-sdk-8.0 2>/dev/null || true
+  ;;
+dotnet7)
+  echo -e "Removing .NET 7 SDK...\n"
+  sudo pacman -Rns --noconfirm dotnet-sdk-7.0 2>/dev/null || true
+  ;;
+dotnet6)
+  echo -e "Removing .NET 6 SDK...\n"
+  sudo pacman -Rns --noconfirm dotnet-sdk-6.0 2>/dev/null || true
   ;;
 ocaml)
   echo -e "Removing OCaml...\n"
