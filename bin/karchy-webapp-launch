@@ -1,7 +1,7 @@
 #!/bin/bash
 # Launch a URL in webapp mode (standalone window without browser chrome).
-# Detects the default browser from KDE/xdg settings and uses --app= for
-# Chromium-based browsers. Falls back to xdg-open for unsupported browsers.
+# Tries Chromium-based browsers in preference order (open-source first),
+# then falls back to xdg-open.
 
 URL="$1"
 CLASS="$2"
@@ -9,9 +9,6 @@ if [[ -z $URL ]]; then
   echo "Usage: karchy-webapp-launch <url> [class-name]"
   exit 1
 fi
-
-# Get the default browser .desktop filename
-DEFAULT_BROWSER=$(xdg-settings get default-web-browser 2>/dev/null)
 
 # Extract the Exec binary from a .desktop file
 get_browser_exec() {
@@ -26,17 +23,30 @@ get_browser_exec() {
   grep -oP '^Exec=\K[^ %]+' "$desktop_file" | head -1
 }
 
-# Chromium-based browsers support --app= for webapp mode
-case "$DEFAULT_BROWSER" in
-  google-chrome*.desktop|chromium*.desktop|brave*.desktop|microsoft-edge*.desktop|vivaldi*.desktop|ungoogled-chromium*.desktop)
-    BROWSER_EXEC=$(get_browser_exec "$DEFAULT_BROWSER")
-    if [[ -n $BROWSER_EXEC ]]; then
-      ARGS=(--app="$URL")
-      [[ -n $CLASS ]] && ARGS+=(--class="$CLASS")
-      exec "$BROWSER_EXEC" "${ARGS[@]}"
-    fi
-    ;;
-esac
+launch_app() {
+  local exec="$1"
+  local args=(--app="$URL")
+  [[ -n $CLASS ]] && args+=(--class="$CLASS")
+  exec "$exec" "${args[@]}"
+}
+
+# Preferred browser order: open-source first, then proprietary
+BROWSERS=(
+  brave-browser.desktop
+  brave-browser-stable.desktop
+  ungoogled-chromium.desktop
+  chromium.desktop
+  chromium-browser.desktop
+  vivaldi-stable.desktop
+  vivaldi.desktop
+  opera.desktop
+  google-chrome.desktop
+  google-chrome-stable.desktop
+)
+
+for desktop in "${BROWSERS[@]}"; do
+  exec_path=$(get_browser_exec "$desktop") && [[ -n $exec_path ]] && launch_app "$exec_path"
+done
 
 # Fallback: open as a regular page in the default browser
 exec xdg-open "$URL"

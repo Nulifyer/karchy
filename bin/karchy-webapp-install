@@ -4,116 +4,73 @@ set -e
 ICON_DIR="$HOME/.local/share/applications/icons"
 CACHE_DIR="/tmp/karchy-dashboard-icons"
 METADATA_CACHE="$CACHE_DIR/metadata.json"
-ETAG_CACHE="$CACHE_DIR/metadata.etag"
-ICONS_LIST_CACHE="$CACHE_DIR/icons_list.txt"
+COMMIT_CACHE="$CACHE_DIR/commit.txt"
 PREVIEW_DIR="$CACHE_DIR/preview"
-CACHE_MAX_AGE=$((7 * 24 * 60 * 60)) # 7 days
 
 # ── Dashboard Icons Cache ──────────────────────────────────────────────────
-is_cache_valid() {
-  [[ -f "$1" ]] || return 1
-  local file_time current_time
-  file_time=$(stat -c %Y "$1" 2>/dev/null) || return 1
-  current_time=$(date +%s)
-  (( current_time - file_time < CACHE_MAX_AGE ))
+get_latest_commit() {
+  curl -sL "https://api.github.com/repos/homarr-labs/dashboard-icons/commits/main" \
+    | grep -m1 '"sha"' | cut -d'"' -f4 | cut -c1-7
+}
+
+get_cached_commit() {
+  [[ -f "$COMMIT_CACHE" ]] && cat "$COMMIT_CACHE" || echo ""
 }
 
 fetch_metadata() {
+  local commit="$1"
   mkdir -p "$CACHE_DIR"
-  local url="https://raw.githubusercontent.com/homarr-labs/dashboard-icons/refs/heads/main/metadata.json"
-  local etag_header=""
-
-  if [[ -f "$ETAG_CACHE" && -f "$METADATA_CACHE" ]]; then
-    etag_header="-H If-None-Match: $(cat "$ETAG_CACHE")"
+  local url="https://raw.githubusercontent.com/homarr-labs/dashboard-icons/$commit/metadata.json"
+  if curl -fsSL -o "$METADATA_CACHE" "$url"; then
+    echo "$commit" > "$COMMIT_CACHE"
+  else
+    [[ -f "$METADATA_CACHE" ]] && return 0
+    echo "Failed to fetch icon metadata" >&2
+    return 1
   fi
-
-  local http_code
-  http_code=$(curl -sL -w "%{http_code}" \
-    $etag_header \
-    -D "$CACHE_DIR/headers.tmp" \
-    -o "$METADATA_CACHE.tmp" \
-    "$url")
-
-  case "$http_code" in
-    304)
-      touch "$METADATA_CACHE"
-      rm -f "$METADATA_CACHE.tmp" "$CACHE_DIR/headers.tmp"
-      ;;
-    200)
-      mv "$METADATA_CACHE.tmp" "$METADATA_CACHE"
-      if [[ -f "$CACHE_DIR/headers.tmp" ]]; then
-        grep -i '^etag:' "$CACHE_DIR/headers.tmp" | cut -d' ' -f2- | tr -d '\r\n' > "$ETAG_CACHE"
-        rm -f "$CACHE_DIR/headers.tmp"
-      fi
-      # Invalidate icons list so it gets rebuilt
-      rm -f "$ICONS_LIST_CACHE"
-      ;;
-    *)
-      rm -f "$METADATA_CACHE.tmp" "$CACHE_DIR/headers.tmp"
-      [[ -f "$METADATA_CACHE" ]] && return 0
-      echo "Failed to fetch icon metadata (HTTP $http_code)" >&2
-      return 1
-      ;;
-  esac
-}
-
-build_icons_list() {
-  [[ -f "$METADATA_CACHE" ]] || return 1
-
-  local base_url="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons"
-  > "$ICONS_LIST_CACHE.tmp"
-
-  while IFS= read -r line; do
-    if [[ $line =~ ^[[:space:]]*\"([^\"]+)\":[[:space:]]*\{ ]]; then
-      local icon_name="${BASH_REMATCH[1]}"
-      local icon_block
-      icon_block=$(grep -A 15 "\"$icon_name\":" "$METADATA_CACHE" | head -15)
-
-      local svg_filename
-      if [[ $icon_block =~ \"light\":[[:space:]]*\"([^\"]+)\" ]]; then
-        svg_filename="${BASH_REMATCH[1]}.svg"
-      else
-        svg_filename="${icon_name}.svg"
-      fi
-
-      local display_name
-      display_name=$(echo "$icon_name" | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
-      echo "${display_name}|${icon_name}|${base_url}/svg/${svg_filename}" >> "$ICONS_LIST_CACHE.tmp"
-    fi
-  done < "$METADATA_CACHE"
-
-  mv "$ICONS_LIST_CACHE.tmp" "$ICONS_LIST_CACHE"
 }
 
 ensure_icons_cache() {
-  if ! is_cache_valid "$METADATA_CACHE"; then
-    fetch_metadata || return 1
-    build_icons_list
-  elif [[ ! -f "$ICONS_LIST_CACHE" ]] || ! is_cache_valid "$ICONS_LIST_CACHE"; then
-    build_icons_list
+  local latest cached
+  latest=$(get_latest_commit)
+  cached=$(get_cached_commit)
+  if [[ -n "$latest" && "$latest" != "$cached" ]]; then
+    fetch_metadata "$latest" || return 1
   fi
-  [[ -f "$ICONS_LIST_CACHE" ]]
+  [[ -f "$METADATA_CACHE" ]]
 }
 
 search_icons() {
-  if ! [[ -f "$ICONS_LIST_CACHE" ]] || ! is_cache_valid "$METADATA_CACHE" || ! is_cache_valid "$ICONS_LIST_CACHE"; then
-    export -f is_cache_valid fetch_metadata build_icons_list ensure_icons_cache
-    export CACHE_DIR METADATA_CACHE ETAG_CACHE ICONS_LIST_CACHE CACHE_MAX_AGE
+  if ! [[ -f "$METADATA_CACHE" ]]; then
+    export -f get_latest_commit get_cached_commit fetch_metadata ensure_icons_cache
+    export CACHE_DIR METADATA_CACHE COMMIT_CACHE
     gum spin --spinner dot --title "Loading dashboard icons..." -- \
       bash -c 'ensure_icons_cache' || return 1
+  else
+    ensure_icons_cache
   fi
-  [[ -f "$ICONS_LIST_CACHE" ]] || return 1
+  [[ -f "$METADATA_CACHE" ]] || return 1
+
+  local commit
+  commit=$(get_cached_commit)
+  local base_url="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons@$commit"
+
+  # Build display names from JSON keys at runtime
+  local names
+  names=$(grep -oP '^\s*"\K[^"]+(?="\s*:\s*\{)' "$METADATA_CACHE" | while read -r icon_name; do
+    local display_name
+    display_name=$(echo "$icon_name" | sed 's/-/ /g; s/\b\(.\)/\u\1/g')
+    echo "${display_name}|${icon_name}"
+  done)
 
   local preview_cmd preview_window
   if command -v chafa &>/dev/null; then
     preview_cmd='
       icon_name=$(echo {} | cut -d"|" -f2)
-      url=$(echo {} | cut -d"|" -f3)
-      png_url=$(echo "$url" | sed "s|/svg/|/png/|; s|\.svg$|.png|")
       cached="'"$PREVIEW_DIR"'/${icon_name}.png"
       if [[ ! -f "$cached" ]]; then
         mkdir -p "'"$PREVIEW_DIR"'"
-        curl -sL "$png_url" -o "$cached" 2>/dev/null
+        curl -sL "'"$base_url"'/png/${icon_name}.png" -o "$cached" 2>/dev/null
       fi
       if [[ -s "$cached" ]]; then
         chafa -s 8x8 "$cached" 2>/dev/null || echo "${icon_name}"
@@ -122,12 +79,12 @@ search_icons() {
       fi'
     preview_window='right:20:noborder'
   else
-    preview_cmd='echo {} | cut -d"|" -f3'
+    preview_cmd='echo {} | cut -d"|" -f2'
     preview_window='down:1:noborder'
   fi
 
   local selection
-  selection=$(cat "$ICONS_LIST_CACHE" | \
+  selection=$(echo "$names" | \
     fzf --query="${1:-}" \
         --prompt="Search icons: " \
         --header="Enter: select | Esc: cancel" \
@@ -136,7 +93,9 @@ search_icons() {
         --delimiter="|" \
         --with-nth=1) || return 1
 
-  echo "$selection" | cut -d'|' -f3
+  local icon_name
+  icon_name=$(echo "$selection" | cut -d'|' -f2)
+  echo "$base_url/svg/$icon_name.svg"
 }
 
 # ── Main ───────────────────────────────────────────────────────────────────
