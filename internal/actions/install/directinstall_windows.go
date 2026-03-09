@@ -3,6 +3,7 @@
 package install
 
 import (
+	"archive/zip"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"unsafe"
 
 	"github.com/nulifyer/karchy/internal/logging"
+	"golang.org/x/sys/windows/registry"
 )
 
 // DirectInstall fetches the manifest, downloads the installer, verifies the hash,
@@ -152,16 +154,123 @@ func VerifyHash(path, expectedHash string) error {
 func runInstaller(path, installerType, silentArgs string, elevate bool) error {
 	logging.Info("runInstaller: type=%s args=%q elevate=%v", installerType, silentArgs, elevate)
 
-	if elevate {
-		return runElevated(path, installerType, silentArgs)
-	}
-
 	switch installerType {
+	case "zip", "portable":
+		return runZIP(path)
 	case "msi", "wix":
+		if elevate {
+			return runElevated(path, installerType, silentArgs)
+		}
 		return runMSI(path, silentArgs)
 	default:
+		if elevate {
+			return runElevated(path, installerType, silentArgs)
+		}
 		return runEXE(path, silentArgs)
 	}
+}
+
+// runZIP extracts a ZIP archive to %LOCALAPPDATA%\Programs\<name>\ and adds it to the user PATH.
+func runZIP(zipPath string) error {
+	// Derive app name from the zip filename (e.g. "Microsoft.Sysinternals.Autoruns" → same)
+	name := strings.TrimSuffix(filepath.Base(zipPath), filepath.Ext(zipPath))
+	destDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", name)
+
+	logging.Info("runZIP: extracting %s -> %s", zipPath, destDir)
+
+	// Clean out old version before extracting
+	os.RemoveAll(destDir)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("create dest dir: %w", err)
+	}
+
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return fmt.Errorf("open zip: %w", err)
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		// Prevent zip slip
+		target := filepath.Join(destDir, f.Name)
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)+string(os.PathSeparator)) && filepath.Clean(target) != filepath.Clean(destDir) {
+			logging.Info("runZIP: skipping suspicious path %s", f.Name)
+			continue
+		}
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(target, 0755)
+			continue
+		}
+
+		// Ensure parent directory exists
+		os.MkdirAll(filepath.Dir(target), 0755)
+
+		out, err := os.Create(target)
+		if err != nil {
+			return fmt.Errorf("create %s: %w", f.Name, err)
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			out.Close()
+			return fmt.Errorf("open %s in zip: %w", f.Name, err)
+		}
+
+		_, err = io.Copy(out, rc)
+		rc.Close()
+		out.Close()
+		if err != nil {
+			return fmt.Errorf("extract %s: %w", f.Name, err)
+		}
+	}
+
+	// Add to user PATH if not already present
+	if err := addToUserPath(destDir); err != nil {
+		logging.Info("runZIP: failed to add to PATH: %v", err)
+		// Non-fatal — the files are extracted successfully
+	}
+
+	logging.Info("runZIP: extracted %d files to %s", len(r.File), destDir)
+	return nil
+}
+
+// addToUserPath adds a directory to the user-level PATH environment variable via the registry.
+func addToUserPath(dir string) error {
+	k, err := openUserEnvKey()
+	if err != nil {
+		return err
+	}
+	defer k.Close()
+
+	current, _, err := k.GetStringValue("Path")
+	if err != nil {
+		current = ""
+	}
+
+	// Check if already in PATH (case-insensitive)
+	for _, p := range strings.Split(current, ";") {
+		if strings.EqualFold(strings.TrimSpace(p), dir) {
+			logging.Info("addToUserPath: %s already in PATH", dir)
+			return nil
+		}
+	}
+
+	newPath := current
+	if newPath != "" && !strings.HasSuffix(newPath, ";") {
+		newPath += ";"
+	}
+	newPath += dir
+
+	if err := k.SetStringValue("Path", newPath); err != nil {
+		return fmt.Errorf("set PATH: %w", err)
+	}
+
+	// Broadcast WM_SETTINGCHANGE so Explorer picks up the new PATH
+	broadcastSettingChange()
+
+	logging.Info("addToUserPath: added %s to user PATH", dir)
+	return nil
 }
 
 func runEXE(path, args string) error {
@@ -287,4 +396,29 @@ func shellExecuteEx(info *shellExecuteInfo) error {
 		return err
 	}
 	return nil
+}
+
+const userEnvKey = `Environment`
+
+func openUserEnvKey() (registry.Key, error) {
+	return registry.OpenKey(registry.CURRENT_USER, userEnvKey, registry.QUERY_VALUE|registry.SET_VALUE)
+}
+
+var (
+	user32              = syscall.NewLazyDLL("user32.dll")
+	procSendMessageTimeout = user32.NewProc("SendMessageTimeoutW")
+)
+
+func broadcastSettingChange() {
+	env, _ := syscall.UTF16PtrFromString("Environment")
+	// HWND_BROADCAST=0xFFFF, WM_SETTINGCHANGE=0x001A, SMTO_ABORTIFHUNG=0x0002, timeout=5000ms
+	procSendMessageTimeout.Call(
+		uintptr(0xFFFF),
+		uintptr(0x001A),
+		0,
+		uintptr(unsafe.Pointer(env)),
+		uintptr(0x0002),
+		uintptr(5000),
+		0,
+	)
 }
