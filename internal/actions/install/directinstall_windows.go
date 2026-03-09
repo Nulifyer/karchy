@@ -109,12 +109,12 @@ func VerifyHash(path, expectedHash string) error {
 	return nil
 }
 
-func runInstaller(path, installerType, silentArgs string, elevate bool) error {
+func runInstaller(path, installerType, silentArgs string, pkg PackageEntry, elevate bool) error {
 	logging.Info("runInstaller: type=%s args=%q elevate=%v", installerType, silentArgs, elevate)
 
 	switch installerType {
 	case "zip", "portable":
-		return runZIP(path)
+		return runZIP(path, pkg)
 	case "msi", "wix":
 		if elevate {
 			return runElevated(path, installerType, silentArgs)
@@ -129,9 +129,8 @@ func runInstaller(path, installerType, silentArgs string, elevate bool) error {
 }
 
 // runZIP extracts a ZIP archive to %LOCALAPPDATA%\Programs\<name>\ and adds it to the user PATH.
-func runZIP(zipPath string) error {
-	// Derive app name from the zip filename (e.g. "Microsoft.Sysinternals.Autoruns" → same)
-	name := strings.TrimSuffix(filepath.Base(zipPath), filepath.Ext(zipPath))
+func runZIP(zipPath string, pkg PackageEntry) error {
+	name := pkg.ID
 	destDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", name)
 
 	logging.Info("runZIP: extracting %s -> %s", zipPath, destDir)
@@ -194,7 +193,7 @@ func runZIP(zipPath string) error {
 	}
 
 	// Register in ARP so the package appears in Remove and can be uninstalled
-	if err := registerZIPInARP(name, destDir); err != nil {
+	if err := registerZIPInARP(name, pkg.Name, destDir); err != nil {
 		logging.Info("runZIP: failed to register in ARP: %v", err)
 	}
 
@@ -249,7 +248,8 @@ func createStartMenuShortcuts(dir, appName string) error {
 // registerZIPInARP creates/updates an ARP (Add/Remove Programs) registry entry so the
 // ZIP-installed package appears in the system's installed programs list and in karchy's Remove menu.
 // Uses a self-contained cmd uninstall command that doesn't depend on karchy.
-func registerZIPInARP(name, installDir string) error {
+func registerZIPInARP(id, displayName, installDir string) error {
+	name := id
 	arpPath := `SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\` + name
 	k, _, err := registry.CreateKey(registry.CURRENT_USER, arpPath, registry.SET_VALUE)
 	if err != nil {
@@ -266,7 +266,7 @@ func registerZIPInARP(name, installDir string) error {
 		installDir, startMenu, arpRegPath, installDir,
 	)
 
-	k.SetStringValue("DisplayName", name)
+	k.SetStringValue("DisplayName", displayName)
 	k.SetStringValue("InstallLocation", installDir)
 	k.SetStringValue("UninstallString", uninstallCmd)
 	k.SetStringValue("QuietUninstallString", uninstallCmd)

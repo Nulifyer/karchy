@@ -361,7 +361,7 @@ func phaseInstall(resolved []resolvedPkg, paths []string, verified []bool) {
 		fmt.Printf(" [%d/%d] Installing %s...", i+1, len(resolved), r.pkg.Name)
 
 		args := SilentArgs(r.manifest, r.installer)
-		err := runInstaller(paths[i], r.installer.EffectiveType(r.manifest), args, r.installer.NeedsElevation(r.manifest))
+		err := runInstaller(paths[i], r.installer.EffectiveType(r.manifest), args, r.pkg, r.installer.NeedsElevation(r.manifest))
 		if err != nil {
 			fmt.Printf(" %sfailed%s\n", colorRed, colorReset)
 			failed++
