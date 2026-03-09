@@ -2,11 +2,6 @@ version: 2
 
 project_name: karchy
 
-before:
-  hooks:
-    - go install github.com/tc-hib/go-winres@latest
-    - go-winres make
-
 builds:
   - binary: karchy
     env:
