@@ -1,111 +1,111 @@
 # Karchy
 
-A system menu and toolkit for CachyOS KDE Plasma, inspired by [omarchy](https://github.com/basecamp/omarchy).
+A fast, keyboard-driven system utility launcher built with Go and [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
-Launch everything from a single `Super+Space` menu — apps, package management, web apps, system settings, updates, and more.
+Summon it with a global hotkey, fuzzy-search your apps and projects, manage packages, install fonts, tweak settings — all from a themed terminal popup.
 
 ## Features
 
-| | Feature | Description |
-|---|---|---|
-| 🚀 | **App Launcher** | fuzzel-powered app search with KDE integration |
-| 📦 | **Package Management** | Install/remove packages from pacman and AUR (paru) with fzf fuzzy search |
-| 🌐 | **Web Apps** | Create desktop shortcuts that launch in browser app mode |
-| 🔍 | **Project Discovery** | Scan for projects and open them in your preferred editor |
-| 🔄 | **System Updates** | Update pacman + AUR packages, with a system tray notifier icon |
-| ⬆️ | **Self-Update** | Update karchy itself via `git pull` |
-| 🧹 | **Cleanup** | Remove orphaned packages and clean the package cache |
-| 🎨 | **10 Color Themes** | Applied to all menus — Catppuccin, Tokyo Night, Nord, Dracula, and more |
-| ⚙️ | **Setup Utilities** | Audio, Wi-Fi, Bluetooth, monitors, power profiles, theme |
-| 🔒 | **System Controls** | Lock, suspend, hibernate, logout, restart, shutdown |
-
-## Requirements
-
-- CachyOS (or Arch Linux) with KDE Plasma 6
-- Wayland
-- Git
-
-Dependencies are installed automatically during setup.
+- **Global hotkey** (Win+Space) to summon/dismiss
+- **Fuzzy search** for apps and projects
+- **Package management** — install, remove, update (custom winget integration on Windows)
+- **Nerd Font management** — install/remove 71 fonts via oh-my-posh
+- **Web app creation** — Chrome/Edge PWA shortcuts with dashboard icons (Windows)
+- **WSL management** — launch, install, remove distros (Windows)
+- **System settings** — quick access to audio, Wi-Fi, Bluetooth, display, power, timezone
+- **10 built-in themes** — Catppuccin Mocha, Gruvbox, Tokyo Night, Nord, Dracula, and more
+- **Cross-platform** — Windows, Linux, macOS
 
 ## Install
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Nulifyer/karchy/main/install.sh | bash
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/Nulifyer/karchy/main/.scripts/install.ps1 | iex
 ```
 
-This will:
-- Install dependencies (fuzzel, gum, alacritty, fzf, chafa, paru-git, etc.)
-- Clone the repo to `~/.local/share/karchy`
-- Add `~/.local/share/karchy/bin` to PATH
-- Bind `Super+Space` to the karchy menu
-- Set up KWin window rules for popups and web apps
-- Enable the update notifier tray icon
-
-Re-running the installer updates the existing installation via `git pull`.
-
-## Update
-
-From the menu: **Update > Update Karchy**
-
-Or from the command line:
+### Linux / macOS
 
 ```bash
-karchy-self-update
+curl -fsSL https://raw.githubusercontent.com/Nulifyer/karchy/main/.scripts/install.sh | bash
+```
+
+### Build from Source
+
+```bash
+go build -ldflags "-s -w" -o karchy .
+./karchy install
+```
+
+## Uninstall
+
+### Windows
+
+```powershell
+irm https://raw.githubusercontent.com/Nulifyer/karchy/main/.scripts/uninstall.ps1 | iex
+```
+
+### Linux / macOS
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nulifyer/karchy/main/.scripts/uninstall.sh | bash
 ```
 
 ## Usage
 
-Press `Super+Space` to open the menu, or run directly:
+| Command | Description |
+|---------|-------------|
+| `karchy` | Launch the TUI |
+| `karchy daemon start` | Start the background daemon (hotkey listener + tray icon) |
+| `karchy daemon stop` | Stop the daemon |
+| `karchy install` | Register startup, install dependencies, start daemon |
+| `karchy uninstall` | Remove startup registration and config |
+| `karchy update self` | Update to the latest release |
+| `karchy version` | Print version |
 
-```bash
-karchy-menu          # main menu
-karchy-menu apps     # jump to app launcher
-karchy-menu install  # jump to install menu
-karchy-menu update   # jump to update menu
-karchy-menu setup    # jump to setup menu
-karchy-menu remove   # jump to remove menu
-karchy-menu system   # jump to system menu
+## Configuration
+
+Config file: `~/.config/karchy/config.toml` (Linux/macOS) or `%APPDATA%\karchy\config.toml` (Windows)
+
+```toml
+[hotkey]
+toggle = "Super+Space"
+
+[appearance]
+font_family = "CaskaydiaMono NF"
+font_size = 13.0
+
+[theme]
+name = "catppuccin-mocha"
+
+[terminal]
+app = "alacritty"
+
+[projects]
+editor = "code"
+dirs = ["~/Projects"]
 ```
 
-### Menu Structure
+## Themes
 
-```
-Karchy
-├── Apps             — fuzzel app launcher
-├── Projects         — scan & open projects in editor
-├── Setup
-│   ├── Audio        — pavucontrol
-│   ├── Wifi         — KDE network settings
-│   ├── Bluetooth    — KDE bluetooth settings
-│   ├── Monitors     — KDE display settings
-│   ├── Power        — power profile selector
-│   └── Theme        — pick a color theme
-├── Install
-│   ├── Package      — interactive pacman browser
-│   ├── AUR          — interactive paru browser
-│   ├── Web App      — create browser app shortcuts
-│   └── Font         — install Nerd Fonts
-├── Remove
-│   ├── Package      — interactive package remover
-│   ├── Web App      — remove created shortcuts
-│   └── Font         — remove installed fonts
-├── Update
-│   ├── System       — pacman + AUR upgrade
-│   ├── Mirror       — rank fastest mirrors
-│   ├── Firmware     — fwupd firmware update
-│   ├── Timezone     — select timezone
-│   ├── Hardware     — restart audio, wifi, bluetooth
-│   ├── Cleanup      — remove orphans + clean cache
-│   └── Karchy       — self-update via git pull
-└── System           — lock, suspend, hibernate, logout, restart, shutdown
-```
+| Theme | |
+|-------|---|
+| catppuccin-mocha | Default |
+| gruvbox-dark | |
+| tokyo-night | |
+| nord | |
+| dracula | |
+| solarized-dark | |
+| one-dark | |
+| rose-pine | |
+| everforest-dark | |
+| kanagawa | |
 
-### Themes
+## Dependencies
 
-Go to **Setup > Theme** to pick a color theme. Choose `auto` to follow your KDE color scheme, or select a hardcoded theme:
-
-Catppuccin Mocha, Gruvbox Dark, Tokyo Night, Nord, Dracula, Solarized Dark, One Dark, Rose Pine, Everforest Dark, Kanagawa
+- [Alacritty](https://alacritty.org/) — terminal emulator (provides borderless themed window chrome)
+- [oh-my-posh](https://ohmyposh.dev/) — Nerd Font installer (Windows only, optional)
 
 ## License
 
-MIT
+[MIT](LICENSE)

@@ -1,6 +1,0 @@
-#!/bin/bash
-# Display a "Done!" message with a spinner and wait for user to press any key.
-
-echo
-gum style --foreground 2 "Done! Press any key to close..."
-read -n 1 -s

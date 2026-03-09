@@ -1,6 +1,0 @@
-[Unit]
-Description=Signal karchy update notifier to re-check
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash -c 'pkill -SIGUSR1 -f karchy-update-notifier || true'
