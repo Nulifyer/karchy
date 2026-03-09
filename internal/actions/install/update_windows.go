@@ -13,7 +13,7 @@ import (
 
 // SystemUpdate finds all installed packages in the search index and runs them
 // through BatchInstall, which handles version comparison, download, and install.
-func SystemUpdate() {
+func SystemUpdate() int {
 	terminal.ResizeAndCenter(100, 30)
 
 	fmt.Printf("\n :: Checking for updates...\n\n")
@@ -23,7 +23,7 @@ func SystemUpdate() {
 		fmt.Printf(" No installed packages found.\n\n")
 		fmt.Print(" Press Enter to close...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
-		return
+		return 0
 	}
 
 	all := SearchPackages()
@@ -31,7 +31,7 @@ func SystemUpdate() {
 		fmt.Printf(" Could not load package index.\n\n")
 		fmt.Print(" Press Enter to close...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
-		return
+		return 0
 	}
 
 	// Collect all installed packages that exist in the search index
@@ -46,11 +46,12 @@ func SystemUpdate() {
 		fmt.Printf(" No matching packages in index.\n\n")
 		fmt.Print(" Press Enter to close...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
-		return
+		return 0
 	}
 
 	logging.Info("SystemUpdate: %d installed packages found in index", len(candidates))
 
 	// batchPipeline handles version check, download, verify, install
 	batchPipeline(candidates, true)
+	return 0
 }

@@ -308,7 +308,7 @@ func loadRemovePackageItems() []TypedItem[install.InstalledPackage] {
 
 func updateMenu() []MenuItem {
 	return []MenuItem{
-		{Label: "System Update", Action: action(install.SystemUpdate)},
+		{Label: "System Update", Action: action(func() { install.SystemUpdate() })},
 		{Label: "Cleanup", Action: action(cleanup.Run)},
 	}
 }

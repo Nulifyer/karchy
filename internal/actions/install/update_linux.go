@@ -7,7 +7,9 @@ import (
 )
 
 // SystemUpdate runs a full system upgrade: keyrings, pacman, AUR, orphan cleanup, and kernel reboot check.
-func SystemUpdate() {
+// SystemUpdate runs a full system upgrade and returns the terminal PID.
+// The caller can wait on the PID to know when the update finishes.
+func SystemUpdate() int {
 	script := `
 set -e
 trap 'echo ""; echo -e "\033[1;31mSomething went wrong during the update! Review the output above.\033[0m"' ERR
@@ -61,5 +63,6 @@ echo -e "${BOLD}${GREEN}All done!${RESET}"
 echo
 read -rp "Press Enter to close..."
 `
-	terminal.LaunchShell(100, 30, "System Update", script)
+	pid, _ := terminal.LaunchShell(100, 30, "System Update", script)
+	return pid
 }

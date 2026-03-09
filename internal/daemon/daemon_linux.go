@@ -179,12 +179,16 @@ func run() {
 			switch action {
 			case "update":
 				logging.Info("daemon: tray update clicked")
-				install.SystemUpdate()
-				// Re-check after update
-				go func() {
-					time.Sleep(5 * time.Second)
-					checkUpdates(updateCh)
-				}()
+				pid := install.SystemUpdate()
+				// Wait for the update terminal to close, then refresh the tray
+				if pid > 0 {
+					go func() {
+						if p, err := os.FindProcess(pid); err == nil {
+							p.Wait()
+						}
+						checkUpdates(updateCh)
+					}()
+				}
 			case "open":
 				logging.Info("daemon: tray open clicked")
 				launchMenu()

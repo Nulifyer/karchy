@@ -3,6 +3,7 @@
 package install
 
 // SystemUpdate upgrades all outdated packages.
-func SystemUpdate() {
-	// TODO: pacman -Syu / brew upgrade
+func SystemUpdate() int {
+	// TODO: brew upgrade
+	return 0
 }
