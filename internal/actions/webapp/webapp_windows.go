@@ -8,9 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-ole/go-ole"
-	"github.com/go-ole/go-ole/oleutil"
 	"github.com/nulifyer/karchy/internal/logging"
+	"github.com/nulifyer/karchy/internal/platform"
 	"github.com/nulifyer/karchy/internal/terminal"
 )
 
@@ -250,7 +249,6 @@ func deleteApps(apps []WebApp) {
 }
 
 // createShortcut creates a .lnk file that runs `karchy webapp launch <url>`.
-// Uses WScript.Shell COM in-process — produces identical output to PowerShell.
 func createShortcut(appName, appURL, iconPath string) error {
 	dir := ShortcutDir()
 	os.MkdirAll(dir, 0755)
@@ -264,37 +262,11 @@ func createShortcut(appName, appURL, iconPath string) error {
 	arguments := fmt.Sprintf(`webapp launch "%s"`, appURL)
 	logging.Info("createShortcut: %s → %s %s", lnkPath, self, arguments)
 
-	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
-		return fmt.Errorf("CoInitialize: %w", err)
-	}
-	defer ole.CoUninitialize()
-
-	unknown, err := oleutil.CreateObject("WScript.Shell")
-	if err != nil {
-		return fmt.Errorf("create WScript.Shell: %w", err)
-	}
-	wsh, err := unknown.QueryInterface(ole.IID_IDispatch)
-	if err != nil {
-		return fmt.Errorf("query IDispatch: %w", err)
-	}
-	defer wsh.Release()
-
-	cs, err := oleutil.CallMethod(wsh, "CreateShortcut", lnkPath)
-	if err != nil {
-		return fmt.Errorf("CreateShortcut: %w", err)
-	}
-	shortcut := cs.ToIDispatch()
-	defer shortcut.Release()
-
-	oleutil.PutProperty(shortcut, "TargetPath", self)
-	oleutil.PutProperty(shortcut, "Arguments", arguments)
-	oleutil.PutProperty(shortcut, "Description", appName)
-	if iconPath != "" {
-		oleutil.PutProperty(shortcut, "IconLocation", iconPath)
-	}
-
-	if _, err := oleutil.CallMethod(shortcut, "Save"); err != nil {
-		return fmt.Errorf("save shortcut: %w", err)
-	}
-	return nil
+	return platform.CreateShortcut(platform.ShortcutOptions{
+		LnkPath:     lnkPath,
+		TargetPath:  self,
+		Arguments:   arguments,
+		Description: appName,
+		IconPath:    iconPath,
+	})
 }

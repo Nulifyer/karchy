@@ -24,11 +24,6 @@ func BatchInstall(pkgs []PackageEntry) {
 	// TODO: pacman -S / brew install
 }
 
-// DirectInstall installs a single package directly.
-func DirectInstall(pkg PackageEntry) error {
-	// TODO
-	return nil
-}
 
 // BatchVerify downloads and verifies packages without installing.
 func BatchVerify(pkgs []PackageEntry) {
@@ -58,4 +53,5 @@ func UninstallPackage(pkg InstalledPackage) error {
 func BatchUninstall(pkgs []InstalledPackage) {
 	// TODO
 }
+
 

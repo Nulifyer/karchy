@@ -18,40 +18,11 @@ import (
 	"unsafe"
 
 	"github.com/nulifyer/karchy/internal/logging"
+	"github.com/nulifyer/karchy/internal/platform"
 	"golang.org/x/sys/windows/registry"
 )
 
-// DirectInstall fetches the manifest, downloads the installer, verifies the hash,
-// and runs it with silent switches — no winget CLI needed.
-func DirectInstall(pkg PackageEntry) error {
-	logging.Info("DirectInstall: %s (%s) v%s", pkg.Name, pkg.ID, pkg.Version)
-
-	manifest, err := FetchManifest(pkg.ID, pkg.Version)
-	if err != nil {
-		return fmt.Errorf("manifest: %w", err)
-	}
-
-	entry, err := SelectInstaller(manifest)
-	if err != nil {
-		return fmt.Errorf("select installer: %w", err)
-	}
-	logging.Info("DirectInstall: selected %s %s %s", entry.Architecture, entry.Scope, entry.EffectiveType(manifest))
-
-	installerPath, err := DownloadFile(entry.InstallerURL, fileNameFromURL(entry.InstallerURL), nil)
-	if err != nil {
-		return fmt.Errorf("download: %w", err)
-	}
-	defer os.Remove(installerPath)
-
-	if err := VerifyHash(installerPath, entry.SHA256); err != nil {
-		return fmt.Errorf("hash verification: %w", err)
-	}
-
-	args := SilentArgs(manifest, entry)
-	return runInstaller(installerPath, entry.EffectiveType(manifest), args, entry.NeedsElevation(manifest))
-}
-
-// downloadFile downloads a URL to the karchy temp dir.
+// DownloadFile downloads a URL to the karchy temp dir.
 // If state is non-nil, it tracks progress via atomic DoneBytes.
 // Returns the local file path.
 func DownloadFile(url, name string, state *DownloadState) (string, error) {
@@ -111,19 +82,6 @@ func DownloadFile(url, name string, state *DownloadState) (string, error) {
 	return tmpFile, nil
 }
 
-func fileNameFromURL(url string) string {
-	if idx := strings.LastIndex(url, "/"); idx >= 0 {
-		name := url[idx+1:]
-		// Strip query params
-		if qi := strings.Index(name, "?"); qi >= 0 {
-			name = name[:qi]
-		}
-		if name != "" {
-			return name
-		}
-	}
-	return "installer.exe"
-}
 
 func VerifyHash(path, expectedHash string) error {
 	if expectedHash == "" {
@@ -151,12 +109,12 @@ func VerifyHash(path, expectedHash string) error {
 	return nil
 }
 
-func runInstaller(path, installerType, silentArgs string, elevate bool) error {
+func runInstaller(path, installerType, silentArgs string, pkg PackageEntry, elevate bool) error {
 	logging.Info("runInstaller: type=%s args=%q elevate=%v", installerType, silentArgs, elevate)
 
 	switch installerType {
 	case "zip", "portable":
-		return runZIP(path)
+		return runZIP(path, pkg)
 	case "msi", "wix":
 		if elevate {
 			return runElevated(path, installerType, silentArgs)
@@ -171,9 +129,8 @@ func runInstaller(path, installerType, silentArgs string, elevate bool) error {
 }
 
 // runZIP extracts a ZIP archive to %LOCALAPPDATA%\Programs\<name>\ and adds it to the user PATH.
-func runZIP(zipPath string) error {
-	// Derive app name from the zip filename (e.g. "Microsoft.Sysinternals.Autoruns" → same)
-	name := strings.TrimSuffix(filepath.Base(zipPath), filepath.Ext(zipPath))
+func runZIP(zipPath string, pkg PackageEntry) error {
+	name := pkg.ID
 	destDir := filepath.Join(os.Getenv("LOCALAPPDATA"), "Programs", name)
 
 	logging.Info("runZIP: extracting %s -> %s", zipPath, destDir)
@@ -228,10 +185,96 @@ func runZIP(zipPath string) error {
 	// Add to user PATH if not already present
 	if err := addToUserPath(destDir); err != nil {
 		logging.Info("runZIP: failed to add to PATH: %v", err)
-		// Non-fatal — the files are extracted successfully
+	}
+
+	// Create Start Menu shortcuts for extracted .exe files
+	if err := createStartMenuShortcuts(destDir, name); err != nil {
+		logging.Info("runZIP: failed to create shortcuts: %v", err)
+	}
+
+	// Register in ARP so the package appears in Remove and can be uninstalled
+	if err := registerZIPInARP(name, pkg.Name, destDir); err != nil {
+		logging.Info("runZIP: failed to register in ARP: %v", err)
 	}
 
 	logging.Info("runZIP: extracted %d files to %s", len(r.File), destDir)
+	return nil
+}
+
+// createStartMenuShortcuts creates .lnk files in the user's Start Menu for each .exe in dir.
+// Cleans any existing shortcuts first so updates don't leave stale entries.
+func createStartMenuShortcuts(dir, appName string) error {
+	startMenu := filepath.Join(os.Getenv("APPDATA"), `Microsoft\Windows\Start Menu\Programs`, appName)
+	os.RemoveAll(startMenu)
+
+	// Find all .exe files in the extracted directory (top-level only)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	var exes []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".exe") {
+			exes = append(exes, filepath.Join(dir, e.Name()))
+		}
+	}
+	if len(exes) == 0 {
+		return nil
+	}
+
+	os.MkdirAll(startMenu, 0755)
+
+	for _, exePath := range exes {
+		name := strings.TrimSuffix(filepath.Base(exePath), ".exe")
+		lnkPath := filepath.Join(startMenu, name+".lnk")
+
+		err := platform.CreateShortcut(platform.ShortcutOptions{
+			LnkPath:     lnkPath,
+			TargetPath:  exePath,
+			WorkingDir:  dir,
+			Description: name,
+		})
+		if err != nil {
+			logging.Info("createStartMenuShortcuts: failed for %s: %v", name, err)
+		} else {
+			logging.Info("createStartMenuShortcuts: created %s", lnkPath)
+		}
+	}
+
+	return nil
+}
+
+// registerZIPInARP creates/updates an ARP (Add/Remove Programs) registry entry so the
+// ZIP-installed package appears in the system's installed programs list and in karchy's Remove menu.
+// Uses a self-contained cmd uninstall command that doesn't depend on karchy.
+func registerZIPInARP(id, displayName, installDir string) error {
+	name := id
+	arpPath := `SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\` + name
+	k, _, err := registry.CreateKey(registry.CURRENT_USER, arpPath, registry.SET_VALUE)
+	if err != nil {
+		return fmt.Errorf("create ARP key: %w", err)
+	}
+	defer k.Close()
+
+	startMenu := filepath.Join(os.Getenv("APPDATA"), `Microsoft\Windows\Start Menu\Programs`, name)
+	arpRegPath := `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\` + name
+
+	// Self-contained uninstall: remove files, shortcuts, PATH entry, and ARP key
+	uninstallCmd := fmt.Sprintf(
+		`cmd /c rmdir /s /q "%s" & rmdir /s /q "%s" & reg delete "%s" /f & powershell -NoProfile -Command "$p=[Environment]::GetEnvironmentVariable('Path','User'); $new=($p -split ';' | Where-Object {$_ -ne '%s'}) -join ';'; [Environment]::SetEnvironmentVariable('Path',$new,'User')"`,
+		installDir, startMenu, arpRegPath, installDir,
+	)
+
+	k.SetStringValue("DisplayName", displayName)
+	k.SetStringValue("InstallLocation", installDir)
+	k.SetStringValue("UninstallString", uninstallCmd)
+	k.SetStringValue("QuietUninstallString", uninstallCmd)
+	k.SetStringValue("Publisher", "Karchy (ZIP install)")
+	k.SetDWordValue("NoModify", 1)
+	k.SetDWordValue("NoRepair", 1)
+
+	logging.Info("registerZIPInARP: registered %s", name)
 	return nil
 }
 

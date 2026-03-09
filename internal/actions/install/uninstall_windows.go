@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -168,17 +169,38 @@ func loadProductCodeMap(sourceDBPath string) map[string]string {
 func UninstallPackage(pkg InstalledPackage) error {
 	logging.Info("UninstallPackage: %s (key=%s)", pkg.Name, pkg.RegistryKey)
 
-	// Strategy 1: MSI — use msiexec /x with the product code
+	// Strategy 1: Karchy ZIP install — run stored cmd string directly (no elevation needed, user-level).
+	// Uses SysProcAttr.CmdLine to avoid Go's argument escaping mangling the compound cmd /c command.
+	if pkg.Publisher == "Karchy (ZIP install)" {
+		uninstall := pkg.QuietUninstallString
+		if uninstall == "" {
+			uninstall = pkg.UninstallString
+		}
+		if uninstall == "" {
+			return fmt.Errorf("no uninstall method available")
+		}
+		logging.Info("UninstallPackage: karchy ZIP uninstall cmd: %s", uninstall)
+		cmd := exec.Command("cmd")
+		cmd.SysProcAttr = &syscall.SysProcAttr{CmdLine: uninstall}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("uninstall command failed: %w", err)
+		}
+		return nil
+	}
+
+	// Strategy 2: MSI — use msiexec /x with the product code
 	if pkg.IsWindowsInstaller {
 		return uninstallMSI(pkg)
 	}
 
-	// Strategy 2: QuietUninstallString — already has silent flags
+	// Strategy 3: QuietUninstallString — already has silent flags
 	if pkg.QuietUninstallString != "" {
 		return runUninstallString(pkg.QuietUninstallString)
 	}
 
-	// Strategy 3: UninstallString
+	// Strategy 4: UninstallString
 	if pkg.UninstallString != "" {
 		return runUninstallString(pkg.UninstallString)
 	}
@@ -248,6 +270,27 @@ func parseUninstallString(s string) (exe, args string) {
 		return parts[0], parts[1]
 	}
 	return s, ""
+}
+
+// runUnelevatedUninstall runs an uninstall command without elevation (for user-level installs).
+// Uses cmd /c with the full command to preserve quoted paths.
+func runUnelevatedUninstall(file, params string) error {
+	full := file
+	if params != "" {
+		full += " " + params
+	}
+	logging.Info("runUnelevatedUninstall: cmd /c %s", full)
+
+	cmd := exec.Command("cmd", "/c", full)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("uninstall command failed: %w", err)
+	}
+
+	logging.Info("runUnelevatedUninstall: success")
+	return nil
 }
 
 // runElevatedUninstall uses ShellExecuteEx with "runas" to run an uninstall command.
