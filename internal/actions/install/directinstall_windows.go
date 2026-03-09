@@ -21,37 +21,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-// DirectInstall fetches the manifest, downloads the installer, verifies the hash,
-// and runs it with silent switches — no winget CLI needed.
-func DirectInstall(pkg PackageEntry) error {
-	logging.Info("DirectInstall: %s (%s) v%s", pkg.Name, pkg.ID, pkg.Version)
-
-	manifest, err := FetchManifest(pkg.ID, pkg.Version)
-	if err != nil {
-		return fmt.Errorf("manifest: %w", err)
-	}
-
-	entry, err := SelectInstaller(manifest)
-	if err != nil {
-		return fmt.Errorf("select installer: %w", err)
-	}
-	logging.Info("DirectInstall: selected %s %s %s", entry.Architecture, entry.Scope, entry.EffectiveType(manifest))
-
-	installerPath, err := DownloadFile(entry.InstallerURL, fileNameFromURL(entry.InstallerURL), nil)
-	if err != nil {
-		return fmt.Errorf("download: %w", err)
-	}
-	defer os.Remove(installerPath)
-
-	if err := VerifyHash(installerPath, entry.SHA256); err != nil {
-		return fmt.Errorf("hash verification: %w", err)
-	}
-
-	args := SilentArgs(manifest, entry)
-	return runInstaller(installerPath, entry.EffectiveType(manifest), args, entry.NeedsElevation(manifest))
-}
-
-// downloadFile downloads a URL to the karchy temp dir.
+// DownloadFile downloads a URL to the karchy temp dir.
 // If state is non-nil, it tracks progress via atomic DoneBytes.
 // Returns the local file path.
 func DownloadFile(url, name string, state *DownloadState) (string, error) {
@@ -111,19 +81,6 @@ func DownloadFile(url, name string, state *DownloadState) (string, error) {
 	return tmpFile, nil
 }
 
-func fileNameFromURL(url string) string {
-	if idx := strings.LastIndex(url, "/"); idx >= 0 {
-		name := url[idx+1:]
-		// Strip query params
-		if qi := strings.Index(name, "?"); qi >= 0 {
-			name = name[:qi]
-		}
-		if name != "" {
-			return name
-		}
-	}
-	return "installer.exe"
-}
 
 func VerifyHash(path, expectedHash string) error {
 	if expectedHash == "" {

@@ -386,8 +386,3 @@ func phaseInstall(resolved []resolvedPkg, paths []string, verified []bool) {
 		fmt.Println()
 	}
 }
-
-// BatchInstallDirect is a convenience for installing a single package through the batch UI.
-func BatchInstallDirect(pkg PackageEntry) {
-	BatchInstall([]PackageEntry{pkg})
-}
