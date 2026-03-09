@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
-	"github.com/nulifyer/karchy/internal/set"
 	"github.com/nulifyer/karchy/internal/platform"
+	"github.com/nulifyer/karchy/internal/set"
 )
 
 type ProjectEntry struct {
@@ -200,6 +201,7 @@ func Open(entry ProjectEntry) {
 		cmd := exec.Command(editor, entry.Path)
 		platform.Detach(cmd)
 		cmd.Start()
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
