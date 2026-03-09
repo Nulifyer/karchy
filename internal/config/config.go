@@ -33,8 +33,7 @@ type TerminalConfig struct {
 }
 
 type ProjectsConfig struct {
-	Editor string   `toml:"editor"`
-	Dirs   []string `toml:"dirs"`
+	Editor string `toml:"editor"`
 }
 
 func Default() Config {
@@ -93,13 +92,6 @@ func SaveFont(family string) error {
 func SaveEditor(editor string) error {
 	cfg := Load()
 	cfg.Projects.Editor = editor
-	return Save(cfg)
-}
-
-// SaveProjectDirs updates the project scan directories in the config file.
-func SaveProjectDirs(dirs []string) error {
-	cfg := Load()
-	cfg.Projects.Dirs = dirs
 	return Save(cfg)
 }
 

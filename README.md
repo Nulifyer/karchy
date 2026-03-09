@@ -83,7 +83,6 @@ app = "alacritty"
 
 [projects]
 editor = "code"
-dirs = ["~/Projects"]
 ```
 
 ## Themes

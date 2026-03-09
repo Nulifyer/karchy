@@ -26,28 +26,59 @@ case "$OS" in
         ;;
 esac
 
-BINARY_NAME="karchy-${OS}-${ARCH}"
-
 echo "Installing Karchy for ${OS}/${ARCH}..."
 
-# 1. Get latest release URL
+# 1. Get latest release info
 TAG=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | head -1 | cut -d'"' -f4)
 if [ -z "$TAG" ]; then
     echo "ERROR: Could not fetch latest release"
     exit 1
 fi
-DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${BINARY_NAME}"
+VERSION="${TAG#v}"
+ARCHIVE_NAME="karchy_${VERSION}_${OS}_${ARCH}.tar.gz"
+CHECKSUM_NAME="checksums.txt"
+DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/${ARCHIVE_NAME}"
+CHECKSUM_URL="https://github.com/${REPO}/releases/download/${TAG}/${CHECKSUM_NAME}"
 
-# 2. Download binary
+# 2. Download archive and checksums
 echo "  Downloading ${TAG}..."
 mkdir -p "$INSTALL_DIR"
-TMP_FILE=$(mktemp)
-curl -fsSL "$DOWNLOAD_URL" -o "$TMP_FILE"
-chmod +x "$TMP_FILE"
-mv "$TMP_FILE" "${INSTALL_DIR}/karchy"
-echo "  Downloaded to ${INSTALL_DIR}/karchy"
+TMP_DIR=$(mktemp -d)
+curl -fsSL "$DOWNLOAD_URL" -o "${TMP_DIR}/archive.tar.gz"
+curl -fsSL "$CHECKSUM_URL" -o "${TMP_DIR}/checksums.txt" 2>/dev/null || true
 
-# 3. Check PATH
+# 3. Verify checksum
+if [ -f "${TMP_DIR}/checksums.txt" ]; then
+    echo "  Verifying checksum..."
+    EXPECTED=$(grep "$ARCHIVE_NAME" "${TMP_DIR}/checksums.txt" | awk '{print $1}')
+    if [ -n "$EXPECTED" ]; then
+        if command -v sha256sum &>/dev/null; then
+            ACTUAL=$(sha256sum "${TMP_DIR}/archive.tar.gz" | awk '{print $1}')
+        elif command -v shasum &>/dev/null; then
+            ACTUAL=$(shasum -a 256 "${TMP_DIR}/archive.tar.gz" | awk '{print $1}')
+        else
+            ACTUAL=""
+            echo "  WARNING: No sha256sum or shasum found, skipping verification"
+        fi
+        if [ -n "$ACTUAL" ] && [ "$ACTUAL" != "$EXPECTED" ]; then
+            rm -rf "$TMP_DIR"
+            echo "  ERROR: Checksum mismatch!"
+            echo "    Expected: $EXPECTED"
+            echo "    Got:      $ACTUAL"
+            exit 1
+        fi
+        [ -n "$ACTUAL" ] && echo "  Checksum verified"
+    fi
+fi
+
+# 4. Extract and install
+tar -xzf "${TMP_DIR}/archive.tar.gz" -C "$TMP_DIR"
+chmod +x "${TMP_DIR}/karchy"
+mv "${TMP_DIR}/karchy" "${INSTALL_DIR}/karchy"
+rm -rf "$TMP_DIR"
+echo "  Installed to ${INSTALL_DIR}/karchy"
+
+# 5. Check PATH
 case ":$PATH:" in
     *":${INSTALL_DIR}:"*) ;;
     *)
@@ -57,7 +88,7 @@ case ":$PATH:" in
         ;;
 esac
 
-# 4. Run self-install (registers autostart, checks deps, starts daemon)
+# 6. Run self-install (registers autostart, checks deps, starts daemon)
 "${INSTALL_DIR}/karchy" install
 
 echo ""

@@ -118,23 +118,16 @@ var skipRootDirs = set.New(
 // maxDepth limits how deep we recurse from each scan root.
 const maxDepth = 50
 
-// Scan discovers project directories from the configured scan roots.
+// Scan discovers project directories by scanning from $HOME.
 func Scan() []ProjectEntry {
-	cfg := config.Load()
-	dirs := cfg.Projects.Dirs
-	if len(dirs) == 0 {
-		if home, err := os.UserHomeDir(); err == nil {
-			dirs = []string{home}
-		}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
 	}
 
 	seen := set.New[string]()
 	var entries []ProjectEntry
-
-	for _, root := range dirs {
-		root = expandHome(root)
-		scanProjects(root, 0, seen, &entries)
-	}
+	scanProjects(home, 0, seen, &entries)
 
 	sort.Slice(entries, func(i, j int) bool {
 		return strings.ToLower(entries[i].Name) < strings.ToLower(entries[j].Name)
@@ -193,17 +186,6 @@ func isProject(dir string) bool {
 		}
 	}
 	return false
-}
-
-func expandHome(path string) string {
-	if strings.HasPrefix(path, "~/") || path == "~" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return path
-		}
-		return filepath.Join(home, path[1:])
-	}
-	return path
 }
 
 // Open launches the project in the configured editor.

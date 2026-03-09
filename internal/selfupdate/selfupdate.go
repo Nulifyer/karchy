@@ -1,6 +1,9 @@
 package selfupdate
 
 import (
+	"archive/tar"
+	"archive/zip"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,21 +39,23 @@ func Run(currentVersion string) {
 		return
 	}
 
-	assetName := binaryName()
+	// GoReleaser archives: karchy_<version>_<os>_<arch>.<ext>
+	version := strings.TrimPrefix(rel.TagName, "v")
+	archiveName := archiveName(version)
 	var downloadURL string
 	for _, a := range rel.Assets {
-		if a.Name == assetName {
+		if a.Name == archiveName {
 			downloadURL = a.BrowserDownloadURL
 			break
 		}
 	}
 	if downloadURL == "" {
-		fmt.Printf("No release asset found for %s in %s\n", assetName, rel.TagName)
+		fmt.Printf("No release asset found for %s in %s\n", archiveName, rel.TagName)
 		os.Exit(1)
 	}
 
 	fmt.Printf("Updating %s → %s...\n", currentVersion, rel.TagName)
-	if err := download(downloadURL); err != nil {
+	if err := downloadAndExtract(downloadURL); err != nil {
 		fmt.Printf("Update failed: %v\n", err)
 		os.Exit(1)
 	}
@@ -74,15 +79,21 @@ func fetchLatest() (*release, error) {
 	return &rel, nil
 }
 
-func binaryName() string {
-	ext := ""
+func archiveName(version string) string {
 	if runtime.GOOS == "windows" {
-		ext = ".exe"
+		return fmt.Sprintf("karchy_%s_%s_%s.zip", version, runtime.GOOS, runtime.GOARCH)
 	}
-	return fmt.Sprintf("karchy-%s-%s%s", runtime.GOOS, runtime.GOARCH, ext)
+	return fmt.Sprintf("karchy_%s_%s_%s.tar.gz", version, runtime.GOOS, runtime.GOARCH)
 }
 
-func download(url string) error {
+func binaryNameInArchive() string {
+	if runtime.GOOS == "windows" {
+		return "karchy.exe"
+	}
+	return "karchy"
+}
+
+func downloadAndExtract(url string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -101,7 +112,6 @@ func download(url string) error {
 		return err
 	}
 
-	// Write to temp file in same directory (ensures same filesystem for rename)
 	dir := filepath.Dir(exePath)
 	tmp, err := os.CreateTemp(dir, "karchy-update-*")
 	if err != nil {
@@ -109,6 +119,7 @@ func download(url string) error {
 	}
 	tmpPath := tmp.Name()
 
+	// Download archive to temp file
 	_, err = io.Copy(tmp, resp.Body)
 	tmp.Close()
 	if err != nil {
@@ -116,7 +127,90 @@ func download(url string) error {
 		return err
 	}
 
-	return replaceBinary(exePath, tmpPath)
+	// Extract binary from archive
+	binaryTmp, err := os.CreateTemp(dir, "karchy-bin-*")
+	if err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	binaryPath := binaryTmp.Name()
+	binaryTmp.Close()
+
+	target := binaryNameInArchive()
+	if runtime.GOOS == "windows" {
+		err = extractFromZip(tmpPath, target, binaryPath)
+	} else {
+		err = extractFromTarGz(tmpPath, target, binaryPath)
+	}
+	os.Remove(tmpPath) // clean up archive
+	if err != nil {
+		os.Remove(binaryPath)
+		return err
+	}
+
+	return replaceBinary(exePath, binaryPath)
+}
+
+func extractFromTarGz(archivePath, target, destPath string) error {
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		if filepath.Base(hdr.Name) == target {
+			out, err := os.Create(destPath)
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(out, tr)
+			out.Close()
+			return err
+		}
+	}
+	return fmt.Errorf("binary %q not found in archive", target)
+}
+
+func extractFromZip(archivePath, target, destPath string) error {
+	r, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if filepath.Base(f.Name) == target {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			out, err := os.Create(destPath)
+			if err != nil {
+				rc.Close()
+				return err
+			}
+			_, err = io.Copy(out, rc)
+			out.Close()
+			rc.Close()
+			return err
+		}
+	}
+	return fmt.Errorf("binary %q not found in archive", target)
 }
 
 // replaceBinary swaps the old binary with the new one.
@@ -135,7 +229,6 @@ func replaceBinary(exePath, tmpPath string) error {
 			os.Remove(tmpPath)
 			return fmt.Errorf("rename new binary: %w", err)
 		}
-		// Schedule .old for deletion — it'll be cleaned up on next update or manually
 		return nil
 	}
 
@@ -145,7 +238,6 @@ func replaceBinary(exePath, tmpPath string) error {
 		return err
 	}
 	if err := os.Rename(tmpPath, exePath); err != nil {
-		// Fallback: copy if rename fails (cross-device)
 		os.Remove(tmpPath)
 		return err
 	}
@@ -162,36 +254,8 @@ func CleanOld() {
 		return
 	}
 	oldPath := exePath + ".old"
-	// Also handle case where exePath has been resolved
 	if resolved, err := filepath.EvalSymlinks(exePath); err == nil {
 		os.Remove(resolved + ".old")
 	}
 	os.Remove(oldPath)
-}
-
-// CompareVersions returns true if remote is newer than current.
-// Both should be semver strings like "v1.2.3" or "1.2.3".
-func CompareVersions(current, remote string) bool {
-	current = strings.TrimPrefix(current, "v")
-	remote = strings.TrimPrefix(remote, "v")
-
-	cParts := strings.Split(current, ".")
-	rParts := strings.Split(remote, ".")
-
-	for i := 0; i < 3; i++ {
-		var c, r int
-		if i < len(cParts) {
-			fmt.Sscan(cParts[i], &c)
-		}
-		if i < len(rParts) {
-			fmt.Sscan(rParts[i], &r)
-		}
-		if r > c {
-			return true
-		}
-		if r < c {
-			return false
-		}
-	}
-	return false
 }
