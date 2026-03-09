@@ -1,0 +1,44 @@
+# dev-deploy.ps1 — Build and install dev binary to production path
+# Usage: .\.scripts\dev-deploy.ps1
+
+$ErrorActionPreference = "Stop"
+
+$installDir = "$env:LOCALAPPDATA\Karchy"
+$exe = "$installDir\karchy.exe"
+$repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+
+# Build dev version string from git
+$commitShort = git -C $repoRoot rev-parse --short HEAD
+$version = "dev-$commitShort"
+Write-Host "Building karchy $version ..." -ForegroundColor Cyan
+
+# Stop daemon if running
+if (Test-Path $exe) {
+    Write-Host "Stopping daemon..." -ForegroundColor Yellow
+    & $exe daemon stop 2>$null
+    Start-Sleep -Seconds 1
+}
+
+# Build
+$ldflags = "-s -w -X main.Version=$version"
+$outPath = "$repoRoot\karchy.exe"
+Push-Location $repoRoot
+try {
+    go build -ldflags $ldflags -o $outPath .
+    if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+} finally {
+    Pop-Location
+}
+
+# Install
+New-Item -ItemType Directory -Force -Path $installDir | Out-Null
+Copy-Item -Force $outPath $exe
+Remove-Item $outPath
+
+Write-Host "Installed $exe ($version)" -ForegroundColor Green
+
+# Restart daemon
+Write-Host "Starting daemon..." -ForegroundColor Yellow
+& $exe daemon start
+
+Write-Host "Done!" -ForegroundColor Green
