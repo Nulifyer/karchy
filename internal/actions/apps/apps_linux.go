@@ -39,6 +39,10 @@ func scanDir(dir string) []AppEntry {
 		if f.IsDir() || !strings.HasSuffix(f.Name(), ".desktop") {
 			continue
 		}
+		// Skip karchy's own .desktop files
+		if strings.HasPrefix(f.Name(), "karchy-") {
+			continue
+		}
 		path := filepath.Join(dir, f.Name())
 		name := parseDesktopName(path)
 		if name != "" {
