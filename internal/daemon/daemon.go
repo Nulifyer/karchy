@@ -34,6 +34,14 @@ func Start() {
 		os.Exit(1)
 	}
 
+	// Wait for the daemon to actually initialize (create mutex + install hook)
+	for i := 0; i < 20; i++ {
+		time.Sleep(250 * time.Millisecond)
+		if isRunning() {
+			break
+		}
+	}
+
 	fmt.Println("Daemon started.")
 }
 
@@ -44,6 +52,7 @@ func Stop() {
 		return
 	}
 	stopDaemon()
+	waitForStop()
 	fmt.Println("Daemon stopped.")
 }
 
@@ -51,9 +60,19 @@ func Stop() {
 func Restart() {
 	if isRunning() {
 		stopDaemon()
-		time.Sleep(500 * time.Millisecond)
+		waitForStop()
 	}
 	Start()
+}
+
+// waitForStop polls until the daemon has fully exited and released its mutex.
+func waitForStop() {
+	for i := 0; i < 20; i++ {
+		time.Sleep(250 * time.Millisecond)
+		if !isRunning() {
+			return
+		}
+	}
 }
 
 // Status prints whether the daemon is running.

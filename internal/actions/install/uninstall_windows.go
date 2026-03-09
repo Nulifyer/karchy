@@ -169,7 +169,8 @@ func loadProductCodeMap(sourceDBPath string) map[string]string {
 func UninstallPackage(pkg InstalledPackage) error {
 	logging.Info("UninstallPackage: %s (key=%s)", pkg.Name, pkg.RegistryKey)
 
-	// Strategy 1: Karchy ZIP install — run cmd directly (no elevation needed, user-level)
+	// Strategy 1: Karchy ZIP install — run stored cmd string directly (no elevation needed, user-level).
+	// Uses SysProcAttr.CmdLine to avoid Go's argument escaping mangling the compound cmd /c command.
 	if pkg.Publisher == "Karchy (ZIP install)" {
 		uninstall := pkg.QuietUninstallString
 		if uninstall == "" {
@@ -178,9 +179,15 @@ func UninstallPackage(pkg InstalledPackage) error {
 		if uninstall == "" {
 			return fmt.Errorf("no uninstall method available")
 		}
-		exe, args := parseUninstallString(uninstall)
-		logging.Info("UninstallPackage: karchy ZIP uninstall exe=%s args=%s", exe, args)
-		return runUnelevatedUninstall(exe, args)
+		logging.Info("UninstallPackage: karchy ZIP uninstall cmd: %s", uninstall)
+		cmd := exec.Command("cmd")
+		cmd.SysProcAttr = &syscall.SysProcAttr{CmdLine: uninstall}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("uninstall command failed: %w", err)
+		}
+		return nil
 	}
 
 	// Strategy 2: MSI — use msiexec /x with the product code
