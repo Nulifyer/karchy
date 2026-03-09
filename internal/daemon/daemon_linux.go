@@ -3,7 +3,12 @@
 package daemon
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -11,9 +16,13 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
+	"fyne.io/systray"
 	"github.com/godbus/dbus/v5"
+	"github.com/nulifyer/karchy/assets"
 	"github.com/nulifyer/karchy/internal/config"
+	"github.com/nulifyer/karchy/internal/actions/install"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/terminal"
 )
@@ -71,6 +80,9 @@ func hideProcess(cmd *exec.Cmd) {
 
 var menuPID int
 
+// trayActionCh receives tray menu actions on the daemon's main loop.
+var trayActionCh = make(chan string, 1)
+
 func run() {
 	// Write PID lock file
 	lockFile := lockFilePath()
@@ -97,6 +109,45 @@ func run() {
 		return
 	}
 
+	// Start system tray icon
+	var mUpdate *systray.MenuItem
+	start, stop := systray.RunWithExternalLoop(func() {
+		systray.SetTitle("Karchy")
+		systray.SetTooltip("Karchy Daemon")
+		systray.SetIcon(assets.IconPNG)
+		logging.Info("daemon: tray ready")
+
+		mUpdate = systray.AddMenuItem("System Update", "Install available updates")
+		mUpdate.Hide()
+		mOpen := systray.AddMenuItem("Open Karchy", "Open the Karchy menu")
+		systray.AddSeparator()
+		mRestart := systray.AddMenuItem("Restart Daemon", "Restart the Karchy daemon")
+		mQuit := systray.AddMenuItem("Quit", "Stop the Karchy daemon")
+
+		go func() {
+			for {
+				select {
+				case <-mUpdate.ClickedCh:
+					trayActionCh <- "update"
+				case <-mOpen.ClickedCh:
+					trayActionCh <- "open"
+				case <-mRestart.ClickedCh:
+					trayActionCh <- "restart"
+				case <-mQuit.ClickedCh:
+					trayActionCh <- "quit"
+				}
+			}
+		}()
+	}, func() {
+		logging.Info("daemon: tray exited")
+	})
+	start()
+	defer stop()
+
+	// Start periodic update checker
+	updateCh := make(chan int, 1)
+	go updateChecker(updateCh)
+
 	fmt.Println("Karchy daemon started.")
 	logging.Info("daemon: shortcut registered for %s", hotkey)
 
@@ -112,11 +163,107 @@ func run() {
 				menuPID = 0
 			}
 			launchMenu()
+		case count := <-updateCh:
+			if count > 0 {
+				logging.Info("daemon: %d updates available", count)
+				systray.SetTooltip(fmt.Sprintf("Karchy Daemon - %d update(s) available", count))
+				systray.SetIcon(iconWithBadge())
+				mUpdate.SetTitle(fmt.Sprintf("System Update (%d)", count))
+				mUpdate.Show()
+			} else {
+				systray.SetTooltip("Karchy Daemon")
+				systray.SetIcon(assets.IconPNG)
+				mUpdate.Hide()
+			}
+		case action := <-trayActionCh:
+			switch action {
+			case "update":
+				logging.Info("daemon: tray update clicked")
+				install.SystemUpdate()
+				// Re-check after update
+				go func() {
+					time.Sleep(5 * time.Second)
+					checkUpdates(updateCh)
+				}()
+			case "open":
+				logging.Info("daemon: tray open clicked")
+				launchMenu()
+			case "restart":
+				logging.Info("daemon: tray restart clicked")
+				Restart()
+				return
+			case "quit":
+				logging.Info("daemon: tray quit clicked")
+				return
+			}
 		case <-sigCh:
 			logging.Info("daemon: received signal, shutting down")
 			return
 		}
 	}
+}
+
+// updateChecker periodically checks for available system updates.
+func updateChecker(ch chan<- int) {
+	// Check immediately on startup
+	checkUpdates(ch)
+	// Then check every hour
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		checkUpdates(ch)
+	}
+}
+
+// checkUpdates runs checkupdates and sends the count to the channel.
+func checkUpdates(ch chan<- int) {
+	out, err := exec.Command("checkupdates").Output()
+	if err != nil {
+		// checkupdates exits 2 when no updates, 1 on error
+		logging.Info("daemon: checkupdates: %v", err)
+		select {
+		case ch <- 0:
+		default:
+		}
+		return
+	}
+	count := 0
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line != "" {
+			count++
+		}
+	}
+	select {
+	case ch <- count:
+	default:
+	}
+}
+
+// iconWithBadge returns the tray icon PNG with an orange notification dot.
+func iconWithBadge() []byte {
+	src, err := png.Decode(bytes.NewReader(assets.IconPNG))
+	if err != nil {
+		return assets.IconPNG
+	}
+	bounds := src.Bounds()
+	img := image.NewRGBA(bounds)
+	draw.Draw(img, bounds, src, bounds.Min, draw.Src)
+
+	// Draw a 10px orange circle in the top-right corner
+	orange := color.RGBA{R: 255, G: 140, B: 0, A: 255}
+	cx, cy, r := bounds.Max.X-6, bounds.Min.Y+6, 5
+	for y := cy - r; y <= cy+r; y++ {
+		for x := cx - r; x <= cx+r; x++ {
+			dx, dy := x-cx, y-cy
+			if dx*dx+dy*dy <= r*r {
+				img.Set(x, y, orange)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	return buf.Bytes()
 }
 
 func launchMenu() {
@@ -136,8 +283,6 @@ func launchMenu() {
 }
 
 // qtKeyCode converts a hotkey string like "Super+Space" to a Qt key code integer.
-// Qt modifier values: Meta=0x10000000, Ctrl=0x04000000, Alt=0x08000000, Shift=0x02000000
-// Qt key values: Space=0x20, A-Z=0x41-0x5A, F1-F12=0x01000030-0x0100003B
 func qtKeyCode(hotkey string) (int32, error) {
 	var mods int32
 	var key int32
@@ -168,16 +313,14 @@ func qtKeyCode(hotkey string) (int32, error) {
 			key = 0x01000007
 		default:
 			lower := strings.ToLower(p)
-			// F1-F12
 			if len(lower) >= 2 && lower[0] == 'f' {
 				if n, err := strconv.Atoi(lower[1:]); err == nil && n >= 1 && n <= 12 {
 					key = int32(0x01000030 + n - 1)
 					continue
 				}
 			}
-			// Single letter A-Z
 			if len(lower) == 1 && lower[0] >= 'a' && lower[0] <= 'z' {
-				key = int32(lower[0] - 'a' + 'A') // Qt uses uppercase
+				key = int32(lower[0] - 'a' + 'A')
 				continue
 			}
 			return 0, fmt.Errorf("unknown key: %s", p)
@@ -205,10 +348,8 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 
 	kga := conn.Object("org.kde.kglobalaccel", "/kglobalaccel")
 
-	// actionId = [componentUnique, componentFriendly, actionUnique, actionFriendly]
 	actionID := []string{"karchy", "Karchy", "toggle-menu", "Toggle Karchy Menu"}
 
-	// Register the action
 	err = kga.Call("org.kde.KGlobalAccel.doRegister", 0, actionID).Err
 	if err != nil {
 		conn.Close()
@@ -216,7 +357,6 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 	}
 	logging.Info("kglobalaccel: action registered")
 
-	// Set the shortcut (flags=2 means SetPresent — set without prompting)
 	var result []int32
 	err = kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
 		actionID, []int32{keyCode}, uint32(2)).Store(&result)
@@ -226,7 +366,6 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 	}
 	logging.Info("kglobalaccel: shortcut set, result=%v", result)
 
-	// Listen for globalShortcutPressed on the component path
 	componentPath := dbus.ObjectPath("/component/karchy")
 	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		fmt.Sprintf("type='signal',sender='org.kde.kglobalaccel',path='%s',interface='org.kde.kglobalaccel.Component',member='globalShortcutPressed'", componentPath))
