@@ -20,7 +20,7 @@ import (
 
 // shortcutDef matches the D-Bus type (sa{sv}) expected by the GlobalShortcuts portal.
 type shortcutDef struct {
-	ID   string                    `dbus:"struct"`
+	ID   string
 	Opts map[string]dbus.Variant
 }
 
@@ -152,7 +152,7 @@ func portalTrigger(hotkey string) string {
 		p = strings.TrimSpace(p)
 		switch strings.ToLower(p) {
 		case "super", "win", "cmd", "command":
-			parts[i] = "SUPER"
+			parts[i] = "LOGO"
 		case "alt", "option":
 			parts[i] = "ALT"
 		case "ctrl", "control":
@@ -168,6 +168,34 @@ func portalTrigger(hotkey string) string {
 	return strings.Join(parts, "+")
 }
 
+// waitResponse drains the signal channel until it finds a Response signal
+// matching the expected path, skipping unrelated signals like NameAcquired.
+func waitResponse(ch <-chan *dbus.Signal, path dbus.ObjectPath) (*dbus.Signal, error) {
+	for sig := range ch {
+		if sig.Path == path && sig.Name == "org.freedesktop.portal.Request.Response" {
+			return sig, nil
+		}
+		logging.Info("portal: skipping signal %s on %s (waiting for %s)", sig.Name, sig.Path, path)
+	}
+	return nil, fmt.Errorf("signal channel closed")
+}
+
+// parseResponse extracts the response code and results map from a portal Response signal.
+func parseResponse(sig *dbus.Signal) (uint32, map[string]dbus.Variant, error) {
+	if len(sig.Body) < 2 {
+		return 0, nil, fmt.Errorf("unexpected body length %d", len(sig.Body))
+	}
+	code, ok := sig.Body[0].(uint32)
+	if !ok {
+		return 0, nil, fmt.Errorf("response code type %T", sig.Body[0])
+	}
+	results, ok := sig.Body[1].(map[string]dbus.Variant)
+	if !ok {
+		return code, nil, fmt.Errorf("results type %T", sig.Body[1])
+	}
+	return code, results, nil
+}
+
 // registerPortalShortcut registers a global shortcut via the xdg-desktop-portal
 // GlobalShortcuts D-Bus interface. Returns a channel that receives a value each
 // time the shortcut is activated.
@@ -179,23 +207,30 @@ func registerPortalShortcut(hotkey string) (<-chan struct{}, error) {
 
 	portal := conn.Object("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop")
 
-	// Step 1: CreateSession
-	sessionToken := "karchy_session"
-	createOpts := map[string]dbus.Variant{
-		"handle_token":  dbus.MakeVariant("karchy_create"),
-		"session_handle_token": dbus.MakeVariant(sessionToken),
+	// Register app identity so the portal shows "Karchy" instead of guessing
+	err = portal.Call("org.freedesktop.host.portal.Registry.Register", 0,
+		"karchy", map[string]dbus.Variant{}).Err
+	if err != nil {
+		logging.Info("portal: Registry.Register failed (may not be supported): %v", err)
 	}
 
-	// Subscribe to the Response signal before making the call
-	responseCh := make(chan *dbus.Signal, 1)
-	conn.Signal(responseCh)
-
-	// Match response signals from the portal
+	// Compute our sender name for request paths
 	senderName := strings.Replace(conn.Names()[0], ":", "", 1)
 	senderName = strings.Replace(senderName, ".", "_", -1)
-	responsePath := dbus.ObjectPath("/org/freedesktop/portal/desktop/request/" + senderName + "/karchy_create")
+
+	// Single signal channel for all portal interactions
+	signalCh := make(chan *dbus.Signal, 10)
+	conn.Signal(signalCh)
+
+	// Step 1: CreateSession
+	createResponsePath := dbus.ObjectPath("/org/freedesktop/portal/desktop/request/" + senderName + "/karchy_create")
 	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
-		fmt.Sprintf("type='signal',interface='org.freedesktop.portal.Request',path='%s',member='Response'", responsePath))
+		fmt.Sprintf("type='signal',interface='org.freedesktop.portal.Request',path='%s',member='Response'", createResponsePath))
+
+	createOpts := map[string]dbus.Variant{
+		"handle_token":         dbus.MakeVariant("karchy_create"),
+		"session_handle_token": dbus.MakeVariant("karchy_session"),
+	}
 
 	var requestPath dbus.ObjectPath
 	err = portal.Call("org.freedesktop.portal.GlobalShortcuts.CreateSession", 0, createOpts).Store(&requestPath)
@@ -203,62 +238,49 @@ func registerPortalShortcut(hotkey string) (<-chan struct{}, error) {
 		conn.Close()
 		return nil, fmt.Errorf("CreateSession: %w", err)
 	}
-
 	logging.Info("portal: CreateSession request=%s", requestPath)
 
-	// Wait for response
-	var sessionPath dbus.ObjectPath
-	select {
-	case sig := <-responseCh:
-		if len(sig.Body) < 2 {
-			conn.Close()
-			return nil, fmt.Errorf("CreateSession response: unexpected body")
-		}
-		responseCode, ok := sig.Body[0].(uint32)
-		if !ok || responseCode != 0 {
-			conn.Close()
-			return nil, fmt.Errorf("CreateSession response: code=%v", sig.Body[0])
-		}
-		results, ok := sig.Body[1].(map[string]dbus.Variant)
-		if !ok {
-			conn.Close()
-			return nil, fmt.Errorf("CreateSession response: unexpected results type")
-		}
-		if sp, ok := results["session_handle"]; ok {
-			sessionPath = dbus.ObjectPath(sp.Value().(string))
-		}
-	}
-
-	if sessionPath == "" {
+	sig, err := waitResponse(signalCh, createResponsePath)
+	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("CreateSession: no session handle in response")
+		return nil, fmt.Errorf("CreateSession wait: %w", err)
 	}
 
+	code, results, err := parseResponse(sig)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("CreateSession response: %w", err)
+	}
+	if code != 0 {
+		conn.Close()
+		return nil, fmt.Errorf("CreateSession rejected: code=%d", code)
+	}
+
+	sp, ok := results["session_handle"]
+	if !ok {
+		conn.Close()
+		return nil, fmt.Errorf("CreateSession: no session_handle in response")
+	}
+	sessionPath := dbus.ObjectPath(sp.Value().(string))
 	logging.Info("portal: session=%s", sessionPath)
 
-	// Remove the create response match
-	conn.BusObject().Call("org.freedesktop.DBus.RemoveMatch", 0,
-		fmt.Sprintf("type='signal',interface='org.freedesktop.portal.Request',path='%s',member='Response'", responsePath))
-
 	// Step 2: BindShortcuts
-	// Portal expects a(sa{sv}) — array of (string, dict) tuples
 	trigger := portalTrigger(hotkey)
-	shortcutEntry := shortcutDef{
+	shortcuts := []shortcutDef{{
 		ID: "karchy-toggle",
 		Opts: map[string]dbus.Variant{
 			"description":       dbus.MakeVariant("Toggle Karchy Menu"),
 			"preferred_trigger": dbus.MakeVariant(trigger),
 		},
-	}
-	shortcuts := []shortcutDef{shortcutEntry}
-
-	bindOpts := map[string]dbus.Variant{
-		"handle_token": dbus.MakeVariant("karchy_bind"),
-	}
+	}}
 
 	bindResponsePath := dbus.ObjectPath("/org/freedesktop/portal/desktop/request/" + senderName + "/karchy_bind")
 	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		fmt.Sprintf("type='signal',interface='org.freedesktop.portal.Request',path='%s',member='Response'", bindResponsePath))
+
+	bindOpts := map[string]dbus.Variant{
+		"handle_token": dbus.MakeVariant("karchy_bind"),
+	}
 
 	err = portal.Call("org.freedesktop.portal.GlobalShortcuts.BindShortcuts", 0,
 		sessionPath, shortcuts, "", bindOpts).Store(&requestPath)
@@ -266,43 +288,34 @@ func registerPortalShortcut(hotkey string) (<-chan struct{}, error) {
 		conn.Close()
 		return nil, fmt.Errorf("BindShortcuts: %w", err)
 	}
-
 	logging.Info("portal: BindShortcuts request=%s trigger=%s", requestPath, trigger)
 
-	// Wait for bind response
-	select {
-	case sig := <-responseCh:
-		if len(sig.Body) >= 1 {
-			responseCode, ok := sig.Body[0].(uint32)
-			if !ok || responseCode != 0 {
-				conn.Close()
-				return nil, fmt.Errorf("BindShortcuts response: code=%v", sig.Body[0])
-			}
-		}
+	sig, err = waitResponse(signalCh, bindResponsePath)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("BindShortcuts wait: %w", err)
 	}
 
+	code, _, err = parseResponse(sig)
+	if err != nil {
+		conn.Close()
+		return nil, fmt.Errorf("BindShortcuts response: %w", err)
+	}
+	if code != 0 {
+		conn.Close()
+		return nil, fmt.Errorf("BindShortcuts rejected: code=%d", code)
+	}
 	logging.Info("portal: shortcuts bound successfully")
-
-	// Remove the bind response match
-	conn.BusObject().Call("org.freedesktop.DBus.RemoveMatch", 0,
-		fmt.Sprintf("type='signal',interface='org.freedesktop.portal.Request',path='%s',member='Response'", bindResponsePath))
 
 	// Step 3: Listen for Activated signals
 	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		"type='signal',interface='org.freedesktop.portal.GlobalShortcuts',member='Activated'")
 
 	activatedCh := make(chan struct{}, 1)
-
-	// Stop forwarding response signals, start listening for activation
-	conn.RemoveSignal(responseCh)
-
-	signalCh := make(chan *dbus.Signal, 10)
-	conn.Signal(signalCh)
-
 	go func() {
 		for sig := range signalCh {
 			if sig.Name == "org.freedesktop.portal.GlobalShortcuts.Activated" {
-				logging.Info("portal: Activated signal received: %v", sig.Body)
+				logging.Info("portal: Activated signal: %v", sig.Body)
 				select {
 				case activatedCh <- struct{}{}:
 				default:
