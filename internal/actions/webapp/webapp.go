@@ -6,7 +6,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// sanitizeName removes characters that are invalid in filenames across platforms.
+func sanitizeName(name string) string {
+	for _, c := range []string{`\`, `/`, `:`, `*`, `?`, `"`, `<`, `>`, `|`} {
+		name = strings.ReplaceAll(name, c, "")
+	}
+	return strings.TrimSpace(name)
+}
 
 // WebApp represents a web app shortcut.
 type WebApp struct {

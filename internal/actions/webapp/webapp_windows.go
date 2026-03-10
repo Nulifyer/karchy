@@ -73,7 +73,12 @@ func Scan() []WebApp {
 		if e.IsDir() || !strings.HasSuffix(strings.ToLower(e.Name()), ".lnk") {
 			continue
 		}
-		id := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		lnkPath := filepath.Join(dir, e.Name())
+		desc, err := platform.ReadShortcutDescription(lnkPath)
+		if err != nil || !strings.HasPrefix(desc, "karchy:") {
+			continue
+		}
+		id := strings.TrimPrefix(desc, "karchy:")
 		meta, ok := readMeta(id)
 		if !ok {
 			continue
@@ -82,7 +87,7 @@ func Scan() []WebApp {
 			Name:    meta.Name,
 			URL:     meta.URL,
 			ID:      id,
-			LnkPath: filepath.Join(dir, e.Name()),
+			LnkPath: lnkPath,
 		})
 	}
 	return apps
@@ -154,7 +159,7 @@ func Create() {
 
 	// Name
 	fmt.Print(" Name: ")
-	appName := readLine()
+	appName := sanitizeName(readLine())
 	if appName == "" {
 		return
 	}
@@ -268,7 +273,7 @@ func createShortcut(appName, appURL, iconPath string, isolated bool) error {
 	id := urlHash(appURL)
 	dir := ShortcutDir()
 	os.MkdirAll(dir, 0755)
-	lnkPath := filepath.Join(dir, id+".lnk")
+	lnkPath := filepath.Join(dir, appName+".lnk")
 
 	self, err := os.Executable()
 	if err != nil {
@@ -282,7 +287,7 @@ func createShortcut(appName, appURL, iconPath string, isolated bool) error {
 		LnkPath:     lnkPath,
 		TargetPath:  self,
 		Arguments:   arguments,
-		Description: appName,
+		Description: "karchy:" + id,
 		IconPath:    iconPath,
 	}); err != nil {
 		return err

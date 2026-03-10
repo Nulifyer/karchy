@@ -62,3 +62,34 @@ func CreateShortcut(opts ShortcutOptions) error {
 	}
 	return nil
 }
+
+// ReadShortcutDescription reads the Description field from a .lnk file.
+func ReadShortcutDescription(lnkPath string) (string, error) {
+	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
+		return "", fmt.Errorf("CoInitialize: %w", err)
+	}
+	defer ole.CoUninitialize()
+
+	unknown, err := oleutil.CreateObject("WScript.Shell")
+	if err != nil {
+		return "", err
+	}
+	wsh, err := unknown.QueryInterface(ole.IID_IDispatch)
+	if err != nil {
+		return "", err
+	}
+	defer wsh.Release()
+
+	cs, err := oleutil.CallMethod(wsh, "CreateShortcut", lnkPath)
+	if err != nil {
+		return "", err
+	}
+	shortcut := cs.ToIDispatch()
+	defer shortcut.Release()
+
+	desc, err := oleutil.GetProperty(shortcut, "Description")
+	if err != nil {
+		return "", err
+	}
+	return desc.ToString(), nil
+}

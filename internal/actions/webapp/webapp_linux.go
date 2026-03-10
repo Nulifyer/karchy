@@ -192,7 +192,7 @@ func Create() {
 
 	// Name
 	fmt.Print(" Name: ")
-	appName := readLine()
+	appName := sanitizeName(readLine())
 	if appName == "" {
 		return
 	}

@@ -232,7 +232,7 @@ func (m newModel) updateName(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.quitting = true
 		return m, tea.Quit
 	case "enter":
-		val := strings.TrimSpace(m.nameInput.Value())
+		val := sanitizeName(m.nameInput.Value())
 		if val == "" {
 			return m, nil
 		}
