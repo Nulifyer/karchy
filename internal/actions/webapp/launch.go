@@ -19,6 +19,7 @@ func Launch(url string) {
 	}
 
 	args := []string{"--app=" + url}
+	args = append(args, launchExtraArgs()...)
 
 	meta, ok := readMetaByURL(url)
 	if ok && meta.Isolated {
