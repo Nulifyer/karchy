@@ -105,6 +105,8 @@ func stopDaemon() {
 	_ = proc.Signal(syscall.SIGTERM)
 }
 
+func hideConsole() {}
+
 func hideProcess(cmd *exec.Cmd) {
 	cmd.Stdout = nil
 	cmd.Stderr = nil

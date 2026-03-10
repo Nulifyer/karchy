@@ -59,6 +59,8 @@ func stopDaemon() {
 	_ = os.Remove(lockFilePath())
 }
 
+func hideConsole() {}
+
 func hideProcess(cmd *exec.Cmd) {
 	cmd.Stdout = nil
 	cmd.Stderr = nil
