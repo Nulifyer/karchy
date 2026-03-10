@@ -154,7 +154,6 @@ func run() {
 		logging.Info("daemon: tray ready")
 
 		mUpdate = systray.AddMenuItem("System Update", "Install available updates")
-		mUpdate.Hide()
 		mSelfUpdate = systray.AddMenuItem("Update Karchy", "Update Karchy to the latest version")
 		mSelfUpdate.Hide()
 		mOpen := systray.AddMenuItem("Open Karchy", "Open the Karchy menu")
@@ -208,10 +207,9 @@ func run() {
 			if status.systemCount > 0 {
 				logging.Info("daemon: %d system updates available", status.systemCount)
 				mUpdate.SetTitle(fmt.Sprintf("System Update (%d)", status.systemCount))
-				mUpdate.Show()
 				hasBadge = true
 			} else {
-				mUpdate.Hide()
+				mUpdate.SetTitle("System Update")
 			}
 			if status.selfVersion != "" {
 				mSelfUpdate.SetTitle(fmt.Sprintf("Update Karchy (%s)", status.selfVersion))
