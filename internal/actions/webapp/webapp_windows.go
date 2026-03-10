@@ -28,7 +28,11 @@ func ShortcutDir() string {
 
 // IconDir returns the directory where web app icons are stored.
 func IconDir() string {
-	return filepath.Join(os.Getenv("USERPROFILE"), `.config\karchy\webapp-icons`)
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		dir = os.TempDir()
+	}
+	return filepath.Join(dir, "karchy", "webapp-icons")
 }
 
 // convertIcon converts a downloaded image to .ico format.

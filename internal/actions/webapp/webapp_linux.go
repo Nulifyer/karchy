@@ -31,8 +31,11 @@ const shortcutPrefix = "karchy-webapp-"
 
 // IconDir returns the directory for web app icons.
 func IconDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "karchy", "webapp-icons")
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		dir = os.TempDir()
+	}
+	return filepath.Join(dir, "karchy", "webapp-icons")
 }
 
 // convertIcon is a no-op on Linux (keep original PNG format).
