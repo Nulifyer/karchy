@@ -22,10 +22,14 @@ func Detach(cmd *exec.Cmd) {
 
 // DetachedStart launches a command fully detached in a new session so it's
 // immediately reparented to PID 1, with no process tree link to the caller.
-func DetachedStart(name string, args ...string) error {
+// Returns the child PID (0 on error) and any start error.
+func DetachedStart(name string, args ...string) (int, error) {
 	cmd := exec.Command(name, args...)
 	Detach(cmd)
 	err := cmd.Start()
+	if err != nil {
+		return 0, err
+	}
 	time.Sleep(500 * time.Millisecond)
-	return err
+	return cmd.Process.Pid, nil
 }

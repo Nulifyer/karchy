@@ -10,6 +10,7 @@ import (
 
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
+	"github.com/nulifyer/karchy/internal/platform"
 	"github.com/nulifyer/karchy/internal/theme"
 )
 
@@ -31,7 +32,7 @@ func Launch(cols, lines int, title string, args ...string) (int, error) {
 	logging.Info("Launch: alacritty %v", cmdArgs)
 	cmd := exec.Command("alacritty", cmdArgs...)
 
-	hideLaunch(cmd)
+	platform.Detach(cmd)
 
 	err := cmd.Start()
 	if err != nil {
@@ -53,7 +54,7 @@ func LaunchProgram(cols, lines int, program string, args ...string) (int, error)
 	logging.Info("LaunchProgram: alacritty %v", cmdArgs)
 	cmd := exec.Command("alacritty", cmdArgs...)
 
-	hideLaunch(cmd)
+	platform.Detach(cmd)
 
 	err := cmd.Start()
 	if err != nil {
@@ -89,7 +90,7 @@ func LaunchShell(cols, lines int, title, script string) (int, error) {
 	logging.Info("LaunchShell: alacritty %v", cmdArgs)
 	cmd := exec.Command("alacritty", cmdArgs...)
 
-	hideLaunch(cmd)
+	platform.Detach(cmd)
 
 	err := cmd.Start()
 	if err != nil {
