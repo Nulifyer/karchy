@@ -90,12 +90,15 @@ func LoadDashboardIcons() ([]DashboardIcon, string, error) {
 	return icons, commit, nil
 }
 
-// DashboardIconURL returns the CDN URL for a dashboard icon PNG.
+// DashboardIconURL returns the CDN URL for a dashboard icon.
+// Uses SVG on platforms that support it, PNG otherwise.
 func DashboardIconURL(commit, iconName string) string {
-	return fmt.Sprintf("https://cdn.jsdelivr.net/gh/%s@%s/png/%s.png", dashboardIconsRepo, commit, iconName)
+	return fmt.Sprintf("https://cdn.jsdelivr.net/gh/%s@%s/%s/%s.%s", dashboardIconsRepo, commit, dashboardIconFmt, iconName, dashboardIconFmt)
 }
 
-// FaviconURL returns the Google favicon service URL for a domain.
+// FaviconURL returns the best available favicon URL for a site.
+// It tries the site's apple-touch-icon (usually 180x180) first,
+// then falls back to the Google favicon service.
 func FaviconURL(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -105,7 +108,22 @@ func FaviconURL(rawURL string) string {
 	if domain == "" {
 		domain = rawURL
 	}
-	return fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=128", domain)
+
+	// Try apple-touch-icon first (typically 180x180)
+	touchIcon := fmt.Sprintf("%s://%s/apple-touch-icon.png", u.Scheme, u.Host)
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Head(touchIcon)
+	if err == nil {
+		resp.Body.Close()
+		if resp.StatusCode == http.StatusOK {
+			ct := resp.Header.Get("Content-Type")
+			if strings.HasPrefix(ct, "image/") {
+				return touchIcon
+			}
+		}
+	}
+
+	return fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=256", domain)
 }
 
 // DownloadIcon downloads an icon from a URL and saves it to the icon directory.

@@ -18,6 +18,8 @@ const (
 	colorCyan  = "\033[36m"
 	colorBold  = "\033[1m"
 	colorReset = "\033[0m"
+
+	dashboardIconFmt = "svg"
 )
 
 // ShortcutDir returns the directory for web app .desktop files.
@@ -38,12 +40,16 @@ func IconDir() string {
 	return filepath.Join(dir, "karchy", "webapp-icons")
 }
 
-// convertIcon is a no-op on Linux (keep original PNG format).
-func convertIcon(id, tmpPath, _ string) (string, error) {
+// convertIcon preserves the original format on Linux.
+func convertIcon(id, tmpPath, iconURL string) (string, error) {
 	iconDir := IconDir()
 	os.MkdirAll(iconDir, 0755)
 
-	destPath := filepath.Join(iconDir, id+".png")
+	ext := ".png"
+	if strings.HasSuffix(iconURL, ".svg") {
+		ext = ".svg"
+	}
+	destPath := filepath.Join(iconDir, id+ext)
 
 	if err := os.Rename(tmpPath, destPath); err != nil {
 		// Rename may fail across filesystems, fall back to copy
@@ -155,6 +161,9 @@ func createShortcut(appName, appURL, iconPath string, isolated bool) error {
 
 	safeName := sanitizeDesktopValue(appName)
 
+	browser := DetectBrowser()
+	wmClass := chromiumAppID(browser, appURL)
+
 	content := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=%s
@@ -163,7 +172,7 @@ Icon=%s
 Comment=%s web app
 Categories=Network;WebBrowser;
 StartupWMClass=%s
-`, safeName, self, appURL, iconPath, safeName, safeName)
+`, safeName, self, appURL, iconPath, safeName, wmClass)
 
 	logging.Info("createShortcut: %s", desktopPath)
 	if err := os.WriteFile(desktopPath, []byte(content), 0755); err != nil {

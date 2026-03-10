@@ -19,6 +19,8 @@ const (
 	colorCyan  = "\033[36m"
 	colorBold  = "\033[1m"
 	colorReset = "\033[0m"
+
+	dashboardIconFmt = "png"
 )
 
 // ShortcutDir returns the Start Menu folder for Karchy web apps.

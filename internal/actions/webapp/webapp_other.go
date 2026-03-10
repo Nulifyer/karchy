@@ -4,6 +4,8 @@ package webapp
 
 import "fmt"
 
+const dashboardIconFmt = "svg"
+
 // ShortcutDir returns the directory for web app shortcuts.
 func ShortcutDir() string { return "" }
 
