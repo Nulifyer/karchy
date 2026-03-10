@@ -233,8 +233,8 @@ func extractFromTarGz(archivePath, target, destPath string) error {
 			if err != nil {
 				return err
 			}
-			// Limit extraction to 256MB to prevent decompression bombs
-			_, err = io.Copy(out, io.LimitReader(tr, 256<<20))
+			// Limit extraction to 512MB to prevent decompression bombs
+			_, err = io.Copy(out, io.LimitReader(tr, 512<<20))
 			out.Close()
 			return err
 		}
