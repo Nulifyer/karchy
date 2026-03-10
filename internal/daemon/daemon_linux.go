@@ -340,9 +340,14 @@ func iconWithBadge() []byte {
 	img := image.NewRGBA(bounds)
 	draw.Draw(img, bounds, src, bounds.Min, draw.Src)
 
-	// Draw a 10px orange circle in the top-right corner
+	// Draw an orange circle in the top-right corner, scaled to icon size
 	orange := color.RGBA{R: 255, G: 140, B: 0, A: 255}
-	cx, cy, r := bounds.Max.X-6, bounds.Min.Y+6, 5
+	size := bounds.Dx()
+	r := size / 8
+	if r < 3 {
+		r = 3
+	}
+	cx, cy := bounds.Max.X-r-1, bounds.Min.Y+r+1
 	for y := cy - r; y <= cy+r; y++ {
 		for x := cx - r; x <= cx+r; x++ {
 			dx, dy := x-cx, y-cy
