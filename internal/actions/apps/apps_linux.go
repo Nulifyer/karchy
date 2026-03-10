@@ -5,9 +5,10 @@ package apps
 import (
 	"bufio"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/nulifyer/karchy/internal/platform"
 )
 
 // Scan discovers installed applications from .desktop files.
@@ -73,5 +74,5 @@ func parseDesktopName(path string) string {
 func Launch(app AppEntry) {
 	// app.Path is the .desktop filename (e.g. "firefox.desktop")
 	name := strings.TrimSuffix(app.Path, ".desktop")
-	exec.Command("gtk-launch", name).Start()
+	platform.DetachedStart("gtk-launch", name)
 }
