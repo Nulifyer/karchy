@@ -14,6 +14,8 @@ var Version string
 
 // Start launches the daemon as a background process.
 func Start() {
+	hideConsole()
+
 	if isRunning() {
 		fmt.Println("Daemon is already running.")
 		return

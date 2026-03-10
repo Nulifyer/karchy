@@ -207,6 +207,20 @@ func stopDaemon() {
 	os.Remove(pidFilePath())
 }
 
+var (
+	procGetConsoleWindow = kernel32.NewProc("GetConsoleWindow")
+	procShowWindow       = user32.NewProc("ShowWindow")
+)
+
+// hideConsole hides the console window of the current process.
+// Called by daemon start so the brief startup window is invisible.
+func hideConsole() {
+	hwnd, _, _ := procGetConsoleWindow.Call()
+	if hwnd != 0 {
+		procShowWindow.Call(hwnd, 0) // SW_HIDE
+	}
+}
+
 func hideProcess(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: 0x08000000,
