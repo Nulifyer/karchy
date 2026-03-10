@@ -75,8 +75,10 @@ func Scan() []WebApp {
 		}
 		name := strings.TrimPrefix(strings.TrimSuffix(e.Name(), ".desktop"), shortcutPrefix)
 		desktopPath := filepath.Join(dir, e.Name())
+		meta, _ := readMeta(name)
 		apps = append(apps, WebApp{
 			Name:    name,
+			URL:     meta.URL,
 			LnkPath: desktopPath,
 		})
 	}
@@ -119,6 +121,7 @@ func deleteApps(apps []WebApp) {
 		for _, ext := range []string{".png", ".ico", ".svg"} {
 			os.Remove(filepath.Join(iconDir, app.Name+ext))
 		}
+		removeMeta(app.Name)
 		fmt.Printf(" %s  %sremoved%s\n", app.Name, colorGreen, colorReset)
 	}
 	fmt.Printf("\n %s%s:: Done.%s\n", colorBold, colorGreen, colorReset)
@@ -148,6 +151,10 @@ StartupWMClass=%s
 	logging.Info("createShortcut: %s", desktopPath)
 	if err := os.WriteFile(desktopPath, []byte(content), 0755); err != nil {
 		return err
+	}
+	profileDir := appDataDir(appURL)
+	if err := writeMeta(appName, webAppMeta{URL: appURL, ProfileDir: profileDir}); err != nil {
+		logging.Info("writeMeta failed: %v", err)
 	}
 	return nil
 }

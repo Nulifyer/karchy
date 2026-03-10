@@ -68,8 +68,10 @@ func Scan() []WebApp {
 			continue
 		}
 		name := strings.TrimSuffix(e.Name(), filepath.Ext(e.Name()))
+		meta, _ := readMeta(name)
 		apps = append(apps, WebApp{
 			Name:    name,
+			URL:     meta.URL,
 			LnkPath: filepath.Join(dir, e.Name()),
 		})
 	}
@@ -108,6 +110,7 @@ func Remove(apps []WebApp) {
 		for _, ext := range []string{".ico", ".png", ".svg"} {
 			os.Remove(filepath.Join(iconDir, app.Name+ext))
 		}
+		removeMeta(app.Name)
 		fmt.Printf(" %s  %sremoved%s\n", app.Name, colorGreen, colorReset)
 	}
 
@@ -262,11 +265,18 @@ func createShortcut(appName, appURL, iconPath string) error {
 	arguments := fmt.Sprintf(`webapp launch "%s"`, appURL)
 	logging.Info("createShortcut: %s → %s %s", lnkPath, self, arguments)
 
-	return platform.CreateShortcut(platform.ShortcutOptions{
+	if err := platform.CreateShortcut(platform.ShortcutOptions{
 		LnkPath:     lnkPath,
 		TargetPath:  self,
 		Arguments:   arguments,
 		Description: appName,
 		IconPath:    iconPath,
-	})
+	}); err != nil {
+		return err
+	}
+	profileDir := appDataDir(appURL)
+	if err := writeMeta(appName, webAppMeta{URL: appURL, ProfileDir: profileDir}); err != nil {
+		logging.Info("writeMeta failed: %v", err)
+	}
+	return nil
 }
