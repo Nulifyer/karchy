@@ -18,22 +18,11 @@ EXE="$INSTALL_DIR/karchy"
 
 echo "Building karchy $VERSION ..."
 
-# Stop daemon if running
-LOCKFILE="${XDG_CACHE_HOME:-$HOME/.cache}/karchy-daemon.lock"
-if [[ -x "$EXE" ]]; then
-    echo "Stopping daemon..."
-    "$EXE" daemon stop 2>/dev/null || true
-    sleep 5
-    # Only kill the daemon PID from the lockfile, not all karchy processes
-    if [[ -f "$LOCKFILE" ]]; then
-        DPID=$(cat "$LOCKFILE" 2>/dev/null || true)
-        if [[ -n "$DPID" ]] && kill -0 "$DPID" 2>/dev/null; then
-            echo "Force killing daemon (pid $DPID)..."
-            kill -9 "$DPID" 2>/dev/null || true
-        fi
-        rm -f "$LOCKFILE"
-    fi
+# Kill all karchy processes
+if pkill -9 karchy 2>/dev/null; then
+    echo "Killed karchy processes"
 fi
+rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/karchy-daemon.lock"
 
 # Build
 cd "$REPO_ROOT"

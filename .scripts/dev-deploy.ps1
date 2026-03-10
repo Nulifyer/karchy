@@ -7,16 +7,11 @@ $installDir = "$env:LOCALAPPDATA\Karchy"
 $exe = "$installDir\karchy.exe"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
-# Stop daemon if running
-if (Test-Path $exe) {
-    Write-Host "Stopping daemon..." -ForegroundColor Yellow
-    & $exe daemon stop 2>$null
-    Start-Sleep -Seconds 5
-    $procs = Get-Process -Name "karchy" -ErrorAction SilentlyContinue
-    if ($procs) {
-        Write-Host "Force killing karchy..." -ForegroundColor Red
-        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
-    }
+# Kill any running karchy processes
+$procs = Get-Process -Name "karchy" -ErrorAction SilentlyContinue
+if ($procs) {
+    Write-Host "Killing karchy..." -ForegroundColor Yellow
+    $procs | Stop-Process -Force -ErrorAction SilentlyContinue
 }
 
 # Build dev version string from git
