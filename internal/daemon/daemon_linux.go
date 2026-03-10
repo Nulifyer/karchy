@@ -444,6 +444,7 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 
 	actionID := []string{"karchy", "Karchy", "toggle-menu", "Toggle Karchy Menu"}
 
+	// Register action so we receive globalShortcutPressed signals
 	err = kga.Call("org.kde.KGlobalAccel.doRegister", 0, actionID).Err
 	if err != nil {
 		conn.Close()
@@ -451,12 +452,15 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 	}
 	logging.Info("kglobalaccel: action registered")
 
-	var result []int32
-	err = kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
-		actionID, []int32{keyCode}, uint32(2)).Store(&result)
+	// setShortcutKeys sets the active key binding (QList<QKeySequence>)
+	// Each QKeySequence is an array of int32 key codes
+	keys := [][]int32{{keyCode}}
+	var result [][]int32
+	err = kga.Call("org.kde.KGlobalAccel.setShortcutKeys", 0,
+		actionID, keys, uint32(0)).Store(&result)
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("setShortcut: %w", err)
+		return nil, fmt.Errorf("setShortcutKeys: %w", err)
 	}
 	logging.Info("kglobalaccel: shortcut set, result=%v", result)
 
