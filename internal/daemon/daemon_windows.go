@@ -83,8 +83,9 @@ const (
 	vkLShift   = 0xA0
 	vkRShift   = 0xA1
 
-	nimAdd     = 0x00
-	nimDelete  = 0x02
+	nimAdd    = 0x00
+	nimModify = 0x01
+	nimDelete = 0x02
 	nifIcon    = 0x02
 	nifMessage = 0x01
 	nifTip     = 0x04
@@ -634,8 +635,8 @@ func checkSelfUpdate() {
 	if v := selfupdate.CheckAvailable(Version); v != "" {
 		selfUpdateVer = v
 		logging.Info("daemon: karchy update available: %s", v)
-		// Update tooltip to show update available
 		updateTrayTooltip(fmt.Sprintf("Karchy - %s available", v))
+		updateTrayIcon(assets.IconBadgeICO)
 	}
 }
 
@@ -651,5 +652,35 @@ func updateTrayTooltip(tip string) {
 		}
 		nid.SzTip[i] = uint16(ch)
 	}
-	procShellNotifyIconW.Call(0x01, uintptr(unsafe.Pointer(&nid))) // NIM_MODIFY
+	procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
+}
+
+func updateTrayIcon(icoData []byte) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return
+	}
+	icoPath := filepath.Join(dir, "karchy", "karchy-tray.ico")
+	os.MkdirAll(filepath.Dir(icoPath), 0o755)
+	if err := os.WriteFile(icoPath, icoData, 0o644); err != nil {
+		return
+	}
+	pathPtr, _ := syscall.UTF16PtrFromString(icoPath)
+	icon, _, _ := procLoadImageW.Call(
+		0,
+		uintptr(unsafe.Pointer(pathPtr)),
+		imageIcon,
+		16, 16,
+		lrLoadFromFile,
+	)
+	if icon == 0 {
+		return
+	}
+	var nid notifyIconData
+	nid.CbSize = uint32(unsafe.Sizeof(nid))
+	nid.Hwnd = trayHwnd
+	nid.UID = 1
+	nid.UFlags = nifIcon
+	nid.HIcon = icon
+	procShellNotifyIconW.Call(nimModify, uintptr(unsafe.Pointer(&nid)))
 }
