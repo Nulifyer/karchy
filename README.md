@@ -94,7 +94,7 @@ font_size = 13.0
 name = "catppuccin-mocha"
 
 [terminal]
-app = "alacritty"
+app = "alacritty" # alacritty, kitty, wezterm, ghostty
 
 [projects]
 editor = "code"
@@ -114,10 +114,16 @@ editor = "code"
 | rose-pine | |
 | everforest-dark | |
 | kanagawa | |
+| inherit | Uses your terminal's existing colors |
 
 ## Dependencies
 
-- [Alacritty](https://alacritty.org/) — terminal emulator (provides borderless themed window chrome)
+One of the following terminal emulators (provides borderless themed window chrome):
+
+- [Alacritty](https://alacritty.org/) (default)
+- [Kitty](https://sw.kovidgoyal.net/kitty/)
+- [WezTerm](https://wezfurlong.org/wezterm/)
+- [Ghostty](https://ghostty.org/)
 - [oh-my-posh](https://ohmyposh.dev/) — Nerd Font installer (Windows only, optional)
 
 ## License

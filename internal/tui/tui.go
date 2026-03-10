@@ -111,8 +111,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.loading {
 			if msg.String() == "esc" || msg.String() == "ctrl+c" {
 				m.loading = false
-				m.goBack()
-				return m, nil
+				cmd := m.goBack()
+				return m, cmd
 			}
 			return m, nil
 		}
@@ -130,8 +130,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			if len(m.stack) > 0 {
-				m.goBack()
-				return m, nil
+				cmd := m.goBack()
+				return m, cmd
 			}
 			m.quitting = true
 			return m, tea.Quit
@@ -193,8 +193,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd := m.openSubmenuCmd(result.submenu)
 					return m, cmd
 				case resultBack:
-					m.goBack()
-					return m, nil
+					cmd := m.goBack()
+					return m, cmd
 				case resultQuit:
 					m.quitting = true
 					return m, tea.Quit
@@ -439,16 +439,13 @@ func (m *model) openSubmenu(s submenuKind) {
 	m.openSubmenuCmd(s)
 }
 
-func (m *model) goBack() {
+func (m *model) goBack() tea.Cmd {
 	if len(m.stack) == 0 {
-		return
+		return nil
 	}
 	prev := m.stack[len(m.stack)-1]
 	m.stack = m.stack[:len(m.stack)-1]
-	items, title := getMenu(prev.menu)
-	m.menuItems = items
 	m.menu = prev.menu
-	m.title = title
 	m.list.Cursor = prev.cursor
 	m.list.Offset = 0
 	m.list.Query = prev.query
@@ -456,12 +453,26 @@ func (m *model) goBack() {
 	m.picked = nil
 	m.onSelect = nil
 	m.onBatch = nil
-	m.syncFilterItems()
-	m.list.ApplyFilter()
-	m.list.EnsureCursorVisible(m.height, viewOverhead)
 
 	sz := getMenuSize(prev.menu)
 	go terminal.ResizeAndCenter(sz.cols, sz.lines)
+
+	if loader := getMenuAsync(prev.menu); loader != nil {
+		m.loading = true
+		m.title = getMenuTitle(prev.menu)
+		m.menuItems = nil
+		m.syncFilterItems()
+		m.list.ApplyFilter()
+		return loader
+	}
+
+	items, title := getMenu(prev.menu)
+	m.menuItems = items
+	m.title = title
+	m.syncFilterItems()
+	m.list.ApplyFilter()
+	m.list.EnsureCursorVisible(m.height, viewOverhead)
+	return nil
 }
 
 func Run() {

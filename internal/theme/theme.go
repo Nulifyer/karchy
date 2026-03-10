@@ -2,7 +2,7 @@ package theme
 
 import "fmt"
 
-// Palette holds colors for Alacritty config generation.
+// Palette holds colors for terminal config generation.
 type Palette struct {
 	BG     string
 	FG     string
@@ -10,7 +10,20 @@ type Palette struct {
 	Colors [16]string // 0-7 normal, 8-15 bright
 }
 
+// IsInherit reports whether the palette uses ANSI color indices
+// rather than hardcoded hex values (i.e. the terminal's own colors).
+func (p Palette) IsInherit() bool {
+	return p.BG == ""
+}
+
 var builtins = map[string]Palette{
+	"inherit": {
+		BG: "", FG: "", Accent: "4",
+		Colors: [16]string{
+			"0", "1", "2", "3", "4", "5", "6", "7",
+			"8", "9", "10", "11", "12", "13", "14", "15",
+		},
+	},
 	"catppuccin-mocha": build("#1e1e2e", "#cdd6f4", "#89b4fa", [8]string{
 		"#45475a", "#f38ba8", "#a6e3a1", "#f9e2af",
 		"#89b4fa", "#cba6f7", "#94e2d5", "#bac2de",

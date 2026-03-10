@@ -3,143 +3,50 @@ package terminal
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 
 	"github.com/nulifyer/karchy/internal/config"
-	"github.com/nulifyer/karchy/internal/logging"
-	"github.com/nulifyer/karchy/internal/platform"
 	"github.com/nulifyer/karchy/internal/theme"
 )
 
-// Launch opens Alacritty with a borderless themed config running the given command.
-// Returns the Alacritty process PID (0 on error).
-func Launch(cols, lines int, title string, args ...string) (int, error) {
-	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
-	configFile := writeAlacrittyConfig(cols, lines, 4, 4, pal, cfg.Appearance)
-	exePath, _ := os.Executable()
-
-	cmdArgs := []string{
-		"--config-file", configFile,
-		"--title", title,
-		"-e", exePath,
-	}
-	cmdArgs = append(cmdArgs, args...)
-
-	logging.Info("Launch: alacritty %v", cmdArgs)
-	cmd := exec.Command("alacritty", cmdArgs...)
-
-	platform.Detach(cmd)
-
-	err := cmd.Start()
-	if err != nil {
-		logging.Error("Launch: %v", err)
-		return 0, err
-	}
-	pid := cmd.Process.Pid
-	logging.Info("Launch: pid=%d", pid)
-	return pid, nil
+func init() {
+	RegisterBackend(&alacrittyBackend{})
 }
 
-// LaunchProgram opens Alacritty running an arbitrary program (not karchy).
-func LaunchProgram(cols, lines int, program string, args ...string) (int, error) {
-	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
-	configFile := writeAlacrittyConfig(cols, lines, 4, 4, pal, cfg.Appearance)
+type alacrittyBackend struct{}
 
-	cmdArgs := []string{
-		"--config-file", configFile,
-		"-e", program,
+func (a *alacrittyBackend) Name() string   { return "alacritty" }
+func (a *alacrittyBackend) Binary() string { return "alacritty" }
+
+func (a *alacrittyBackend) LaunchArgs(configFile, title string, childArgs []string) []string {
+	var args []string
+	if configFile != "" {
+		args = append(args, "--config-file", configFile)
 	}
-	cmdArgs = append(cmdArgs, args...)
-
-	logging.Info("LaunchProgram: alacritty %v", cmdArgs)
-	cmd := exec.Command("alacritty", cmdArgs...)
-
-	platform.Detach(cmd)
-
-	err := cmd.Start()
-	if err != nil {
-		logging.Error("LaunchProgram: %v", err)
-		return 0, err
+	if title != "" {
+		args = append(args, "--title", title)
 	}
-	pid := cmd.Process.Pid
-	logging.Info("LaunchProgram: pid=%d", pid)
-	return pid, nil
+	if len(childArgs) > 0 {
+		args = append(args, "-e")
+		args = append(args, childArgs...)
+	}
+	return args
 }
 
-// LaunchShell opens Alacritty running a shell command via cmd /c (Windows) or sh -c.
-func LaunchShell(cols, lines int, title, script string) (int, error) {
-	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
-	configFile := writeAlacrittyConfig(cols, lines, 16, 12, pal, cfg.Appearance)
-
-	var shell, flag string
-	if runtime.GOOS == "windows" {
-		shell = "cmd"
-		flag = "/c"
-	} else {
-		shell = "sh"
-		flag = "-c"
-	}
-
-	cmdArgs := []string{
-		"--config-file", configFile,
-		"--title", title,
-		"-e", shell, flag, script,
-	}
-
-	logging.Info("LaunchShell: alacritty %v", cmdArgs)
-	cmd := exec.Command("alacritty", cmdArgs...)
-
-	platform.Detach(cmd)
-
-	err := cmd.Start()
-	if err != nil {
-		logging.Error("LaunchShell: %v", err)
-		return 0, err
-	}
-	pid := cmd.Process.Pid
-	logging.Info("LaunchShell: pid=%d", pid)
-	return pid, nil
-}
-
-func writeAlacrittyConfig(cols, lines, padX, padY int, pal theme.Palette, app config.AppearanceConfig) string {
-	// Check for user's existing config to import
+func (a *alacrittyBackend) WriteConfig(cols, lines, padX, padY int, pal theme.Palette, app config.AppearanceConfig) string {
 	var importSection string
 	if userConfig := userAlacrittyConfig(); userConfig != "" {
 		escaped := strings.ReplaceAll(userConfig, "\\", "/")
 		importSection = fmt.Sprintf("[general]\nimport = [\"%s\"]\n", escaped)
 	}
 
-	// Estimate center position
 	posX, posY := estimateCenter(cols, lines)
 
-	toml := fmt.Sprintf(`%s
-[window]
-decorations = "None"
-
-[window.padding]
-x = %d
-y = %d
-
-[window.dimensions]
-columns = %d
-lines = %d
-
-[window.position]
-x = %d
-y = %d
-
-[font]
-size = %.0f
-
-[font.normal]
-family = "%s"
-
+	var colorSection string
+	if !pal.IsInherit() {
+		colorSection = fmt.Sprintf(`
 [colors.primary]
 background = "%s"
 foreground = "%s"
@@ -163,7 +70,37 @@ blue = "%s"
 magenta = "%s"
 cyan = "%s"
 white = "%s"
+`,
+			pal.BG, pal.FG,
+			pal.Colors[0], pal.Colors[1], pal.Colors[2], pal.Colors[3],
+			pal.Colors[4], pal.Colors[5], pal.Colors[6], pal.Colors[7],
+			pal.Colors[8], pal.Colors[9], pal.Colors[10], pal.Colors[11],
+			pal.Colors[12], pal.Colors[13], pal.Colors[14], pal.Colors[15],
+		)
+	}
 
+	toml := fmt.Sprintf(`%s
+[window]
+decorations = "None"
+
+[window.padding]
+x = %d
+y = %d
+
+[window.dimensions]
+columns = %d
+lines = %d
+
+[window.position]
+x = %d
+y = %d
+
+[font]
+size = %.0f
+
+[font.normal]
+family = "%s"
+%s
 [[keyboard.bindings]]
 key = "V"
 mods = "Control|Shift"
@@ -179,11 +116,7 @@ action = "Copy"
 		cols, lines,
 		posX, posY,
 		app.FontSize, app.FontFamily,
-		pal.BG, pal.FG,
-		pal.Colors[0], pal.Colors[1], pal.Colors[2], pal.Colors[3],
-		pal.Colors[4], pal.Colors[5], pal.Colors[6], pal.Colors[7],
-		pal.Colors[8], pal.Colors[9], pal.Colors[10], pal.Colors[11],
-		pal.Colors[12], pal.Colors[13], pal.Colors[14], pal.Colors[15],
+		colorSection,
 	)
 
 	tmpFile := filepath.Join(os.TempDir(), "karchy-alacritty.toml")

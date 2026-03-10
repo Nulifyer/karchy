@@ -237,9 +237,10 @@ func editorMenu() []MenuItem {
 		cmd := ed.Command
 		items[i] = MenuItem{
 			Label: label,
-			Action: action(func() {
+			Action: func() menuResult {
 				config.SaveEditor(cmd)
-			}),
+				return menuResult{kind: resultBack}
+			},
 		}
 	}
 	return items

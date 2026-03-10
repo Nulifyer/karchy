@@ -11,6 +11,7 @@ import (
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/platform"
 	"github.com/nulifyer/karchy/internal/set"
+	"github.com/nulifyer/karchy/internal/terminal"
 )
 
 type ProjectEntry struct {
@@ -205,25 +206,15 @@ func Open(entry ProjectEntry) {
 
 func openInTerminal(editor, path string) {
 	cfg := config.Load()
-	terminal := cfg.Terminal.App
-	if terminal == "" {
-		terminal = "alacritty"
-	}
+	b := terminal.GetBackend(cfg.Terminal.App)
 
-	var cmd *exec.Cmd
-	switch terminal {
-	case "alacritty":
-		cmd = exec.Command(terminal, "-e", editor, path)
-	case "wezterm":
-		cmd = exec.Command(terminal, "start", "--", editor, path)
-	case "wt":
-		cmd = exec.Command(terminal, "new-tab", "--", editor, path)
-	case "kitty":
-		cmd = exec.Command(terminal, editor, path)
-	default:
-		cmd = exec.Command(terminal, "-e", editor, path)
-	}
+	// Use an empty config (no temp file) — just launch the editor directly
+	childArgs := []string{editor, path}
+	cmdArgs := b.LaunchArgs("", "", childArgs)
+
+	cmd := exec.Command(b.Binary(), cmdArgs...)
 	cmd.Dir = path
+	platform.Detach(cmd)
 	cmd.Start()
 }
 
