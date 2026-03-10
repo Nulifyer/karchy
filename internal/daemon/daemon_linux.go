@@ -136,13 +136,22 @@ func run() {
 		hotkey = "Super+Space"
 	}
 
-	// Register global shortcut via KDE's kglobalaccel
-	hotkeyActivated, err := registerKGlobalAccel(hotkey)
-	if err != nil {
-		logging.Error("kglobalaccel failed: %v", err)
-		fmt.Printf("Karchy daemon running (shortcut unavailable: %v)\n", err)
-		<-sigCh
-		return
+	// Register global shortcut via KDE's kglobalaccel (retry until D-Bus is ready)
+	var hotkeyActivated <-chan struct{}
+	for attempt := 1; ; attempt++ {
+		var err error
+		hotkeyActivated, err = registerKGlobalAccel(hotkey)
+		if err == nil {
+			break
+		}
+		if attempt >= 30 {
+			logging.Error("kglobalaccel failed after %d attempts: %v", attempt, err)
+			fmt.Printf("Karchy daemon running (shortcut unavailable: %v)\n", err)
+			<-sigCh
+			return
+		}
+		logging.Info("kglobalaccel attempt %d failed: %v, retrying...", attempt, err)
+		time.Sleep(2 * time.Second)
 	}
 
 	// Start system tray icon

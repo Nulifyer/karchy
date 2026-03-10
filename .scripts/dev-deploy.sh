@@ -35,8 +35,8 @@ chmod +x "$EXE"
 
 echo "Installed $EXE ($VERSION)"
 
-# Restart daemon
-echo "Starting daemon..."
-"$EXE" daemon start
+# Register autostart + restart daemon
+echo "Running install..."
+"$EXE" install
 
 echo "Done!"

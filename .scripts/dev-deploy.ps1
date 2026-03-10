@@ -37,8 +37,8 @@ Remove-Item $outPath
 
 Write-Host "Installed $exe ($version)" -ForegroundColor Green
 
-# Restart daemon
-Write-Host "Starting daemon..." -ForegroundColor Yellow
-& $exe daemon start
+# Register autostart + restart daemon
+Write-Host "Running install..." -ForegroundColor Yellow
+& $exe install
 
 Write-Host "Done!" -ForegroundColor Green
