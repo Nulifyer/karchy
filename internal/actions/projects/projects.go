@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
@@ -200,8 +199,7 @@ func Open(entry ProjectEntry) {
 	} else {
 		cmd := exec.Command(editor, entry.Path)
 		platform.Detach(cmd)
-		cmd.Start()
-		time.Sleep(500 * time.Millisecond)
+		cmd.Run()
 	}
 }
 
