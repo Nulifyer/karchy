@@ -31,7 +31,11 @@ func Launch(appURL string) {
 
 	logging.Info("Launch: %s %v", browser, args)
 	cmd := exec.Command(browser, args...)
-	cmd.Start()
+	if err := cmd.Start(); err != nil {
+		logging.Error("Launch: failed to start browser: %v", err)
+		fmt.Fprintf(os.Stderr, "Failed to launch browser: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 // chromiumAppID returns the app_id that Chromium-based browsers generate

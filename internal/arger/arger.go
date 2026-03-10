@@ -224,9 +224,9 @@ func ParseFlags() (map[string]IParsedFlag, []string) {
 			if mapped, exists := aliasToFlag[arg]; exists {
 				lastFlag = mapped
 
-				if _, ok := lastFlag.(Flag[bool]); ok {
-					if lastFlag.(Flag[bool]).Parser == nil {
-						parsedFlags[lastFlag.GetName()] = ParsedFlag[bool]{flag: func() *Flag[bool] { f := lastFlag.(Flag[bool]); return &f }(), Value: true}
+				if bf, ok := lastFlag.(Flag[bool]); ok {
+					if bf.Parser == nil {
+						parsedFlags[lastFlag.GetName()] = ParsedFlag[bool]{flag: &bf, Value: true}
 						logging.Debug("Set switch flag %s = true", lastFlag.GetName())
 						lastFlag = nil
 					}
@@ -291,9 +291,6 @@ func ParseFlags() (map[string]IParsedFlag, []string) {
 			}
 		}
 	}
-
-	aliasToFlag = nil
-	registeredFlags = nil
 
 	return parsedFlags, extraArgs
 }

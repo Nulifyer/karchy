@@ -50,12 +50,14 @@ func MetaDir() string {
 // writeMeta writes metadata for a web app, keyed by URL hash.
 func writeMeta(id string, meta webAppMeta) error {
 	dir := MetaDir()
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create meta dir: %w", err)
+	}
 	data, err := json.Marshal(meta)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, id+".json"), data, 0644)
+	return os.WriteFile(filepath.Join(dir, id+".json"), data, 0o644)
 }
 
 // readMeta reads metadata for a web app by its ID (URL hash).

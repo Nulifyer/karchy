@@ -73,8 +73,8 @@ func hideProcess(cmd *exec.Cmd) {
 func run() {
 	// Write PID lock file
 	lockFile := lockFilePath()
-	_ = os.MkdirAll(filepath.Dir(lockFile), 0755)
-	_ = os.WriteFile(lockFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
+	_ = os.MkdirAll(filepath.Dir(lockFile), 0o755)
+	_ = os.WriteFile(lockFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0o644)
 	defer os.Remove(lockFile)
 
 	// TODO: Register global hotkey via global-hotkey equivalent or X11/Wayland bindings

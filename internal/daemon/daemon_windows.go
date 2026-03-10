@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -577,24 +578,12 @@ func splitHotkey(s string) []string {
 	start := 0
 	for i := 0; i < len(s); i++ {
 		if s[i] == '+' {
-			parts = append(parts, lower(s[start:i]))
+			parts = append(parts, strings.ToLower(s[start:i]))
 			start = i + 1
 		}
 	}
-	parts = append(parts, lower(s[start:]))
+	parts = append(parts, strings.ToLower(s[start:]))
 	return parts
-}
-
-func lower(s string) string {
-	b := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
-		}
-		b[i] = c
-	}
-	return string(b)
 }
 
 // ── Launch ─────────────────────────────────────────────────────────────────

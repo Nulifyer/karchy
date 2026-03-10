@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -52,7 +53,9 @@ func Load() Config {
 	if _, err := os.Stat(path); err != nil {
 		return cfg
 	}
-	_, _ = toml.DecodeFile(path, &cfg)
+	if _, err := toml.DecodeFile(path, &cfg); err != nil {
+		fmt.Fprintf(os.Stderr, "karchy: warning: config parse error: %v\n", err)
+	}
 	if cfg.Hotkey.Toggle == "" {
 		cfg.Hotkey.Toggle = "Super+Space"
 	}
@@ -98,7 +101,9 @@ func SaveEditor(editor string) error {
 // Save writes the full config to disk.
 func Save(cfg Config) error {
 	path := configPath()
-	os.MkdirAll(filepath.Dir(path), 0o755)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
 	f, err := os.Create(path)
 	if err != nil {
 		return err

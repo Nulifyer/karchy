@@ -46,7 +46,12 @@ func Launch(cols, lines int, title string, args ...string) (int, error) {
 
 // LaunchProgram opens Alacritty running an arbitrary program (not karchy).
 func LaunchProgram(cols, lines int, program string, args ...string) (int, error) {
+	cfg := config.Load()
+	pal := theme.Load(cfg.Theme.Name)
+	configFile := writeAlacrittyConfig(cols, lines, 4, 4, pal, cfg.Appearance)
+
 	cmdArgs := []string{
+		"--config-file", configFile,
 		"-e", program,
 	}
 	cmdArgs = append(cmdArgs, args...)
@@ -182,7 +187,7 @@ action = "Copy"
 	)
 
 	tmpFile := filepath.Join(os.TempDir(), "karchy-alacritty.toml")
-	_ = os.WriteFile(tmpFile, []byte(toml), 0644)
+	_ = os.WriteFile(tmpFile, []byte(toml), 0o644)
 	return tmpFile
 }
 

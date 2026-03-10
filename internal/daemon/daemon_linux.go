@@ -42,7 +42,7 @@ func lockFilePath() string {
 
 func isRunning() bool {
 	path := lockFilePath()
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return false
 	}
@@ -62,8 +62,8 @@ func isRunning() bool {
 // Returns true if the lock was acquired. The lock is released when the process exits.
 func acquireLock() bool {
 	path := lockFilePath()
-	_ = os.MkdirAll(filepath.Dir(path), 0755)
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	_ = os.MkdirAll(filepath.Dir(path), 0o755)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return false
 	}

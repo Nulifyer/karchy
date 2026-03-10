@@ -32,7 +32,7 @@ func DownloadFile(url, name string, state *DownloadState) (string, error) {
 	}
 
 	tmpDir := filepath.Join(os.TempDir(), "karchy-install")
-	os.MkdirAll(tmpDir, 0755)
+	os.MkdirAll(tmpDir, 0o755)
 	tmpFile := filepath.Join(tmpDir, name)
 
 	logging.Info("downloadFile: %s -> %s", url, tmpFile)
@@ -137,7 +137,7 @@ func runZIP(zipPath string, pkg PackageEntry) error {
 
 	// Clean out old version before extracting
 	os.RemoveAll(destDir)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil {
 		return fmt.Errorf("create dest dir: %w", err)
 	}
 
@@ -156,12 +156,12 @@ func runZIP(zipPath string, pkg PackageEntry) error {
 		}
 
 		if f.FileInfo().IsDir() {
-			os.MkdirAll(target, 0755)
+			os.MkdirAll(target, 0o755)
 			continue
 		}
 
 		// Ensure parent directory exists
-		os.MkdirAll(filepath.Dir(target), 0755)
+		os.MkdirAll(filepath.Dir(target), 0o755)
 
 		out, err := os.Create(target)
 		if err != nil {
@@ -223,7 +223,7 @@ func createStartMenuShortcuts(dir, appName string) error {
 		return nil
 	}
 
-	os.MkdirAll(startMenu, 0755)
+	os.MkdirAll(startMenu, 0o755)
 
 	for _, exePath := range exes {
 		name := strings.TrimSuffix(filepath.Base(exePath), ".exe")

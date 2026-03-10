@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,7 +34,7 @@ func Run(currentVersion string) bool {
 	rel, err := fetchLatest()
 	if err != nil {
 		fmt.Printf("Failed to check for updates: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
 	if rel.TagName == currentVersion || rel.TagName == "v"+currentVersion {
@@ -52,13 +54,22 @@ func Run(currentVersion string) bool {
 	}
 	if downloadURL == "" {
 		fmt.Printf("No release asset found for %s in %s\n", archiveName, rel.TagName)
-		os.Exit(1)
+		return false
+	}
+
+	// Find checksum asset
+	var checksumURL string
+	for _, a := range rel.Assets {
+		if a.Name == "checksums.txt" {
+			checksumURL = a.BrowserDownloadURL
+			break
+		}
 	}
 
 	fmt.Printf("Updating %s → %s...\n", currentVersion, rel.TagName)
-	if err := downloadAndExtract(downloadURL); err != nil {
+	if err := downloadAndExtract(downloadURL, checksumURL, archiveName); err != nil {
 		fmt.Printf("Update failed: %v\n", err)
-		os.Exit(1)
+		return false
 	}
 
 	fmt.Println("Updated to " + rel.TagName + "!")
@@ -95,7 +106,33 @@ func binaryNameInArchive() string {
 	return "karchy"
 }
 
-func downloadAndExtract(url string) error {
+// fetchExpectedHash downloads checksums.txt and returns the expected SHA256 for archiveName.
+func fetchExpectedHash(checksumURL, archiveName string) (string, error) {
+	if checksumURL == "" {
+		return "", nil
+	}
+	resp, err := http.Get(checksumURL)
+	if err != nil {
+		return "", fmt.Errorf("fetch checksums: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("checksums returned %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return "", fmt.Errorf("read checksums: %w", err)
+	}
+	for _, line := range strings.Split(string(body), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) == 2 && fields[1] == archiveName {
+			return fields[0], nil
+		}
+	}
+	return "", fmt.Errorf("no checksum found for %s", archiveName)
+}
+
+func downloadAndExtract(url, checksumURL, archiveName string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -121,12 +158,28 @@ func downloadAndExtract(url string) error {
 	}
 	tmpPath := tmp.Name()
 
-	// Download archive to temp file
-	_, err = io.Copy(tmp, resp.Body)
+	// Download archive to temp file, computing SHA256 as we go
+	hash := sha256.New()
+	_, err = io.Copy(tmp, io.TeeReader(resp.Body, hash))
 	tmp.Close()
 	if err != nil {
 		os.Remove(tmpPath)
 		return err
+	}
+
+	// Verify checksum
+	expectedHash, err := fetchExpectedHash(checksumURL, archiveName)
+	if err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("checksum verification: %w", err)
+	}
+	if expectedHash != "" {
+		actualHash := hex.EncodeToString(hash.Sum(nil))
+		if actualHash != expectedHash {
+			os.Remove(tmpPath)
+			return fmt.Errorf("checksum mismatch: expected %s, got %s", expectedHash, actualHash)
+		}
+		fmt.Println("Checksum verified.")
 	}
 
 	// Extract binary from archive
@@ -180,7 +233,8 @@ func extractFromTarGz(archivePath, target, destPath string) error {
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(out, tr)
+			// Limit extraction to 256MB to prevent decompression bombs
+			_, err = io.Copy(out, io.LimitReader(tr, 256<<20))
 			out.Close()
 			return err
 		}
@@ -206,7 +260,8 @@ func extractFromZip(archivePath, target, destPath string) error {
 				rc.Close()
 				return err
 			}
-			_, err = io.Copy(out, rc)
+			// Limit extraction to 256MB to prevent decompression bombs
+			_, err = io.Copy(out, io.LimitReader(rc, 256<<20))
 			out.Close()
 			rc.Close()
 			return err

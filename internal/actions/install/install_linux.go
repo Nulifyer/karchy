@@ -9,16 +9,9 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/nulifyer/karchy/internal/ansi"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/terminal"
-)
-
-const (
-	colorGreen = "\033[32m"
-	colorRed   = "\033[31m"
-	colorCyan  = "\033[36m"
-	colorBold  = "\033[1m"
-	colorReset = "\033[0m"
 )
 
 // SearchPackages returns all available packages from pacman sync databases.
@@ -69,10 +62,15 @@ func InstalledIDs() map[string]string {
 	return ids
 }
 
+// shellQuote returns a single-quoted shell-safe string.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "'\"'\"'") + "'"
+}
+
 // InstallPackage installs a single package in a new terminal window.
 func InstallPackage(pkg PackageEntry) {
 	logging.Info("InstallPackage: %s", pkg.ID)
-	script := fmt.Sprintf("sudo pacman -S --noconfirm %s; echo; read -rp 'Press Enter to close...'", pkg.ID)
+	script := fmt.Sprintf("sudo pacman -S --noconfirm %s; echo; read -rp 'Press Enter to close...'", shellQuote(pkg.ID))
 	terminal.LaunchShell(80, 20, "Installing "+pkg.Name, script)
 }
 
@@ -92,7 +90,11 @@ func BatchInstall(pkgs []PackageEntry) {
 	}
 	logging.Info("BatchInstall: %d packages: %v", len(pkgs), ids)
 
-	script := fmt.Sprintf("sudo pacman -S %s; echo; read -rp 'Press Enter to close...'", strings.Join(ids, " "))
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = shellQuote(id)
+	}
+	script := fmt.Sprintf("sudo pacman -S %s; echo; read -rp 'Press Enter to close...'", strings.Join(quoted, " "))
 	terminal.LaunchShell(100, 30, fmt.Sprintf("Installing %d packages", len(pkgs)), script)
 }
 
@@ -186,7 +188,11 @@ func AURInstall(pkgs []PackageEntry) {
 	case "yay":
 		flags += " --answerdiff None --answerclean None --answeredit None --cleanafter"
 	}
-	script := fmt.Sprintf("%s -S %s %s; echo; read -rp 'Press Enter to close...'", helper, flags, strings.Join(ids, " "))
+	quoted := make([]string, len(ids))
+	for i, id := range ids {
+		quoted[i] = shellQuote(id)
+	}
+	script := fmt.Sprintf("%s -S %s %s; echo; read -rp 'Press Enter to close...'", helper, flags, strings.Join(quoted, " "))
 	terminal.LaunchShell(100, 30, fmt.Sprintf("AUR Install (%d)", len(pkgs)), script)
 }
 
@@ -237,13 +243,13 @@ func DirectInstall(pkg PackageEntry) error {
 
 // BatchVerify checks if packages are available in sync databases.
 func BatchVerify(pkgs []PackageEntry) {
-	fmt.Printf("\n %s%s:: Verifying packages...%s\n\n", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Verifying packages...%s\n\n", ansi.Bold, ansi.Cyan, ansi.Reset)
 	for i, p := range pkgs {
 		err := exec.Command("pacman", "-Si", p.ID).Run()
 		if err != nil {
-			fmt.Printf(" [%d/%d] %s — %snot found%s\n", i+1, len(pkgs), p.Name, colorRed, colorReset)
+			fmt.Printf(" [%d/%d] %s — %snot found%s\n", i+1, len(pkgs), p.Name, ansi.Red, ansi.Reset)
 		} else {
-			fmt.Printf(" [%d/%d] %s — %sok%s\n", i+1, len(pkgs), p.Name, colorGreen, colorReset)
+			fmt.Printf(" [%d/%d] %s — %sok%s\n", i+1, len(pkgs), p.Name, ansi.Green, ansi.Reset)
 		}
 	}
 }
@@ -299,13 +305,13 @@ func BatchUninstall(pkgs []InstalledPackage) {
 	fmt.Printf("\n Packages (%d)\n\n", len(pkgs))
 	for _, pkg := range pkgs {
 		if pkg.Version != "" {
-			fmt.Printf(" %s  %s%s%s\n", pkg.Name, colorGreen, pkg.Version, colorReset)
+			fmt.Printf(" %s  %s%s%s\n", pkg.Name, ansi.Green, pkg.Version, ansi.Reset)
 		} else {
 			fmt.Printf(" %s\n", pkg.Name)
 		}
 	}
 
-	fmt.Printf("\n %s%s:: Proceed with removal? [Y/n]%s ", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Proceed with removal? [Y/n]%s ", ansi.Bold, ansi.Cyan, ansi.Reset)
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	if len(line) > 0 && (line[0] == 'n' || line[0] == 'N') {
@@ -317,7 +323,7 @@ func BatchUninstall(pkgs []InstalledPackage) {
 		ids[i] = p.ID
 	}
 
-	fmt.Printf("\n %s%s:: Removing packages...%s\n\n", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Removing packages...%s\n\n", ansi.Bold, ansi.Cyan, ansi.Reset)
 
 	cmd := exec.Command("sudo", append([]string{"pacman", "-Rs", "--noconfirm"}, ids...)...)
 	cmd.Stdout = os.Stdout
@@ -326,9 +332,9 @@ func BatchUninstall(pkgs []InstalledPackage) {
 
 	fmt.Println()
 	if err != nil {
-		fmt.Printf(" %s%s:: Some packages failed to remove: %v%s\n\n", colorBold, colorRed, err, colorReset)
+		fmt.Printf(" %s%s:: Some packages failed to remove: %v%s\n\n", ansi.Bold, ansi.Red, err, ansi.Reset)
 	} else {
-		fmt.Printf(" %s%s:: %d package(s) removed successfully.%s\n\n", colorBold, colorGreen, len(pkgs), colorReset)
+		fmt.Printf(" %s%s:: %d package(s) removed successfully.%s\n\n", ansi.Bold, ansi.Green, len(pkgs), ansi.Reset)
 	}
 
 	fmt.Print(" Press Enter to close...")

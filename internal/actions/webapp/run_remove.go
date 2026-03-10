@@ -8,9 +8,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/nulifyer/karchy/internal/config"
+	"github.com/nulifyer/karchy/internal/filterlist"
 	"github.com/nulifyer/karchy/internal/theme"
-	"github.com/sahilm/fuzzy"
 )
+
+// viewOverhead for remove model: border(2) + search line + blank
+const rmViewOverhead = 4
 
 // RunRemove shows a multi-select pick list of installed web apps and removes selected ones.
 func RunRemove() {
@@ -52,10 +55,7 @@ func RunRemove() {
 // removeModel is the bubbletea model for the web app removal pick list.
 type removeModel struct {
 	apps     []WebApp
-	filtered []rmFiltered
-	cursor   int
-	offset   int
-	query    string
+	list     filterlist.List
 	picked   map[int]bool
 	selected []WebApp
 	quitting bool
@@ -69,18 +69,19 @@ type rmPalette struct {
 	accent, fg, dim, yellow lipgloss.Color
 }
 
-type rmFiltered struct {
-	index   int
-	matched []int
-}
-
 func newRemoveModel(apps []WebApp) removeModel {
 	cfg := config.Load()
 	pal := theme.Load(cfg.Theme.Name)
 
+	items := make([]filterlist.Item, len(apps))
+	for i, a := range apps {
+		items[i] = filterlist.Item{Label: a.Name}
+	}
+
 	m := removeModel{
 		apps:   apps,
 		picked: make(map[int]bool),
+		list:   filterlist.List{Items: items},
 		pal: rmPalette{
 			accent: lipgloss.Color(pal.Accent),
 			fg:     lipgloss.Color(pal.FG),
@@ -92,47 +93,8 @@ func newRemoveModel(apps []WebApp) removeModel {
 			BorderForeground(lipgloss.Color(pal.Accent)).
 			Padding(0, 1),
 	}
-	m.applyFilter()
+	m.list.ApplyFilter()
 	return m
-}
-
-func (m *removeModel) applyFilter() {
-	if m.query == "" {
-		m.filtered = make([]rmFiltered, len(m.apps))
-		for i := range m.apps {
-			m.filtered[i] = rmFiltered{index: i}
-		}
-		return
-	}
-	names := make([]string, len(m.apps))
-	for i, a := range m.apps {
-		names[i] = a.Name
-	}
-	matches := fuzzy.Find(m.query, names)
-	m.filtered = make([]rmFiltered, len(matches))
-	for i, match := range matches {
-		m.filtered[i] = rmFiltered{index: match.Index, matched: match.MatchedIndexes}
-	}
-}
-
-func (m removeModel) visibleLines() int {
-	if m.height <= 0 {
-		return len(m.filtered)
-	}
-	v := m.height - 4 // border(2) + search line + blank
-	if v < 1 {
-		v = 1
-	}
-	return v
-}
-
-func (m *removeModel) ensureCursorVisible() {
-	vis := m.visibleLines()
-	if m.cursor < m.offset {
-		m.offset = m.cursor
-	} else if m.cursor >= m.offset+vis {
-		m.offset = m.cursor - vis + 1
-	}
 }
 
 func (m removeModel) Init() tea.Cmd { return nil }
@@ -144,48 +106,31 @@ func (m removeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
-		switch msg.String() {
+		key := msg.String()
+
+		switch key {
 		case "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
 		case "esc":
-			if m.query != "" {
-				m.query = ""
-				m.cursor = 0
-				m.offset = 0
-				m.applyFilter()
+			if m.list.Query != "" {
+				m.list.Reset()
 				return m, nil
 			}
 			m.quitting = true
 			return m, tea.Quit
 
-		case "up", "ctrl+k":
-			if m.cursor > 0 {
-				m.cursor--
-			} else if len(m.filtered) > 0 {
-				m.cursor = len(m.filtered) - 1
-			}
-			m.ensureCursorVisible()
-
-		case "down", "ctrl+j":
-			if m.cursor < len(m.filtered)-1 {
-				m.cursor++
-			} else {
-				m.cursor = 0
-			}
-			m.ensureCursorVisible()
-
 		case " ", "tab":
-			if m.cursor < len(m.filtered) {
-				idx := m.filtered[m.cursor].index
+			if m.list.Cursor < len(m.list.Filtered) {
+				idx := m.list.Filtered[m.list.Cursor].Index
 				if m.picked[idx] {
 					delete(m.picked, idx)
 				} else {
 					m.picked[idx] = true
 				}
-				if m.cursor < len(m.filtered)-1 {
-					m.cursor++
-					m.ensureCursorVisible()
+				if m.list.Cursor < len(m.list.Filtered)-1 {
+					m.list.Cursor++
+					m.list.EnsureCursorVisible(m.height, rmViewOverhead)
 				}
 			}
 
@@ -195,27 +140,16 @@ func (m removeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				for idx := range m.picked {
 					m.selected = append(m.selected, m.apps[idx])
 				}
-			} else if m.cursor < len(m.filtered) {
-				idx := m.filtered[m.cursor].index
+			} else if m.list.Cursor < len(m.list.Filtered) {
+				idx := m.list.Filtered[m.list.Cursor].Index
 				m.selected = []WebApp{m.apps[idx]}
 			}
 			m.quitting = true
 			return m, tea.Quit
 
-		case "backspace":
-			if len(m.query) > 0 {
-				m.query = m.query[:len(m.query)-1]
-				m.cursor = 0
-				m.offset = 0
-				m.applyFilter()
-			}
-
 		default:
-			if len(msg.String()) == 1 && msg.String()[0] >= ' ' {
-				m.query += msg.String()
-				m.cursor = 0
-				m.offset = 0
-				m.applyFilter()
+			if m.list.HandleKey(key, m.height, rmViewOverhead) {
+				return m, nil
 			}
 		}
 	}
@@ -237,26 +171,26 @@ func (m removeModel) View() string {
 	var b strings.Builder
 
 	// Search line
-	if m.query != "" {
-		b.WriteString(promptStyle.Render("> ") + queryStyle.Render(m.query))
+	if m.list.Query != "" {
+		b.WriteString(promptStyle.Render("> ") + queryStyle.Render(m.list.Query))
 	} else {
 		b.WriteString(promptStyle.Render("> ") + hintStyle.Render("Remove Web Apps"))
 	}
 	b.WriteString("\n\n")
 
-	if len(m.filtered) == 0 {
+	if len(m.list.Filtered) == 0 {
 		b.WriteString(hintStyle.Render("  no matches"))
 	} else {
-		vis := m.visibleLines()
-		end := m.offset + vis
-		if end > len(m.filtered) {
-			end = len(m.filtered)
+		vis := m.list.VisibleLines(m.height, rmViewOverhead)
+		end := m.list.Offset + vis
+		if end > len(m.list.Filtered) {
+			end = len(m.list.Filtered)
 		}
 
-		for i := m.offset; i < end; i++ {
-			fi := m.filtered[i]
-			isPicked := m.picked[fi.index]
-			isCursor := i == m.cursor
+		for i := m.list.Offset; i < end; i++ {
+			fi := m.list.Filtered[i]
+			isPicked := m.picked[fi.Index]
+			isCursor := i == m.list.Cursor
 
 			var prefix string
 			switch {
@@ -270,9 +204,9 @@ func (m removeModel) View() string {
 				prefix = "  "
 			}
 
-			label := m.apps[fi.index].Name
+			label := m.apps[fi.Index].Name
 			b.WriteString(prefix)
-			b.WriteString(renderRmLabel(label, fi.matched, isCursor, selStyle, itemStyle))
+			b.WriteString(filterlist.RenderLabel(label, fi.MatchedIdx, isCursor, selStyle, selStyle, itemStyle))
 
 			if i < end-1 {
 				b.WriteString("\n")
@@ -292,97 +226,8 @@ func (m removeModel) View() string {
 
 	// Splice selected count into bottom border
 	if len(m.picked) > 0 {
-		rendered = spliceBottomLabel(rendered, fmt.Sprintf(" %d selected ", len(m.picked)), hintStyle, m.border)
+		rendered = filterlist.SpliceBottomBorderLabel(rendered, fmt.Sprintf(" %d selected ", len(m.picked)), hintStyle, m.border)
 	}
 
 	return rendered
-}
-
-func renderRmLabel(label string, matched []int, selected bool, selStyle, itemStyle lipgloss.Style) string {
-	if len(matched) == 0 {
-		if selected {
-			return selStyle.Render(label)
-		}
-		return itemStyle.Render(label)
-	}
-
-	matchSet := make(map[int]bool, len(matched))
-	for _, idx := range matched {
-		matchSet[idx] = true
-	}
-
-	runes := []rune(label)
-	var sb strings.Builder
-	i := 0
-	for i < len(runes) {
-		isMatch := matchSet[i]
-		j := i + 1
-		for j < len(runes) && matchSet[j] == isMatch {
-			j++
-		}
-		run := string(runes[i:j])
-		if isMatch || selected {
-			sb.WriteString(selStyle.Render(run))
-		} else {
-			sb.WriteString(itemStyle.Render(run))
-		}
-		i = j
-	}
-	return sb.String()
-}
-
-func spliceBottomLabel(rendered, label string, hintStyle, borderStyle lipgloss.Style) string {
-	lines := strings.Split(rendered, "\n")
-	if len(lines) == 0 {
-		return rendered
-	}
-
-	style := borderStyle.GetBorderStyle()
-	filler := style.Bottom
-	if filler == "" {
-		filler = "─"
-	}
-	accent := borderStyle.GetBorderBottomForeground()
-	bc := lipgloss.NewStyle().Foreground(accent)
-
-	plain := rmStripAnsi(string([]rune(lines[len(lines)-1])))
-	plainRunes := []rune(plain)
-	labelRunes := []rune(label)
-	cornerLeft := style.BottomLeft
-	cornerRight := style.BottomRight
-	innerWidth := len(plainRunes) - len([]rune(cornerLeft)) - len([]rune(cornerRight))
-	labelWidth := len(labelRunes)
-	fillerCount := innerWidth - labelWidth
-	if fillerCount < 0 {
-		return rendered
-	}
-
-	var sb strings.Builder
-	sb.WriteString(bc.Render(cornerLeft))
-	for i := 0; i < fillerCount; i++ {
-		sb.WriteString(bc.Render(filler))
-	}
-	sb.WriteString(hintStyle.Render(label))
-	sb.WriteString(bc.Render(cornerRight))
-	lines[len(lines)-1] = sb.String()
-	return strings.Join(lines, "\n")
-}
-
-func rmStripAnsi(s string) string {
-	var out strings.Builder
-	inEsc := false
-	for _, r := range s {
-		if r == '\x1b' {
-			inEsc = true
-			continue
-		}
-		if inEsc {
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
-				inEsc = false
-			}
-			continue
-		}
-		out.WriteRune(r)
-	}
-	return out.String()
 }

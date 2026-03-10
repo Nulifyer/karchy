@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/nulifyer/karchy/internal/logging"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const dashboardIconsRepo = "homarr-labs/dashboard-icons"
@@ -50,7 +52,7 @@ func LoadDashboardIcons() ([]DashboardIcon, string, error) {
 	}
 
 	if commit != "" && commit != cached {
-		os.MkdirAll(cacheDir, 0755)
+		os.MkdirAll(cacheDir, 0o755)
 		metaURL := fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/metadata.json", dashboardIconsRepo, commit)
 		if err := downloadFile(metaURL, metaPath); err != nil {
 			if cached == "" {
@@ -59,7 +61,7 @@ func LoadDashboardIcons() ([]DashboardIcon, string, error) {
 			// Use stale cache
 			commit = cached
 		} else {
-			os.WriteFile(commitPath, []byte(commit), 0644)
+			os.WriteFile(commitPath, []byte(commit), 0o644)
 		}
 	} else if commit == "" {
 		commit = cached
@@ -83,7 +85,7 @@ func LoadDashboardIcons() ([]DashboardIcon, string, error) {
 	icons := make([]DashboardIcon, 0, len(meta))
 	for name := range meta {
 		display := strings.ReplaceAll(name, "-", " ")
-		display = strings.Title(display) //nolint:staticcheck
+		display = cases.Title(language.English).String(display)
 		icons = append(icons, DashboardIcon{Name: name, DisplayName: display})
 	}
 
@@ -130,7 +132,9 @@ func FaviconURL(rawURL string) string {
 // On Windows, converts to .ico format. Returns the saved icon path.
 func DownloadIcon(id, iconURL string) (string, error) {
 	iconDir := IconDir()
-	os.MkdirAll(iconDir, 0755)
+	if err := os.MkdirAll(iconDir, 0o755); err != nil {
+		return "", fmt.Errorf("create icon dir: %w", err)
+	}
 
 	tmpPath := filepath.Join(iconDir, id+".tmp")
 	defer os.Remove(tmpPath)
@@ -228,22 +232,27 @@ func pngToICO(pngData []byte, icoPath string) error {
 	}
 	defer f.Close()
 
+	// Write ICO via a buffer so partial writes don't corrupt the file.
+	var ico bytes.Buffer
+
 	// ICO header: reserved(2) + type=1(2) + count=1(2)
-	binary.Write(f, binary.LittleEndian, uint16(0)) // reserved
-	binary.Write(f, binary.LittleEndian, uint16(1)) // type: icon
-	binary.Write(f, binary.LittleEndian, uint16(1)) // count
+	binary.Write(&ico, binary.LittleEndian, uint16(0)) // reserved
+	binary.Write(&ico, binary.LittleEndian, uint16(1)) // type: icon
+	binary.Write(&ico, binary.LittleEndian, uint16(1)) // count
 
 	// Directory entry
-	f.Write([]byte{dimByte(w)})                                // width
-	f.Write([]byte{dimByte(h)})                                // height
-	f.Write([]byte{0})                                         // color palette
-	f.Write([]byte{0})                                         // reserved
-	binary.Write(f, binary.LittleEndian, uint16(1))            // planes
-	binary.Write(f, binary.LittleEndian, uint16(32))           // bpp
-	binary.Write(f, binary.LittleEndian, uint32(len(pngData))) // data size
-	binary.Write(f, binary.LittleEndian, uint32(22))           // data offset (6 header + 16 entry)
+	ico.Write([]byte{dimByte(w)})                                // width
+	ico.Write([]byte{dimByte(h)})                                // height
+	ico.Write([]byte{0})                                         // color palette
+	ico.Write([]byte{0})                                         // reserved
+	binary.Write(&ico, binary.LittleEndian, uint16(1))            // planes
+	binary.Write(&ico, binary.LittleEndian, uint16(32))           // bpp
+	binary.Write(&ico, binary.LittleEndian, uint32(len(pngData))) // data size
+	binary.Write(&ico, binary.LittleEndian, uint32(22))           // data offset (6 header + 16 entry)
 
 	// PNG data
-	_, err = f.Write(pngData)
+	ico.Write(pngData)
+
+	_, err = f.Write(ico.Bytes())
 	return err
 }

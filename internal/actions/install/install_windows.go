@@ -316,10 +316,26 @@ func safeSlice(s string, start, end int) string {
 	return s[start:end]
 }
 
+// safePkgID returns the ID only if it contains safe characters for shell interpolation.
+// Winget package IDs are dot-separated identifiers (e.g. "Mozilla.Firefox").
+func safePkgID(id string) string {
+	for _, c := range id {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_') {
+			return ""
+		}
+	}
+	return id
+}
+
 // InstallPackage spawns a new terminal window running winget install for the given package ID.
 func InstallPackage(pkg PackageEntry) {
 	logging.Info("InstallPackage: %s (%s)", pkg.Name, pkg.ID)
-	script := `winget install -e --id ` + pkg.ID + ` --accept-source-agreements --accept-package-agreements & pause`
+	id := safePkgID(pkg.ID)
+	if id == "" {
+		logging.Error("InstallPackage: unsafe package ID: %q", pkg.ID)
+		return
+	}
+	script := `winget install -e --id ` + id + ` --accept-source-agreements --accept-package-agreements & pause`
 	terminal.LaunchShell(80, 20, "Installing "+pkg.Name, script)
 }
 
@@ -336,8 +352,16 @@ func InstallPackages(pkgs []PackageEntry) {
 	var cmds []string
 	var names []string
 	for _, p := range pkgs {
-		cmds = append(cmds, "winget install -e --id "+p.ID+" --accept-source-agreements --accept-package-agreements")
+		id := safePkgID(p.ID)
+		if id == "" {
+			logging.Error("InstallPackages: unsafe package ID: %q", p.ID)
+			continue
+		}
+		cmds = append(cmds, "winget install -e --id "+id+" --accept-source-agreements --accept-package-agreements")
 		names = append(names, p.Name)
+	}
+	if len(cmds) == 0 {
+		return
 	}
 	logging.Info("InstallPackages: %d packages: %v", len(pkgs), names)
 

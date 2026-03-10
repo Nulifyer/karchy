@@ -89,7 +89,9 @@ case ":$PATH:" in
 esac
 
 # 6. Run self-install (registers autostart, checks deps, starts daemon)
-"${INSTALL_DIR}/karchy" install
+if ! "${INSTALL_DIR}/karchy" install; then
+    echo "  WARNING: Post-install setup failed. You may need to run 'karchy install' manually."
+fi
 
 echo ""
 echo "Karchy ${TAG} installed!"

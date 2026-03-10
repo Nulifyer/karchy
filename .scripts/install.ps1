@@ -7,14 +7,24 @@ $repo = "Nulifyer/karchy"
 $installDir = "$env:LOCALAPPDATA\Karchy"
 $exe = "$installDir\karchy.exe"
 
-Write-Host "Installing Karchy..." -ForegroundColor Cyan
+# Detect architecture
+$arch = switch ($env:PROCESSOR_ARCHITECTURE) {
+    "AMD64" { "amd64" }
+    "ARM64" { "arm64" }
+    default {
+        Write-Host "Unsupported architecture: $env:PROCESSOR_ARCHITECTURE" -ForegroundColor Red
+        exit 1
+    }
+}
+
+Write-Host "Installing Karchy for windows/${arch}..." -ForegroundColor Cyan
 
 # 1. Get latest release
 Write-Host "  Fetching latest release..."
 $release = Invoke-RestMethod "https://api.github.com/repos/$repo/releases/latest"
 $tag = $release.tag_name
 $version = $tag.TrimStart("v")
-$assetName = "karchy_${version}_windows_amd64.zip"
+$assetName = "karchy_${version}_windows_${arch}.zip"
 $checksumName = "checksums.txt"
 $asset = $release.assets | Where-Object { $_.name -eq $assetName }
 $checksumAsset = $release.assets | Where-Object { $_.name -eq $checksumName }
@@ -86,7 +96,11 @@ if ($userPath -notlike "*$installDir*") {
 }
 
 # 7. Run self-install (registers startup, checks deps, starts daemon)
-& $exe install
+try {
+    & $exe install
+} catch {
+    Write-Host "  WARNING: Post-install setup failed. You may need to run 'karchy install' manually." -ForegroundColor Yellow
+}
 
 Write-Host "`nKarchy $tag installed!" -ForegroundColor Cyan
 Write-Host "Press Win+Space to launch." -ForegroundColor Cyan

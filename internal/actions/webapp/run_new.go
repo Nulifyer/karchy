@@ -9,8 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/nulifyer/karchy/internal/config"
+	"github.com/nulifyer/karchy/internal/filterlist"
 	"github.com/nulifyer/karchy/internal/theme"
-	"github.com/sahilm/fuzzy"
 )
 
 // RunNew launches a bubbletea form for creating a new web app.
@@ -77,6 +77,9 @@ const (
 	srcManual
 )
 
+// iconViewOverhead: border(2) + search line + blank
+const iconViewOverhead = 4
+
 var iconSourceLabels = []string{"Dashboard Icons", "Favicon (auto)", "Enter URL manually"}
 
 // iconsLoadedMsg is sent when dashboard icons finish loading.
@@ -95,7 +98,6 @@ type newModel struct {
 	nameInput    textinput.Model
 	urlInput     textinput.Model
 	iconURLInput textinput.Model
-	searchInput  textinput.Model
 
 	// Icon source selection
 	srcCursor int
@@ -103,9 +105,7 @@ type newModel struct {
 	// Dashboard icon data
 	allIcons     []DashboardIcon
 	commit       string
-	iconFiltered []iconMatch
-	iconCursor   int
-	iconOffset   int
+	iconList     filterlist.List // shared filtered list for icon search
 	loadingIcons bool
 	loadErr      error
 
@@ -123,11 +123,6 @@ type newModel struct {
 	height int
 	pal    rmPalette
 	border lipgloss.Style
-}
-
-type iconMatch struct {
-	index   int
-	matched []int
 }
 
 func newNewModel() newModel {
@@ -152,17 +147,11 @@ func newNewModel() newModel {
 	iconURLIn.CharLimit = 512
 	iconURLIn.Cursor.Style = lipgloss.NewStyle().Foreground(accent)
 
-	searchIn := textinput.New()
-	searchIn.Placeholder = "search..."
-	searchIn.CharLimit = 64
-	searchIn.Cursor.Style = lipgloss.NewStyle().Foreground(accent)
-
 	return newModel{
 		step:         stepName,
 		nameInput:    nameIn,
 		urlInput:     urlIn,
 		iconURLInput: iconURLIn,
-		searchInput:  searchIn,
 		pal: rmPalette{
 			accent: accent,
 			fg:     lipgloss.Color(pal.FG),
@@ -194,7 +183,7 @@ func (m newModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.allIcons = msg.icons
 			m.commit = msg.commit
-			m.filterIcons()
+			m.syncIconItems("")
 		}
 		return m, nil
 
@@ -223,6 +212,22 @@ func (m newModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// syncIconItems converts allIcons to filterlist items and applies a filter query.
+func (m *newModel) syncIconItems(query string) {
+	items := make([]filterlist.Item, len(m.allIcons))
+	for i, ic := range m.allIcons {
+		items[i] = filterlist.Item{
+			Label:  ic.DisplayName,
+			Detail: ic.Name,
+		}
+	}
+	m.iconList.Items = items
+	m.iconList.Query = query
+	m.iconList.Cursor = 0
+	m.iconList.Offset = 0
+	m.iconList.ApplyFilter()
 }
 
 func (m newModel) updateName(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -294,8 +299,7 @@ func (m newModel) updateIconSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.step = stepIconSearch
 			m.loadingIcons = true
 			m.loadErr = nil
-			m.searchInput.Focus()
-			return m, tea.Batch(textinput.Blink, loadDashboardIconsCmd())
+			return m, loadDashboardIconsCmd()
 		case srcFavicon:
 			m.iconURL = FaviconURL(m.appURL)
 			m.step = stepIsolated
@@ -313,58 +317,39 @@ func (m newModel) updateIconSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.loadingIcons {
 		if msg.String() == "esc" {
 			m.step = stepIconSource
-			m.searchInput.Blur()
 			m.loadingIcons = false
 			return m, nil
 		}
 		return m, nil
 	}
 
-	switch msg.String() {
+	key := msg.String()
+
+	switch key {
 	case "esc":
 		m.step = stepIconSource
-		m.searchInput.Blur()
-		return m, nil
-	case "up", "ctrl+k":
-		if m.iconCursor > 0 {
-			m.iconCursor--
-			m.ensureIconVisible()
-		}
-		return m, nil
-	case "down", "ctrl+j":
-		if m.iconCursor < len(m.iconFiltered)-1 {
-			m.iconCursor++
-			m.ensureIconVisible()
-		}
 		return m, nil
 	case "enter":
 		if m.loadErr != nil {
 			// Fallback to favicon on error
 			m.iconURL = FaviconURL(m.appURL)
 			m.step = stepIsolated
-			m.searchInput.Blur()
 			return m, nil
 		}
-		if m.iconCursor < len(m.iconFiltered) {
-			icon := m.allIcons[m.iconFiltered[m.iconCursor].index]
+		if m.iconList.Cursor < len(m.iconList.Filtered) {
+			icon := m.allIcons[m.iconList.Filtered[m.iconList.Cursor].Index]
 			m.iconURL = DashboardIconURL(m.commit, icon.Name)
 			m.step = stepIsolated
-			m.searchInput.Blur()
 			return m, nil
 		}
 		return m, nil
+	default:
+		if m.iconList.HandleKey(key, m.height, iconViewOverhead) {
+			return m, nil
+		}
 	}
 
-	// Update search input
-	prevQuery := m.searchInput.Value()
-	var cmd tea.Cmd
-	m.searchInput, cmd = m.searchInput.Update(msg)
-	if m.searchInput.Value() != prevQuery {
-		m.iconCursor = 0
-		m.iconOffset = 0
-		m.filterIcons()
-	}
-	return m, cmd
+	return m, nil
 }
 
 func (m newModel) updateIconURL(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -409,46 +394,6 @@ func (m newModel) updateIsolated(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	}
 	return m, nil
-}
-
-func (m *newModel) filterIcons() {
-	query := strings.TrimSpace(m.searchInput.Value())
-	if query == "" {
-		m.iconFiltered = make([]iconMatch, len(m.allIcons))
-		for i := range m.allIcons {
-			m.iconFiltered[i] = iconMatch{index: i}
-		}
-		return
-	}
-	names := make([]string, len(m.allIcons))
-	for i, ic := range m.allIcons {
-		names[i] = ic.Name + " " + ic.DisplayName
-	}
-	matches := fuzzy.Find(query, names)
-	m.iconFiltered = make([]iconMatch, len(matches))
-	for i, match := range matches {
-		m.iconFiltered[i] = iconMatch{index: match.Index, matched: match.MatchedIndexes}
-	}
-}
-
-func (m *newModel) ensureIconVisible() {
-	vis := m.iconVisibleLines()
-	if m.iconCursor < m.iconOffset {
-		m.iconOffset = m.iconCursor
-	} else if m.iconCursor >= m.iconOffset+vis {
-		m.iconOffset = m.iconCursor - vis + 1
-	}
-}
-
-func (m newModel) iconVisibleLines() int {
-	if m.height <= 0 {
-		return 20
-	}
-	v := m.height - 4 // border + search + blank
-	if v < 1 {
-		v = 1
-	}
-	return v
 }
 
 func loadDashboardIconsCmd() tea.Cmd {
@@ -545,8 +490,6 @@ func (m newModel) View() string {
 }
 
 func (m newModel) viewIconSearch(promptStyle, hintStyle, itemStyle, selStyle lipgloss.Style) string {
-	queryStyle := lipgloss.NewStyle().Foreground(m.pal.fg)
-
 	var b strings.Builder
 
 	// Search line
@@ -554,30 +497,28 @@ func (m newModel) viewIconSearch(promptStyle, hintStyle, itemStyle, selStyle lip
 		b.WriteString(promptStyle.Render("> ") + hintStyle.Render("loading icons..."))
 	} else if m.loadErr != nil {
 		b.WriteString(promptStyle.Render("> ") + hintStyle.Render("failed to load icons (enter for favicon)"))
+	} else if m.iconList.Query != "" {
+		queryStyle := lipgloss.NewStyle().Foreground(m.pal.fg)
+		b.WriteString(promptStyle.Render("> ") + queryStyle.Render(m.iconList.Query))
 	} else {
-		query := m.searchInput.Value()
-		if query != "" {
-			b.WriteString(promptStyle.Render("> ") + queryStyle.Render(m.searchInput.View()))
-		} else {
-			b.WriteString(promptStyle.Render("> ") + m.searchInput.View())
-		}
+		b.WriteString(promptStyle.Render("> ") + hintStyle.Render("search icons..."))
 	}
 	b.WriteString("\n\n")
 
 	if !m.loadingIcons && m.loadErr == nil {
-		if len(m.iconFiltered) == 0 {
+		if len(m.iconList.Filtered) == 0 {
 			b.WriteString(hintStyle.Render("  no matches"))
 		} else {
-			vis := m.iconVisibleLines()
-			end := m.iconOffset + vis
-			if end > len(m.iconFiltered) {
-				end = len(m.iconFiltered)
+			vis := m.iconList.VisibleLines(m.height, iconViewOverhead)
+			end := m.iconList.Offset + vis
+			if end > len(m.iconList.Filtered) {
+				end = len(m.iconList.Filtered)
 			}
 
-			for i := m.iconOffset; i < end; i++ {
-				im := m.iconFiltered[i]
-				icon := m.allIcons[im.index]
-				isCursor := i == m.iconCursor
+			for i := m.iconList.Offset; i < end; i++ {
+				fi := m.iconList.Filtered[i]
+				icon := m.allIcons[fi.Index]
+				isCursor := i == m.iconList.Cursor
 
 				prefix := "  "
 				if isCursor {
@@ -585,11 +526,7 @@ func (m newModel) viewIconSearch(promptStyle, hintStyle, itemStyle, selStyle lip
 				}
 
 				b.WriteString(prefix)
-				if isCursor {
-					b.WriteString(selStyle.Render(icon.DisplayName))
-				} else {
-					b.WriteString(itemStyle.Render(icon.DisplayName))
-				}
+				b.WriteString(filterlist.RenderLabel(icon.DisplayName, fi.MatchedIdx, isCursor, selStyle, selStyle, itemStyle))
 				b.WriteString(hintStyle.Render(" " + icon.Name))
 
 				if i < end-1 {

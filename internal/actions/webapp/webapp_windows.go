@@ -8,20 +8,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nulifyer/karchy/internal/ansi"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/platform"
 	"github.com/nulifyer/karchy/internal/terminal"
 )
 
-const (
-	colorGreen = "\033[32m"
-	colorRed   = "\033[31m"
-	colorCyan  = "\033[36m"
-	colorBold  = "\033[1m"
-	colorReset = "\033[0m"
-
-	dashboardIconFmt = "png"
-)
+const dashboardIconFmt = "png"
 
 // ShortcutDir returns the Start Menu folder for Karchy web apps.
 func ShortcutDir() string {
@@ -106,56 +99,40 @@ func Remove(apps []WebApp) {
 		fmt.Printf(" %s\n", app.Name)
 	}
 
-	fmt.Printf("\n %s%s:: Proceed with removal? [Y/n]%s ", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Proceed with removal? [Y/n]%s ", ansi.Bold, ansi.Cyan, ansi.Reset)
 	line := readLine()
 	if len(line) > 0 && (line[0] == 'n' || line[0] == 'N') {
 		return
 	}
 
-	fmt.Printf("\n %s%s:: Removing web apps...%s\n\n", colorBold, colorCyan, colorReset)
-
-	iconDir := IconDir()
-	for _, app := range apps {
-		// Remove shortcut
-		if err := os.Remove(app.LnkPath); err != nil {
-			fmt.Printf(" %s  %sfailed: %v%s\n", app.Name, colorRed, err, colorReset)
-			continue
-		}
-		// Remove icon (try common extensions)
-		for _, ext := range []string{".ico", ".png", ".svg"} {
-			os.Remove(filepath.Join(iconDir, app.ID+ext))
-		}
-		removeMeta(app.ID)
-		fmt.Printf(" %s  %sremoved%s\n", app.Name, colorGreen, colorReset)
-	}
-
-	fmt.Printf("\n %s%s:: Done.%s\n\n", colorBold, colorGreen, colorReset)
-	fmt.Print(" Press Enter to close...")
+	deleteApps(apps)
+	fmt.Print("\n Press Enter to close...")
 	readLine()
 }
 
 // deleteApps removes shortcut files and their icons, printing results.
 func deleteApps(apps []WebApp) {
-	fmt.Printf("\n %s%s:: Removing web apps...%s\n\n", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Removing web apps...%s\n\n", ansi.Bold, ansi.Cyan, ansi.Reset)
 	iconDir := IconDir()
 	for _, app := range apps {
 		if err := os.Remove(app.LnkPath); err != nil {
-			fmt.Printf(" %s  %sfailed: %v%s\n", app.Name, colorRed, err, colorReset)
+			fmt.Printf(" %s  %sfailed: %v%s\n", app.Name, ansi.Red, err, ansi.Reset)
 			continue
 		}
 		for _, ext := range []string{".ico", ".png", ".svg"} {
 			os.Remove(filepath.Join(iconDir, app.ID+ext))
 		}
-		fmt.Printf(" %s  %sremoved%s\n", app.Name, colorGreen, colorReset)
+		removeMeta(app.ID)
+		fmt.Printf(" %s  %sremoved%s\n", app.Name, ansi.Green, ansi.Reset)
 	}
-	fmt.Printf("\n %s%s:: Done.%s\n", colorBold, colorGreen, colorReset)
+	fmt.Printf("\n %s%s:: Done.%s\n", ansi.Bold, ansi.Green, ansi.Reset)
 }
 
 // Create interactively prompts for name, URL, icon choice, then creates a shortcut.
 func Create() {
 	terminal.ResizeAndCenter(80, 25)
 
-	fmt.Printf("\n %s%s:: Create a new web app%s\n\n", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Create a new web app%s\n\n", ansi.Bold, ansi.Cyan, ansi.Reset)
 
 	// Name
 	fmt.Print(" Name: ")
@@ -190,7 +167,7 @@ func Create() {
 		fmt.Printf("\n Loading dashboard icons...")
 		icons, commit, err := LoadDashboardIcons()
 		if err != nil {
-			fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
+			fmt.Printf(" %sfailed: %v%s\n", ansi.Red, err, ansi.Reset)
 			fmt.Println(" Falling back to favicon.")
 			iconURL = FaviconURL(appURL)
 		} else {
@@ -246,23 +223,23 @@ func Create() {
 		var err error
 		iconPath, err = DownloadIcon(id, iconURL)
 		if err != nil {
-			fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
+			fmt.Printf(" %sfailed: %v%s\n", ansi.Red, err, ansi.Reset)
 		} else {
-			fmt.Printf(" %sdone%s\n", colorGreen, colorReset)
+			fmt.Printf(" %sdone%s\n", ansi.Green, ansi.Reset)
 		}
 	}
 
 	// Create shortcut
 	fmt.Print(" Creating shortcut...")
 	if err := createShortcut(appName, appURL, iconPath, false); err != nil {
-		fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
+		fmt.Printf(" %sfailed: %v%s\n", ansi.Red, err, ansi.Reset)
 		fmt.Print("\n Press Enter to close...")
 		readLine()
 		return
 	}
-	fmt.Printf(" %sdone%s\n", colorGreen, colorReset)
+	fmt.Printf(" %sdone%s\n", ansi.Green, ansi.Reset)
 
-	fmt.Printf("\n %s%s:: Web app '%s' created!%s\n", colorBold, colorGreen, appName, colorReset)
+	fmt.Printf("\n %s%s:: Web app '%s' created!%s\n", ansi.Bold, ansi.Green, appName, ansi.Reset)
 	fmt.Printf(" You can find it in Start Menu > Karchy Web Apps\n\n")
 	fmt.Print(" Press Enter to close...")
 	readLine()
@@ -272,7 +249,7 @@ func Create() {
 func createShortcut(appName, appURL, iconPath string, isolated bool) error {
 	id := urlHash(appURL)
 	dir := ShortcutDir()
-	os.MkdirAll(dir, 0755)
+	os.MkdirAll(dir, 0o755)
 	lnkPath := filepath.Join(dir, appName+".lnk")
 
 	self, err := os.Executable()

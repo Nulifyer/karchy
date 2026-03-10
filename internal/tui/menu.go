@@ -246,8 +246,12 @@ func editorMenu() []MenuItem {
 }
 
 func installMenu() []MenuItem {
+	pkgLabel := "Pacman"
+	if runtime.GOOS == "windows" {
+		pkgLabel = "Winget"
+	}
 	items := []MenuItem{
-		{Label: "Pacman", Action: submenu(menuPackages)},
+		{Label: pkgLabel, Action: submenu(menuPackages)},
 	}
 	if runtime.GOOS == "linux" && install.HasAUR() {
 		items = append(items, MenuItem{Label: fmt.Sprintf("AUR (%s)", install.AURHelper()), Action: submenu(menuAUR)})

@@ -22,6 +22,7 @@ const (
 var (
 	logLevel     = LogLevelNone
 	logWriter    io.Writer
+	logFile      *os.File
 	logStartTime = time.Now()
 	enabled      bool
 )
@@ -44,15 +45,19 @@ func Init(on bool) {
 		dir = os.TempDir()
 	}
 	logDir := filepath.Join(dir, "karchy")
-	os.MkdirAll(logDir, 0o755)
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "karchy: failed to create log dir: %v\n", err)
+		return
+	}
 
 	path := filepath.Join(logDir, "karchy.log")
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to open log file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "karchy: failed to open log file: %v\n", err)
 		return
 	}
 
+	logFile = f
 	logWriter = f
 	Info("--- logging started ---")
 }
@@ -89,6 +94,16 @@ func Warn(format string, args ...any) {
 
 func Error(format string, args ...any) {
 	logf("ERROR", LogLevelError, format, args...)
+}
+
+// Close flushes and closes the log file. Safe to call even if logging is disabled.
+func Close() {
+	if logFile != nil {
+		Info("--- logging stopped ---")
+		logFile.Close()
+		logFile = nil
+		logWriter = nil
+	}
 }
 
 func Fatal(format string, args ...any) {

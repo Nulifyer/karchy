@@ -11,8 +11,8 @@ import (
 	"github.com/nulifyer/karchy/internal/terminal"
 )
 
-// SystemUpdate finds all installed packages in the search index and runs them
-// through BatchInstall, which handles version comparison, download, and install.
+// SystemUpdate finds all installed packages and runs them through the batch pipeline.
+// Returns 0 since the update runs inline (no external terminal PID to wait on).
 func SystemUpdate() int {
 	terminal.ResizeAndCenter(100, 30)
 

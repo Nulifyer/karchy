@@ -34,6 +34,7 @@ func main() {
 
 	debug := arger.GetFlag[bool](flags, "debug")
 	logging.Init(debug)
+	defer logging.Close()
 	logging.Info("args=%v debug=%v version=%s", os.Args, debug, Version)
 	selfupdate.CleanOld()
 

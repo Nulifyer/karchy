@@ -10,23 +10,16 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/nulifyer/karchy/internal/ansi"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/terminal"
-)
-
-const (
-	colorGreen = "\033[32m"
-	colorRed   = "\033[31m"
-	colorCyan  = "\033[36m"
-	colorBold  = "\033[1m"
-	colorReset = "\033[0m"
 )
 
 // Run performs system cleanup: removes orphan packages and cleans package cache.
 func Run() {
 	terminal.ResizeAndCenter(80, 24)
 
-	fmt.Printf("\n %s%s:: Scanning...%s\n\n", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Scanning...%s\n\n", ansi.Bold, ansi.Cyan, ansi.Reset)
 
 	// Check for orphan packages
 	orphans := findOrphans()
@@ -36,7 +29,7 @@ func Run() {
 	hasWork := len(orphans) > 0 || cacheSize > 0 || userCacheCount > 0
 
 	if !hasWork {
-		fmt.Printf(" %s%s:: System is clean.%s\n\n", colorBold, colorGreen, colorReset)
+		fmt.Printf(" %s%s:: System is clean.%s\n\n", ansi.Bold, ansi.Green, ansi.Reset)
 		fmt.Print(" Press Enter to close...")
 		bufio.NewReader(os.Stdin).ReadBytes('\n')
 		return
@@ -57,23 +50,23 @@ func Run() {
 		fmt.Printf(" User cache (~/.cache):   %s (%d files)\n", formatSize(userCacheSize), userCacheCount)
 	}
 
-	fmt.Printf("\n %s%s:: Proceed with cleanup? [Y/n]%s ", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Proceed with cleanup? [Y/n]%s ", ansi.Bold, ansi.Cyan, ansi.Reset)
 	reader := bufio.NewReader(os.Stdin)
 	line, _ := reader.ReadString('\n')
 	if len(line) > 0 && (line[0] == 'n' || line[0] == 'N') {
 		return
 	}
 
-	fmt.Printf("\n %s%s:: Cleaning...%s\n\n", colorBold, colorCyan, colorReset)
+	fmt.Printf("\n %s%s:: Cleaning...%s\n\n", ansi.Bold, ansi.Cyan, ansi.Reset)
 
 	// Remove orphans
 	if len(orphans) > 0 {
 		fmt.Print(" Removing orphan packages...")
 		cmd := exec.Command("sudo", append([]string{"pacman", "-Rns", "--noconfirm"}, orphans...)...)
 		if err := cmd.Run(); err != nil {
-			fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
+			fmt.Printf(" %sfailed: %v%s\n", ansi.Red, err, ansi.Reset)
 		} else {
-			fmt.Printf(" %sdone%s\n", colorGreen, colorReset)
+			fmt.Printf(" %sdone%s\n", ansi.Green, ansi.Reset)
 		}
 	}
 
@@ -83,16 +76,16 @@ func Run() {
 		if hasPaccache() {
 			cmd := exec.Command("sudo", "paccache", "-rk1")
 			if err := cmd.Run(); err != nil {
-				fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
+				fmt.Printf(" %sfailed: %v%s\n", ansi.Red, err, ansi.Reset)
 			} else {
-				fmt.Printf(" %sdone%s\n", colorGreen, colorReset)
+				fmt.Printf(" %sdone%s\n", ansi.Green, ansi.Reset)
 			}
 		} else {
 			cmd := exec.Command("sudo", "pacman", "-Sc", "--noconfirm")
 			if err := cmd.Run(); err != nil {
-				fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
+				fmt.Printf(" %sfailed: %v%s\n", ansi.Red, err, ansi.Reset)
 			} else {
-				fmt.Printf(" %sdone%s\n", colorGreen, colorReset)
+				fmt.Printf(" %sdone%s\n", ansi.Green, ansi.Reset)
 			}
 		}
 	}
@@ -102,13 +95,13 @@ func Run() {
 		fmt.Print(" Cleaning user cache...")
 		freed, errs := cleanDir(userCacheDir())
 		if errs > 0 {
-			fmt.Printf(" %s%s freed (%d skipped)%s\n", colorGreen, formatSize(freed), errs, colorReset)
+			fmt.Printf(" %s%s freed (%d skipped)%s\n", ansi.Green, formatSize(freed), errs, ansi.Reset)
 		} else {
-			fmt.Printf(" %s%s freed%s\n", colorGreen, formatSize(freed), colorReset)
+			fmt.Printf(" %s%s freed%s\n", ansi.Green, formatSize(freed), ansi.Reset)
 		}
 	}
 
-	fmt.Printf("\n %s%s:: Cleanup complete.%s\n\n", colorBold, colorGreen, colorReset)
+	fmt.Printf("\n %s%s:: Cleanup complete.%s\n\n", ansi.Bold, ansi.Green, ansi.Reset)
 	fmt.Print(" Press Enter to close...")
 	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
