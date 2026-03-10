@@ -55,3 +55,6 @@ func SystemUpdate() int {
 	batchPipeline(candidates, true)
 	return 0
 }
+
+func FirmwareUpdate() {}
+func MirrorUpdate()   {}

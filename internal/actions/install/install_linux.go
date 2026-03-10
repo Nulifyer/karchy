@@ -96,6 +96,137 @@ func BatchInstall(pkgs []PackageEntry) {
 	terminal.LaunchShell(100, 30, fmt.Sprintf("Installing %d packages", len(pkgs)), script)
 }
 
+// AURHelper returns the AUR helper command ("paru" or "yay"), or empty if none found.
+func AURHelper() string {
+	if _, err := exec.LookPath("paru"); err == nil {
+		return "paru"
+	}
+	if _, err := exec.LookPath("yay"); err == nil {
+		return "yay"
+	}
+	return ""
+}
+
+// HasAUR returns true if an AUR helper (paru or yay) is installed.
+func HasAUR() bool {
+	return AURHelper() != ""
+}
+
+// SearchAUR returns all available AUR packages via the installed helper.
+func SearchAUR() []PackageEntry {
+	helper := AURHelper()
+	if helper == "" {
+		return nil
+	}
+	// paru/yay -Sl aur: lists all AUR packages (name version)
+	out, err := exec.Command(helper, "-Sl", "aur").Output()
+	if err != nil {
+		logging.Info("SearchAUR: %s -Sl aur failed: %v", helper, err)
+		return nil
+	}
+
+	var entries []PackageEntry
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	for scanner.Scan() {
+		// Format: "aur pkgname version [installed]" or "pkgname version"
+		fields := strings.Fields(scanner.Text())
+		if len(fields) < 2 {
+			continue
+		}
+		// Skip the repo name if present
+		name, version := fields[0], fields[1]
+		if len(fields) >= 3 && (fields[0] == "aur") {
+			name, version = fields[1], fields[2]
+		}
+		entries = append(entries, PackageEntry{
+			Name:    name,
+			ID:      name,
+			Version: version,
+		})
+	}
+	logging.Info("SearchAUR: %d AUR packages", len(entries))
+	return entries
+}
+
+// AURInstalledIDs returns installed AUR (foreign) package names mapped to versions.
+func AURInstalledIDs() map[string]string {
+	helper := AURHelper()
+	if helper == "" {
+		return nil
+	}
+	out, err := exec.Command(helper, "-Qm").Output()
+	if err != nil {
+		return nil
+	}
+	ids := make(map[string]string)
+	sc := bufio.NewScanner(strings.NewReader(string(out)))
+	for sc.Scan() {
+		fields := strings.Fields(sc.Text())
+		if len(fields) >= 2 {
+			ids[fields[0]] = fields[1]
+		}
+	}
+	return ids
+}
+
+// AURInstall installs AUR packages via the installed helper.
+func AURInstall(pkgs []PackageEntry) {
+	helper := AURHelper()
+	if helper == "" || len(pkgs) == 0 {
+		return
+	}
+	ids := make([]string, len(pkgs))
+	for i, p := range pkgs {
+		ids[i] = p.ID
+	}
+	flags := "--needed"
+	switch helper {
+	case "paru":
+		flags += " --skipreview --cleanafter"
+	case "yay":
+		flags += " --answerdiff None --answerclean None --answeredit None --cleanafter"
+	}
+	script := fmt.Sprintf("%s -S %s %s; echo; read -rp 'Press Enter to close...'", helper, flags, strings.Join(ids, " "))
+	terminal.LaunchShell(100, 30, fmt.Sprintf("AUR Install (%d)", len(pkgs)), script)
+}
+
+// AURSearch searches AUR for packages matching a query term.
+func AURSearch(query string) []PackageEntry {
+	helper := AURHelper()
+	if helper == "" {
+		return nil
+	}
+	out, err := exec.Command(helper, "-Ss", query).Output()
+	if err != nil {
+		logging.Info("AURSearch: %s -Ss failed: %v", helper, err)
+		return nil
+	}
+
+	var entries []PackageEntry
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	for i := 0; i < len(lines); i += 2 {
+		// Format: repo/name version [installed]
+		//         Description text
+		fields := strings.Fields(lines[i])
+		if len(fields) < 2 {
+			continue
+		}
+		nameParts := strings.SplitN(fields[0], "/", 2)
+		name := fields[0]
+		if len(nameParts) == 2 {
+			name = nameParts[1]
+		}
+		version := fields[1]
+		entries = append(entries, PackageEntry{
+			Name:    name,
+			ID:      name,
+			Version: version,
+		})
+	}
+	logging.Info("AURSearch: %d results for %q", len(entries), query)
+	return entries
+}
+
 // DirectInstall installs a single package via pacman.
 func DirectInstall(pkg PackageEntry) error {
 	cmd := exec.Command("sudo", "pacman", "-S", "--noconfirm", pkg.ID)

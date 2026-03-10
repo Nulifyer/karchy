@@ -344,3 +344,10 @@ func InstallPackages(pkgs []PackageEntry) {
 	script := strings.Join(cmds, " && ") + " & pause"
 	terminal.LaunchShell(100, 30, fmt.Sprintf("Installing %d packages", len(pkgs)), script)
 }
+
+func HasAUR() bool                          { return false }
+func AURHelper() string                     { return "" }
+func SearchAUR() []PackageEntry             { return nil }
+func AURInstalledIDs() map[string]string    { return nil }
+func AURInstall(pkgs []PackageEntry)        {}
+func AURSearch(query string) []PackageEntry { return nil }

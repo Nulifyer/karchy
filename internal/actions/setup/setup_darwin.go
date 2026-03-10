@@ -11,3 +11,10 @@ func Display()   { platform.Open("x-apple.systempreferences:com.apple.preference
 func Power()     { platform.Open("x-apple.systempreferences:com.apple.preference.energysaver") }
 func Timezone()  { platform.Open("x-apple.systempreferences:com.apple.preference.datetime") }
 func WinUtil()   {}
+
+func PowerProfile() string        { return "" }
+func SetPowerProfile(profile string) {}
+func PowerProfiles() []string     { return nil }
+func RestartAudio()               {}
+func RestartWiFi()                {}
+func RestartBluetooth()           {}

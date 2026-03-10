@@ -359,6 +359,10 @@ func (m model) View() string {
 				prefix = "▸" + m.styles.menuPicked.Render("–")
 			case isPicked:
 				prefix = m.styles.menuPicked.Render("–") + " "
+			case item.Updatable && globalIdx == m.cursor:
+				prefix = "▸" + m.styles.menuUpdatable.Render("⬆")
+			case item.Updatable:
+				prefix = m.styles.menuUpdatable.Render("⬆") + " "
 			case item.Checked && globalIdx == m.cursor:
 				prefix = "▸" + m.styles.menuChecked.Render("✓")
 			case item.Checked:

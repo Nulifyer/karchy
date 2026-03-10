@@ -14,8 +14,9 @@ type styles struct {
 	prompt      lipgloss.Style
 	query       lipgloss.Style
 	border      lipgloss.Style
-	menuChecked lipgloss.Style
-	menuPicked  lipgloss.Style
+	menuChecked  lipgloss.Style
+	menuPicked   lipgloss.Style
+	menuUpdatable lipgloss.Style
 }
 
 func newStyles(pal theme.Palette) styles {
@@ -51,6 +52,8 @@ func newStyles(pal theme.Palette) styles {
 		menuChecked: lipgloss.NewStyle().
 			Foreground(green),
 		menuPicked: lipgloss.NewStyle().
+			Foreground(yellow),
+		menuUpdatable: lipgloss.NewStyle().
 			Foreground(yellow),
 	}
 }

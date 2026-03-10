@@ -66,3 +66,49 @@ read -rp "Press Enter to close..."
 	pid, _ := terminal.LaunchShell(100, 30, "System Update", script)
 	return pid
 }
+
+// FirmwareUpdate runs fwupdmgr to check and install firmware updates.
+func FirmwareUpdate() {
+	script := `
+set -e
+echo -e "\033[1;36mChecking for firmware updates...\033[0m"
+echo
+fwupdmgr refresh --force 2>/dev/null || true
+fwupdmgr get-updates 2>/dev/null || echo -e "\033[1;32mNo firmware updates available.\033[0m"
+echo
+read -rp "Install available updates? [Y/n] " ans
+if [[ -z "$ans" || "$ans" =~ ^[Yy] ]]; then
+    fwupdmgr update || true
+fi
+echo
+read -rp "Press Enter to close..."
+`
+	terminal.LaunchShell(100, 25, "Firmware Update", script)
+}
+
+// MirrorUpdate refreshes the pacman mirrorlist.
+func MirrorUpdate() {
+	script := `
+set -e
+echo -e "\033[1;36mUpdating mirror list...\033[0m"
+echo
+if command -v rate-mirrors &>/dev/null; then
+    echo "Using rate-mirrors..."
+    rate-mirrors --allow-root --protocol https arch | sudo tee /etc/pacman.d/mirrorlist
+elif command -v reflector &>/dev/null; then
+    echo "Using reflector..."
+    sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+elif command -v rankmirrors &>/dev/null; then
+    echo "Using rankmirrors..."
+    curl -s "https://archlinux.org/mirrorlist/?country=all&protocol=https&use_mirror_status=on" | sed 's/^#Server/Server/' | rankmirrors -n 10 - | sudo tee /etc/pacman.d/mirrorlist
+else
+    echo -e "\033[1;31mNo mirror ranking tool found (rate-mirrors, reflector, or rankmirrors).\033[0m"
+    echo "Install one: sudo pacman -S rate-mirrors"
+fi
+echo
+echo -e "\033[1;32mDone!\033[0m"
+echo
+read -rp "Press Enter to close..."
+`
+	terminal.LaunchShell(100, 25, "Mirror Update", script)
+}

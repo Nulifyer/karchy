@@ -153,3 +153,52 @@ func Timezone() {
 }
 
 func WinUtil() {}
+
+// PowerProfile returns the current power profile name.
+func PowerProfile() string {
+	out, err := exec.Command("powerprofilesctl", "get").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// SetPowerProfile sets the power profile.
+func SetPowerProfile(profile string) {
+	exec.Command("powerprofilesctl", "set", profile).Run()
+}
+
+// PowerProfiles returns available power profiles.
+func PowerProfiles() []string {
+	if _, err := exec.LookPath("powerprofilesctl"); err != nil {
+		return nil
+	}
+	out, err := exec.Command("powerprofilesctl", "list").Output()
+	if err != nil {
+		return nil
+	}
+	var profiles []string
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		line = strings.TrimPrefix(line, "* ")
+		if strings.HasSuffix(line, ":") && !strings.Contains(line, " ") {
+			profiles = append(profiles, strings.TrimSuffix(line, ":"))
+		}
+	}
+	return profiles
+}
+
+// RestartAudio restarts PipeWire/PulseAudio.
+func RestartAudio() {
+	exec.Command("systemctl", "--user", "restart", "pipewire", "pipewire-pulse", "wireplumber").Run()
+}
+
+// RestartWiFi restarts NetworkManager.
+func RestartWiFi() {
+	exec.Command("sudo", "systemctl", "restart", "NetworkManager").Run()
+}
+
+// RestartBluetooth restarts the Bluetooth service.
+func RestartBluetooth() {
+	exec.Command("sudo", "systemctl", "restart", "bluetooth").Run()
+}

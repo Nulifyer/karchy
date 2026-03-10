@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,11 +24,12 @@ import (
 
 // MenuItem represents a single menu entry.
 type MenuItem struct {
-	Icon    string
-	Label   string
-	Detail  string // muted text shown after label
-	Checked bool   // render label in green
-	Action  func() menuResult
+	Icon      string
+	Label     string
+	Detail    string // muted text shown after label
+	Checked   bool   // render prefix as green ✓
+	Updatable bool   // render prefix as yellow ⬆ (takes priority over Checked)
+	Action    func() menuResult
 }
 
 type menuResult struct {
@@ -54,11 +56,12 @@ type TypedMenu[T any] struct {
 
 // TypedItem is a menu item carrying strongly-typed data.
 type TypedItem[T any] struct {
-	Label   string
-	Detail  string
-	Checked bool
-	Icon    string
-	Data    T
+	Label     string
+	Detail    string
+	Checked   bool
+	Updatable bool
+	Icon      string
+	Data      T
 }
 
 // Build converts typed items into untyped MenuItems and handler closures.
@@ -66,10 +69,11 @@ func (tm TypedMenu[T]) Build(items []TypedItem[T]) ([]MenuItem, func(int), func(
 	menuItems := make([]MenuItem, len(items))
 	for i, ti := range items {
 		menuItems[i] = MenuItem{
-			Label:   ti.Label,
-			Detail:  ti.Detail,
-			Checked: ti.Checked,
-			Icon:    ti.Icon,
+			Label:     ti.Label,
+			Detail:    ti.Detail,
+			Checked:   ti.Checked,
+			Updatable: ti.Updatable,
+			Icon:      ti.Icon,
 		}
 	}
 
@@ -122,6 +126,9 @@ const (
 	menuFonts
 	menuRemoveFonts
 	menuSetupFont
+	menuAUR
+	menuPowerProfile
+	menuHardwareRestart
 )
 
 func submenu(s submenuKind) func() menuResult {
@@ -158,9 +165,17 @@ func setupMenu() []MenuItem {
 		{Label: "Display", Action: action(setup.Display)},
 		{Label: "Power", Action: action(setup.Power)},
 		{Label: "Timezone", Action: action(setup.Timezone)},
-		{Label: "Font", Action: submenu(menuSetupFont)},
-		{Label: "Theme", Action: submenu(menuTheme)},
 	}
+	if profiles := setup.PowerProfiles(); len(profiles) > 0 {
+		items = append(items, MenuItem{Label: "Power Profile", Action: submenu(menuPowerProfile)})
+	}
+	if runtime.GOOS == "linux" {
+		items = append(items, MenuItem{Label: "Restart Hardware", Action: submenu(menuHardwareRestart)})
+	}
+	items = append(items,
+		MenuItem{Label: "Font", Action: submenu(menuSetupFont)},
+		MenuItem{Label: "Theme", Action: submenu(menuTheme)},
+	)
 	if runtime.GOOS == "windows" {
 		items = append(items, MenuItem{Label: "Chris Titus WinUtil", Action: action(setup.WinUtil)})
 	}
@@ -231,18 +246,55 @@ func editorMenu() []MenuItem {
 }
 
 func installMenu() []MenuItem {
-	return []MenuItem{
-		{Label: "Package Manager", Action: submenu(menuPackages)},
-		{Label: "Web App", Action: action(func() {
+	items := []MenuItem{
+		{Label: "Pacman", Action: submenu(menuPackages)},
+	}
+	if runtime.GOOS == "linux" && install.HasAUR() {
+		items = append(items, MenuItem{Label: fmt.Sprintf("AUR (%s)", install.AURHelper()), Action: submenu(menuAUR)})
+	}
+	items = append(items,
+		MenuItem{Label: "Web App", Action: action(func() {
 			terminal.Launch(70, 25, "Web App", "webapp", "new")
 		})},
-		{Label: "Font", Action: submenu(menuFonts)},
-	}
+		MenuItem{Label: "Font", Action: submenu(menuFonts)},
+	)
+	return items
 }
 
 var packagesMenu = TypedMenu[install.PackageEntry]{
 	OnSelect: func(pkg install.PackageEntry) { install.BatchInstall([]install.PackageEntry{pkg}) },
 	OnBatch:  install.BatchInstall,
+}
+
+var aurMenu = TypedMenu[install.PackageEntry]{
+	OnSelect: func(pkg install.PackageEntry) { install.AURInstall([]install.PackageEntry{pkg}) },
+	OnBatch:  install.AURInstall,
+}
+
+func loadAURItems() []TypedItem[install.PackageEntry] {
+	entries, installed := install.SearchAUR(), install.AURInstalledIDs()
+	items := make([]TypedItem[install.PackageEntry], len(entries))
+	for i, e := range entries {
+		installedVer, isInstalled := installed[e.ID]
+		detail := e.ID
+		hasUpdate := false
+		if isInstalled && installedVer != "" {
+			latest := install.ParseSemVer(e.Version)
+			current := install.ParseSemVer(installedVer)
+			if latest.IsNewerThan(current) {
+				detail = e.ID + "  " + installedVer + " → " + e.Version
+				hasUpdate = true
+			}
+		}
+		items[i] = TypedItem[install.PackageEntry]{
+			Label:     e.Name,
+			Detail:    detail,
+			Checked:   isInstalled && !hasUpdate,
+			Updatable: hasUpdate,
+			Data:      e,
+		}
+	}
+	return items
 }
 
 func loadPackageItems() []TypedItem[install.PackageEntry] {
@@ -251,18 +303,21 @@ func loadPackageItems() []TypedItem[install.PackageEntry] {
 	for i, e := range entries {
 		installedVer, isInstalled := installed[e.ID]
 		detail := e.ID
+		hasUpdate := false
 		if isInstalled && installedVer != "" {
 			latest := install.ParseSemVer(e.Version)
 			current := install.ParseSemVer(installedVer)
 			if latest.IsNewerThan(current) {
 				detail = e.ID + "  " + installedVer + " → " + e.Version
+				hasUpdate = true
 			}
 		}
 		items[i] = TypedItem[install.PackageEntry]{
-			Label:   e.Name,
-			Detail:  detail,
-			Checked: isInstalled,
-			Data:    e,
+			Label:     e.Name,
+			Detail:    detail,
+			Checked:   isInstalled && !hasUpdate,
+			Updatable: hasUpdate,
+			Data:      e,
 		}
 	}
 	return items
@@ -307,10 +362,17 @@ func loadRemovePackageItems() []TypedItem[install.InstalledPackage] {
 }
 
 func updateMenu() []MenuItem {
-	return []MenuItem{
+	items := []MenuItem{
 		{Label: "System Update", Action: action(func() { install.SystemUpdate() })},
-		{Label: "Cleanup", Action: action(cleanup.Run)},
 	}
+	if runtime.GOOS == "linux" {
+		items = append(items,
+			MenuItem{Label: "Mirror Update", Action: action(install.MirrorUpdate)},
+			MenuItem{Label: "Firmware Update", Action: action(install.FirmwareUpdate)},
+		)
+	}
+	items = append(items, MenuItem{Label: "Cleanup", Action: action(cleanup.Run)})
+	return items
 }
 
 func systemMenu() []MenuItem {
@@ -460,6 +522,34 @@ func loadSetupFontItems() []TypedItem[fonts.Font] {
 	return items
 }
 
+func powerProfileMenu() []MenuItem {
+	current := setup.PowerProfile()
+	profiles := setup.PowerProfiles()
+	items := make([]MenuItem, len(profiles))
+	for i, p := range profiles {
+		label := p
+		if p == current {
+			label += " (current)"
+		}
+		profile := p
+		items[i] = MenuItem{
+			Label: label,
+			Action: action(func() {
+				setup.SetPowerProfile(profile)
+			}),
+		}
+	}
+	return items
+}
+
+func hardwareRestartMenu() []MenuItem {
+	return []MenuItem{
+		{Label: "Audio (PipeWire)", Action: action(setup.RestartAudio)},
+		{Label: "Wi-Fi (NetworkManager)", Action: action(setup.RestartWiFi)},
+		{Label: "Bluetooth", Action: action(setup.RestartBluetooth)},
+	}
+}
+
 // menuSize returns the Alacritty cols×lines for a given menu.
 type menuSize struct {
 	cols, lines int
@@ -467,7 +557,7 @@ type menuSize struct {
 
 func getMenuSize(s submenuKind) menuSize {
 	switch s {
-	case menuPackages, menuRemovePackages:
+	case menuPackages, menuRemovePackages, menuAUR:
 		return menuSize{80, 35}
 	case menuApps, menuProjects, menuEditor:
 		return menuSize{60, 25}
@@ -520,6 +610,12 @@ func getMenu(s submenuKind) ([]MenuItem, string) {
 		return nil, "Install Distro"
 	case menuWSLRemove:
 		return nil, "Remove Distro"
+	case menuAUR:
+		return nil, "AUR Packages"
+	case menuPowerProfile:
+		return powerProfileMenu(), "Power Profile"
+	case menuHardwareRestart:
+		return hardwareRestartMenu(), "Restart Hardware"
 	default:
 		return mainMenu(), "Karchy"
 	}
@@ -533,7 +629,7 @@ func getMenuTitle(s submenuKind) string {
 
 // isMultiSelect returns true for menus that support multi-select via space.
 func isMultiSelect(s submenuKind) bool {
-	return s == menuPackages || s == menuRemovePackages || s == menuFonts || s == menuRemoveFonts || s == menuWSLInstall || s == menuWSLRemove
+	return s == menuPackages || s == menuRemovePackages || s == menuAUR || s == menuFonts || s == menuRemoveFonts || s == menuWSLInstall || s == menuWSLRemove
 }
 
 // getMenuAsync returns a tea.Cmd loader for menus that load asynchronously, or nil.
@@ -557,6 +653,8 @@ func getMenuAsync(s submenuKind) tea.Cmd {
 		return wslRemoveMenu.Async(loadWSLRemoveItems)
 	case menuSetupFont:
 		return setupFontMenu.Async(loadSetupFontItems)
+	case menuAUR:
+		return aurMenu.Async(loadAURItems)
 	}
 	return nil
 }

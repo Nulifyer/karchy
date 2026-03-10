@@ -7,3 +7,6 @@ func SystemUpdate() int {
 	// TODO: brew upgrade
 	return 0
 }
+
+func FirmwareUpdate() {}
+func MirrorUpdate()   {}

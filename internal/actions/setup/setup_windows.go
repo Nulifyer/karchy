@@ -22,3 +22,10 @@ func WinUtil() {
 	fmt.Print("\n Loading Chris Titus WinUtil...")
 	exec.Command("powershell", "-Command", "irm https://christitus.com/win | iex").Run()
 }
+
+func PowerProfile() string           { return "" }
+func SetPowerProfile(profile string) {}
+func PowerProfiles() []string        { return nil }
+func RestartAudio()                  {}
+func RestartWiFi()                   {}
+func RestartBluetooth()              {}

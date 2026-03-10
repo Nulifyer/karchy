@@ -54,4 +54,9 @@ func BatchUninstall(pkgs []InstalledPackage) {
 	// TODO
 }
 
-
+func HasAUR() bool                          { return false }
+func AURHelper() string                     { return "" }
+func SearchAUR() []PackageEntry             { return nil }
+func AURInstalledIDs() map[string]string    { return nil }
+func AURInstall(pkgs []PackageEntry)        {}
+func AURSearch(query string) []PackageEntry { return nil }
