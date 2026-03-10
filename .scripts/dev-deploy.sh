@@ -28,6 +28,9 @@ rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/karchy-daemon.lock"
 cd "$REPO_ROOT"
 go build -ldflags "-s -w -X main.Version=$VERSION" -o karchy .
 
+# Clear logs
+rm -f ~/.config/karchy/karchy.log
+
 # Install
 mkdir -p "$INSTALL_DIR"
 mv karchy "$EXE"
@@ -38,5 +41,9 @@ echo "Installed $EXE ($VERSION)"
 # Register autostart + restart daemon
 echo "Running install..."
 "$EXE" install
+
+# Stop and start debug
+"$EXE" daemon stop
+"$EXE" daemon start --debug
 
 echo "Done!"
