@@ -110,18 +110,18 @@ func FaviconURL(rawURL string) string {
 
 // DownloadIcon downloads an icon from a URL and saves it to the icon directory.
 // On Windows, converts to .ico format. Returns the saved icon path.
-func DownloadIcon(appName, iconURL string) (string, error) {
+func DownloadIcon(id, iconURL string) (string, error) {
 	iconDir := IconDir()
 	os.MkdirAll(iconDir, 0755)
 
-	tmpPath := filepath.Join(iconDir, appName+".tmp")
+	tmpPath := filepath.Join(iconDir, id+".tmp")
 	defer os.Remove(tmpPath)
 
 	if err := downloadFile(iconURL, tmpPath); err != nil {
 		return "", fmt.Errorf("download icon: %w", err)
 	}
 
-	return convertIcon(appName, tmpPath, iconURL)
+	return convertIcon(id, tmpPath, iconURL)
 }
 
 func getLatestCommit() string {

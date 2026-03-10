@@ -32,7 +32,7 @@ func deleteApps(apps []WebApp) {
 }
 
 // createShortcut creates a shortcut for a web app.
-func createShortcut(appName, appURL, iconPath string) error {
+func createShortcut(appName, appURL, iconPath string, isolated bool) error {
 	return fmt.Errorf("not implemented on this platform")
 }
 

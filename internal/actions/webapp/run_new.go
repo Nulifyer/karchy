@@ -27,15 +27,16 @@ func RunNew() {
 	}
 
 	// Post-TUI: download icon and create shortcut
-	createWebApp(m.appName, m.appURL, m.iconURL)
+	createWebApp(m.appName, m.appURL, m.iconURL, m.isolated)
 }
 
-func createWebApp(appName, appURL, iconURL string) {
+func createWebApp(appName, appURL, iconURL string, isolated bool) {
+	id := urlHash(appURL)
 	var iconPath string
 	if iconURL != "" {
 		fmt.Print("\n Downloading icon...")
 		var err error
-		iconPath, err = DownloadIcon(appName, iconURL)
+		iconPath, err = DownloadIcon(id, iconURL)
 		if err != nil {
 			fmt.Printf(" \033[31mfailed: %v\033[0m\n", err)
 		} else {
@@ -44,7 +45,7 @@ func createWebApp(appName, appURL, iconURL string) {
 	}
 
 	fmt.Print(" Creating shortcut...")
-	if err := createShortcut(appName, appURL, iconPath); err != nil {
+	if err := createShortcut(appName, appURL, iconPath, isolated); err != nil {
 		fmt.Printf(" \033[31mfailed: %v\033[0m\n", err)
 		fmt.Print("\n Press Enter to close...")
 		readLine()
@@ -66,6 +67,7 @@ const (
 	stepIconSource
 	stepIconSearch // dashboard icon search
 	stepIconURL    // manual icon URL input
+	stepIsolated   // isolated profile prompt
 )
 
 // Icon source choices.
@@ -107,10 +109,14 @@ type newModel struct {
 	loadingIcons bool
 	loadErr      error
 
+	// Isolated profile selection
+	isolatedCursor int
+
 	// Collected results
-	appName string
-	appURL  string
-	iconURL string
+	appName  string
+	appURL   string
+	iconURL  string
+	isolated bool
 
 	// Display
 	width  int
@@ -211,6 +217,8 @@ func (m newModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateIconSearch(msg)
 		case stepIconURL:
 			return m.updateIconURL(msg)
+		case stepIsolated:
+			return m.updateIsolated(msg)
 		}
 	}
 
@@ -290,8 +298,8 @@ func (m newModel) updateIconSource(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(textinput.Blink, loadDashboardIconsCmd())
 		case srcFavicon:
 			m.iconURL = FaviconURL(m.appURL)
-			m.quitting = true
-			return m, tea.Quit
+			m.step = stepIsolated
+			return m, nil
 		case srcManual:
 			m.step = stepIconURL
 			m.iconURLInput.Focus()
@@ -333,14 +341,16 @@ func (m newModel) updateIconSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.loadErr != nil {
 			// Fallback to favicon on error
 			m.iconURL = FaviconURL(m.appURL)
-			m.quitting = true
-			return m, tea.Quit
+			m.step = stepIsolated
+			m.searchInput.Blur()
+			return m, nil
 		}
 		if m.iconCursor < len(m.iconFiltered) {
 			icon := m.allIcons[m.iconFiltered[m.iconCursor].index]
 			m.iconURL = DashboardIconURL(m.commit, icon.Name)
-			m.quitting = true
-			return m, tea.Quit
+			m.step = stepIsolated
+			m.searchInput.Blur()
+			return m, nil
 		}
 		return m, nil
 	}
@@ -368,13 +378,37 @@ func (m newModel) updateIconURL(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if val != "" {
 			m.iconURL = val
 		}
-		m.quitting = true
-		return m, tea.Quit
+		m.step = stepIsolated
+		m.iconURLInput.Blur()
+		return m, nil
 	}
 
 	var cmd tea.Cmd
 	m.iconURLInput, cmd = m.iconURLInput.Update(msg)
 	return m, cmd
+}
+
+var isolatedLabels = []string{"No (use default profile with extensions)", "Yes (isolated profile, per-app window sizing)"}
+
+func (m newModel) updateIsolated(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.step = stepIconSource
+		return m, nil
+	case "up", "ctrl+k":
+		if m.isolatedCursor > 0 {
+			m.isolatedCursor--
+		}
+	case "down", "ctrl+j":
+		if m.isolatedCursor < len(isolatedLabels)-1 {
+			m.isolatedCursor++
+		}
+	case "enter":
+		m.isolated = m.isolatedCursor == 1
+		m.quitting = true
+		return m, tea.Quit
+	}
+	return m, nil
 }
 
 func (m *newModel) filterIcons() {
@@ -480,9 +514,21 @@ func (m newModel) View() string {
 		b.WriteString("\n" + labelStyle.Render("  Icon URL: ") + m.iconURLInput.View() + "\n")
 	}
 
+	// Isolated profile
+	if m.step >= stepIsolated {
+		b.WriteString("\n" + labelStyle.Render("  Isolate profile?") + "\n")
+		for i, label := range isolatedLabels {
+			if m.step == stepIsolated && i == m.isolatedCursor {
+				b.WriteString(selStyle.Render("  ▸ "+label) + "\n")
+			} else {
+				b.WriteString(hintStyle.Render("    "+label) + "\n")
+			}
+		}
+	}
+
 	// Hints
 	b.WriteString("\n")
-	if m.step == stepIconSource {
+	if m.step == stepIconSource || m.step == stepIsolated {
 		b.WriteString(hintStyle.Render("  enter select  esc back"))
 	} else {
 		b.WriteString(hintStyle.Render("  enter next  esc back"))

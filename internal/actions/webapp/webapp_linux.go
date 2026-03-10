@@ -39,13 +39,11 @@ func IconDir() string {
 }
 
 // convertIcon is a no-op on Linux (keep original PNG format).
-func convertIcon(appName, tmpPath, _ string) (string, error) {
+func convertIcon(id, tmpPath, _ string) (string, error) {
 	iconDir := IconDir()
 	os.MkdirAll(iconDir, 0755)
 
-	// Determine extension from source
-	ext := ".png"
-	destPath := filepath.Join(iconDir, appName+ext)
+	destPath := filepath.Join(iconDir, id+".png")
 
 	if err := os.Rename(tmpPath, destPath); err != nil {
 		// Rename may fail across filesystems, fall back to copy
@@ -76,12 +74,16 @@ func Scan() []WebApp {
 		if !strings.HasPrefix(e.Name(), shortcutPrefix) {
 			continue
 		}
-		name := strings.TrimPrefix(strings.TrimSuffix(e.Name(), ".desktop"), shortcutPrefix)
+		id := strings.TrimPrefix(strings.TrimSuffix(e.Name(), ".desktop"), shortcutPrefix)
 		desktopPath := filepath.Join(dir, e.Name())
-		meta, _ := readMeta(name)
+		meta, ok := readMeta(id)
+		if !ok {
+			continue
+		}
 		apps = append(apps, WebApp{
-			Name:    name,
+			Name:    meta.Name,
 			URL:     meta.URL,
+			ID:      id,
 			LnkPath: desktopPath,
 		})
 	}
@@ -122,24 +124,36 @@ func deleteApps(apps []WebApp) {
 			continue
 		}
 		for _, ext := range []string{".png", ".ico", ".svg"} {
-			os.Remove(filepath.Join(iconDir, app.Name+ext))
+			os.Remove(filepath.Join(iconDir, app.ID+ext))
 		}
-		removeMeta(app.Name)
+		removeMeta(app.ID)
 		fmt.Printf(" %s  %sremoved%s\n", app.Name, colorGreen, colorReset)
 	}
 	fmt.Printf("\n %s%s:: Done.%s\n", colorBold, colorGreen, colorReset)
 }
 
+// sanitizeDesktopValue escapes special characters for .desktop file values.
+func sanitizeDesktopValue(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "\n", "\\n")
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\t", "\\t")
+	return s
+}
+
 // createShortcut creates a .desktop file that runs the web app via karchy.
-func createShortcut(appName, appURL, iconPath string) error {
+func createShortcut(appName, appURL, iconPath string, isolated bool) error {
+	id := urlHash(appURL)
 	dir := ShortcutDir()
 	os.MkdirAll(dir, 0755)
-	desktopPath := filepath.Join(dir, shortcutPrefix+appName+".desktop")
+	desktopPath := filepath.Join(dir, shortcutPrefix+id+".desktop")
 
 	self, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("find executable: %w", err)
 	}
+
+	safeName := sanitizeDesktopValue(appName)
 
 	content := fmt.Sprintf(`[Desktop Entry]
 Type=Application
@@ -149,14 +163,13 @@ Icon=%s
 Comment=%s web app
 Categories=Network;WebBrowser;
 StartupWMClass=%s
-`, appName, self, appURL, iconPath, appName, appName)
+`, safeName, self, appURL, iconPath, safeName, safeName)
 
 	logging.Info("createShortcut: %s", desktopPath)
 	if err := os.WriteFile(desktopPath, []byte(content), 0755); err != nil {
 		return err
 	}
-	profileDir := appDataDir(appURL)
-	if err := writeMeta(appName, webAppMeta{URL: appURL, ProfileDir: profileDir}); err != nil {
+	if err := writeMeta(id, webAppMeta{Name: appName, URL: appURL, Isolated: isolated}); err != nil {
 		logging.Info("writeMeta failed: %v", err)
 	}
 	return nil
@@ -184,6 +197,8 @@ func Create() {
 	if !strings.Contains(appURL, "://") {
 		appURL = "https://" + appURL
 	}
+
+	id := urlHash(appURL)
 
 	// Icon source
 	fmt.Println("\n Icon source:")
@@ -253,7 +268,7 @@ func Create() {
 	if iconURL != "" {
 		fmt.Print("\n Downloading icon...")
 		var err error
-		iconPath, err = DownloadIcon(appName, iconURL)
+		iconPath, err = DownloadIcon(id, iconURL)
 		if err != nil {
 			fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
 		} else {
@@ -263,7 +278,7 @@ func Create() {
 
 	// Create shortcut
 	fmt.Print(" Creating shortcut...")
-	if err := createShortcut(appName, appURL, iconPath); err != nil {
+	if err := createShortcut(appName, appURL, iconPath, false); err != nil {
 		fmt.Printf(" %sfailed: %v%s\n", colorRed, err, colorReset)
 		fmt.Print("\n Press Enter to close...")
 		readLine()

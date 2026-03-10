@@ -44,7 +44,10 @@ echo "Running install..."
 
 # Start daemon via systemd user session (properly managed by KDE)
 echo "Starting daemon..."
+systemctl --user stop karchy.service 2>/dev/null || true
+systemctl --user reset-failed karchy.service 2>/dev/null || true
 systemctl --user stop karchy-dev.service 2>/dev/null || true
+systemctl --user reset-failed karchy-dev.service 2>/dev/null || true
 systemd-run --user --unit=karchy-dev --description="Karchy (dev)" "$EXE" --debug daemon run
 
 echo "Done!"

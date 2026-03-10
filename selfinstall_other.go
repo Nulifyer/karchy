@@ -84,8 +84,9 @@ func selfUninstall() {
 func startDaemonManaged(exePath string) {
 	switch runtime.GOOS {
 	case "linux":
-		// Stop any existing instance, then start via systemd user session
+		// Stop and reset any existing instance, then start via systemd user session
 		exec.Command("systemctl", "--user", "stop", "karchy.service").Run()
+		exec.Command("systemctl", "--user", "reset-failed", "karchy.service").Run()
 		cmd := exec.Command("systemd-run", "--user", "--unit=karchy", "--description=Karchy", exePath, "daemon", "run")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

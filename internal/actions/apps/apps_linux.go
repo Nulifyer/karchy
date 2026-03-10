@@ -11,18 +11,36 @@ import (
 	"github.com/nulifyer/karchy/internal/platform"
 )
 
-// Scan discovers installed applications from .desktop files.
-func Scan() []AppEntry {
-	dirs := []string{
-		"/usr/share/applications",
-		"/usr/local/share/applications",
-	}
+// xdgDataDirs returns the XDG application directories in priority order.
+func xdgDataDirs() []string {
+	var dirs []string
+
+	// Highest priority: user local
 	if home, err := os.UserHomeDir(); err == nil {
 		dirs = append(dirs, filepath.Join(home, ".local", "share", "applications"))
 	}
 
+	// $XDG_DATA_DIRS or fallback per spec
+	if env := os.Getenv("XDG_DATA_DIRS"); env != "" {
+		for _, d := range strings.Split(env, ":") {
+			if d != "" {
+				dirs = append(dirs, filepath.Join(d, "applications"))
+			}
+		}
+	} else {
+		dirs = append(dirs,
+			"/usr/local/share/applications",
+			"/usr/share/applications",
+		)
+	}
+
+	return dirs
+}
+
+// Scan discovers installed applications from .desktop files.
+func Scan() []AppEntry {
 	var entries []AppEntry
-	for _, dir := range dirs {
+	for _, dir := range xdgDataDirs() {
 		entries = append(entries, scanDir(dir)...)
 	}
 
@@ -32,42 +50,49 @@ func Scan() []AppEntry {
 
 func scanDir(dir string) []AppEntry {
 	var entries []AppEntry
-	files, err := os.ReadDir(dir)
-	if err != nil {
+	filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".desktop") {
+			return nil
+		}
+		// Skip karchy's autostart entry
+		if d.Name() == "karchy.desktop" {
+			return nil
+		}
+		name, visible := parseDesktop(path)
+		if name != "" && visible {
+			entries = append(entries, AppEntry{Name: name, Path: d.Name()})
+		}
 		return nil
-	}
-	for _, f := range files {
-		if f.IsDir() || !strings.HasSuffix(f.Name(), ".desktop") {
-			continue
-		}
-		// Skip karchy's own .desktop files
-		if strings.HasPrefix(f.Name(), "karchy-") {
-			continue
-		}
-		path := filepath.Join(dir, f.Name())
-		name := parseDesktopName(path)
-		if name != "" {
-			entries = append(entries, AppEntry{Name: name, Path: f.Name()})
-		}
-	}
+	})
 	return entries
 }
 
-func parseDesktopName(path string) string {
+// parseDesktop extracts the Name and checks NoDisplay/Hidden from a .desktop file.
+func parseDesktop(path string) (name string, visible bool) {
 	f, err := os.Open(path)
 	if err != nil {
-		return ""
+		return "", false
 	}
 	defer f.Close()
 
+	visible = true
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "Name=") {
-			return strings.TrimPrefix(line, "Name=")
+		switch {
+		case strings.HasPrefix(line, "Name=") && name == "":
+			name = strings.TrimPrefix(line, "Name=")
+		case line == "NoDisplay=true" || line == "Hidden=true":
+			visible = false
 		}
 	}
-	return ""
+	return name, visible
 }
 
 // Launch opens the application using gtk-launch.
