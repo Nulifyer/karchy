@@ -11,7 +11,7 @@ import (
 )
 
 // Launch opens a URL in app mode using the detected Chromium browser.
-// Each URL gets its own user-data-dir so Chrome remembers window size/position.
+// Each URL gets its own user-data-dir so Chrome can persist window state.
 func Launch(url string) {
 	browser := DetectBrowser()
 	if browser == "" {
@@ -20,8 +20,11 @@ func Launch(url string) {
 	}
 
 	dataDir := appDataDir(url)
-	logging.Info("Launch: %s --app=%s --user-data-dir=%s", browser, url, dataDir)
-	cmd := exec.Command(browser, "--app="+url, "--user-data-dir="+dataDir)
+	args := []string{"--app=" + url, "--user-data-dir=" + dataDir}
+	args = append(args, launchExtraArgs()...)
+
+	logging.Info("Launch: %s %v", browser, args)
+	cmd := exec.Command(browser, args...)
 	cmd.Start()
 }
 
