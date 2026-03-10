@@ -138,9 +138,10 @@ func run() {
 
 	// Register global shortcut via KDE's kglobalaccel (retry until D-Bus is ready)
 	var hotkeyActivated <-chan struct{}
+	var dbusDisconnect <-chan struct{}
 	for attempt := 1; ; attempt++ {
 		var err error
-		hotkeyActivated, err = registerKGlobalAccel(hotkey)
+		hotkeyActivated, dbusDisconnect, err = registerKGlobalAccel(hotkey)
 		if err == nil {
 			break
 		}
@@ -286,6 +287,9 @@ func run() {
 		case <-sigCh:
 			logging.Info("daemon: received signal, shutting down")
 			return
+		case <-dbusDisconnect:
+			logging.Info("daemon: D-Bus session lost, exiting")
+			return
 		}
 	}
 }
@@ -428,16 +432,16 @@ func qtKeyCode(hotkey string) (int32, error) {
 
 // registerKGlobalAccel registers a global shortcut via KDE's kglobalaccel D-Bus
 // service and listens for activation signals.
-func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
+func registerKGlobalAccel(hotkey string) (<-chan struct{}, <-chan struct{}, error) {
 	keyCode, err := qtKeyCode(hotkey)
 	if err != nil {
-		return nil, fmt.Errorf("parse hotkey: %w", err)
+		return nil, nil, fmt.Errorf("parse hotkey: %w", err)
 	}
 	logging.Info("kglobalaccel: hotkey=%s keyCode=0x%08X", hotkey, keyCode)
 
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
-		return nil, fmt.Errorf("connect session bus: %w", err)
+		return nil, nil, fmt.Errorf("connect session bus: %w", err)
 	}
 
 	kga := conn.Object("org.kde.kglobalaccel", "/kglobalaccel")
@@ -448,26 +452,46 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 	err = kga.Call("org.kde.KGlobalAccel.doRegister", 0, actionID).Err
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("doRegister: %w", err)
+		return nil, nil, fmt.Errorf("doRegister: %w", err)
 	}
 	logging.Info("kglobalaccel: action registered")
 
-	// setShortcutKeys sets the active key binding (QList<QKeySequence>)
-	// Each QKeySequence is an array of int32 key codes
-	keys := [][]int32{{keyCode}}
-	var result [][]int32
-	err = kga.Call("org.kde.KGlobalAccel.setShortcutKeys", 0,
-		actionID, keys, uint32(0)).Store(&result)
+	keys := []int32{keyCode}
+
+	// Set default keys (flag 8 = IsDefault)
+	var defaultResult []int32
+	err = kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
+		actionID, keys, uint32(8)).Store(&defaultResult)
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("setShortcutKeys: %w", err)
+		return nil, nil, fmt.Errorf("setShortcut (default): %w", err)
 	}
-	logging.Info("kglobalaccel: shortcut set, result=%v", result)
+	logging.Info("kglobalaccel: default keys set, result=%v", defaultResult)
+
+	// Set active keys (flag 2 = SetPresent)
+	var activeResult []int32
+	err = kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
+		actionID, keys, uint32(2)).Store(&activeResult)
+	if err != nil {
+		conn.Close()
+		return nil, nil, fmt.Errorf("setShortcut (active): %w", err)
+	}
+	logging.Info("kglobalaccel: active keys set, result=%v", activeResult)
+
+	// Watch for D-Bus disconnect (session bus goes away on logout)
+	disconnectCh := make(chan struct{}, 1)
+	go func() {
+		<-conn.Context().Done()
+		logging.Info("kglobalaccel: D-Bus connection context cancelled")
+		select {
+		case disconnectCh <- struct{}{}:
+		default:
+		}
+	}()
 
 	componentPath := dbus.ObjectPath("/component/karchy")
 	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		fmt.Sprintf("type='signal',sender='org.kde.kglobalaccel',path='%s',interface='org.kde.kglobalaccel.Component',member='globalShortcutPressed'", componentPath))
-
 	signalCh := make(chan *dbus.Signal, 10)
 	conn.Signal(signalCh)
 
@@ -484,5 +508,5 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, error) {
 		}
 	}()
 
-	return activatedCh, nil
+	return activatedCh, disconnectCh, nil
 }

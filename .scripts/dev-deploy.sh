@@ -38,12 +38,13 @@ chmod +x "$EXE"
 
 echo "Installed $EXE ($VERSION)"
 
-# Register autostart + restart daemon
+# Register autostart
 echo "Running install..."
 "$EXE" install
 
-# Stop and start debug
-"$EXE" daemon stop
-"$EXE" daemon start --debug
+# Start daemon via systemd user session (properly managed by KDE)
+echo "Starting daemon..."
+systemctl --user stop karchy-dev.service 2>/dev/null || true
+systemd-run --user --unit=karchy-dev --description="Karchy (dev)" "$EXE" --debug daemon run
 
 echo "Done!"

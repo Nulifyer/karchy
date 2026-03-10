@@ -43,12 +43,9 @@ func selfInstall() {
 		fmt.Println("  ✓ Alacritty found")
 	}
 
-	// 3. Start daemon
+	// 3. Start daemon (session-managed)
 	fmt.Println("  → Starting daemon...")
-	cmd := exec.Command(exePath, "daemon", "start")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	startDaemonManaged(exePath)
 
 	fmt.Println("\nKarchy installed!")
 }
@@ -84,13 +81,30 @@ func selfUninstall() {
 	fmt.Println("\nKarchy uninstalled.")
 }
 
+func startDaemonManaged(exePath string) {
+	switch runtime.GOOS {
+	case "linux":
+		// Stop any existing instance, then start via systemd user session
+		exec.Command("systemctl", "--user", "stop", "karchy.service").Run()
+		cmd := exec.Command("systemd-run", "--user", "--unit=karchy", "--description=Karchy", exePath, "daemon", "run")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Println("  ✗ Failed to start daemon:", err)
+		}
+	case "darwin":
+		// launchctl load already done in installMacOSLaunchAgent, just kickstart
+		exec.Command("launchctl", "kickstart", "-k", "gui/"+fmt.Sprint(os.Getuid())+"/com.karchy.daemon").Run()
+	}
+}
+
 func installLinuxAutostart(exePath string) {
 	dir := filepath.Join(xdgConfigHome(), "autostart")
 	os.MkdirAll(dir, 0o755)
 	desktop := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=Karchy
-Exec=%s daemon start
+Exec=%s daemon run
 Hidden=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true
