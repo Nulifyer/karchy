@@ -91,7 +91,10 @@ func main() {
 		selfUninstall()
 	case "update":
 		if len(extra) > 0 && extra[0] == "self" {
-			selfupdate.Run(Version)
+			if selfupdate.Run(Version) {
+				// Restart daemon so it runs the new binary
+				daemon.Restart()
+			}
 		} else {
 			// fall through to TUI update menu
 			tui.Run()

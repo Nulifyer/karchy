@@ -262,17 +262,8 @@ func run() {
 			case "selfupdate":
 				logging.Info("daemon: tray selfupdate clicked")
 				exePath, _ := os.Executable()
-				pid, _ := terminal.LaunchShell(80, 20, "Karchy Update", exePath+" update self; read -rp 'Press Enter to close...'")
-				if pid > 0 {
-					go func() {
-						if p, err := os.FindProcess(pid); err == nil {
-							p.Wait()
-						}
-						logging.Info("daemon: self-update done, restarting")
-						Restart()
-						os.Exit(0)
-					}()
-				}
+				// update self handles daemon restart internally
+				terminal.LaunchShell(80, 20, "Karchy Update", exePath+" update self; read -rp 'Press Enter to close...'")
 			case "open":
 				logging.Info("daemon: tray open clicked")
 				launchMenu()

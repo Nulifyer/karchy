@@ -465,12 +465,8 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 				cmd.Stderr = os.Stderr
 				if err := cmd.Run(); err != nil {
 					logging.Info("daemon: self-update failed: %v", err)
-					return
 				}
-				logging.Info("daemon: self-update done, restarting")
-				removeTrayIcon()
-				Restart()
-				os.Exit(0)
+				// update self handles daemon restart internally
 			}()
 		case idmRestart:
 			go func() {

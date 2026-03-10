@@ -25,7 +25,8 @@ type asset struct {
 }
 
 // Run checks GitHub for a newer release and updates the binary in-place.
-func Run(currentVersion string) {
+// Returns true if an update was applied.
+func Run(currentVersion string) bool {
 	fmt.Println("Checking for updates...")
 
 	rel, err := fetchLatest()
@@ -36,7 +37,7 @@ func Run(currentVersion string) {
 
 	if rel.TagName == currentVersion || rel.TagName == "v"+currentVersion {
 		fmt.Println("Already up to date (" + currentVersion + ").")
-		return
+		return false
 	}
 
 	// GoReleaser archives: karchy_<version>_<os>_<arch>.<ext>
@@ -61,6 +62,7 @@ func Run(currentVersion string) {
 	}
 
 	fmt.Println("Updated to " + rel.TagName + "!")
+	return true
 }
 
 func fetchLatest() (*release, error) {
