@@ -23,8 +23,11 @@ const (
 // ShortcutDir returns the directory for web app .desktop files.
 func ShortcutDir() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "share", "applications", "karchy-webapps")
+	return filepath.Join(home, ".local", "share", "applications")
 }
+
+// shortcutPrefix is prepended to .desktop filenames to namespace karchy web apps.
+const shortcutPrefix = "karchy-webapp-"
 
 // IconDir returns the directory for web app icons.
 func IconDir() string {
@@ -67,7 +70,10 @@ func Scan() []WebApp {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".desktop") {
 			continue
 		}
-		name := strings.TrimSuffix(e.Name(), ".desktop")
+		if !strings.HasPrefix(e.Name(), shortcutPrefix) {
+			continue
+		}
+		name := strings.TrimPrefix(strings.TrimSuffix(e.Name(), ".desktop"), shortcutPrefix)
 		desktopPath := filepath.Join(dir, e.Name())
 		apps = append(apps, WebApp{
 			Name:    name,
@@ -122,7 +128,7 @@ func deleteApps(apps []WebApp) {
 func createShortcut(appName, appURL, iconPath string) error {
 	dir := ShortcutDir()
 	os.MkdirAll(dir, 0755)
-	desktopPath := filepath.Join(dir, appName+".desktop")
+	desktopPath := filepath.Join(dir, shortcutPrefix+appName+".desktop")
 
 	self, err := os.Executable()
 	if err != nil {
