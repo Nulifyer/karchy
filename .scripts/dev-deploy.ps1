@@ -11,18 +11,11 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 if (Test-Path $exe) {
     Write-Host "Stopping daemon..." -ForegroundColor Yellow
     & $exe daemon stop 2>$null
-    # Wait for the process to fully exit
-    $timeout = 10
-    while ($timeout -gt 0) {
-        $procs = Get-Process -Name "karchy" -ErrorAction SilentlyContinue
-        if (-not $procs) { break }
-        Start-Sleep -Milliseconds 500
-        $timeout--
-    }
-    if ($timeout -le 0) {
+    Start-Sleep -Seconds 5
+    $procs = Get-Process -Name "karchy" -ErrorAction SilentlyContinue
+    if ($procs) {
         Write-Host "Force killing karchy..." -ForegroundColor Red
-        Stop-Process -Name "karchy" -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 1
+        $procs | Stop-Process -Force -ErrorAction SilentlyContinue
     }
 }
 

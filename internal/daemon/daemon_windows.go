@@ -14,6 +14,7 @@ import (
 	"github.com/nulifyer/karchy/assets"
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
+	"github.com/nulifyer/karchy/internal/selfupdate"
 	"github.com/nulifyer/karchy/internal/terminal"
 )
 
@@ -46,10 +47,10 @@ var (
 	procAppendMenuW              = user32.NewProc("AppendMenuW")
 	procTrackPopupMenu           = user32.NewProc("TrackPopupMenu")
 	procDestroyMenu              = user32.NewProc("DestroyMenu")
-	procSetForegroundWindow         = user32.NewProc("SetForegroundWindow")
-	procAllowSetForegroundWindow    = user32.NewProc("AllowSetForegroundWindow")
-	procGetCursorPos                = user32.NewProc("GetCursorPos")
-	procShellNotifyIconW = shell32.NewProc("Shell_NotifyIconW")
+	procSetForegroundWindow      = user32.NewProc("SetForegroundWindow")
+	procAllowSetForegroundWindow = user32.NewProc("AllowSetForegroundWindow")
+	procGetCursorPos             = user32.NewProc("GetCursorPos")
+	procShellNotifyIconW         = shell32.NewProc("Shell_NotifyIconW")
 )
 
 const (
@@ -92,8 +93,12 @@ const (
 	tpmLeftAlign   = 0x0000
 	tpmRightButton = 0x0002
 	idmOpen        = 1001
-	idmRestart     = 1002
-	idmExit        = 1003
+	idmSelfUpdate  = 1002
+	idmRestart     = 1003
+	idmExit        = 1004
+
+	// MF_SEPARATOR for popup menus
+	mfSeparator = 0x0800
 
 	imageIcon      = 1
 	lrLoadFromFile = 0x00000010
@@ -102,11 +107,12 @@ const (
 
 // Hotkey state
 var (
-	trayHwnd   uintptr
-	hookHandle uintptr
-	targetMod  uint32 // VK code for modifier (e.g. vkLWin)
-	targetKey  uint32 // VK code for key (e.g. vkSpace)
-	menuPID    int    // PID of the Alacritty popup (0 = not running)
+	trayHwnd      uintptr
+	hookHandle    uintptr
+	targetMod     uint32 // VK code for modifier (e.g. vkLWin)
+	targetKey     uint32 // VK code for key (e.g. vkSpace)
+	menuPID       int    // PID of the Alacritty popup (0 = not running)
+	selfUpdateVer string // newer karchy version available (empty if up to date)
 )
 
 // KBDLLHOOKSTRUCT
@@ -241,6 +247,16 @@ func run() {
 		logging.Info("LL keyboard hook installed mod=0x%x key=0x%x", targetMod, targetKey)
 	}
 
+	// Start periodic self-update checker
+	go func() {
+		checkSelfUpdate()
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			checkSelfUpdate()
+		}
+	}()
+
 	fmt.Println("Karchy daemon started.")
 
 	// Message loop
@@ -364,7 +380,7 @@ func createTrayIcon() {
 	nid.UCallbackMessage = wmTrayIcon
 	nid.HIcon = icon
 
-	tip := "Karchy Daemon"
+	tip := "Karchy"
 	for i, ch := range tip {
 		if i >= 127 {
 			break
@@ -441,6 +457,21 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		switch id {
 		case idmOpen:
 			go launchMenu()
+		case idmSelfUpdate:
+			go func() {
+				exePath, _ := os.Executable()
+				cmd := exec.Command(exePath, "update", "self")
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				if err := cmd.Run(); err != nil {
+					logging.Info("daemon: self-update failed: %v", err)
+					return
+				}
+				logging.Info("daemon: self-update done, restarting")
+				removeTrayIcon()
+				Restart()
+				os.Exit(0)
+			}()
 		case idmRestart:
 			go func() {
 				removeTrayIcon()
@@ -472,11 +503,15 @@ func showContextMenu(hwnd uintptr) {
 	openText, _ := syscall.UTF16PtrFromString("Open Karchy")
 	procAppendMenuW.Call(menu, mfString, idmOpen, uintptr(unsafe.Pointer(openText)))
 
+	if selfUpdateVer != "" {
+		updateText, _ := syscall.UTF16PtrFromString(fmt.Sprintf("Update Karchy (%s)", selfUpdateVer))
+		procAppendMenuW.Call(menu, mfString, idmSelfUpdate, uintptr(unsafe.Pointer(updateText)))
+	}
+
 	restartText, _ := syscall.UTF16PtrFromString("Restart Daemon")
 	procAppendMenuW.Call(menu, mfString, idmRestart, uintptr(unsafe.Pointer(restartText)))
 
-	// Separator (MF_SEPARATOR = 0x0800)
-	procAppendMenuW.Call(menu, uintptr(0x0800), 0, 0)
+	procAppendMenuW.Call(menu, mfSeparator, 0, 0)
 
 	exitText, _ := syscall.UTF16PtrFromString("Exit Karchy")
 	procAppendMenuW.Call(menu, mfString, idmExit, uintptr(unsafe.Pointer(exitText)))
@@ -591,4 +626,31 @@ func launchMenu() {
 	time.Sleep(300 * time.Millisecond)
 	procPostMessageW.Call(trayHwnd, wmFocusMenu, hwnd, 0)
 	logging.Info("launchMenu: posted focus for pid=%d hwnd=%x", pid, hwnd)
+}
+
+func checkSelfUpdate() {
+	if Version == "" || Version == "dev" {
+		return
+	}
+	if v := selfupdate.CheckAvailable(Version); v != "" {
+		selfUpdateVer = v
+		logging.Info("daemon: karchy update available: %s", v)
+		// Update tooltip to show update available
+		updateTrayTooltip(fmt.Sprintf("Karchy - %s available", v))
+	}
+}
+
+func updateTrayTooltip(tip string) {
+	var nid notifyIconData
+	nid.CbSize = uint32(unsafe.Sizeof(nid))
+	nid.Hwnd = trayHwnd
+	nid.UID = 1
+	nid.UFlags = nifTip
+	for i, ch := range tip {
+		if i >= 127 {
+			break
+		}
+		nid.SzTip[i] = uint16(ch)
+	}
+	procShellNotifyIconW.Call(0x01, uintptr(unsafe.Pointer(&nid))) // NIM_MODIFY
 }

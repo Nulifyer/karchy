@@ -146,15 +146,17 @@ func run() {
 	}
 
 	// Start system tray icon
-	var mUpdate *systray.MenuItem
+	var mUpdate, mSelfUpdate *systray.MenuItem
 	start, stop := systray.RunWithExternalLoop(func() {
 		systray.SetTitle("Karchy")
-		systray.SetTooltip("Karchy Daemon")
+		systray.SetTooltip("Karchy")
 		systray.SetIcon(assets.IconPNG)
 		logging.Info("daemon: tray ready")
 
 		mUpdate = systray.AddMenuItem("System Update", "Install available updates")
 		mUpdate.Hide()
+		mSelfUpdate = systray.AddMenuItem("Update Karchy", "Update Karchy to the latest version")
+		mSelfUpdate.Hide()
 		mOpen := systray.AddMenuItem("Open Karchy", "Open the Karchy menu")
 		systray.AddSeparator()
 		mRestart := systray.AddMenuItem("Restart Daemon", "Restart the Karchy daemon")
@@ -165,6 +167,8 @@ func run() {
 				select {
 				case <-mUpdate.ClickedCh:
 					trayActionCh <- "update"
+				case <-mSelfUpdate.ClickedCh:
+					trayActionCh <- "selfupdate"
 				case <-mOpen.ClickedCh:
 					trayActionCh <- "open"
 				case <-mRestart.ClickedCh:
@@ -209,18 +213,25 @@ func run() {
 			} else {
 				mUpdate.Hide()
 			}
-			tooltip := "Karchy Daemon"
 			if status.selfVersion != "" {
-				tooltip += fmt.Sprintf(" - Karchy %s available", status.selfVersion)
+				mSelfUpdate.SetTitle(fmt.Sprintf("Update Karchy (%s)", status.selfVersion))
+				mSelfUpdate.Show()
 				hasBadge = true
+			} else {
+				mSelfUpdate.Hide()
 			}
+			var parts []string
 			if status.systemCount > 0 {
-				tooltip = fmt.Sprintf("Karchy Daemon - %d update(s) available", status.systemCount)
-				if status.selfVersion != "" {
-					tooltip += fmt.Sprintf(", Karchy %s available", status.selfVersion)
-				}
+				parts = append(parts, fmt.Sprintf("%d update(s)", status.systemCount))
 			}
-			systray.SetTooltip(tooltip)
+			if status.selfVersion != "" {
+				parts = append(parts, fmt.Sprintf("Karchy %s", status.selfVersion))
+			}
+			if len(parts) > 0 {
+				systray.SetTooltip("Karchy - " + strings.Join(parts, ", "))
+			} else {
+				systray.SetTooltip("Karchy")
+			}
 			if hasBadge {
 				systray.SetIcon(iconWithBadge())
 			} else {
@@ -238,6 +249,20 @@ func run() {
 							p.Wait()
 						}
 						checkUpdates(updateCh)
+					}()
+				}
+			case "selfupdate":
+				logging.Info("daemon: tray selfupdate clicked")
+				exePath, _ := os.Executable()
+				pid, _ := terminal.LaunchShell(80, 20, "Karchy Update", exePath+" update self; read -rp 'Press Enter to close...'")
+				if pid > 0 {
+					go func() {
+						if p, err := os.FindProcess(pid); err == nil {
+							p.Wait()
+						}
+						logging.Info("daemon: self-update done, restarting")
+						Restart()
+						os.Exit(0)
 					}()
 				}
 			case "open":

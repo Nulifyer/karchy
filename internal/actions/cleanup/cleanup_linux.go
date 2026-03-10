@@ -79,7 +79,7 @@ func Run() {
 
 	// Clean package cache (keep last version only)
 	if cacheSize > 0 {
-		fmt.Print(" Cleaning package cache...")
+		fmt.Print(" Cleaning package cache...\n ")
 		if hasPaccache() {
 			cmd := exec.Command("sudo", "paccache", "-rk1")
 			if err := cmd.Run(); err != nil {
