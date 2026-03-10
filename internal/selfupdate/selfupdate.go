@@ -244,6 +244,19 @@ func replaceBinary(exePath, tmpPath string) error {
 	return nil
 }
 
+// CheckAvailable returns the latest release tag if a newer version is available,
+// or an empty string if already up to date (or on error).
+func CheckAvailable(currentVersion string) string {
+	rel, err := fetchLatest()
+	if err != nil {
+		return ""
+	}
+	if rel.TagName == currentVersion || rel.TagName == "v"+currentVersion {
+		return ""
+	}
+	return rel.TagName
+}
+
 // CleanOld removes any leftover .old binary from a previous update.
 func CleanOld() {
 	if runtime.GOOS != "windows" {

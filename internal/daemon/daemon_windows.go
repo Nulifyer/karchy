@@ -11,6 +11,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/nulifyer/karchy/assets"
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/terminal"
@@ -90,7 +91,9 @@ const (
 	tpmBottomAlign = 0x0020
 	tpmLeftAlign   = 0x0000
 	tpmRightButton = 0x0002
-	idmExit        = 1001
+	idmOpen        = 1001
+	idmRestart     = 1002
+	idmExit        = 1003
 
 	imageIcon      = 1
 	lrLoadFromFile = 0x00000010
@@ -373,19 +376,17 @@ func createTrayIcon() {
 }
 
 func loadTrayIcon() uintptr {
-	// Look for karchy.ico next to the executable
-	exePath, err := os.Executable()
+	// Write the embedded ICO to a cache file so LoadImageW can load it.
+	dir, err := os.UserCacheDir()
 	if err != nil {
 		return 0
 	}
-	icoPath := filepath.Join(filepath.Dir(exePath), "assets", "karchy.ico")
-	if _, err := os.Stat(icoPath); err != nil {
-		// Also try same directory as exe
-		icoPath = filepath.Join(filepath.Dir(exePath), "karchy.ico")
-		if _, err := os.Stat(icoPath); err != nil {
-			return 0
-		}
+	icoPath := filepath.Join(dir, "karchy", "karchy.ico")
+	os.MkdirAll(filepath.Dir(icoPath), 0o755)
+	if err := os.WriteFile(icoPath, assets.IconICO, 0o644); err != nil {
+		return 0
 	}
+
 	pathPtr, _ := syscall.UTF16PtrFromString(icoPath)
 	icon, _, _ := procLoadImageW.Call(
 		0,
@@ -437,7 +438,16 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 
 	case wmCommand:
 		id := uint16(wParam & 0xFFFF)
-		if id == idmExit {
+		switch id {
+		case idmOpen:
+			go launchMenu()
+		case idmRestart:
+			go func() {
+				removeTrayIcon()
+				Restart()
+				os.Exit(0)
+			}()
+		case idmExit:
 			removeTrayIcon()
 			procPostQuitMessage.Call(0)
 		}
@@ -458,6 +468,15 @@ func showContextMenu(hwnd uintptr) {
 	if menu == 0 {
 		return
 	}
+
+	openText, _ := syscall.UTF16PtrFromString("Open Karchy")
+	procAppendMenuW.Call(menu, mfString, idmOpen, uintptr(unsafe.Pointer(openText)))
+
+	restartText, _ := syscall.UTF16PtrFromString("Restart Daemon")
+	procAppendMenuW.Call(menu, mfString, idmRestart, uintptr(unsafe.Pointer(restartText)))
+
+	// Separator (MF_SEPARATOR = 0x0800)
+	procAppendMenuW.Call(menu, uintptr(0x0800), 0, 0)
 
 	exitText, _ := syscall.UTF16PtrFromString("Exit Karchy")
 	procAppendMenuW.Call(menu, mfString, idmExit, uintptr(unsafe.Pointer(exitText)))

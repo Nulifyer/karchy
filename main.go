@@ -79,6 +79,7 @@ func main() {
 		case "status":
 			daemon.Status()
 		case "run":
+			daemon.Version = Version
 			daemon.Run()
 		default:
 			fmt.Printf("Unknown daemon action: %s\n", extra[0])

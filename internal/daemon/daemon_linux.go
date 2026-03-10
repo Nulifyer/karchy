@@ -21,11 +21,15 @@ import (
 	"fyne.io/systray"
 	"github.com/godbus/dbus/v5"
 	"github.com/nulifyer/karchy/assets"
-	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/actions/install"
+	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
+	"github.com/nulifyer/karchy/internal/selfupdate"
 	"github.com/nulifyer/karchy/internal/terminal"
 )
+
+// lockFile holds the flock file descriptor for the running daemon.
+var lockFile *os.File
 
 func lockFilePath() string {
 	cacheDir, err := os.UserCacheDir()
@@ -37,23 +41,56 @@ func lockFilePath() string {
 }
 
 func isRunning() bool {
-	data, err := os.ReadFile(lockFilePath())
+	path := lockFilePath()
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return false
 	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	defer f.Close()
+	// Try non-blocking exclusive lock
+	err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err != nil {
+		// Lock is held by another process — daemon is running
+		return true
+	}
+	// We got the lock — no daemon running. Release it.
+	syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	return false
+}
+
+// acquireLock takes an exclusive flock, writes the PID, and keeps the file open.
+// Returns true if the lock was acquired. The lock is released when the process exits.
+func acquireLock() bool {
+	path := lockFilePath()
+	_ = os.MkdirAll(filepath.Dir(path), 0755)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
 		return false
 	}
-	proc, err := os.FindProcess(pid)
+	err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
 	if err != nil {
+		f.Close()
 		return false
 	}
-	return proc.Signal(syscall.Signal(0)) == nil
+	f.Truncate(0)
+	f.Seek(0, 0)
+	fmt.Fprintf(f, "%d", os.Getpid())
+	lockFile = f
+	return true
+}
+
+func releaseLock() {
+	if lockFile != nil {
+		syscall.Flock(int(lockFile.Fd()), syscall.LOCK_UN)
+		lockFile.Close()
+		os.Remove(lockFilePath())
+		lockFile = nil
+	}
 }
 
 func stopDaemon() {
-	data, err := os.ReadFile(lockFilePath())
+	path := lockFilePath()
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return
 	}
@@ -66,7 +103,6 @@ func stopDaemon() {
 		return
 	}
 	_ = proc.Signal(syscall.SIGTERM)
-	_ = os.Remove(lockFilePath())
 }
 
 func hideProcess(cmd *exec.Cmd) {
@@ -84,11 +120,11 @@ var menuPID int
 var trayActionCh = make(chan string, 1)
 
 func run() {
-	// Write PID lock file
-	lockFile := lockFilePath()
-	_ = os.MkdirAll(filepath.Dir(lockFile), 0755)
-	_ = os.WriteFile(lockFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644)
-	defer os.Remove(lockFile)
+	if !acquireLock() {
+		fmt.Println("Daemon already running.")
+		return
+	}
+	defer releaseLock()
 
 	// Handle SIGTERM gracefully
 	sigCh := make(chan os.Signal, 1)
@@ -145,7 +181,7 @@ func run() {
 	defer stop()
 
 	// Start periodic update checker
-	updateCh := make(chan int, 1)
+	updateCh := make(chan updateStatus, 1)
 	go updateChecker(updateCh)
 
 	fmt.Println("Karchy daemon started.")
@@ -163,17 +199,32 @@ func run() {
 				menuPID = 0
 			}
 			launchMenu()
-		case count := <-updateCh:
-			if count > 0 {
-				logging.Info("daemon: %d updates available", count)
-				systray.SetTooltip(fmt.Sprintf("Karchy Daemon - %d update(s) available", count))
-				systray.SetIcon(iconWithBadge())
-				mUpdate.SetTitle(fmt.Sprintf("System Update (%d)", count))
+		case status := <-updateCh:
+			hasBadge := false
+			if status.systemCount > 0 {
+				logging.Info("daemon: %d system updates available", status.systemCount)
+				mUpdate.SetTitle(fmt.Sprintf("System Update (%d)", status.systemCount))
 				mUpdate.Show()
+				hasBadge = true
 			} else {
-				systray.SetTooltip("Karchy Daemon")
-				systray.SetIcon(assets.IconPNG)
 				mUpdate.Hide()
+			}
+			tooltip := "Karchy Daemon"
+			if status.selfVersion != "" {
+				tooltip += fmt.Sprintf(" - Karchy %s available", status.selfVersion)
+				hasBadge = true
+			}
+			if status.systemCount > 0 {
+				tooltip = fmt.Sprintf("Karchy Daemon - %d update(s) available", status.systemCount)
+				if status.selfVersion != "" {
+					tooltip += fmt.Sprintf(", Karchy %s available", status.selfVersion)
+				}
+			}
+			systray.SetTooltip(tooltip)
+			if hasBadge {
+				systray.SetIcon(iconWithBadge())
+			} else {
+				systray.SetIcon(assets.IconPNG)
 			}
 		case action := <-trayActionCh:
 			switch action {
@@ -207,11 +258,14 @@ func run() {
 	}
 }
 
-// updateChecker periodically checks for available system updates.
-func updateChecker(ch chan<- int) {
-	// Check immediately on startup
+type updateStatus struct {
+	systemCount int    // number of system package updates
+	selfVersion string // newer karchy version available (empty if up to date)
+}
+
+// updateChecker periodically checks for available system and self updates.
+func updateChecker(ch chan<- updateStatus) {
 	checkUpdates(ch)
-	// Then check every hour
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -219,26 +273,30 @@ func updateChecker(ch chan<- int) {
 	}
 }
 
-// checkUpdates runs checkupdates and sends the count to the channel.
-func checkUpdates(ch chan<- int) {
+// checkUpdates runs checkupdates and checks for karchy self-updates.
+func checkUpdates(ch chan<- updateStatus) {
+	var status updateStatus
+
 	out, err := exec.Command("checkupdates").Output()
 	if err != nil {
-		// checkupdates exits 2 when no updates, 1 on error
 		logging.Info("daemon: checkupdates: %v", err)
-		select {
-		case ch <- 0:
-		default:
-		}
-		return
-	}
-	count := 0
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		if line != "" {
-			count++
+	} else {
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			if line != "" {
+				status.systemCount++
+			}
 		}
 	}
+
+	if Version != "" && Version != "dev" {
+		if v := selfupdate.CheckAvailable(Version); v != "" {
+			status.selfVersion = v
+			logging.Info("daemon: karchy update available: %s", v)
+		}
+	}
+
 	select {
-	case ch <- count:
+	case ch <- status:
 	default:
 	}
 }

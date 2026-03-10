@@ -9,6 +9,9 @@ import (
 	"github.com/nulifyer/karchy/internal/logging"
 )
 
+// Version is set by main before calling Run().
+var Version string
+
 // Start launches the daemon as a background process.
 func Start() {
 	if isRunning() {
