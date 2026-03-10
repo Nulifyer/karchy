@@ -1,20 +1,30 @@
 # Karchy
 
+[![Go](https://img.shields.io/github/go-mod/go-version/Nulifyer/karchy)](https://go.dev/)
+[![Release](https://img.shields.io/github/v/release/Nulifyer/karchy)](https://github.com/Nulifyer/karchy/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/Nulifyer/karchy/release.yml?label=build)](https://github.com/Nulifyer/karchy/actions)
+[![License](https://img.shields.io/github/license/Nulifyer/karchy)](LICENSE)
+[![Linux](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macOS-blue)]()
+
+<p align="center">
+  <img src="assets/karchy.png" alt="karchy" width="128" />
+</p>
+
 A fast, keyboard-driven system utility launcher built with Go and [Bubbletea](https://github.com/charmbracelet/bubbletea).
 
 Summon it with a global hotkey, fuzzy-search your apps and projects, manage packages, install fonts, tweak settings — all from a themed terminal popup.
 
 ## Features
 
-- **Global hotkey** (Win+Space) to summon/dismiss
-- **Fuzzy search** for apps and projects
-- **Package management** — install, remove, update (custom winget integration on Windows)
-- **Nerd Font management** — install/remove 71 fonts via oh-my-posh
-- **Web app creation** — Chrome/Edge PWA shortcuts with dashboard icons (Windows)
-- **WSL management** — launch, install, remove distros (Windows)
-- **System settings** — quick access to audio, Wi-Fi, Bluetooth, display, power, timezone
-- **10 built-in themes** — Catppuccin Mocha, Gruvbox, Tokyo Night, Nord, Dracula, and more
-- **Cross-platform** — Windows, Linux, macOS
+- ⌨️ **Global hotkey** (Win+Space) to summon/dismiss
+- 🔍 **Fuzzy search** for apps and projects
+- 📦 **Package management** — install, remove, update (custom winget integration on Windows)
+- 🔤 **Nerd Font management** — install/remove 71 fonts via oh-my-posh
+- 🌐 **Web app creation** — Chrome/Edge PWA shortcuts with dashboard icons (Windows)
+- 🐧 **WSL management** — launch, install, remove distros (Windows)
+- ⚙️ **System settings** — quick access to audio, Wi-Fi, Bluetooth, display, power, timezone
+- 🎨 **10 built-in themes** — Catppuccin Mocha, Gruvbox, Tokyo Night, Nord, Dracula, and more
+- 💻 **Cross-platform** — Windows, Linux, macOS
 
 ## Install
 
@@ -33,8 +43,13 @@ curl -fsSL https://raw.githubusercontent.com/Nulifyer/karchy/main/.scripts/insta
 ### Build from Source
 
 ```bash
-go build -ldflags "-s -w" -o karchy .
-./karchy install
+git clone https://github.com/Nulifyer/karchy.git && cd karchy
+
+# Windows
+.\.scripts\dev-deploy.ps1
+
+# Linux / macOS
+./.scripts/dev-deploy.sh
 ```
 
 ## Uninstall
