@@ -16,12 +16,12 @@ func Scan() []AppEntry {
 
 	// User Start Menu
 	if appdata := os.Getenv("APPDATA"); appdata != "" {
-		dir := filepath.Join(appdata, "Microsoft", "Windows", "Start Menu", "Programs")
+		dir := filepath.Join(appdata, "Microsoft", "Windows", "Start Menu")
 		entries = append(entries, scanDir(dir)...)
 	}
 
 	// System Start Menu
-	entries = append(entries, scanDir(`C:\ProgramData\Microsoft\Windows\Start Menu\Programs`)...)
+	entries = append(entries, scanDir(`C:\ProgramData\Microsoft\Windows\Start Menu`)...)
 
 	sortEntries(entries)
 	return dedupSorted(entries)
