@@ -30,12 +30,16 @@ type InstallerManifest struct {
 
 // InstallerEntry represents a single installer variant.
 type InstallerEntry struct {
-	Architecture  string
-	Scope         string // "user", "machine", or ""
-	InstallerType string // overrides top-level if set
-	InstallerURL  string
-	SHA256        string
-	Locale        string
+	Architecture         string
+	Scope                string // "user", "machine", or ""
+	InstallerType        string // overrides top-level if set
+	InstallerURL         string
+	SHA256               string
+	Locale               string
+	ElevationRequirement string // overrides top-level if set
+	Silent               string // overrides top-level if set
+	SilentProgress       string // overrides top-level if set
+	Custom               string // overrides top-level if set
 }
 
 // EffectiveType returns the entry's type, falling back to the manifest default.
@@ -54,14 +58,24 @@ func (e InstallerEntry) EffectiveScope(m *InstallerManifest) string {
 	return m.Scope
 }
 
+// EffectiveElevationRequirement returns the entry's elevation requirement,
+// falling back to the manifest default.
+func (e InstallerEntry) EffectiveElevationRequirement(m *InstallerManifest) string {
+	if e.ElevationRequirement != "" {
+		return e.ElevationRequirement
+	}
+	return m.ElevationRequirement
+}
+
 // NeedsElevation returns true if the installer requires admin privileges.
 func (e InstallerEntry) NeedsElevation(m *InstallerManifest) bool {
+	req := e.EffectiveElevationRequirement(m)
 	// Explicit elevation requirement
-	if m.ElevationRequirement == "elevationRequired" {
+	if req == "elevationRequired" {
 		return true
 	}
 	// elevatesSelf means the installer handles its own UAC prompt
-	if m.ElevationRequirement == "elevatesSelf" {
+	if req == "elevatesSelf" {
 		return false
 	}
 	// Machine-scope installs need elevation
@@ -109,7 +123,8 @@ func parseManifest(yaml string) (*InstallerManifest, error) {
 	lines := strings.Split(yaml, "\n")
 
 	inInstallers := false
-	inSwitches := false
+	inSwitches := false       // top-level InstallerSwitches
+	inEntrySwitches := false  // per-entry InstallerSwitches
 	var current *InstallerEntry
 
 	for _, line := range lines {
@@ -124,8 +139,12 @@ func parseManifest(yaml string) (*InstallerManifest, error) {
 			inSwitches = false
 			continue
 		}
-		if trimmed == "InstallerSwitches:" && !inInstallers {
-			inSwitches = true
+		if trimmed == "InstallerSwitches:" {
+			if inInstallers && current != nil {
+				inEntrySwitches = true
+			} else if !inInstallers {
+				inSwitches = true
+			}
 			continue
 		}
 
@@ -171,11 +190,33 @@ func parseManifest(yaml string) (*InstallerManifest, error) {
 			entry.Architecture = strings.TrimSpace(strings.TrimPrefix(trimmed, "- Architecture:"))
 			m.Installers = append(m.Installers, entry)
 			current = &m.Installers[len(m.Installers)-1]
+			inEntrySwitches = false
 			continue
 		}
 
 		if current == nil {
 			continue
+		}
+
+		// Per-entry InstallerSwitches
+		if inEntrySwitches {
+			if k, v := splitYAML(trimmed); k != "" {
+				switch k {
+				case "Silent":
+					current.Silent = v
+				case "SilentWithProgress":
+					current.SilentProgress = v
+				case "Custom":
+					current.Custom = v
+				}
+			}
+			// End entry switches on a line that isn't deeply indented
+			// (entry switches are typically indented 6+ spaces)
+			if !strings.HasPrefix(line, "      ") && !strings.HasPrefix(line, "\t\t\t") {
+				inEntrySwitches = false
+			} else {
+				continue
+			}
 		}
 
 		if k, v := splitYAML(trimmed); k != "" {
@@ -190,6 +231,8 @@ func parseManifest(yaml string) (*InstallerManifest, error) {
 				current.SHA256 = strings.ToUpper(v)
 			case "InstallerLocale":
 				current.Locale = strings.ToLower(v)
+			case "ElevationRequirement":
+				current.ElevationRequirement = v
 			}
 		}
 	}
@@ -283,8 +326,18 @@ func SelectInstaller(m *InstallerManifest) (*InstallerEntry, error) {
 }
 
 // SilentArgs returns the silent install arguments for the given installer type.
+// Checks per-entry overrides first, then manifest-level, then well-known defaults.
 func SilentArgs(m *InstallerManifest, e *InstallerEntry) string {
-	// Use manifest-specified switches if available
+	// Per-entry switches take highest priority
+	if e.Silent != "" {
+		args := e.Silent
+		if e.Custom != "" {
+			args += " " + e.Custom
+		}
+		return args
+	}
+
+	// Then manifest-level switches
 	if m.Silent != "" {
 		args := m.Silent
 		if m.Custom != "" {
@@ -306,6 +359,9 @@ func SilentArgs(m *InstallerManifest, e *InstallerEntry) string {
 		return "/quiet /norestart"
 	case "exe":
 		// EXE installers have no standard — use manifest switches or nothing
+		if e.SilentProgress != "" {
+			return e.SilentProgress
+		}
 		if m.SilentProgress != "" {
 			return m.SilentProgress
 		}

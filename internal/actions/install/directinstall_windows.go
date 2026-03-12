@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
@@ -115,16 +114,8 @@ func runInstaller(path, installerType, silentArgs string, pkg PackageEntry, elev
 	switch installerType {
 	case "zip", "portable":
 		return runZIP(path, pkg)
-	case "msi", "wix":
-		if elevate {
-			return runElevated(path, installerType, silentArgs)
-		}
-		return runMSI(path, silentArgs)
 	default:
-		if elevate {
-			return runElevated(path, installerType, silentArgs)
-		}
-		return runEXE(path, silentArgs)
+		return runShellExecute(path, installerType, silentArgs, elevate)
 	}
 }
 
@@ -316,42 +307,13 @@ func addToUserPath(dir string) error {
 	return nil
 }
 
-func runEXE(path, args string) error {
-	var argv []string
-	if args != "" {
-		argv = strings.Fields(args)
-	}
-
-	cmd := exec.Command(path, argv...)
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-
-	logging.Info("runEXE: %s %v", path, argv)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("installer exited with error: %w", err)
-	}
-	return nil
-}
-
-func runMSI(path, args string) error {
-	argv := []string{"/i", path}
-	if args != "" {
-		argv = append(argv, strings.Fields(args)...)
-	}
-
-	cmd := exec.Command("msiexec", argv...)
-	cmd.Stdout = io.Discard
-	cmd.Stderr = io.Discard
-
-	logging.Info("runMSI: msiexec %v", argv)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("msiexec exited with error: %w", err)
-	}
-	return nil
-}
-
-// runElevated uses ShellExecuteEx with "runas" to trigger a UAC prompt.
-func runElevated(path, installerType, silentArgs string) error {
+// runShellExecute uses ShellExecuteExW to launch any installer type.
+// This matches winget's behavior: ShellExecuteEx handles embedded application
+// manifests (elevatesSelf) and UAC prompts correctly, unlike CreateProcessW.
+// When elevate is true, the "runas" verb triggers a UAC prompt.
+// When elevate is false, the "open" verb lets Windows handle elevation
+// based on the installer's own embedded manifest.
+func runShellExecute(path, installerType, silentArgs string, elevate bool) error {
 	var file, params string
 
 	switch installerType {
@@ -366,19 +328,24 @@ func runElevated(path, installerType, silentArgs string) error {
 		params = silentArgs
 	}
 
-	logging.Info("runElevated: runas %s %s", file, params)
+	verb := "open"
+	if elevate {
+		verb = "runas"
+	}
+
+	logging.Info("runShellExecute: verb=%s file=%s params=%s", verb, file, params)
 
 	filePtr, _ := syscall.UTF16PtrFromString(file)
 	paramsPtr, _ := syscall.UTF16PtrFromString(params)
-	verbPtr, _ := syscall.UTF16PtrFromString("runas")
+	verbPtr, _ := syscall.UTF16PtrFromString(verb)
 
 	info := &shellExecuteInfo{
-		cbSize: uint32(unsafe.Sizeof(shellExecuteInfo{})),
-		fMask:  0x00000040, // SEE_MASK_NOCLOSEPROCESS
-		lpVerb: verbPtr,
-		lpFile: filePtr,
+		cbSize:       uint32(unsafe.Sizeof(shellExecuteInfo{})),
+		fMask:        0x00000040, // SEE_MASK_NOCLOSEPROCESS
+		lpVerb:       verbPtr,
+		lpFile:       filePtr,
 		lpParameters: paramsPtr,
-		nShow:  0, // SW_HIDE
+		nShow:        0, // SW_HIDE
 	}
 
 	if err := shellExecuteEx(info); err != nil {
@@ -402,11 +369,21 @@ func runElevated(path, installerType, silentArgs string) error {
 	if err := syscall.GetExitCodeProcess(syscall.Handle(info.hProcess), &exitCode); err != nil {
 		return fmt.Errorf("GetExitCodeProcess: %w", err)
 	}
-	if exitCode != 0 {
+
+	switch exitCode {
+	case 0:
+		// success
+	case 3010, 1641:
+		// 3010 = reboot required, 1641 = reboot initiated — treat as success
+		logging.Info("runShellExecute: success (exit code %d — reboot required)", exitCode)
+	case 1614:
+		// product uninstalled (upgrade scenarios) — treat as success
+		logging.Info("runShellExecute: success (exit code %d — product uninstalled for upgrade)", exitCode)
+	default:
 		return fmt.Errorf("installer exited with code %d", exitCode)
 	}
 
-	logging.Info("runElevated: success")
+	logging.Info("runShellExecute: success")
 	return nil
 }
 
