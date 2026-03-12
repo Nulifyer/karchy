@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -249,7 +250,7 @@ func phaseDownload(resolved []resolvedPkg) []string {
 
 			states[i].StartTime = time.Now()
 			states[i].Active = true
-			path, err := DownloadFile(r.installer.InstallerURL, states[i].Name, states[i])
+			path, err := DownloadFile(r.installer.InstallerURL, states[i].Name, r.installer.SHA256, states[i])
 			if err != nil {
 				states[i].Err = err
 			}
@@ -335,6 +336,15 @@ func phaseVerify(resolved []resolvedPkg, paths []string) []bool {
 			fmt.Printf(" [%d/%d] %s — %sfailed%s\n",
 				i+1, len(resolved), r.pkg.Name, colorRed, colorReset)
 		} else {
+			// Rename from hash-based filename to proper name with extension
+			if r.installer.SHA256 != "" {
+				newPath, err := RenameVerified(paths[i], r.pkg.ID, r.installer.InstallerURL)
+				if err != nil {
+					logging.Info("BatchInstall: rename failed for %s: %v", r.pkg.Name, err)
+				} else {
+					paths[i] = newPath
+				}
+			}
 			verified[i] = true
 			fmt.Printf(" [%d/%d] %s — %sok%s\n",
 				i+1, len(resolved), r.pkg.Name, colorGreen, colorReset)
@@ -358,10 +368,22 @@ func phaseInstall(resolved []resolvedPkg, paths []string, verified []bool) {
 			continue
 		}
 
+		// Warn about dependencies
+		deps := r.installer.EffectiveDependencies(r.manifest)
+		if len(deps.WindowsFeatures) > 0 {
+			fmt.Printf(" [%d/%d] %s requires Windows features: %s\n",
+				i+1, len(resolved), r.pkg.Name, strings.Join(deps.WindowsFeatures, ", "))
+		}
+		if len(deps.PackageDependencies) > 0 {
+			for _, d := range deps.PackageDependencies {
+				fmt.Printf(" [%d/%d] %s requires package: %s\n",
+					i+1, len(resolved), r.pkg.Name, d.PackageIdentifier)
+			}
+		}
+
 		fmt.Printf(" [%d/%d] Installing %s...", i+1, len(resolved), r.pkg.Name)
 
-		args := SilentArgs(r.manifest, r.installer)
-		err := runInstaller(paths[i], r.installer.EffectiveType(r.manifest), args, r.pkg, r.installer.NeedsElevation(r.manifest))
+		err := runInstaller(paths[i], r.manifest, r.installer, r.pkg)
 		if err != nil {
 			fmt.Printf(" %sfailed%s\n", colorRed, colorReset)
 			failed++

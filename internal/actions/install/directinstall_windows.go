@@ -11,49 +11,112 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/platform"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
 
-// DownloadFile downloads a URL to the karchy temp dir.
+// DownloadFile downloads a URL to the karchy temp dir with retry support.
+// If expectedHash is non-empty, the file is saved with the hash as filename
+// (no extension) to prevent accidental execution before verification.
 // If state is non-nil, it tracks progress via atomic DoneBytes.
 // Returns the local file path.
-func DownloadFile(url, name string, state *DownloadState) (string, error) {
-	ext := filepath.Ext(name)
-	if ext == "" {
-		ext = ".exe"
-	}
-
+func DownloadFile(url, name, expectedHash string, state *DownloadState) (string, error) {
 	tmpDir := filepath.Join(os.TempDir(), "karchy-install")
 	os.MkdirAll(tmpDir, 0o755)
-	tmpFile := filepath.Join(tmpDir, name)
+
+	// Use hash as filename if available (security: not executable until renamed)
+	fileName := name
+	if expectedHash != "" {
+		fileName = expectedHash
+	}
+	tmpFile := filepath.Join(tmpDir, fileName)
 
 	logging.Info("downloadFile: %s -> %s", url, tmpFile)
 
+	const maxAttempts = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		if attempt > 1 {
+			// Reset progress tracking for retry
+			if state != nil {
+				atomic.StoreInt64(&state.DoneBytes, 0)
+				state.TotalBytes = -1
+			}
+			logging.Info("downloadFile: retry %d/%d for %s", attempt, maxAttempts, name)
+		}
+
+		lastErr = downloadOnce(url, tmpFile, state)
+		if lastErr == nil {
+			return tmpFile, nil
+		}
+
+		os.Remove(tmpFile)
+		logging.Info("downloadFile: attempt %d failed: %v", attempt, lastErr)
+
+		if attempt < maxAttempts {
+			// Check for Retry-After on 503s
+			delay := 500 * time.Millisecond
+			if retryErr, ok := lastErr.(*retryAfterError); ok {
+				delay = retryErr.wait
+			}
+			time.Sleep(delay)
+		}
+	}
+
+	return "", fmt.Errorf("download failed after %d attempts: %w", maxAttempts, lastErr)
+}
+
+// retryAfterError wraps an HTTP error with a suggested wait duration.
+type retryAfterError struct {
+	status int
+	wait   time.Duration
+}
+
+func (e *retryAfterError) Error() string {
+	return fmt.Sprintf("HTTP %d (retry after %v)", e.status, e.wait)
+}
+
+func downloadOnce(url, tmpFile string, state *DownloadState) error {
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	if resp.StatusCode == 503 {
+		wait := 500 * time.Millisecond
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			if secs, err := strconv.Atoi(ra); err == nil && secs > 0 {
+				wait = time.Duration(secs) * time.Second
+				if wait > 30*time.Second {
+					wait = 30 * time.Second
+				}
+			}
+		}
+		return &retryAfterError{status: 503, wait: wait}
 	}
 
-	// Set total bytes for progress tracking
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
 	if state != nil {
 		state.TotalBytes = resp.ContentLength
 	}
 
 	f, err := os.Create(tmpFile)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer f.Close()
 
@@ -64,21 +127,43 @@ func DownloadFile(url, name string, state *DownloadState) (string, error) {
 
 	written, err := io.Copy(w, resp.Body)
 	if err != nil {
-		os.Remove(tmpFile)
-		return "", err
+		return err
 	}
 
-	// Final update for progress
+	if written == 0 {
+		return fmt.Errorf("zero bytes downloaded")
+	}
+
 	if state != nil {
 		atomic.StoreInt64(&state.DoneBytes, written)
 		if state.TotalBytes <= 0 {
-			state.TotalBytes = written // update from actual size when Content-Length was missing
+			state.TotalBytes = written
 		}
 		state.Finished = true
 	}
 
 	logging.Info("downloadFile: %d bytes written", written)
-	return tmpFile, nil
+	return nil
+}
+
+// RenameVerified renames a hash-named download to its proper filename after
+// hash verification. Returns the new path.
+func RenameVerified(hashPath, name, installerURL string) (string, error) {
+	ext := filepath.Ext(installerURL)
+	if ext == "" || len(ext) > 5 {
+		ext = filepath.Ext(name)
+	}
+	if ext == "" {
+		ext = ".exe"
+	}
+
+	dir := filepath.Dir(hashPath)
+	newPath := filepath.Join(dir, name+ext)
+	if err := os.Rename(hashPath, newPath); err != nil {
+		return "", fmt.Errorf("rename verified download: %w", err)
+	}
+	logging.Info("RenameVerified: %s -> %s", hashPath, newPath)
+	return newPath, nil
 }
 
 func VerifyHash(path, expectedHash string) error {
@@ -107,15 +192,109 @@ func VerifyHash(path, expectedHash string) error {
 	return nil
 }
 
-func runInstaller(path, installerType, silentArgs string, pkg PackageEntry, elevate bool) error {
-	logging.Info("runInstaller: type=%s args=%q elevate=%v", installerType, silentArgs, elevate)
+// isRunningAsAdmin returns true if the current process is elevated.
+func isRunningAsAdmin() bool {
+	return windows.GetCurrentProcessToken().IsElevated()
+}
+
+func runInstaller(path string, manifest *InstallerManifest, entry *InstallerEntry, pkg PackageEntry) error {
+	installerType := entry.EffectiveType(manifest)
+	silentArgs := SilentArgs(manifest, entry)
+	elevate := entry.NeedsElevation(manifest)
+	successCodes := entry.EffectiveSuccessCodes(manifest)
+
+	logging.Info("runInstaller: type=%s args=%q elevate=%v successCodes=%v", installerType, silentArgs, elevate, successCodes)
+
+	// ElevationProhibited check
+	if entry.EffectiveElevationRequirement(manifest) == "elevationProhibited" && isRunningAsAdmin() {
+		return fmt.Errorf("installer prohibits elevation — do not run as admin")
+	}
+
+	// Log dependency warnings
+	deps := entry.EffectiveDependencies(manifest)
+	for _, wf := range deps.WindowsFeatures {
+		logging.Info("runInstaller: requires Windows feature: %s", wf)
+	}
+	for _, pd := range deps.PackageDependencies {
+		logging.Info("runInstaller: requires package: %s (>= %s)", pd.PackageIdentifier, pd.MinimumVersion)
+	}
 
 	switch installerType {
-	case "zip", "portable":
+	case "zip":
+		// Check for nested installer inside ZIP
+		nestedType := entry.EffectiveNestedInstallerType(manifest)
+		if nestedType != "" {
+			return runNestedZIP(path, manifest, entry, pkg, elevate, successCodes)
+		}
+		return runZIP(path, pkg)
+	case "portable":
 		return runZIP(path, pkg)
 	default:
-		return runShellExecute(path, installerType, silentArgs, elevate)
+		return runShellExecute(path, installerType, silentArgs, elevate, successCodes)
 	}
+}
+
+// runNestedZIP extracts a ZIP archive, finds the nested installer, and runs it.
+func runNestedZIP(zipPath string, manifest *InstallerManifest, entry *InstallerEntry, pkg PackageEntry, elevate bool, successCodes []int) error {
+	nestedType := entry.EffectiveNestedInstallerType(manifest)
+	nestedFiles := entry.EffectiveNestedInstallerFiles(manifest)
+
+	if len(nestedFiles) == 0 {
+		return fmt.Errorf("nested installer type %q specified but no NestedInstallerFiles defined", nestedType)
+	}
+
+	// Extract ZIP to temp directory
+	extractDir := filepath.Join(os.TempDir(), "karchy-install", pkg.ID+"-extracted")
+	os.RemoveAll(extractDir)
+	if err := os.MkdirAll(extractDir, 0o755); err != nil {
+		return fmt.Errorf("create extraction dir: %w", err)
+	}
+	defer os.RemoveAll(extractDir)
+
+	r, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return fmt.Errorf("open zip: %w", err)
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		target := filepath.Join(extractDir, f.Name)
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(extractDir)+string(os.PathSeparator)) && filepath.Clean(target) != filepath.Clean(extractDir) {
+			continue
+		}
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(target, 0o755)
+			continue
+		}
+		os.MkdirAll(filepath.Dir(target), 0o755)
+		out, err := os.Create(target)
+		if err != nil {
+			return fmt.Errorf("extract %s: %w", f.Name, err)
+		}
+		rc, err := f.Open()
+		if err != nil {
+			out.Close()
+			return fmt.Errorf("open %s in zip: %w", f.Name, err)
+		}
+		_, err = io.Copy(out, rc)
+		rc.Close()
+		out.Close()
+		if err != nil {
+			return fmt.Errorf("extract %s: %w", f.Name, err)
+		}
+	}
+
+	// Find and run the nested installer
+	nestedPath := filepath.Join(extractDir, nestedFiles[0].RelativeFilePath)
+	if _, err := os.Stat(nestedPath); err != nil {
+		return fmt.Errorf("nested installer not found: %s", nestedFiles[0].RelativeFilePath)
+	}
+
+	logging.Info("runNestedZIP: running nested %s installer: %s", nestedType, nestedPath)
+
+	// Use the nested type's silent args (the outer ZIP type has none)
+	nestedArgs := silentArgsForType(nestedType, manifest, entry)
+	return runShellExecute(nestedPath, nestedType, nestedArgs, elevate, successCodes)
 }
 
 // runZIP extracts a ZIP archive to %LOCALAPPDATA%\Programs\<name>\ and adds it to the user PATH.
@@ -306,13 +485,37 @@ func addToUserPath(dir string) error {
 	return nil
 }
 
+// silentArgsForType returns the default silent args for a given installer type,
+// used when running a nested installer where the outer type's args don't apply.
+func silentArgsForType(installerType string, m *InstallerManifest, e *InstallerEntry) string {
+	// Check manifest/entry switches first
+	if e.Silent != "" {
+		return e.Silent
+	}
+	if m.Silent != "" {
+		return m.Silent
+	}
+	switch installerType {
+	case "inno":
+		return "/SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART"
+	case "nullsoft":
+		return "/S"
+	case "msi", "wix":
+		return "/quiet /norestart"
+	case "burn":
+		return "/quiet /norestart"
+	default:
+		return ""
+	}
+}
+
 // runShellExecute uses ShellExecuteExW to launch any installer type.
 // This matches winget's behavior: ShellExecuteEx handles embedded application
 // manifests (elevatesSelf) and UAC prompts correctly, unlike CreateProcessW.
 // When elevate is true, the "runas" verb triggers a UAC prompt.
 // When elevate is false, the "open" verb lets Windows handle elevation
 // based on the installer's own embedded manifest.
-func runShellExecute(path, installerType, silentArgs string, elevate bool) error {
+func runShellExecute(path, installerType, silentArgs string, elevate bool, successCodes []int) error {
 	var file, params string
 
 	switch installerType {
@@ -379,8 +582,16 @@ func runShellExecute(path, installerType, silentArgs string, elevate bool) error
 		// product uninstalled (upgrade scenarios) — treat as success
 		logging.Info("runShellExecute: success (exit code %d — product uninstalled for upgrade)", exitCode)
 	default:
+		// Check manifest-declared success codes
+		for _, code := range successCodes {
+			if int(exitCode) == code {
+				logging.Info("runShellExecute: success (exit code %d — declared in InstallerSuccessCodes)", exitCode)
+				goto success
+			}
+		}
 		return fmt.Errorf("installer exited with code %d", exitCode)
 	}
+success:
 
 	logging.Info("runShellExecute: success")
 	return nil
