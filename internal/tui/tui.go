@@ -446,9 +446,9 @@ func (m *model) goBack() tea.Cmd {
 	prev := m.stack[len(m.stack)-1]
 	m.stack = m.stack[:len(m.stack)-1]
 	m.menu = prev.menu
-	m.list.Cursor = prev.cursor
+	m.list.Cursor = 0
 	m.list.Offset = 0
-	m.list.Query = prev.query
+	m.list.Query = ""
 	m.multiSelect = isMultiSelect(prev.menu)
 	m.picked = nil
 	m.onSelect = nil
