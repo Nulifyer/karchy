@@ -94,10 +94,9 @@ const (
 	tpmBottomAlign = 0x0020
 	tpmLeftAlign   = 0x0000
 	tpmRightButton = 0x0002
-	idmOpen        = 1001
-	idmSelfUpdate  = 1002
-	idmRestart     = 1003
-	idmExit        = 1004
+	idmOpen       = 1001
+	idmSelfUpdate = 1002
+	idmExit       = 1004
 
 	// MF_SEPARATOR for popup menus
 	mfSeparator = 0x0800
@@ -476,19 +475,10 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		case idmSelfUpdate:
 			go func() {
 				exePath, _ := os.Executable()
-				cmd := exec.Command(exePath, "update", "self")
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				if err := cmd.Run(); err != nil {
-					logging.Info("daemon: self-update failed: %v", err)
-				}
-				// update self handles daemon restart internally
-			}()
-		case idmRestart:
-			go func() {
-				removeTrayIcon()
-				Restart()
-				os.Exit(0)
+				// Launch in a visible terminal so the user sees progress;
+				// "karchy update self" handles daemon restart internally.
+				script := fmt.Sprintf(`"%s" update self & pause`, exePath)
+				terminal.LaunchShell(80, 20, "Karchy Update", script)
 			}()
 		case idmExit:
 			removeTrayIcon()
@@ -519,9 +509,6 @@ func showContextMenu(hwnd uintptr) {
 		updateText, _ := syscall.UTF16PtrFromString(fmt.Sprintf("Update Karchy (%s)", selfUpdateVer))
 		procAppendMenuW.Call(menu, mfString, idmSelfUpdate, uintptr(unsafe.Pointer(updateText)))
 	}
-
-	restartText, _ := syscall.UTF16PtrFromString("Restart Daemon")
-	procAppendMenuW.Call(menu, mfString, idmRestart, uintptr(unsafe.Pointer(restartText)))
 
 	procAppendMenuW.Call(menu, mfSeparator, 0, 0)
 

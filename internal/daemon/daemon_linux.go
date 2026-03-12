@@ -170,7 +170,6 @@ func run() {
 		mSelfUpdate.Hide()
 		mOpen := systray.AddMenuItem("Open Karchy", "Open the Karchy menu")
 		systray.AddSeparator()
-		mRestart := systray.AddMenuItem("Restart Daemon", "Restart the Karchy daemon")
 		mQuit := systray.AddMenuItem("Quit", "Stop the Karchy daemon")
 
 		go func() {
@@ -182,8 +181,6 @@ func run() {
 					trayActionCh <- "selfupdate"
 				case <-mOpen.ClickedCh:
 					trayActionCh <- "open"
-				case <-mRestart.ClickedCh:
-					trayActionCh <- "restart"
 				case <-mQuit.ClickedCh:
 					trayActionCh <- "quit"
 				}
@@ -269,10 +266,6 @@ func run() {
 			case "open":
 				logging.Info("daemon: tray open clicked")
 				launchMenu()
-			case "restart":
-				logging.Info("daemon: tray restart clicked")
-				Restart()
-				return
 			case "quit":
 				logging.Info("daemon: tray quit clicked")
 				return
