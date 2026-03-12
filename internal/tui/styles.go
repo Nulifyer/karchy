@@ -6,16 +6,16 @@ import (
 )
 
 type styles struct {
-	title       lipgloss.Style
-	item        lipgloss.Style
-	selected    lipgloss.Style
-	match       lipgloss.Style
-	hint        lipgloss.Style
-	prompt      lipgloss.Style
-	query       lipgloss.Style
-	border      lipgloss.Style
-	menuChecked  lipgloss.Style
-	menuPicked   lipgloss.Style
+	title         lipgloss.Style
+	item          lipgloss.Style
+	selected      lipgloss.Style
+	match         lipgloss.Style
+	hint          lipgloss.Style
+	prompt        lipgloss.Style
+	query         lipgloss.Style
+	border        lipgloss.Style
+	menuChecked   lipgloss.Style
+	menuPicked    lipgloss.Style
 	menuUpdatable lipgloss.Style
 }
 

@@ -12,14 +12,14 @@ import (
 )
 
 var (
-	user32              = syscall.NewLazyDLL("user32.dll")
-	procOpenClipboard   = user32.NewProc("OpenClipboard")
-	procCloseClipboard  = user32.NewProc("CloseClipboard")
+	user32               = syscall.NewLazyDLL("user32.dll")
+	procOpenClipboard    = user32.NewProc("OpenClipboard")
+	procCloseClipboard   = user32.NewProc("CloseClipboard")
 	procGetClipboardData = user32.NewProc("GetClipboardData")
 
-	kernel32              = syscall.NewLazyDLL("kernel32.dll")
-	procGlobalLock        = kernel32.NewProc("GlobalLock")
-	procGlobalUnlock      = kernel32.NewProc("GlobalUnlock")
+	kernel32         = syscall.NewLazyDLL("kernel32.dll")
+	procGlobalLock   = kernel32.NewProc("GlobalLock")
+	procGlobalUnlock = kernel32.NewProc("GlobalUnlock")
 )
 
 const cfUnicodeText = 13

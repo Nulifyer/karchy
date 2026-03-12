@@ -16,7 +16,7 @@ import (
 var knownChromiumDesktops = map[string]bool{
 	"brave-browser.desktop":        true,
 	"brave-browser-stable.desktop": true,
-	"ungoogled-chromium.desktop":    true,
+	"ungoogled-chromium.desktop":   true,
 	"chromium.desktop":             true,
 	"chromium-browser.desktop":     true,
 	"vivaldi-stable.desktop":       true,

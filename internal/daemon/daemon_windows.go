@@ -83,9 +83,9 @@ const (
 	vkLShift   = 0xA0
 	vkRShift   = 0xA1
 
-	nimAdd    = 0x00
-	nimModify = 0x01
-	nimDelete = 0x02
+	nimAdd     = 0x00
+	nimModify  = 0x01
+	nimDelete  = 0x02
 	nifIcon    = 0x02
 	nifMessage = 0x01
 	nifTip     = 0x04
@@ -94,9 +94,9 @@ const (
 	tpmBottomAlign = 0x0020
 	tpmLeftAlign   = 0x0000
 	tpmRightButton = 0x0002
-	idmOpen       = 1001
-	idmSelfUpdate = 1002
-	idmExit       = 1004
+	idmOpen        = 1001
+	idmSelfUpdate  = 1002
+	idmExit        = 1004
 
 	// MF_SEPARATOR for popup menus
 	mfSeparator = 0x0800

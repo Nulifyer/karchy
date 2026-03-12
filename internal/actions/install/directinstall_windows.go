@@ -81,7 +81,6 @@ func DownloadFile(url, name string, state *DownloadState) (string, error) {
 	return tmpFile, nil
 }
 
-
 func VerifyHash(path, expectedHash string) error {
 	if expectedHash == "" {
 		logging.Info("verifyHash: no hash to verify, skipping")
@@ -425,7 +424,7 @@ func openUserEnvKey() (registry.Key, error) {
 }
 
 var (
-	user32              = syscall.NewLazyDLL("user32.dll")
+	user32                 = syscall.NewLazyDLL("user32.dll")
 	procSendMessageTimeout = user32.NewProc("SendMessageTimeoutW")
 )
 

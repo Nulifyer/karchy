@@ -241,10 +241,10 @@ func pngToICO(pngData []byte, icoPath string) error {
 	binary.Write(&ico, binary.LittleEndian, uint16(1)) // count
 
 	// Directory entry
-	ico.Write([]byte{dimByte(w)})                                // width
-	ico.Write([]byte{dimByte(h)})                                // height
-	ico.Write([]byte{0})                                         // color palette
-	ico.Write([]byte{0})                                         // reserved
+	ico.Write([]byte{dimByte(w)})                                 // width
+	ico.Write([]byte{dimByte(h)})                                 // height
+	ico.Write([]byte{0})                                          // color palette
+	ico.Write([]byte{0})                                          // reserved
 	binary.Write(&ico, binary.LittleEndian, uint16(1))            // planes
 	binary.Write(&ico, binary.LittleEndian, uint16(32))           // bpp
 	binary.Write(&ico, binary.LittleEndian, uint32(len(pngData))) // data size

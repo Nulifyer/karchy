@@ -209,7 +209,6 @@ func readARPVersion(root registry.Key, path string) string {
 	return ver
 }
 
-
 // --- CLI fallbacks ---
 
 func searchPackagesCLI() []PackageEntry {

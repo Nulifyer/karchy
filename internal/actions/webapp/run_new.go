@@ -62,7 +62,7 @@ func createWebApp(appName, appURL, iconURL string, isolated bool) {
 type newStep int
 
 const (
-	stepName       newStep = iota
+	stepName newStep = iota
 	stepURL
 	stepIconSource
 	stepIconSearch // dashboard icon search

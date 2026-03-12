@@ -11,14 +11,14 @@ import (
 )
 
 var (
-	user32             = syscall.NewLazyDLL("user32.dll")
-	procGetSystemMetrics    = user32.NewProc("GetSystemMetrics")
-	procGetWindowRect       = user32.NewProc("GetWindowRect")
-	procSetWindowPos        = user32.NewProc("SetWindowPos")
-	procEnumWindows         = user32.NewProc("EnumWindows")
+	user32                       = syscall.NewLazyDLL("user32.dll")
+	procGetSystemMetrics         = user32.NewProc("GetSystemMetrics")
+	procGetWindowRect            = user32.NewProc("GetWindowRect")
+	procSetWindowPos             = user32.NewProc("SetWindowPos")
+	procEnumWindows              = user32.NewProc("EnumWindows")
 	procGetWindowThreadProcessId = user32.NewProc("GetWindowThreadProcessId")
-	procIsWindowVisible     = user32.NewProc("IsWindowVisible")
-	procSendInput           = user32.NewProc("SendInput")
+	procIsWindowVisible          = user32.NewProc("IsWindowVisible")
+	procSendInput                = user32.NewProc("SendInput")
 )
 
 const (
@@ -150,14 +150,14 @@ func FindAndCenterByPID(pid int) uintptr {
 
 // mouseInput represents a Win32 INPUT struct with MOUSEINPUT union (64-bit).
 type mouseInput struct {
-	Type        uint32   // INPUT_MOUSE = 0
-	_           uint32   // padding for union alignment
-	Dx          int32    // absolute X (0–65535)
-	Dy          int32    // absolute Y (0–65535)
+	Type        uint32 // INPUT_MOUSE = 0
+	_           uint32 // padding for union alignment
+	Dx          int32  // absolute X (0–65535)
+	Dy          int32  // absolute Y (0–65535)
 	MouseData   uint32
 	DwFlags     uint32
 	Time        uint32
-	_           uint32   // padding
+	_           uint32 // padding
 	DwExtraInfo uintptr
 }
 
@@ -201,4 +201,3 @@ func clickWindow(hwnd uintptr) {
 func FocusHwnd(hwnd uintptr) {
 	clickWindow(hwnd)
 }
-

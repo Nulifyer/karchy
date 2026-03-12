@@ -24,7 +24,6 @@ func BatchInstall(pkgs []PackageEntry) {
 	// TODO: pacman -S / brew install
 }
 
-
 // BatchVerify downloads and verifies packages without installing.
 func BatchVerify(pkgs []PackageEntry) {
 	// TODO

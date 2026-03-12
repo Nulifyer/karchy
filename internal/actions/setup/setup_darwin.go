@@ -12,9 +12,9 @@ func Power()     { platform.Open("x-apple.systempreferences:com.apple.preference
 func Timezone()  { platform.Open("x-apple.systempreferences:com.apple.preference.datetime") }
 func WinUtil()   {}
 
-func PowerProfile() string        { return "" }
+func PowerProfile() string           { return "" }
 func SetPowerProfile(profile string) {}
-func PowerProfiles() []string     { return nil }
-func RestartAudio()               {}
-func RestartWiFi()                {}
-func RestartBluetooth()           {}
+func PowerProfiles() []string        { return nil }
+func RestartAudio()                  {}
+func RestartWiFi()                   {}
+func RestartBluetooth()              {}

@@ -123,8 +123,8 @@ func parseManifest(yaml string) (*InstallerManifest, error) {
 	lines := strings.Split(yaml, "\n")
 
 	inInstallers := false
-	inSwitches := false       // top-level InstallerSwitches
-	inEntrySwitches := false  // per-entry InstallerSwitches
+	inSwitches := false      // top-level InstallerSwitches
+	inEntrySwitches := false // per-entry InstallerSwitches
 	var current *InstallerEntry
 
 	for _, line := range lines {
