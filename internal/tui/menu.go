@@ -373,8 +373,10 @@ func updateMenu() []MenuItem {
 	if runtime.GOOS == "linux" {
 		items = append(items,
 			MenuItem{Label: "Mirror Update", Action: action(install.MirrorUpdate)},
-			MenuItem{Label: "Firmware Update", Action: action(install.FirmwareUpdate)},
 		)
+	}
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
+		items = append(items, MenuItem{Label: "Firmware Update", Action: action(install.FirmwareUpdate)})
 	}
 	items = append(items, MenuItem{Label: "Cleanup", Action: action(cleanup.Run)})
 	return items
