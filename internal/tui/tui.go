@@ -15,6 +15,9 @@ import (
 	"github.com/nulifyer/karchy/internal/theme"
 )
 
+// Version is set by main before Run() is called.
+var Version = "dev"
+
 // viewOverhead is the number of lines consumed by border (2), search line (1), and blank line (1).
 const viewOverhead = 4
 

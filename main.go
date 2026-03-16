@@ -16,6 +16,8 @@ import (
 var Version = "dev"
 
 func main() {
+	tui.Version = Version
+
 	arger.RegisterFlag(arger.Flag[bool]{
 		Name:        "debug",
 		Aliases:     []string{"--debug"},

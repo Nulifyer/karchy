@@ -624,7 +624,7 @@ func getMenu(s submenuKind) ([]MenuItem, string) {
 	case menuHardwareRestart:
 		return hardwareRestartMenu(), "Restart Hardware"
 	default:
-		return mainMenu(), "Karchy"
+		return mainMenu(), "Karchy " + Version
 	}
 }
 
