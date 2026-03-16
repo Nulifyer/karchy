@@ -326,6 +326,17 @@ func safePkgID(id string) string {
 	return id
 }
 
+// refreshSources runs winget source update to refresh the package source database.
+func refreshSources() {
+	logging.Info("refreshSources: running winget source update")
+	if err := exec.Command("winget", "source", "update",
+		"--disable-interactivity",
+		"--accept-source-agreements",
+	).Run(); err != nil {
+		logging.Info("refreshSources: winget source update failed: %v", err)
+	}
+}
+
 // InstallPackage spawns a new terminal window running winget install for the given package ID.
 func InstallPackage(pkg PackageEntry) {
 	logging.Info("InstallPackage: %s (%s)", pkg.Name, pkg.ID)
@@ -334,7 +345,7 @@ func InstallPackage(pkg PackageEntry) {
 		logging.Error("InstallPackage: unsafe package ID: %q", pkg.ID)
 		return
 	}
-	script := `winget install -e --id ` + id + ` --accept-source-agreements --accept-package-agreements & pause`
+	script := `winget source update --disable-interactivity --accept-source-agreements && winget install -e --id ` + id + ` --accept-source-agreements --accept-package-agreements & pause`
 	terminal.LaunchShell(80, 20, "Installing "+pkg.Name, script)
 }
 
@@ -364,7 +375,7 @@ func InstallPackages(pkgs []PackageEntry) {
 	}
 	logging.Info("InstallPackages: %d packages: %v", len(pkgs), names)
 
-	script := strings.Join(cmds, " && ") + " & pause"
+	script := "winget source update --disable-interactivity --accept-source-agreements && " + strings.Join(cmds, " && ") + " & pause"
 	terminal.LaunchShell(100, 30, fmt.Sprintf("Installing %d packages", len(pkgs)), script)
 }
 

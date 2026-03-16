@@ -16,6 +16,9 @@ import (
 func SystemUpdate() int {
 	terminal.ResizeAndCenter(100, 30)
 
+	fmt.Printf("\n :: Refreshing sources...\n\n")
+	refreshSources()
+
 	fmt.Printf("\n :: Checking for updates...\n\n")
 
 	installed := InstalledIDs()
