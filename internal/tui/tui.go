@@ -23,6 +23,7 @@ const viewOverhead = 4
 
 // menuLoadedMsg is sent when an async menu finishes loading.
 type menuLoadedMsg struct {
+	forMenu  submenuKind
 	items    []MenuItem
 	onSelect func(int)          // single-select handler (index into items)
 	onBatch  func(map[int]bool) // multi-select handler (picked indices)
@@ -102,7 +103,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case menuLoadedMsg:
-		logging.Info("menuLoadedMsg: %d items", len(msg.items))
+		logging.Info("menuLoadedMsg: %d items for menu=%d (current=%d)", len(msg.items), msg.forMenu, m.menu)
+		if msg.forMenu != m.menu {
+			return m, nil
+		}
 		m.loading = false
 		m.menuItems = msg.items
 		m.onSelect = msg.onSelect
@@ -428,7 +432,15 @@ func (m *model) openSubmenuCmd(s submenuKind) tea.Cmd {
 		m.menuItems = nil
 		m.syncFilterItems()
 		m.list.ApplyFilter()
-		return loader
+		target := s
+		return func() tea.Msg {
+			msg := loader()
+			if loaded, ok := msg.(menuLoadedMsg); ok {
+				loaded.forMenu = target
+				return loaded
+			}
+			return msg
+		}
 	}
 
 	items, title := getMenu(s)
@@ -467,7 +479,15 @@ func (m *model) goBack() tea.Cmd {
 		m.menuItems = nil
 		m.syncFilterItems()
 		m.list.ApplyFilter()
-		return loader
+		target := prev.menu
+		return func() tea.Msg {
+			msg := loader()
+			if loaded, ok := msg.(menuLoadedMsg); ok {
+				loaded.forMenu = target
+				return loaded
+			}
+			return msg
+		}
 	}
 
 	items, title := getMenu(prev.menu)
