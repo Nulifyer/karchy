@@ -37,9 +37,7 @@ var (
 const (
 	swpNoSize     = 0x0001
 	swpNoMove     = 0x0002
-	swpNoZOrder   = 0x0004
 	swpShowWindow = 0x0040
-	swpHideWindow = 0x0080
 
 	hwndTopmost = ^uintptr(0) // HWND_TOPMOST = -1
 	swShow      = 5          // SW_SHOW
@@ -246,19 +244,6 @@ func FindAndCenterByPID(pid int) uintptr {
 	// HWND_TOPMOST: prevent the window from being pushed behind other windows
 	// while Alacritty finishes initializing.
 	procSetWindowPos.Call(hwnd, hwndTopmost, uintptr(x), uintptr(y), 0, 0, swpNoSize|swpShowWindow)
-	return hwnd
-}
-
-// FindAndHideByPID finds a visible window belonging to pid, immediately hides
-// it so it can be repositioned before being shown, and returns the hwnd (0 if
-// not found). Call FocusHwnd on the returned hwnd to position and reveal it.
-func FindAndHideByPID(pid int) uintptr {
-	hwnd := findWindowByPID(pid)
-	if hwnd == 0 {
-		return 0
-	}
-	procSetWindowPos.Call(hwnd, 0, 0, 0, 0, 0, swpNoMove|swpNoSize|swpNoZOrder|swpHideWindow)
-	logging.Info("FindAndHideByPID: hid hwnd=%x for pid=%d", hwnd, pid)
 	return hwnd
 }
 
