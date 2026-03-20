@@ -51,6 +51,7 @@ var (
 	procSetForegroundWindow      = user32.NewProc("SetForegroundWindow")
 	procAllowSetForegroundWindow = user32.NewProc("AllowSetForegroundWindow")
 	procGetCursorPos             = user32.NewProc("GetCursorPos")
+	procRegisterWindowMessageW   = user32.NewProc("RegisterWindowMessageW")
 	procShellNotifyIconW         = shell32.NewProc("Shell_NotifyIconW")
 )
 
@@ -71,6 +72,11 @@ const (
 	wmKeyUp      = 0x0101
 	wmSysKeyDown = 0x0104
 	wmSysKeyUp   = 0x0105
+
+	// Power broadcast
+	wmPowerBroadcast      = 0x0218
+	pbtApmResumeAutomatic = 0x0012 // fired on any resume (S3/S4/hibernate)
+	pbtApmResumeSuspend   = 0x0007 // fired when user-initiated resume
 
 	// Virtual key codes
 	vkSpace    = 0x20
@@ -108,12 +114,13 @@ const (
 
 // Hotkey state
 var (
-	trayHwnd      uintptr
-	hookHandle    uintptr
-	targetMod     uint32 // VK code for modifier (e.g. vkLWin)
-	targetKey     uint32 // VK code for key (e.g. vkSpace)
-	menuPID       int    // PID of the Alacritty popup (0 = not running)
-	selfUpdateVer string // newer karchy version available (empty if up to date)
+	trayHwnd        uintptr
+	hookHandle      uintptr
+	targetMod       uint32 // VK code for modifier (e.g. vkLWin)
+	targetKey       uint32 // VK code for key (e.g. vkSpace)
+	menuPID         int    // PID of the Alacritty popup (0 = not running)
+	selfUpdateVer   string // newer karchy version available (empty if up to date)
+	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
 )
 
 // KBDLLHOOKSTRUCT
@@ -251,16 +258,16 @@ func run() {
 	cfg := config.Load()
 	parseHotkey(cfg.Hotkey.Toggle)
 
+	// Register "TaskbarCreated" so we can re-add the tray icon if Explorer restarts
+	tcStr, _ := syscall.UTF16PtrFromString("TaskbarCreated")
+	r, _, _ := procRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(tcStr)))
+	wmTaskbarCreated = uint32(r)
+
 	// Create tray window + icon
 	createTrayIcon()
 
 	// Install low-level keyboard hook
-	hookHandle, _, _ = procSetWindowsHookExW.Call(whKeyboardLL, syscall.NewCallback(keyboardProc), 0, 0)
-	if hookHandle == 0 {
-		logging.Info("SetWindowsHookEx failed")
-	} else {
-		logging.Info("LL keyboard hook installed mod=0x%x key=0x%x", targetMod, targetKey)
-	}
+	installHook()
 
 	// Start periodic self-update checker
 	go func() {
@@ -287,8 +294,29 @@ func run() {
 
 	if hookHandle != 0 {
 		procUnhookWindowsHookEx.Call(hookHandle)
+		hookHandle = 0
 	}
 	removeTrayIcon()
+}
+
+// installHook installs the low-level keyboard hook.
+func installHook() {
+	hookHandle, _, _ = procSetWindowsHookExW.Call(whKeyboardLL, syscall.NewCallback(keyboardProc), 0, 0)
+	if hookHandle == 0 {
+		logging.Info("installHook: SetWindowsHookEx failed")
+	} else {
+		logging.Info("installHook: hook installed mod=0x%x key=0x%x", targetMod, targetKey)
+	}
+}
+
+// reinstallHook removes the existing hook and installs a fresh one.
+// Called after sleep/resume or Explorer restart when the hook may have gone stale.
+func reinstallHook() {
+	if hookHandle != 0 {
+		procUnhookWindowsHookEx.Call(hookHandle)
+		hookHandle = 0
+	}
+	installHook()
 }
 
 // keyboardProc is the low-level keyboard hook callback.
@@ -429,6 +457,30 @@ func loadTrayIcon() uintptr {
 	return icon
 }
 
+// readdTrayIcon re-adds the tray icon after Explorer restarts (TaskbarCreated).
+// The window already exists; we just need Shell_NotifyIconW(NIM_ADD) again.
+func readdTrayIcon() {
+	icon := loadTrayIcon()
+	if icon == 0 {
+		icon, _, _ = procLoadIconW.Call(0, idiApplication)
+	}
+	var nid notifyIconData
+	nid.CbSize = uint32(unsafe.Sizeof(nid))
+	nid.Hwnd = trayHwnd
+	nid.UID = 1
+	nid.UFlags = nifIcon | nifMessage | nifTip
+	nid.UCallbackMessage = wmTrayIcon
+	nid.HIcon = icon
+	tip := "Karchy"
+	for i, ch := range tip {
+		if i >= 127 {
+			break
+		}
+		nid.SzTip[i] = uint16(ch)
+	}
+	procShellNotifyIconW.Call(nimAdd, uintptr(unsafe.Pointer(&nid)))
+}
+
 func removeTrayIcon() {
 	if trayHwnd == 0 {
 		return
@@ -441,7 +493,23 @@ func removeTrayIcon() {
 }
 
 func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
+	// TaskbarCreated is a dynamically registered message — check before the switch.
+	// Fired when Explorer restarts; the tray icon is lost and the hook may be stale.
+	if wmTaskbarCreated != 0 && umsg == wmTaskbarCreated {
+		logging.Info("trayWndProc: TaskbarCreated, re-registering tray icon and hook")
+		readdTrayIcon()
+		reinstallHook()
+		return 0
+	}
+
 	switch umsg {
+	case wmPowerBroadcast:
+		if wParam == pbtApmResumeAutomatic || wParam == pbtApmResumeSuspend {
+			logging.Info("trayWndProc: power resume (wParam=0x%x), reinstalling hook", wParam)
+			reinstallHook()
+		}
+		return 0
+
 	case wmTrayIcon:
 		event := uint32(lParam & 0xFFFF)
 		if event == 0x0205 || event == 0x0202 { // WM_RBUTTONUP, WM_LBUTTONUP
