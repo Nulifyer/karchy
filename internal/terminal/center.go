@@ -20,9 +20,9 @@ func SetLaunchSize(cols, lines int) {
 // with the given column/line dimensions. Uses font metric estimates.
 // On Windows, the daemon will correct this precisely after the window renders.
 func estimateCenter(cols, lines int) (x, y int) {
-	// CaskaydiaMono NF at size 13: ~9px wide, ~22px tall
-	estW := cols*9 + 32   // 16px padding each side
-	estH := lines*22 + 24 // 12px padding each side
+	// CaskaydiaMono NF at size 13: ~10px wide, ~20px tall; 4px padding each side
+	estW := cols*10 + 8
+	estH := lines*20 + 8
 
 	waLeft, waTop, waW, waH := estimateWorkArea()
 

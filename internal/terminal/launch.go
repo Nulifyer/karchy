@@ -36,6 +36,28 @@ func Launch(cols, lines int, title string, args ...string) (int, error) {
 	return pid, nil
 }
 
+// LaunchProgramDefault opens the user's preferred terminal without any karchy
+// config overrides, so the terminal's own settings (decorations, theme, etc.)
+// are used as-is. Suitable for interactive sessions like WSL distros.
+func LaunchProgramDefault(program string, args ...string) (int, error) {
+	cfg := config.Load()
+	b := GetBackend(cfg.Terminal.App)
+	childArgs := append([]string{program}, args...)
+	cmdArgs := b.LaunchArgs("", "", childArgs)
+
+	logging.Info("LaunchProgramDefault: %s %v", b.Binary(), cmdArgs)
+	cmd := exec.Command(b.Binary(), cmdArgs...)
+	platform.Detach(cmd)
+
+	if err := cmd.Start(); err != nil {
+		logging.Error("LaunchProgramDefault: %v", err)
+		return 0, err
+	}
+	pid := cmd.Process.Pid
+	logging.Info("LaunchProgramDefault: pid=%d", pid)
+	return pid, nil
+}
+
 // LaunchProgram opens a terminal running an arbitrary program (not karchy).
 func LaunchProgram(cols, lines int, program string, args ...string) (int, error) {
 	cfg := config.Load()

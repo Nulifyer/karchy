@@ -56,10 +56,11 @@ func ListOnline() []Distro {
 	return distros
 }
 
-// Launch opens the given distro in a themed Alacritty window.
+// Launch opens the given distro in the user's preferred terminal using its
+// own settings (no karchy borderless styling).
 func Launch(d Distro) {
 	logging.Info("wsl: launch %s", d.Name)
-	terminal.LaunchProgram(100, 30, "wsl", "-d", d.Name)
+	terminal.LaunchProgramDefault("wsl", "-d", d.Name)
 }
 
 // Install runs wsl --install for the given distros in a terminal window.

@@ -131,5 +131,8 @@ func HasVisibleWindow(pid int) bool { return false }
 // FindAndCenterByPID is not used on Linux; returns 0.
 func FindAndCenterByPID(pid int) uintptr { return 0 }
 
+// FindAndHideByPID is not used on Linux; returns 0.
+func FindAndHideByPID(pid int) uintptr { return 0 }
+
 // FocusHwnd is not used on Linux.
 func FocusHwnd(hwnd uintptr) {}

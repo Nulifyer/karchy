@@ -124,8 +124,9 @@ var (
 	hookHandle       uintptr
 	targetMod        uint32 // VK code for modifier (e.g. vkLWin)
 	targetKey        uint32 // VK code for key (e.g. vkSpace)
-	menuPID          int    // PID of the Alacritty popup (0 = not running)
-	menuTimerAttempts int   // poll attempts for timerIDMenuPoll
+	menuPID           int     // PID of the Alacritty popup (0 = not running)
+	menuHwnd          uintptr // hwnd found and hidden by timerIDMenuPoll
+	menuTimerAttempts int     // poll attempts for timerIDMenuPoll
 	selfUpdateVer    string // newer karchy version available (empty if up to date)
 	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
 )
@@ -529,7 +530,9 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		switch wParam {
 		case timerIDMenuPoll:
 			// Still on the message thread — check if Alacritty's window has appeared.
-			if terminal.HasVisibleWindow(menuPID) {
+			// Hide it immediately so the user never sees it at the estimated position.
+			if hwnd := terminal.FindAndHideByPID(menuPID); hwnd != 0 {
+				menuHwnd = hwnd
 				procKillTimer.Call(trayHwnd, timerIDMenuPoll)
 				menuTimerAttempts = 0
 				// Arm the one-shot focus delay: let Alacritty finish rendering.
@@ -544,15 +547,13 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 			}
 		case timerIDMenuFocus:
 			procKillTimer.Call(trayHwnd, timerIDMenuFocus)
-			// Center the window now that Alacritty is fully rendered.
-			hwnd := terminal.FindAndCenterByPID(menuPID)
+			hwnd := menuHwnd
 			if hwnd == 0 {
-				logging.Info("wmTimer: window gone before focus pid=%d", menuPID)
+				logging.Info("wmTimer: no menuHwnd for focus pid=%d", menuPID)
 				return 0
 			}
-			logging.Info("wmTimer: timerIDMenuFocus fired hwnd=%x pid=%d trayHwnd=%x", hwnd, menuPID, trayHwnd)
-			// Daemon is still the foreground process (no AllowSetForegroundWindow
-			// was issued, so Alacritty couldn't steal it). Transfer now.
+			logging.Info("wmTimer: timerIDMenuFocus fired hwnd=%x pid=%d", hwnd, menuPID)
+			// FocusHwnd re-centers, shows, and gives keyboard focus.
 			r1, _, e1 := procSetForegroundWindow.Call(hwnd)
 			logging.Info("wmTimer: SetForegroundWindow hwnd=%x ret=%d err=%v", hwnd, r1, e1)
 			terminal.FocusHwnd(hwnd)
@@ -569,6 +570,7 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		procKillTimer.Call(trayHwnd, timerIDMenuPoll)
 		procKillTimer.Call(trayHwnd, timerIDMenuFocus)
 		menuTimerAttempts = 0
+		menuHwnd = 0
 		// Kill existing popup so a fresh one takes focus cleanly.
 		if menuPID != 0 {
 			if p, err := os.FindProcess(menuPID); err == nil {
