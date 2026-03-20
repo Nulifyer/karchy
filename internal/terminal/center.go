@@ -16,7 +16,7 @@ func SetLaunchSize(cols, lines int) {
 	launchLines = lines
 }
 
-// estimateCenter returns an approximate screen-center position for a window
+// estimateCenter returns an approximate center position for a window
 // with the given column/line dimensions. Uses font metric estimates.
 // On Windows, the daemon will correct this precisely after the window renders.
 func estimateCenter(cols, lines int) (x, y int) {
@@ -24,13 +24,12 @@ func estimateCenter(cols, lines int) (x, y int) {
 	estW := cols*9 + 32   // 16px padding each side
 	estH := lines*22 + 24 // 12px padding each side
 
-	// Assume 1920x1080 as fallback; platform-specific code can override
-	screenW, screenH := screenSize()
+	waLeft, waTop, waW, waH := estimateWorkArea()
 
-	x = max(0, (screenW-estW)/2)
-	y = max(0, (screenH-estH)/2)
+	x = waLeft + max(0, (waW-estW)/2)
+	y = waTop + max(0, (waH-estH)/2)
 
-	logging.Info("estimateCenter: cols=%d lines=%d estW=%d estH=%d screen=%dx%d x=(%d-%d)/2=%d y=(%d-%d)/2=%d",
-		cols, lines, estW, estH, screenW, screenH, screenW, estW, x, screenH, estH, y)
+	logging.Info("estimateCenter: cols=%d lines=%d estW=%d estH=%d work=(%d,%d,%dx%d) pos=(%d,%d)",
+		cols, lines, estW, estH, waLeft, waTop, waW, waH, x, y)
 	return
 }

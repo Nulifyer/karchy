@@ -14,6 +14,14 @@ type Config struct {
 	Theme      ThemeConfig      `toml:"theme"`
 	Terminal   TerminalConfig   `toml:"terminal"`
 	Projects   ProjectsConfig   `toml:"projects"`
+	Window     WindowConfig     `toml:"window"`
+}
+
+// WindowConfig controls window placement behavior.
+type WindowConfig struct {
+	// SummonOn determines which monitor the menu appears on.
+	// Values: "mouse" (default), "primary", "active_window"
+	SummonOn string `toml:"summon_on"`
 }
 
 type HotkeyConfig struct {
@@ -44,6 +52,7 @@ func Default() Config {
 		Theme:      ThemeConfig{Name: "catppuccin-mocha"},
 		Terminal:   TerminalConfig{App: "alacritty"},
 		Projects:   ProjectsConfig{Editor: "code"},
+		Window:     WindowConfig{SummonOn: "mouse"},
 	}
 }
 
@@ -73,6 +82,9 @@ func Load() Config {
 	}
 	if cfg.Projects.Editor == "" {
 		cfg.Projects.Editor = "code"
+	}
+	if cfg.Window.SummonOn == "" {
+		cfg.Window.SummonOn = "mouse"
 	}
 	return cfg
 }

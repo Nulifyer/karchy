@@ -12,6 +12,14 @@ $procs = Get-Process -Name "karchy" -ErrorAction SilentlyContinue
 if ($procs) {
     Write-Host "Killing karchy..." -ForegroundColor Yellow
     $procs | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 500
+}
+
+# Clear log so the next run starts fresh
+$logFile = "$env:APPDATA\karchy\karchy.log"
+if (Test-Path $logFile) {
+    Clear-Content $logFile
+    Write-Host "Cleared $logFile" -ForegroundColor DarkGray
 }
 
 # Build dev version string from git
@@ -37,8 +45,8 @@ Remove-Item $outPath
 
 Write-Host "Installed $exe ($version)" -ForegroundColor Green
 
-# Register autostart + restart daemon
-Write-Host "Running install..." -ForegroundColor Yellow
-& $exe install
+# Start daemon in debug mode
+Write-Host "Starting daemon (debug mode)..." -ForegroundColor Yellow
+& $exe --debug daemon start
 
-Write-Host "Done!" -ForegroundColor Green
+Write-Host "Done! Log: $env:APPDATA\karchy\karchy.log" -ForegroundColor Green

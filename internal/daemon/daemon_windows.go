@@ -52,6 +52,8 @@ var (
 	procAllowSetForegroundWindow = user32.NewProc("AllowSetForegroundWindow")
 	procGetCursorPos             = user32.NewProc("GetCursorPos")
 	procRegisterWindowMessageW   = user32.NewProc("RegisterWindowMessageW")
+	procSetTimer                 = user32.NewProc("SetTimer")
+	procKillTimer                = user32.NewProc("KillTimer")
 	procShellNotifyIconW         = shell32.NewProc("Shell_NotifyIconW")
 )
 
@@ -60,11 +62,15 @@ const (
 	errorAlreadyExists = 183
 
 	wmDestroy          = 0x0002
+	wmTimer            = 0x0113
 	wmCommand          = 0x0111
 	wmTrayIcon         = 0x8001 // WM_APP + 1
-	wmFocusMenu        = 0x8002 // WM_APP + 2 — posted by goroutine to focus on msg thread
 	wmLaunchMenu       = 0x8003 // WM_APP + 3 — posted by hook to trigger launch on msg thread
 	wsOverlappedWindow = 0x00CF0000
+
+	// WM_TIMER IDs for menu window polling (all on the message thread, no goroutines)
+	timerIDMenuPoll  = 1 // fires every 50ms until Alacritty window is detected
+	timerIDMenuFocus = 2 // fires once 300ms after window detected, to focus it
 
 	// Low-level keyboard hook
 	whKeyboardLL = 13
@@ -114,12 +120,13 @@ const (
 
 // Hotkey state
 var (
-	trayHwnd        uintptr
-	hookHandle      uintptr
-	targetMod       uint32 // VK code for modifier (e.g. vkLWin)
-	targetKey       uint32 // VK code for key (e.g. vkSpace)
-	menuPID         int    // PID of the Alacritty popup (0 = not running)
-	selfUpdateVer   string // newer karchy version available (empty if up to date)
+	trayHwnd         uintptr
+	hookHandle       uintptr
+	targetMod        uint32 // VK code for modifier (e.g. vkLWin)
+	targetKey        uint32 // VK code for key (e.g. vkSpace)
+	menuPID          int    // PID of the Alacritty popup (0 = not running)
+	menuTimerAttempts int   // poll attempts for timerIDMenuPoll
+	selfUpdateVer    string // newer karchy version available (empty if up to date)
 	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
 )
 
@@ -254,9 +261,10 @@ func run() {
 	writePIDFile()
 	defer removePIDFile()
 
-	// Parse hotkey
+	// Parse config
 	cfg := config.Load()
 	parseHotkey(cfg.Hotkey.Toggle)
+	terminal.SetMonitorBehavior(terminal.ParseMonitorBehavior(cfg.Window.SummonOn))
 
 	// Register "TaskbarCreated" so we can re-add the tray icon if Explorer restarts
 	tcStr, _ := syscall.UTF16PtrFromString("TaskbarCreated")
@@ -517,8 +525,51 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		}
 		return 0
 
+	case wmTimer:
+		switch wParam {
+		case timerIDMenuPoll:
+			// Still on the message thread — check if Alacritty's window has appeared.
+			if terminal.HasVisibleWindow(menuPID) {
+				procKillTimer.Call(trayHwnd, timerIDMenuPoll)
+				menuTimerAttempts = 0
+				// Arm the one-shot focus delay: let Alacritty finish rendering.
+				procSetTimer.Call(trayHwnd, timerIDMenuFocus, 300, 0)
+			} else {
+				menuTimerAttempts++
+				if menuTimerAttempts >= 40 { // 2 s timeout
+					procKillTimer.Call(trayHwnd, timerIDMenuPoll)
+					menuTimerAttempts = 0
+					logging.Info("wmTimer: menu window not found after timeout pid=%d", menuPID)
+				}
+			}
+		case timerIDMenuFocus:
+			procKillTimer.Call(trayHwnd, timerIDMenuFocus)
+			// Center the window now that Alacritty is fully rendered.
+			hwnd := terminal.FindAndCenterByPID(menuPID)
+			if hwnd == 0 {
+				logging.Info("wmTimer: window gone before focus pid=%d", menuPID)
+				return 0
+			}
+			logging.Info("wmTimer: timerIDMenuFocus fired hwnd=%x pid=%d trayHwnd=%x", hwnd, menuPID, trayHwnd)
+			// Daemon is still the foreground process (no AllowSetForegroundWindow
+			// was issued, so Alacritty couldn't steal it). Transfer now.
+			r1, _, e1 := procSetForegroundWindow.Call(hwnd)
+			logging.Info("wmTimer: SetForegroundWindow hwnd=%x ret=%d err=%v", hwnd, r1, e1)
+			terminal.FocusHwnd(hwnd)
+			logging.Info("wmTimer: FocusHwnd complete hwnd=%x pid=%d", hwnd, menuPID)
+		}
+		return 0
+
 	case wmLaunchMenu:
-		// Kill existing popup so a fresh one takes focus cleanly
+		// Make the daemon the foreground process NOW, while we still hold
+		// foreground rights from the keyboard hook intercept. This keeps us
+		// foreground until the timer fires and we explicitly hand off to Alacritty.
+		procSetForegroundWindow.Call(trayHwnd)
+		// Cancel any in-flight timers from a previous launch.
+		procKillTimer.Call(trayHwnd, timerIDMenuPoll)
+		procKillTimer.Call(trayHwnd, timerIDMenuFocus)
+		menuTimerAttempts = 0
+		// Kill existing popup so a fresh one takes focus cleanly.
 		if menuPID != 0 {
 			if p, err := os.FindProcess(menuPID); err == nil {
 				p.Kill()
@@ -526,13 +577,9 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 			}
 			menuPID = 0
 		}
-		go launchMenu()
-		return 0
-
-	case wmFocusMenu:
-		// wParam = hwnd to focus. Called on the message thread so SendInput works.
-		terminal.FocusHwnd(uintptr(wParam))
-		logging.Info("wmFocusMenu: focused hwnd=%x", wParam)
+		launchMenu()
+		// Poll on the message thread via WM_TIMER — no goroutine.
+		procSetTimer.Call(trayHwnd, timerIDMenuPoll, 50, 0)
 		return 0
 
 	case wmCommand:
@@ -644,6 +691,8 @@ func splitHotkey(s string) []string {
 
 // ── Launch ─────────────────────────────────────────────────────────────────
 
+// launchMenu spawns the terminal process. Window polling and focus are handled
+// on the message thread via WM_TIMER (timerIDMenuPoll / timerIDMenuFocus).
 func launchMenu() {
 	args := []string{}
 	if logging.Enabled() {
@@ -652,35 +701,13 @@ func launchMenu() {
 	args = append(args, "menu")
 	logging.Info("launchMenu: args=%v", args)
 
-	// Grant any process the right to set foreground (we have rights from WM_HOTKEY).
-	procAllowSetForegroundWindow.Call(^uintptr(0)) // ASFW_ANY = -1
-
 	pid, err := terminal.Launch(40, 14, "Karchy", args...)
 	if err != nil {
+		logging.Info("launchMenu: launch failed: %v", err)
 		return
 	}
 	menuPID = pid
-
-	// Poll for the window, center it, then post focus to the message thread.
-	// Running in a goroutine so the message loop keeps pumping.
-	var hwnd uintptr
-	for i := 0; i < 20; i++ {
-		time.Sleep(50 * time.Millisecond)
-		hwnd = terminal.FindAndCenterByPID(pid)
-		if hwnd != 0 {
-			logging.Info("launchMenu: centered pid=%d attempt=%d", pid, i)
-			break
-		}
-	}
-	if hwnd == 0 {
-		logging.Info("launchMenu: window not found after polling pid=%d", pid)
-		return
-	}
-
-	// Wait for Alacritty to finish init, then post focus to message thread
-	time.Sleep(300 * time.Millisecond)
-	procPostMessageW.Call(trayHwnd, wmFocusMenu, hwnd, 0)
-	logging.Info("launchMenu: posted focus for pid=%d hwnd=%x", pid, hwnd)
+	logging.Info("launchMenu: pid=%d", pid)
 }
 
 func checkSelfUpdate() {

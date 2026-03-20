@@ -11,6 +11,13 @@ import (
 	"github.com/nulifyer/karchy/internal/logging"
 )
 
+// estimateWorkArea returns the primary screen size as a work area approximation.
+// On Linux we don't subtract the taskbar; KWin handles final placement precisely.
+func estimateWorkArea() (left, top, w, h int) {
+	w, h = screenSize()
+	return 0, 0, w, h
+}
+
 // screenSize returns the primary screen resolution via KWin's D-Bus interface.
 // Falls back to 1920x1080 if qdbus6/KWin is unavailable (non-KDE desktops).
 func screenSize() (int, int) {

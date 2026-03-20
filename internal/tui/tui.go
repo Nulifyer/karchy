@@ -56,6 +56,7 @@ type menuState struct {
 func initialModel() model {
 	cfg := config.Load()
 	pal := theme.Load(cfg.Theme.Name)
+	terminal.SetMonitorBehavior(terminal.ParseMonitorBehavior(cfg.Window.SummonOn))
 	items, title := getMenu(menuMain)
 
 	// Tell the terminal package our initial size so ResizeAndCenter can derive cell dimensions

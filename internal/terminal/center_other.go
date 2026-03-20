@@ -2,9 +2,8 @@
 
 package terminal
 
-func screenSize() (int, int) {
-	return 1920, 1080
-}
+// estimateWorkArea returns a hardcoded fallback on unsupported platforms.
+func estimateWorkArea() (left, top, w, h int) { return 0, 0, 1920, 1080 }
 
 // ResizeAndCenter is a no-op on non-Windows.
 func ResizeAndCenter(cols, lines int) {}
