@@ -71,6 +71,7 @@ const (
 	// WM_TIMER IDs for menu window polling (all on the message thread, no goroutines)
 	timerIDMenuPoll  = 1 // fires every 50ms until Alacritty window is detected
 	timerIDMenuFocus = 2 // fires once 300ms after window detected, to focus it
+	timerIDHookCheck = 3 // fires every 30s to verify the hook is still installed
 
 	// Low-level keyboard hook
 	whKeyboardLL = 13
@@ -276,6 +277,9 @@ func run() {
 
 	// Install low-level keyboard hook
 	installHook()
+
+	// Periodic hook health check — reinstalls if the hook was silently dropped
+	procSetTimer.Call(trayHwnd, timerIDHookCheck, 30000, 0)
 
 	// Start periodic self-update checker
 	go func() {
@@ -539,6 +543,11 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 					menuTimerAttempts = 0
 					logging.Info("wmTimer: menu window not found after timeout pid=%d", menuPID)
 				}
+			}
+		case timerIDHookCheck:
+			if hookHandle == 0 {
+				logging.Info("wmTimer: hook missing, reinstalling")
+				reinstallHook()
 			}
 		case timerIDMenuFocus:
 			procKillTimer.Call(trayHwnd, timerIDMenuFocus)
