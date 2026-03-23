@@ -378,6 +378,16 @@ func updateMenu() []MenuItem {
 	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
 		items = append(items, MenuItem{Label: "Firmware Update", Action: action(install.FirmwareUpdate)})
 	}
+	items = append(items, MenuItem{Label: "Update Karchy", Action: action(func() {
+		exePath, _ := os.Executable()
+		var script string
+		if runtime.GOOS == "windows" {
+			script = fmt.Sprintf(`"%s" update self & pause`, exePath)
+		} else {
+			script = fmt.Sprintf(`"%s" update self`, exePath)
+		}
+		terminal.LaunchShell(80, 20, "Karchy Update", script)
+	})})
 	items = append(items, MenuItem{Label: "Cleanup", Action: action(cleanup.Run)})
 	return items
 }

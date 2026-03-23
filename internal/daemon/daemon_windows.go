@@ -66,12 +66,12 @@ const (
 	wmCommand          = 0x0111
 	wmTrayIcon         = 0x8001 // WM_APP + 1
 	wmLaunchMenu       = 0x8003 // WM_APP + 3 — posted by hook to trigger launch on msg thread
+	wmMenuHostDied     = 0x8004 // WM_APP + 4 — posted by monitor goroutine when menu host exits
+	wmWindowPosChanging = 0x0046 // WM_WINDOWPOSCHANGING — tray icon recovery fallback
 	wsOverlappedWindow = 0x00CF0000
 
-	// WM_TIMER IDs for menu window polling (all on the message thread, no goroutines)
-	timerIDMenuPoll  = 1 // fires every 50ms until Alacritty window is detected
-	timerIDMenuFocus = 2 // fires once 300ms after window detected, to focus it
-	timerIDHookCheck = 3 // fires every 30s to verify the hook is still installed
+	// WM_TIMER IDs
+	timerIDHookCheck = 3 // fires every 30s to unconditionally reinstall the keyboard hook
 
 	// Low-level keyboard hook
 	whKeyboardLL = 13
@@ -119,16 +119,22 @@ const (
 	idiApplication = 32512
 )
 
-// Hotkey state
+// Daemon state
 var (
 	trayHwnd         uintptr
 	hookHandle       uintptr
 	targetMod        uint32 // VK code for modifier (e.g. vkLWin)
 	targetKey        uint32 // VK code for key (e.g. vkSpace)
-	menuPID          int    // PID of the Alacritty popup (0 = not running)
-	menuTimerAttempts int   // poll attempts for timerIDMenuPoll
 	selfUpdateVer    string // newer karchy version available (empty if up to date)
 	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
+
+	// Menu host subprocess state (all accessed only on the message thread).
+	menuHostCmd   *exec.Cmd // persistent menu host process
+	menuHostPID   int       // PID of the menu host (0 = not running)
+	menuShowEvent uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
+
+	// Debounce for WM_WINDOWPOSCHANGING tray icon re-add.
+	lastReaddTick uint32
 )
 
 // KBDLLHOOKSTRUCT
@@ -226,6 +232,7 @@ func stopDaemon() {
 var (
 	procGetConsoleWindow = kernel32.NewProc("GetConsoleWindow")
 	procShowWindow       = user32.NewProc("ShowWindow")
+	procGetTickCount     = kernel32.NewProc("GetTickCount")
 )
 
 // hideConsole hides the console window of the current process.
@@ -278,8 +285,11 @@ func run() {
 	// Install low-level keyboard hook
 	installHook()
 
-	// Periodic hook health check — reinstalls if the hook was silently dropped
+	// Periodic hook health check — unconditionally reinstalls every 30s.
 	procSetTimer.Call(trayHwnd, timerIDHookCheck, 30000, 0)
+
+	// Spawn the persistent menu host subprocess.
+	spawnMenuHost()
 
 	// Start periodic self-update checker
 	go func() {
@@ -307,6 +317,14 @@ func run() {
 	if hookHandle != 0 {
 		procUnhookWindowsHookEx.Call(hookHandle)
 		hookHandle = 0
+	}
+	// Shut down the menu host.
+	if menuHostCmd != nil && menuHostCmd.Process != nil {
+		menuHostCmd.Process.Kill()
+	}
+	if menuShowEvent != 0 {
+		procCloseHandle.Call(menuShowEvent)
+		menuShowEvent = 0
 	}
 	removeTrayIcon()
 }
@@ -337,8 +355,9 @@ func keyboardProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 		kb := (*kbdllHookStruct)(unsafe.Pointer(lParam))
 		if wParam == wmKeyDown || wParam == wmSysKeyDown {
 			if kb.VkCode == targetKey && isModDown(targetMod) {
-				// Post message to our window so launchMenu runs on the message thread
-				procPostMessageW.Call(trayHwnd, wmLaunchMenu, 0, 0)
+				logging.Info("keyboardProc: hotkey detected vk=0x%x mod=0x%x trayHwnd=%x", kb.VkCode, targetMod, trayHwnd)
+				r, _, e := procPostMessageW.Call(trayHwnd, wmLaunchMenu, 0, 0)
+				logging.Info("keyboardProc: PostMessageW ret=%d err=%v", r, e)
 				// Send a dummy key-up to prevent Start Menu from activating (PowerToys technique)
 				sendDummyKeyUp()
 				return 1 // swallow the key
@@ -511,10 +530,26 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		logging.Info("trayWndProc: TaskbarCreated, re-registering tray icon and hook")
 		readdTrayIcon()
 		reinstallHook()
+		// Restart the menu host — Explorer restart is a natural config refresh point.
+		if menuHostCmd != nil && menuHostCmd.Process != nil {
+			menuHostCmd.Process.Kill()
+			// The monitor goroutine posts wmMenuHostDied which triggers respawn.
+		}
 		return 0
 	}
 
 	switch umsg {
+	case wmWindowPosChanging:
+		// PowerToys fallback: re-add tray icon when Explorer re-initializes shell
+		// icon positions. Debounced to avoid hammering Shell_NotifyIconW.
+		tick, _, _ := procGetTickCount.Call()
+		if uint32(tick)-lastReaddTick > 1000 {
+			lastReaddTick = uint32(tick)
+			readdTrayIcon()
+		}
+		ret, _, _ := procDefWindowProcW.Call(hwnd, uintptr(umsg), wParam, lParam)
+		return ret
+
 	case wmPowerBroadcast:
 		if wParam == pbtApmResumeAutomatic || wParam == pbtApmResumeSuspend {
 			logging.Info("trayWndProc: power resume (wParam=0x%x), reinstalling hook", wParam)
@@ -530,66 +565,50 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmTimer:
-		switch wParam {
-		case timerIDMenuPoll:
-			if terminal.HasVisibleWindow(menuPID) {
-				procKillTimer.Call(trayHwnd, timerIDMenuPoll)
-				menuTimerAttempts = 0
-				procSetTimer.Call(trayHwnd, timerIDMenuFocus, 300, 0)
-			} else {
-				menuTimerAttempts++
-				if menuTimerAttempts >= 40 { // 2 s timeout
-					procKillTimer.Call(trayHwnd, timerIDMenuPoll)
-					menuTimerAttempts = 0
-					logging.Info("wmTimer: menu window not found after timeout pid=%d", menuPID)
-				}
-			}
-		case timerIDHookCheck:
-			if hookHandle == 0 {
-				logging.Info("wmTimer: hook missing, reinstalling")
-				reinstallHook()
-			}
-		case timerIDMenuFocus:
-			procKillTimer.Call(trayHwnd, timerIDMenuFocus)
-			hwnd := terminal.FindAndCenterByPID(menuPID)
-			if hwnd == 0 {
-				logging.Info("wmTimer: window gone before focus pid=%d", menuPID)
-				return 0
-			}
-			r1, _, e1 := procSetForegroundWindow.Call(hwnd)
-			logging.Info("wmTimer: SetForegroundWindow hwnd=%x ret=%d err=%v", hwnd, r1, e1)
-			terminal.FocusHwnd(hwnd)
-			logging.Info("wmTimer: FocusHwnd complete hwnd=%x pid=%d", hwnd, menuPID)
+		if wParam == timerIDHookCheck {
+			// Unconditionally reinstall: Windows silently drops low-level hooks
+			// when the installing thread doesn't pump messages fast enough.
+			// The hook handle stays non-zero even after silent removal.
+			logging.Info("wmTimer: periodic hook health check, reinstalling")
+			reinstallHook()
 		}
 		return 0
 
 	case wmLaunchMenu:
-		// Make the daemon the foreground process NOW, while we still hold
-		// foreground rights from the keyboard hook intercept. This keeps us
-		// foreground until the timer fires and we explicitly hand off to Alacritty.
+		// Grab foreground while we still hold rights from the hook intercept,
+		// then hand them to the menu host and signal it — no file I/O on this thread.
 		procSetForegroundWindow.Call(trayHwnd)
-		// Cancel any in-flight timers from a previous launch.
-		procKillTimer.Call(trayHwnd, timerIDMenuPoll)
-		procKillTimer.Call(trayHwnd, timerIDMenuFocus)
-		menuTimerAttempts = 0
-		// Kill existing popup so a fresh one takes focus cleanly.
-		if menuPID != 0 {
-			if p, err := os.FindProcess(menuPID); err == nil {
-				p.Kill()
-				logging.Info("wmLaunchMenu: killed existing pid=%d", menuPID)
-			}
-			menuPID = 0
+		if menuShowEvent != 0 && menuHostPID != 0 {
+			procAllowSetForegroundWindow.Call(uintptr(menuHostPID))
+			signalEvent(menuShowEvent)
+			logging.Info("wmLaunchMenu: signaled menu host pid=%d", menuHostPID)
+		} else {
+			logging.Info("wmLaunchMenu: menu host not ready, spawning")
+			spawnMenuHost()
 		}
-		launchMenu()
-		// Poll on the message thread via WM_TIMER — no goroutine.
-		procSetTimer.Call(trayHwnd, timerIDMenuPoll, 50, 0)
+		return 0
+
+	case wmMenuHostDied:
+		logging.Info("trayWndProc: menu host died, respawning")
+		if menuShowEvent != 0 {
+			procCloseHandle.Call(menuShowEvent)
+			menuShowEvent = 0
+		}
+		menuHostPID = 0
+		menuHostCmd = nil
+		spawnMenuHost()
 		return 0
 
 	case wmCommand:
 		id := uint16(wParam & 0xFFFF)
 		switch id {
 		case idmOpen:
-			go launchMenu()
+			if menuShowEvent != 0 && menuHostPID != 0 {
+				procAllowSetForegroundWindow.Call(uintptr(menuHostPID))
+				signalEvent(menuShowEvent)
+			} else {
+				spawnMenuHost()
+			}
 		case idmSelfUpdate:
 			go func() {
 				exePath, _ := os.Executable()
@@ -612,6 +631,52 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 
 	ret, _, _ := procDefWindowProcW.Call(hwnd, uintptr(umsg), wParam, lParam)
 	return ret
+}
+
+// spawnMenuHost starts the persistent menu host subprocess and waits for it to
+// create the named show event. All subsequent hotkey presses just call SetEvent.
+func spawnMenuHost() {
+	exePath, err := os.Executable()
+	if err != nil {
+		logging.Info("spawnMenuHost: executable: %v", err)
+		return
+	}
+
+	args := []string{}
+	if logging.Enabled() {
+		args = append(args, "--debug")
+	}
+	args = append(args, "menuhost")
+
+	cmd := exec.Command(exePath, args...)
+	hideProcess(cmd)
+	if err := cmd.Start(); err != nil {
+		logging.Info("spawnMenuHost: Start: %v", err)
+		return
+	}
+	menuHostCmd = cmd
+	menuHostPID = cmd.Process.Pid
+	logging.Info("spawnMenuHost: pid=%d", menuHostPID)
+
+	// Poll for the menu host to create its named event (up to 1s).
+	for i := 0; i < 20; i++ {
+		time.Sleep(50 * time.Millisecond)
+		if h := openAutoResetEvent(menuHostShowEventName); h != 0 {
+			menuShowEvent = h
+			logging.Info("spawnMenuHost: show event ready")
+			break
+		}
+	}
+	if menuShowEvent == 0 {
+		logging.Info("spawnMenuHost: show event not found after timeout")
+	}
+
+	// Monitor for exit and notify the message thread to respawn.
+	go func() {
+		cmd.Wait()
+		logging.Info("spawnMenuHost: menu host exited pid=%d", menuHostPID)
+		procPostMessageW.Call(trayHwnd, wmMenuHostDied, 0, 0)
+	}()
 }
 
 func showContextMenu(hwnd uintptr) {
@@ -692,26 +757,6 @@ func splitHotkey(s string) []string {
 	return parts
 }
 
-// ── Launch ─────────────────────────────────────────────────────────────────
-
-// launchMenu spawns the terminal process. Window polling and focus are handled
-// on the message thread via WM_TIMER (timerIDMenuPoll / timerIDMenuFocus).
-func launchMenu() {
-	args := []string{}
-	if logging.Enabled() {
-		args = append(args, "--debug")
-	}
-	args = append(args, "menu")
-	logging.Info("launchMenu: args=%v", args)
-
-	pid, err := terminal.Launch(40, 14, "Karchy", args...)
-	if err != nil {
-		logging.Info("launchMenu: launch failed: %v", err)
-		return
-	}
-	menuPID = pid
-	logging.Info("launchMenu: pid=%d", pid)
-}
 
 func checkSelfUpdate() {
 	if Version == "" || Version == "dev" {

@@ -67,6 +67,9 @@ func main() {
 		}
 	case "install-run":
 		runAndWait(extra)
+	case "menuhost":
+		daemon.Version = Version
+		daemon.RunMenuHost()
 	case "daemon":
 		if len(extra) == 0 {
 			fmt.Println("Usage: karchy daemon <start|stop|restart|status|run>")

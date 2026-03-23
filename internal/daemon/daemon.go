@@ -94,3 +94,9 @@ func Status() {
 func Run() {
 	run()
 }
+
+// RunMenuHost is the entry point for the persistent Windows menu host subprocess.
+// On non-Windows platforms this is a no-op.
+func RunMenuHost() {
+	runMenuHost()
+}
