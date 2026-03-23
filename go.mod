@@ -14,7 +14,7 @@ require (
 	github.com/sahilm/fuzzy v0.1.1
 	golang.org/x/sys v0.42.0
 	golang.org/x/text v0.35.0
-	modernc.org/sqlite v1.46.1
+	modernc.org/sqlite v1.47.0
 )
 
 require (
