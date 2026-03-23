@@ -71,6 +71,28 @@ type monitorInfo struct {
 	DwFlags   uint32
 }
 
+// capturedWorkArea holds the work area captured by the daemon at hotkey time.
+// The menuhost writes it via SetCapturedWorkArea immediately after waking.
+var (
+	capturedWorkArea    rect
+	capturedWorkAreaSet bool
+)
+
+// SetCapturedWorkArea stores the work area rect captured by the daemon at hotkey
+// time. Called by the menuhost process after reading from shared memory.
+func SetCapturedWorkArea(left, top, right, bottom int32) {
+	capturedWorkArea = rect{left, top, right, bottom}
+	capturedWorkAreaSet = true
+}
+
+// GetCurrentWorkAreaRect returns the work area of the configured target monitor,
+// sampled right now. Called by the daemon in wmLaunchMenu (before SetForegroundWindow
+// alters state) so the correct monitor is captured at hotkey time.
+func GetCurrentWorkAreaRect() (left, top, right, bottom int32) {
+	wa := workAreaForBehavior(activeBehavior)
+	return wa.Left, wa.Top, wa.Right, wa.Bottom
+}
+
 // workAreaForBehavior returns the work area (screen minus taskbar) of the
 // target monitor based on the configured MonitorBehavior.
 func workAreaForBehavior(b MonitorBehavior) rect {
@@ -116,6 +138,10 @@ func workAreaForBehavior(b MonitorBehavior) rect {
 // estimateWorkArea returns the work area of the configured target monitor
 // for use in initial position estimates before the window is rendered.
 func estimateWorkArea() (left, top, w, h int) {
+	if capturedWorkAreaSet {
+		wa := capturedWorkArea
+		return int(wa.Left), int(wa.Top), wa.Width(), wa.Height()
+	}
 	wa := workAreaForBehavior(activeBehavior)
 	return int(wa.Left), int(wa.Top), wa.Width(), wa.Height()
 }
@@ -228,7 +254,12 @@ func FindAndCenterByPID(pid int) uintptr {
 		return 0
 	}
 
-	wa := workAreaForBehavior(activeBehavior)
+	var wa rect
+	if capturedWorkAreaSet {
+		wa = capturedWorkArea
+	} else {
+		wa = workAreaForBehavior(activeBehavior)
+	}
 	x := int(wa.Left) + (wa.Width()-w)/2
 	y := int(wa.Top) + (wa.Height()-h)/2
 	if x < int(wa.Left) {
@@ -294,7 +325,12 @@ func FocusHwnd(hwnd uintptr) {
 	w := r.Width()
 	h := r.Height()
 	if w > 0 && h > 0 {
-		wa := workAreaForWindow(hwnd)
+		var wa rect
+		if capturedWorkAreaSet {
+			wa = capturedWorkArea
+		} else {
+			wa = workAreaForWindow(hwnd)
+		}
 		x := int(wa.Left) + (wa.Width()-w)/2
 		y := int(wa.Top) + (wa.Height()-h)/2
 		if x < int(wa.Left) {

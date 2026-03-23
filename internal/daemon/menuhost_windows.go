@@ -60,6 +60,12 @@ func runMenuHost() {
 			break
 		}
 		logging.Info("menuhost: show event received")
+		// Read the work area the daemon captured at hotkey time (before it called
+		// SetForegroundWindow). This ensures all centering uses the correct monitor.
+		if wl, wt, wr, wb, ok := readWorkAreaFromShm(); ok {
+			terminal.SetCapturedWorkArea(wl, wt, wr, wb)
+			logging.Info("menuhost: work area (%d,%d,%d,%d)", wl, wt, wr, wb)
+		}
 		menuHostShow(&mu, &termPID)
 	}
 }

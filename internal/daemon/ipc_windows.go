@@ -10,13 +10,18 @@ import (
 const (
 	menuHostShowEventName = `Local\KarchyShowMenu`
 	menuHostMutexName     = `Local\KarchyMenuHost`
+	workAreaShmName       = `Local\KarchyWorkArea`
 
 	waitObject0  = 0x00000000
 	waitInfinite = 0xFFFFFFFF
 
-	eventModifyState = 0x0002
-	synchronize      = 0x00100000
+	eventModifyState   = 0x0002
+	synchronize        = 0x00100000
 	processSynchronize = 0x00100000
+
+	pageReadWrite = 0x04
+	fileMapWrite  = 0x0002
+	fileMapRead   = 0x0004
 )
 
 var (
@@ -25,6 +30,11 @@ var (
 	procSetEvent            = kernel32.NewProc("SetEvent")
 	procWaitForSingleObject = kernel32.NewProc("WaitForSingleObject")
 	procOpenProcess         = kernel32.NewProc("OpenProcess")
+
+	procCreateFileMappingW = kernel32.NewProc("CreateFileMappingW")
+	procOpenFileMappingW   = kernel32.NewProc("OpenFileMappingW")
+	procMapViewOfFile      = kernel32.NewProc("MapViewOfFile")
+	procUnmapViewOfFile    = kernel32.NewProc("UnmapViewOfFile")
 )
 
 // createAutoResetEvent creates a named auto-reset event (not signaled).
@@ -53,6 +63,48 @@ func signalEvent(h uintptr) {
 func waitEvent(h uintptr, timeoutMs uint32) uint32 {
 	r, _, _ := procWaitForSingleObject.Call(h, uintptr(timeoutMs))
 	return uint32(r)
+}
+
+// createWorkAreaShm creates a 16-byte named shared-memory block.
+// The returned handle must be kept open by the daemon for the lifetime of the process.
+func createWorkAreaShm() uintptr {
+	namePtr, _ := syscall.UTF16PtrFromString(workAreaShmName)
+	h, _, _ := procCreateFileMappingW.Call(
+		^uintptr(0), 0, pageReadWrite, 0, 16,
+		uintptr(unsafe.Pointer(namePtr)),
+	)
+	return h
+}
+
+// writeWorkAreaToShm writes Left/Top/Right/Bottom (int32) into the shared-memory block.
+func writeWorkAreaToShm(h uintptr, left, top, right, bottom int32) {
+	if h == 0 {
+		return
+	}
+	addr, _, _ := procMapViewOfFile.Call(h, fileMapWrite, 0, 0, 16)
+	if addr == 0 {
+		return
+	}
+	defer procUnmapViewOfFile.Call(addr)
+	*(*[4]int32)(unsafe.Pointer(addr)) = [4]int32{left, top, right, bottom}
+}
+
+// readWorkAreaFromShm reads the work area written by the daemon.
+// Returns ok=false if the mapping does not exist yet.
+func readWorkAreaFromShm() (left, top, right, bottom int32, ok bool) {
+	namePtr, _ := syscall.UTF16PtrFromString(workAreaShmName)
+	h, _, _ := procOpenFileMappingW.Call(fileMapRead, 0, uintptr(unsafe.Pointer(namePtr)))
+	if h == 0 {
+		return 0, 0, 0, 0, false
+	}
+	defer procCloseHandle.Call(h)
+	addr, _, _ := procMapViewOfFile.Call(h, fileMapRead, 0, 0, 16)
+	if addr == 0 {
+		return 0, 0, 0, 0, false
+	}
+	defer procUnmapViewOfFile.Call(addr)
+	d := *(*[4]int32)(unsafe.Pointer(addr))
+	return d[0], d[1], d[2], d[3], true
 }
 
 // waitForProcessExit blocks until the process with the given PID exits.

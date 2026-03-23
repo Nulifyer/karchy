@@ -129,9 +129,10 @@ var (
 	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
 
 	// Menu host subprocess state (all accessed only on the message thread).
-	menuHostCmd   *exec.Cmd // persistent menu host process
-	menuHostPID   int       // PID of the menu host (0 = not running)
-	menuShowEvent uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
+	menuHostCmd      *exec.Cmd // persistent menu host process
+	menuHostPID      int       // PID of the menu host (0 = not running)
+	menuShowEvent    uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
+	workAreaShmHandle uintptr  // handle to Local\KarchyWorkArea shared memory
 
 	// Debounce for WM_WINDOWPOSCHANGING tray icon re-add.
 	lastReaddTick uint32
@@ -274,6 +275,9 @@ func run() {
 	parseHotkey(cfg.Hotkey.Toggle)
 	terminal.SetMonitorBehavior(terminal.ParseMonitorBehavior(cfg.Window.SummonOn))
 
+	// Create work area shared memory (written on each hotkey, read by menuhost).
+	workAreaShmHandle = createWorkAreaShm()
+
 	// Register "TaskbarCreated" so we can re-add the tray icon if Explorer restarts
 	tcStr, _ := syscall.UTF16PtrFromString("TaskbarCreated")
 	r, _, _ := procRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(tcStr)))
@@ -325,6 +329,10 @@ func run() {
 	if menuShowEvent != 0 {
 		procCloseHandle.Call(menuShowEvent)
 		menuShowEvent = 0
+	}
+	if workAreaShmHandle != 0 {
+		procCloseHandle.Call(workAreaShmHandle)
+		workAreaShmHandle = 0
 	}
 	removeTrayIcon()
 }
@@ -575,6 +583,12 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmLaunchMenu:
+		// Capture monitor context before SetForegroundWindow alters foreground state.
+		// This is the only moment GetForegroundWindow/GetCursorPos reflect the user's
+		// actual context (critical for MonitorActiveWindow and MonitorMouse modes).
+		l, t, r, b := terminal.GetCurrentWorkAreaRect()
+		writeWorkAreaToShm(workAreaShmHandle, l, t, r, b)
+		logging.Info("wmLaunchMenu: work area (%d,%d,%d,%d)", l, t, r, b)
 		// Grab foreground while we still hold rights from the hook intercept,
 		// then hand them to the menu host and signal it — no file I/O on this thread.
 		procSetForegroundWindow.Call(trayHwnd)
