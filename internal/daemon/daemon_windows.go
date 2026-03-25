@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -52,8 +53,6 @@ var (
 	procAllowSetForegroundWindow = user32.NewProc("AllowSetForegroundWindow")
 	procGetCursorPos             = user32.NewProc("GetCursorPos")
 	procRegisterWindowMessageW   = user32.NewProc("RegisterWindowMessageW")
-	procSetTimer                 = user32.NewProc("SetTimer")
-	procKillTimer                = user32.NewProc("KillTimer")
 	procShellNotifyIconW         = shell32.NewProc("Shell_NotifyIconW")
 )
 
@@ -62,16 +61,12 @@ const (
 	errorAlreadyExists = 183
 
 	wmDestroy          = 0x0002
-	wmTimer            = 0x0113
 	wmCommand          = 0x0111
 	wmTrayIcon         = 0x8001 // WM_APP + 1
 	wmLaunchMenu       = 0x8003 // WM_APP + 3 — posted by hook to trigger launch on msg thread
 	wmMenuHostDied     = 0x8004 // WM_APP + 4 — posted by monitor goroutine when menu host exits
 	wmWindowPosChanging = 0x0046 // WM_WINDOWPOSCHANGING — tray icon recovery fallback
 	wsOverlappedWindow = 0x00CF0000
-
-	// WM_TIMER IDs
-	timerIDHookCheck = 3 // fires every 30s to unconditionally reinstall the keyboard hook
 
 	// Low-level keyboard hook
 	whKeyboardLL = 13
@@ -123,6 +118,7 @@ const (
 var (
 	trayHwnd         uintptr
 	hookHandle       uintptr
+	hookCallback     uintptr // cached syscall.NewCallback — must be created once
 	targetMod        uint32 // VK code for modifier (e.g. vkLWin)
 	targetKey        uint32 // VK code for key (e.g. vkSpace)
 	selfUpdateVer    string // newer karchy version available (empty if up to date)
@@ -252,6 +248,10 @@ func hideProcess(cmd *exec.Cmd) {
 }
 
 func run() {
+	// The message loop, tray window, and keyboard hook are all thread-affine.
+	// Pin this goroutine to a single OS thread for the lifetime of the daemon.
+	runtime.LockOSThread()
+
 	// Single-instance mutex
 	name, _ := syscall.UTF16PtrFromString(mutexName)
 	h, _, _ := procCreateMutex.Call(0, 1, uintptr(unsafe.Pointer(name)))
@@ -288,9 +288,6 @@ func run() {
 
 	// Install low-level keyboard hook
 	installHook()
-
-	// Periodic hook health check — unconditionally reinstalls every 30s.
-	procSetTimer.Call(trayHwnd, timerIDHookCheck, 30000, 0)
 
 	// Spawn the persistent menu host subprocess.
 	spawnMenuHost()
@@ -339,7 +336,10 @@ func run() {
 
 // installHook installs the low-level keyboard hook.
 func installHook() {
-	hookHandle, _, _ = procSetWindowsHookExW.Call(whKeyboardLL, syscall.NewCallback(keyboardProc), 0, 0)
+	if hookCallback == 0 {
+		hookCallback = syscall.NewCallback(keyboardProc)
+	}
+	hookHandle, _, _ = procSetWindowsHookExW.Call(whKeyboardLL, hookCallback, 0, 0)
 	if hookHandle == 0 {
 		logging.Info("installHook: SetWindowsHookEx failed")
 	} else {
@@ -569,16 +569,6 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		event := uint32(lParam & 0xFFFF)
 		if event == 0x0205 || event == 0x0202 { // WM_RBUTTONUP, WM_LBUTTONUP
 			showContextMenu(hwnd)
-		}
-		return 0
-
-	case wmTimer:
-		if wParam == timerIDHookCheck {
-			// Unconditionally reinstall: Windows silently drops low-level hooks
-			// when the installing thread doesn't pump messages fast enough.
-			// The hook handle stays non-zero even after silent removal.
-			logging.Info("wmTimer: periodic hook health check, reinstalling")
-			reinstallHook()
 		}
 		return 0
 
