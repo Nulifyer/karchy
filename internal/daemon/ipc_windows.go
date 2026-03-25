@@ -107,6 +107,17 @@ func readWorkAreaFromShm() (left, top, right, bottom int32, ok bool) {
 	return d[0], d[1], d[2], d[3], true
 }
 
+// isProcessAlive returns true if the process with the given PID is still running.
+func isProcessAlive(pid int) bool {
+	h, _, _ := procOpenProcess.Call(processSynchronize, 0, uintptr(pid))
+	if h == 0 {
+		return false
+	}
+	defer procCloseHandle.Call(h)
+	r, _, _ := procWaitForSingleObject.Call(h, 0) // 0 = no wait
+	return r != waitObject0                        // waitObject0 means exited
+}
+
 // waitForProcessExit blocks until the process with the given PID exits.
 func waitForProcessExit(pid int) {
 	h, _, _ := procOpenProcess.Call(processSynchronize, 0, uintptr(pid))

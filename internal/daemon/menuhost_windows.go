@@ -86,7 +86,13 @@ func menuHostShow(mu *sync.Mutex, termPID *int) {
 			logging.Info("menuhost: focused existing hwnd=%x pid=%d", hwnd, pid)
 			return
 		}
-		logging.Info("menuhost: no visible window for pid=%d, respawning", pid)
+		// No visible window, but the process may still be starting up.
+		// Only respawn if the process has actually exited to avoid duplicates.
+		if isProcessAlive(pid) {
+			logging.Info("menuhost: no window yet for pid=%d, still alive, skipping spawn", pid)
+			return
+		}
+		logging.Info("menuhost: no visible window for pid=%d, process exited, respawning", pid)
 	}
 
 	// Spawn a fresh terminal running karchy menu.

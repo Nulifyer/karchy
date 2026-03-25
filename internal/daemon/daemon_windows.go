@@ -573,15 +573,16 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmLaunchMenu:
-		// Capture monitor context before SetForegroundWindow alters foreground state.
-		// This is the only moment GetForegroundWindow/GetCursorPos reflect the user's
+		// Capture monitor context while we still hold foreground rights from the
+		// hook intercept — GetForegroundWindow/GetCursorPos reflect the user's
 		// actual context (critical for MonitorActiveWindow and MonitorMouse modes).
 		l, t, r, b := terminal.GetCurrentWorkAreaRect()
 		writeWorkAreaToShm(workAreaShmHandle, l, t, r, b)
 		logging.Info("wmLaunchMenu: work area (%d,%d,%d,%d)", l, t, r, b)
-		// Grab foreground while we still hold rights from the hook intercept,
-		// then hand them to the menu host and signal it — no file I/O on this thread.
-		procSetForegroundWindow.Call(trayHwnd)
+		// Grant foreground activation rights to the menu host. The daemon holds
+		// these rights from intercepting keyboard input in the low-level hook.
+		// Do NOT call SetForegroundWindow(trayHwnd) — the tray window is hidden,
+		// so that call can fail and waste the one-shot foreground right.
 		if menuShowEvent != 0 && menuHostPID != 0 {
 			procAllowSetForegroundWindow.Call(uintptr(menuHostPID))
 			signalEvent(menuShowEvent)
