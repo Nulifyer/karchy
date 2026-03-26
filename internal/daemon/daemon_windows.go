@@ -54,6 +54,10 @@ var (
 	procGetCursorPos             = user32.NewProc("GetCursorPos")
 	procRegisterWindowMessageW   = user32.NewProc("RegisterWindowMessageW")
 	procShellNotifyIconW         = shell32.NewProc("Shell_NotifyIconW")
+
+	procCreateJobObjectW              = kernel32.NewProc("CreateJobObjectW")
+	procSetInformationJobObject       = kernel32.NewProc("SetInformationJobObject")
+	procAssignProcessToJobObject      = kernel32.NewProc("AssignProcessToJobObject")
 )
 
 const (
@@ -128,6 +132,7 @@ var (
 	menuHostCmd      *exec.Cmd // persistent menu host process
 	menuHostPID      int       // PID of the menu host (0 = not running)
 	menuShowEvent    uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
+	jobObject        uintptr   // job object — kills menuhost when daemon exits
 	workAreaShmHandle uintptr  // handle to Local\KarchyWorkArea shared memory
 
 	// Debounce for WM_WINDOWPOSCHANGING tray icon re-add.
@@ -247,6 +252,73 @@ func hideProcess(cmd *exec.Cmd) {
 	}
 }
 
+// createKillOnCloseJob creates a Windows job object configured to terminate all
+// assigned processes when the last handle is closed (i.e. when the daemon exits,
+// even if hard-killed). This ensures the menuhost doesn't get orphaned.
+func createKillOnCloseJob() uintptr {
+	job, _, _ := procCreateJobObjectW.Call(0, 0)
+	if job == 0 {
+		logging.Info("createKillOnCloseJob: CreateJobObjectW failed")
+		return 0
+	}
+	// JOBOBJECT_EXTENDED_LIMIT_INFORMATION with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+	type jobObjectBasicLimitInfo struct {
+		PerProcessUserTimeLimit int64
+		PerJobUserTimeLimit     int64
+		LimitFlags              uint32
+		MinimumWorkingSetSize   uintptr
+		MaximumWorkingSetSize   uintptr
+		ActiveProcessLimit      uint32
+		Affinity                uintptr
+		PriorityClass           uint32
+		SchedulingClass         uint32
+	}
+	type ioCounters struct {
+		ReadOperationCount  uint64
+		WriteOperationCount uint64
+		OtherOperationCount uint64
+		ReadTransferCount   uint64
+		WriteTransferCount  uint64
+		OtherTransferCount  uint64
+	}
+	type jobObjectExtendedLimitInfo struct {
+		BasicLimitInformation jobObjectBasicLimitInfo
+		IoInfo                ioCounters
+		ProcessMemoryLimit    uintptr
+		JobMemoryLimit        uintptr
+		PeakProcessMemoryUsed uintptr
+		PeakJobMemoryUsed     uintptr
+	}
+	const jobObjectExtendedLimitInformation = 9
+	const jobObjectLimitKillOnJobClose = 0x00002000
+	info := jobObjectExtendedLimitInfo{}
+	info.BasicLimitInformation.LimitFlags = jobObjectLimitKillOnJobClose
+	ret, _, _ := procSetInformationJobObject.Call(
+		job,
+		jobObjectExtendedLimitInformation,
+		uintptr(unsafe.Pointer(&info)),
+		unsafe.Sizeof(info),
+	)
+	if ret == 0 {
+		logging.Info("createKillOnCloseJob: SetInformationJobObject failed")
+		procCloseHandle.Call(job)
+		return 0
+	}
+	return job
+}
+
+// assignToJobObject assigns a process to the daemon's job object so it is
+// automatically killed when the daemon exits.
+func assignToJobObject(process syscall.Handle) {
+	if jobObject == 0 {
+		return
+	}
+	ret, _, _ := procAssignProcessToJobObject.Call(jobObject, uintptr(process))
+	if ret == 0 {
+		logging.Info("assignToJobObject: failed")
+	}
+}
+
 func run() {
 	// The message loop, tray window, and keyboard hook are all thread-affine.
 	// Pin this goroutine to a single OS thread for the lifetime of the daemon.
@@ -269,6 +341,10 @@ func run() {
 
 	writePIDFile()
 	defer removePIDFile()
+
+	// Create a job object so child processes (menuhost) are automatically killed
+	// when the daemon exits — even if hard-killed via TerminateProcess.
+	jobObject = createKillOnCloseJob()
 
 	// Parse config
 	cfg := config.Load()
@@ -662,6 +738,15 @@ func spawnMenuHost() {
 	menuHostCmd = cmd
 	menuHostPID = cmd.Process.Pid
 	logging.Info("spawnMenuHost: pid=%d", menuHostPID)
+
+	// Assign to job object so it's killed when the daemon exits.
+	// Assign to job object so it's killed when the daemon exits.
+	// PROCESS_SET_QUOTA | PROCESS_TERMINATE are the minimum rights for AssignProcessToJobObject.
+	const processAssignRights = 0x0100 | 0x0001
+	if handle, err := syscall.OpenProcess(processAssignRights, false, uint32(menuHostPID)); err == nil {
+		assignToJobObject(handle)
+		syscall.CloseHandle(handle)
+	}
 
 	// Poll for the menu host to create its named event (up to 1s).
 	for i := 0; i < 20; i++ {
