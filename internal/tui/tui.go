@@ -12,7 +12,6 @@ import (
 	"github.com/nulifyer/karchy/internal/filterlist"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/terminal"
-	"github.com/nulifyer/karchy/internal/theme"
 )
 
 // Version is set by main before Run() is called.
@@ -56,7 +55,6 @@ type menuState struct {
 
 func initialModel() model {
 	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
 	terminal.SetMonitorBehavior(terminal.ParseMonitorBehavior(cfg.Window.SummonOn))
 	items, title := getMenu(menuMain)
 
@@ -67,7 +65,7 @@ func initialModel() model {
 	m := model{
 		menu:      menuMain,
 		title:     title,
-		styles:    newStyles(pal),
+		styles:    newStyles(),
 		menuItems: items,
 	}
 	m.syncFilterItems()
@@ -145,23 +143,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case " ":
-			if m.multiSelect && m.list.Cursor < len(m.list.Filtered) {
-				idx := m.list.Filtered[m.list.Cursor].Index
-				if m.picked == nil {
-					m.picked = make(map[int]bool)
-				}
-				if m.picked[idx] {
-					delete(m.picked, idx)
-				} else {
-					m.picked[idx] = true
-				}
-				if m.list.Cursor < len(m.list.Filtered)-1 {
-					m.list.Cursor++
-					m.list.EnsureCursorVisible(m.height, viewOverhead)
-				}
-				return m, nil
-			}
-			// Not multi-select: treat as search character
 			m.list.Query += " "
 			m.list.Cursor = 0
 			m.list.Offset = 0

@@ -208,9 +208,8 @@ func openInTerminal(editor, path string) {
 	cfg := config.Load()
 	b := terminal.GetBackend(cfg.Terminal.App)
 
-	// Use an empty config (no temp file) — just launch the editor directly
 	childArgs := []string{editor, path}
-	cmdArgs := b.LaunchArgs("", "", childArgs)
+	cmdArgs := b.LaunchArgs(terminal.LaunchOpts{}, childArgs)
 
 	cmd := exec.Command(b.Binary(), cmdArgs...)
 	cmd.Dir = path

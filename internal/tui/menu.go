@@ -19,7 +19,6 @@ import (
 	"github.com/nulifyer/karchy/internal/actions/wsl"
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/terminal"
-	"github.com/nulifyer/karchy/internal/theme"
 )
 
 // MenuItem represents a single menu entry.
@@ -129,6 +128,7 @@ const (
 	menuAUR
 	menuPowerProfile
 	menuHardwareRestart
+	menuTerminal
 )
 
 func submenu(s submenuKind) func() menuResult {
@@ -174,7 +174,7 @@ func setupMenu() []MenuItem {
 	}
 	items = append(items,
 		MenuItem{Label: "Font", Action: submenu(menuSetupFont)},
-		MenuItem{Label: "Theme", Action: submenu(menuTheme)},
+		MenuItem{Label: "Terminal", Action: submenu(menuTerminal)},
 	)
 	if runtime.GOOS == "windows" {
 		items = append(items, MenuItem{Label: "Chris Titus WinUtil", Action: action(setup.WinUtil)})
@@ -493,46 +493,46 @@ func loadRemoveFontItems() []TypedItem[fonts.Font] {
 	return items
 }
 
-func themeMenu() []MenuItem {
-	current := config.Load().Theme.Name
-	names := theme.Names()
+func terminalMenu() []MenuItem {
+	current := config.Load().Terminal.App
+	names := terminal.BackendNames()
 	sort.Strings(names)
 
-	items := make([]MenuItem, len(names))
-	for i, name := range names {
-		label := name
-		if name == current {
-			label += " (current)"
-		}
-		n := name // capture for closure
-		items[i] = MenuItem{
-			Label: label,
-			Action: action(func() {
-				setup.SelectTheme(n)
-			}),
-		}
+	items := []MenuItem{
+		{
+			Label:   "auto" + autoCurrentLabel(current, ""),
+			Action:  action(func() { config.SaveTerminal("") }),
+		},
+	}
+	for _, name := range names {
+		n := name
+		label := n + autoCurrentLabel(current, n)
+		items = append(items, MenuItem{
+			Label:  label,
+			Action: action(func() { config.SaveTerminal(n) }),
+		})
 	}
 	return items
 }
 
-var setupFontMenu = TypedMenu[fonts.Font]{
-	OnSelect: func(f fonts.Font) { config.SaveFont(f.Family()) },
+func autoCurrentLabel(current, name string) string {
+	if current == name {
+		return " (current)"
+	}
+	return ""
 }
+
+var setupFontMenu = TypedMenu[fonts.Font]{}
 
 func loadSetupFontItems() []TypedItem[fonts.Font] {
 	installed := fonts.Installed()
-	current := config.Load().Appearance.FontFamily
 	var items []TypedItem[fonts.Font]
 	for _, f := range fonts.All() {
 		if !installed[f.Name] {
 			continue
 		}
-		label := f.Name
-		if f.Family() == current {
-			label += " (current)"
-		}
 		items = append(items, TypedItem[fonts.Font]{
-			Label: label,
+			Label: f.Name,
 			Data:  f,
 		})
 	}
@@ -611,8 +611,6 @@ func getMenu(s submenuKind) ([]MenuItem, string) {
 		return updateMenu(), "Update"
 	case menuSystem:
 		return systemMenu(), "System"
-	case menuTheme:
-		return themeMenu(), "Theme"
 	case menuFonts:
 		return nil, "Fonts"
 	case menuRemoveFonts:
@@ -629,6 +627,8 @@ func getMenu(s submenuKind) ([]MenuItem, string) {
 		return nil, "Remove Distro"
 	case menuAUR:
 		return nil, "AUR Packages"
+	case menuTerminal:
+		return terminalMenu(), "Terminal"
 	case menuPowerProfile:
 		return powerProfileMenu(), "Power Profile"
 	case menuHardwareRestart:

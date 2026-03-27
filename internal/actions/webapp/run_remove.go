@@ -7,9 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/filterlist"
-	"github.com/nulifyer/karchy/internal/theme"
 )
 
 // viewOverhead for remove model: border(2) + search line + blank
@@ -70,8 +68,7 @@ type rmPalette struct {
 }
 
 func newRemoveModel(apps []WebApp) removeModel {
-	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
+	accent := lipgloss.Color("4")
 
 	items := make([]filterlist.Item, len(apps))
 	for i, a := range apps {
@@ -83,14 +80,14 @@ func newRemoveModel(apps []WebApp) removeModel {
 		picked: make(map[int]bool),
 		list:   filterlist.List{Items: items},
 		pal: rmPalette{
-			accent: lipgloss.Color(pal.Accent),
-			fg:     lipgloss.Color(pal.FG),
-			dim:    lipgloss.Color(pal.Colors[8]),
-			yellow: lipgloss.Color(pal.Colors[3]),
+			accent: accent,
+			fg:     lipgloss.Color("7"),
+			dim:    lipgloss.Color("8"),
+			yellow: lipgloss.Color("3"),
 		},
 		border: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(pal.Accent)).
+			BorderForeground(accent).
 			Padding(0, 1),
 	}
 	m.list.ApplyFilter()
@@ -120,7 +117,7 @@ func (m removeModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.quitting = true
 			return m, tea.Quit
 
-		case " ", "tab":
+		case "tab":
 			if m.list.Cursor < len(m.list.Filtered) {
 				idx := m.list.Filtered[m.list.Cursor].Index
 				if m.picked[idx] {

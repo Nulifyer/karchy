@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
-	Hotkey     HotkeyConfig     `toml:"hotkey"`
-	Appearance AppearanceConfig `toml:"appearance"`
-	Theme      ThemeConfig      `toml:"theme"`
-	Terminal   TerminalConfig   `toml:"terminal"`
-	Projects   ProjectsConfig   `toml:"projects"`
-	Window     WindowConfig     `toml:"window"`
+	Hotkey   HotkeyConfig   `toml:"hotkey"`
+	Terminal TerminalConfig `toml:"terminal"`
+	Projects ProjectsConfig `toml:"projects"`
+	Window   WindowConfig   `toml:"window"`
 }
 
 // WindowConfig controls window placement behavior.
@@ -28,31 +27,28 @@ type HotkeyConfig struct {
 	Toggle string `toml:"toggle"`
 }
 
-type AppearanceConfig struct {
-	FontFamily string  `toml:"font_family"`
-	FontSize   float64 `toml:"font_size"`
-}
-
-type ThemeConfig struct {
-	Name string `toml:"name"`
-}
-
 type TerminalConfig struct {
-	App string `toml:"app"`
+	App     string `toml:"app"`
+	Profile string `toml:"profile"` // WT profile name (e.g. "PowerShell", "Ubuntu")
 }
 
 type ProjectsConfig struct {
 	Editor string `toml:"editor"`
 }
 
+func defaultTerminalApp() string {
+	if runtime.GOOS == "windows" {
+		return "wt"
+	}
+	return ""
+}
+
 func Default() Config {
 	return Config{
-		Hotkey:     HotkeyConfig{Toggle: "Super+Space"},
-		Appearance: AppearanceConfig{FontFamily: "CaskaydiaMono NF", FontSize: 13},
-		Theme:      ThemeConfig{Name: "catppuccin-mocha"},
-		Terminal:   TerminalConfig{App: "alacritty"},
-		Projects:   ProjectsConfig{Editor: "code"},
-		Window:     WindowConfig{SummonOn: "mouse"},
+		Hotkey:   HotkeyConfig{Toggle: "Super+Space"},
+		Terminal: TerminalConfig{App: defaultTerminalApp()},
+		Projects: ProjectsConfig{Editor: "code"},
+		Window:   WindowConfig{SummonOn: "mouse"},
 	}
 }
 
@@ -68,17 +64,8 @@ func Load() Config {
 	if cfg.Hotkey.Toggle == "" {
 		cfg.Hotkey.Toggle = "Super+Space"
 	}
-	if cfg.Theme.Name == "" {
-		cfg.Theme.Name = "catppuccin-mocha"
-	}
 	if cfg.Terminal.App == "" {
-		cfg.Terminal.App = "alacritty"
-	}
-	if cfg.Appearance.FontFamily == "" {
-		cfg.Appearance.FontFamily = "CaskaydiaMono NF"
-	}
-	if cfg.Appearance.FontSize == 0 {
-		cfg.Appearance.FontSize = 13
+		cfg.Terminal.App = defaultTerminalApp()
 	}
 	if cfg.Projects.Editor == "" {
 		cfg.Projects.Editor = "code"
@@ -89,17 +76,10 @@ func Load() Config {
 	return cfg
 }
 
-// SaveTheme updates the theme name in the config file.
-func SaveTheme(name string) error {
+// SaveTerminal updates the terminal app in the config file.
+func SaveTerminal(app string) error {
 	cfg := Load()
-	cfg.Theme.Name = name
-	return Save(cfg)
-}
-
-// SaveFont updates the font family in the config file.
-func SaveFont(family string) error {
-	cfg := Load()
-	cfg.Appearance.FontFamily = family
+	cfg.Terminal.App = app
 	return Save(cfg)
 }
 

@@ -1,9 +1,6 @@
 package tui
 
-import (
-	"github.com/charmbracelet/lipgloss"
-	"github.com/nulifyer/karchy/internal/theme"
-)
+import "github.com/charmbracelet/lipgloss"
 
 type styles struct {
 	title         lipgloss.Style
@@ -19,12 +16,12 @@ type styles struct {
 	menuUpdatable lipgloss.Style
 }
 
-func newStyles(pal theme.Palette) styles {
-	accent := lipgloss.Color(pal.Accent)
-	fg := lipgloss.Color(pal.FG)
-	dim := lipgloss.Color(pal.Colors[8])
-	green := lipgloss.Color(pal.Colors[2])
-	yellow := lipgloss.Color(pal.Colors[3])
+func newStyles() styles {
+	accent := lipgloss.Color("4") // terminal blue
+	fg := lipgloss.Color("7")     // terminal white
+	dim := lipgloss.Color("8")    // terminal bright black
+	green := lipgloss.Color("2")  // terminal green
+	yellow := lipgloss.Color("3") // terminal yellow
 
 	return styles{
 		title: lipgloss.NewStyle().

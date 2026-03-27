@@ -1,27 +1,27 @@
 package terminal
 
-import (
-	"github.com/nulifyer/karchy/internal/config"
-	"github.com/nulifyer/karchy/internal/theme"
-)
+import "os/exec"
+
+// LaunchOpts holds the parameters backends translate into CLI flags.
+type LaunchOpts struct {
+	Cols, Lines int
+	PosX, PosY  int
+	Title       string
+	Borderless  bool
+	Profile     string // terminal profile name (used by WT)
+}
 
 // Backend abstracts a terminal emulator for launching karchy windows.
 type Backend interface {
 	// Name returns the backend identifier (e.g. "alacritty", "kitty").
 	Name() string
 
-	// WriteConfig generates a temporary config file for this terminal
-	// and returns its path. If the palette is inherit, color sections
-	// should be omitted so the terminal's own theme is used.
-	WriteConfig(cols, lines, padX, padY int, pal theme.Palette, app config.AppearanceConfig) string
-
-	// LaunchArgs returns the CLI args to launch the terminal with the
-	// given config file, optional title, and child command + args.
-	// The caller handles process spawning.
-	LaunchArgs(configFile, title string, childArgs []string) []string
-
 	// Binary returns the executable name for this terminal.
 	Binary() string
+
+	// LaunchArgs returns the CLI args to launch the terminal with the
+	// given options and child command + args.
+	LaunchArgs(opts LaunchOpts, childArgs []string) []string
 }
 
 // backendRegistry maps terminal app names to backends.
@@ -32,10 +32,35 @@ func RegisterBackend(b Backend) {
 	backendRegistry[b.Name()] = b
 }
 
-// GetBackend returns the backend for the configured terminal, falling back to alacritty.
+// detectOrder is the priority list for auto-detecting a terminal on Linux/macOS.
+var detectOrder = []string{"ghostty", "alacritty", "kitty", "foot", "wezterm", "konsole", "gnome-terminal"}
+
+// BackendNames returns the names of all registered backends.
+func BackendNames() []string {
+	names := make([]string, 0, len(backendRegistry))
+	for n := range backendRegistry {
+		names = append(names, n)
+	}
+	return names
+}
+
+// GetBackend returns the backend for the given name.
+// If the name is empty or not found, it tries to detect an available terminal.
 func GetBackend(name string) Backend {
 	if b, ok := backendRegistry[name]; ok {
 		return b
 	}
-	return backendRegistry["alacritty"]
+	// Auto-detect: walk priority list and return the first whose binary is in PATH.
+	for _, n := range detectOrder {
+		if b, ok := backendRegistry[n]; ok {
+			if _, err := exec.LookPath(b.Binary()); err == nil {
+				return b
+			}
+		}
+	}
+	// Last resort fallback to whatever is registered first.
+	for _, b := range backendRegistry {
+		return b
+	}
+	return nil
 }

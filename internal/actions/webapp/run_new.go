@@ -8,9 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/filterlist"
-	"github.com/nulifyer/karchy/internal/theme"
 )
 
 // RunNew launches a bubbletea form for creating a new web app.
@@ -126,10 +124,7 @@ type newModel struct {
 }
 
 func newNewModel() newModel {
-	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
-
-	accent := lipgloss.Color(pal.Accent)
+	accent := lipgloss.Color("4")
 
 	nameIn := textinput.New()
 	nameIn.Placeholder = "My App"
@@ -154,9 +149,9 @@ func newNewModel() newModel {
 		iconURLInput: iconURLIn,
 		pal: rmPalette{
 			accent: accent,
-			fg:     lipgloss.Color(pal.FG),
-			dim:    lipgloss.Color(pal.Colors[8]),
-			yellow: lipgloss.Color(pal.Colors[3]),
+			fg:     lipgloss.Color("7"),
+			dim:    lipgloss.Color("8"),
+			yellow: lipgloss.Color("3"),
 		},
 		border: lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).

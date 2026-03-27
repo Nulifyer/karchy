@@ -49,8 +49,9 @@ func runMenuHost() {
 	logging.Info("menuhost: ready, pid=%d", currentPID())
 
 	var (
-		mu      sync.Mutex
-		termPID int
+		mu       sync.Mutex
+		termPID  int
+		termHwnd uintptr
 	)
 
 	for {
@@ -66,24 +67,37 @@ func runMenuHost() {
 			terminal.SetCapturedWorkArea(wl, wt, wr, wb)
 			logging.Info("menuhost: work area (%d,%d,%d,%d)", wl, wt, wr, wb)
 		}
-		menuHostShow(&mu, &termPID)
+		menuHostShow(&mu, &termPID, &termHwnd)
 	}
 }
 
 // menuHostShow either brings the existing terminal window to the foreground or
 // spawns a fresh one. Called each time the daemon signals the show event.
-func menuHostShow(mu *sync.Mutex, termPID *int) {
+func menuHostShow(mu *sync.Mutex, termPID *int, termHwnd *uintptr) {
 	mu.Lock()
 	pid := *termPID
+	hwnd := *termHwnd
 	mu.Unlock()
 
+	// Try stored HWND first (works for WT where PID may not match the window).
+	if hwnd != 0 && terminal.IsHwndVisible(hwnd) {
+		runtime.LockOSThread()
+		terminal.FocusHwnd(hwnd)
+		runtime.UnlockOSThread()
+		logging.Info("menuhost: focused existing hwnd=%x", hwnd)
+		return
+	}
+
 	if pid != 0 {
-		hwnd := terminal.FindAndCenterByPID(pid)
-		if hwnd != 0 {
+		found := terminal.FindAndCenterByPID(pid)
+		if found != 0 {
 			runtime.LockOSThread()
-			terminal.FocusHwnd(hwnd)
+			terminal.FocusHwnd(found)
 			runtime.UnlockOSThread()
-			logging.Info("menuhost: focused existing hwnd=%x pid=%d", hwnd, pid)
+			mu.Lock()
+			*termHwnd = found
+			mu.Unlock()
+			logging.Info("menuhost: focused existing hwnd=%x pid=%d", found, pid)
 			return
 		}
 		// No visible window, but the process may still be starting up.
@@ -110,21 +124,28 @@ func menuHostShow(mu *sync.Mutex, termPID *int) {
 
 	mu.Lock()
 	*termPID = newPID
+	*termHwnd = 0
 	mu.Unlock()
 	logging.Info("menuhost: spawned pid=%d", newPID)
 
 	// Poll for the window to appear, center and focus it, then monitor for exit.
-	go menuHostMonitor(newPID, mu, termPID)
+	go menuHostMonitor(newPID, mu, termPID, termHwnd)
 }
 
 // menuHostMonitor waits for the terminal window to appear, focuses it, then
 // waits for the terminal to exit and clears the PID so the next show triggers
 // a fresh spawn.
-func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int) {
+func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int, termHwnd *uintptr) {
+	const launchTitle = "Karchy"
+
 	// Poll for a visible window (up to 2s, 50ms intervals — matches old timer logic).
+	// Try PID first, then fall back to title (needed for WT monarch delegation).
 	var hwnd uintptr
 	for i := 0; i < 40; i++ {
 		hwnd = terminal.FindAndCenterByPID(pid)
+		if hwnd == 0 {
+			hwnd = terminal.FindAndCenterByTitle(launchTitle)
+		}
 		if hwnd != 0 {
 			break
 		}
@@ -134,10 +155,25 @@ func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int) {
 	if hwnd == 0 {
 		logging.Info("menuhost: window not found after timeout pid=%d", pid)
 	} else {
+		mu.Lock()
+		*termHwnd = hwnd
+		mu.Unlock()
+
 		// Give the terminal 300ms to finish rendering before focusing.
 		time.Sleep(300 * time.Millisecond)
 
-		hwnd = terminal.FindAndCenterByPID(pid)
+		// Re-find: prefer PID, fall back to title, last resort use stored HWND.
+		found := terminal.FindAndCenterByPID(pid)
+		if found == 0 {
+			found = terminal.FindAndCenterByTitle(launchTitle)
+		}
+		if found != 0 {
+			hwnd = found
+			mu.Lock()
+			*termHwnd = hwnd
+			mu.Unlock()
+		}
+
 		if hwnd == 0 {
 			logging.Info("menuhost: window gone before focus pid=%d", pid)
 		} else {
@@ -148,13 +184,22 @@ func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int) {
 		}
 	}
 
-	// Block until the terminal exits, then clear the PID.
-	waitForProcessExit(pid)
+	// Wait for the terminal to exit. If we have a window handle, poll its
+	// visibility (needed for WT where the spawned PID may exit immediately).
+	// Otherwise fall back to process-based waiting.
+	if hwnd != 0 {
+		for terminal.IsHwndVisible(hwnd) {
+			time.Sleep(200 * time.Millisecond)
+		}
+	} else {
+		waitForProcessExit(pid)
+	}
 
 	mu.Lock()
 	if *termPID == pid {
 		*termPID = 0
 	}
+	*termHwnd = 0
 	mu.Unlock()
 	logging.Info("menuhost: terminal exited pid=%d", pid)
 }

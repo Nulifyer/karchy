@@ -7,6 +7,8 @@ import (
 	"syscall"
 	"unsafe"
 
+	"golang.org/x/sys/windows"
+
 	"github.com/nulifyer/karchy/internal/logging"
 )
 
@@ -32,6 +34,7 @@ var (
 	procMonitorFromPoint         = user32.NewProc("MonitorFromPoint")
 	procMonitorFromWindow        = user32.NewProc("MonitorFromWindow")
 	procGetMonitorInfoW          = user32.NewProc("GetMonitorInfoW")
+	procGetWindowTextW           = user32.NewProc("GetWindowTextW")
 )
 
 const (
@@ -159,13 +162,13 @@ func workAreaForWindow(hwnd uintptr) rect {
 	return mi.RcWork
 }
 
-// ResizeAndCenter finds the terminal window by parent PID, resizes it (cols/lines),
-// centers it within the work area of its current monitor, and gives it focus.
+// ResizeAndCenter finds the terminal window by walking up the process tree,
+// resizes it (cols/lines), centers it within the work area of its current
+// monitor, and gives it focus.
 func ResizeAndCenter(cols, lines int) {
-	ppid := os.Getppid()
-	hwnd := findWindowByPID(ppid)
+	hwnd := findAncestorWindow()
 	if hwnd == 0 {
-		logging.Info("ResizeAndCenter: no window for ppid=%d", ppid)
+		logging.Info("ResizeAndCenter: no ancestor window found")
 		return
 	}
 
@@ -201,6 +204,52 @@ func ResizeAndCenter(cols, lines int) {
 
 	launchCols = cols
 	launchLines = lines
+}
+
+// findAncestorWindow walks up the process tree from the current process,
+// returning the first visible top-level window it finds. This handles
+// wrappers like cmd /c that sit between karchy and the terminal window.
+func findAncestorWindow() uintptr {
+	pid := os.Getpid()
+	// Build a PID→ParentPID map from a process snapshot.
+	parentOf := processParentMap()
+
+	for i := 0; i < 8; i++ { // limit depth to avoid infinite loops
+		parent, ok := parentOf[pid]
+		if !ok || parent == 0 || parent == pid {
+			break
+		}
+		hwnd := findWindowByPID(parent)
+		if hwnd != 0 {
+			logging.Info("findAncestorWindow: found hwnd=%x at ancestor pid=%d (depth=%d)", hwnd, parent, i)
+			return hwnd
+		}
+		pid = parent
+	}
+	return 0
+}
+
+// processParentMap returns a map of PID → ParentPID for all running processes.
+func processParentMap() map[int]int {
+	snap, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return nil
+	}
+	defer windows.CloseHandle(snap)
+
+	m := make(map[int]int)
+	var pe windows.ProcessEntry32
+	pe.Size = uint32(unsafe.Sizeof(pe))
+	if err := windows.Process32First(snap, &pe); err != nil {
+		return m
+	}
+	for {
+		m[int(pe.ProcessID)] = int(pe.ParentProcessID)
+		if err := windows.Process32Next(snap, &pe); err != nil {
+			break
+		}
+	}
+	return m
 }
 
 // minWindowArea is the minimum pixel area to consider a window "real" (not a helper).
@@ -374,6 +423,95 @@ func FocusHwnd(hwnd uintptr) {
 	// 5. SetWindowPos(HWND_TOPMOST) after focus calls — matches PowerToys order.
 	swpRet, _, _ := procSetWindowPos.Call(hwnd, hwndTopmost, 0, 0, 0, 0, swpNoMove|swpNoSize|swpShowWindow)
 	logging.Info("FocusHwnd: SetWindowPos(HWND_TOPMOST) hwnd=%x ret=%d", hwnd, swpRet)
+}
+
+// findWindowByTitle returns the largest visible top-level window whose title
+// matches the given string, or 0.
+func findWindowByTitle(title string) uintptr {
+	titleU16, _ := syscall.UTF16FromString(title)
+	var best uintptr
+	var bestArea int
+	cb := syscall.NewCallback(func(hwnd, lParam uintptr) uintptr {
+		vis, _, _ := procIsWindowVisible.Call(hwnd)
+		if vis == 0 {
+			return 1
+		}
+		var buf [256]uint16
+		n, _, _ := procGetWindowTextW.Call(hwnd, uintptr(unsafe.Pointer(&buf[0])), 256)
+		if n > 0 && n <= 256 {
+			match := true
+			if int(n) != len(titleU16)-1 { // UTF16FromString includes null terminator
+				match = false
+			} else {
+				for i := 0; i < int(n); i++ {
+					if buf[i] != titleU16[i] {
+						match = false
+						break
+					}
+				}
+			}
+			if match {
+				var r rect
+				procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&r)))
+				area := r.Width() * r.Height()
+				if area >= minWindowArea && area > bestArea {
+					best = hwnd
+					bestArea = area
+				}
+			}
+		}
+		return 1
+	})
+	procEnumWindows.Call(cb, 0)
+	return best
+}
+
+// FindAndCenterByTitle finds a visible window by title, centers it, and returns the hwnd.
+func FindAndCenterByTitle(title string) uintptr {
+	hwnd := findWindowByTitle(title)
+	if hwnd == 0 {
+		return 0
+	}
+	logging.Info("FindAndCenterByTitle: found hwnd=%x for title=%q", hwnd, title)
+	centerHwnd(hwnd)
+	return hwnd
+}
+
+// centerHwnd centers the window on the captured work area (or current monitor).
+func centerHwnd(hwnd uintptr) {
+	var r rect
+	procGetWindowRect.Call(hwnd, uintptr(unsafe.Pointer(&r)))
+	w := r.Width()
+	h := r.Height()
+	if w <= 0 || h <= 0 {
+		return
+	}
+
+	var wa rect
+	if capturedWorkAreaSet {
+		wa = capturedWorkArea
+	} else {
+		wa = workAreaForBehavior(activeBehavior)
+	}
+	x := int(wa.Left) + (wa.Width()-w)/2
+	y := int(wa.Top) + (wa.Height()-h)/2
+	if x < int(wa.Left) {
+		x = int(wa.Left)
+	}
+	if y < int(wa.Top) {
+		y = int(wa.Top)
+	}
+
+	procSetWindowPos.Call(hwnd, hwndTopmost, uintptr(x), uintptr(y), 0, 0, swpNoSize|swpShowWindow)
+}
+
+// IsHwndVisible returns true if the given window handle is still visible.
+func IsHwndVisible(hwnd uintptr) bool {
+	if hwnd == 0 {
+		return false
+	}
+	vis, _, _ := procIsWindowVisible.Call(hwnd)
+	return vis != 0
 }
 
 // clickCenter injects a left mouse click at the center of hwnd.

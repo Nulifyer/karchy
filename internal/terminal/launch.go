@@ -8,20 +8,28 @@ import (
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/platform"
-	"github.com/nulifyer/karchy/internal/theme"
 )
 
-// Launch opens a terminal with a borderless themed config running karchy with the given args.
+// Launch opens a borderless terminal centered on screen running karchy with the given args.
 // Returns the terminal process PID (0 on error).
 func Launch(cols, lines int, title string, args ...string) (int, error) {
 	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
 	b := GetBackend(cfg.Terminal.App)
-	configFile := b.WriteConfig(cols, lines, 4, 4, pal, cfg.Appearance)
+	posX, posY := estimateCenter(cols, lines)
+
+	opts := LaunchOpts{
+		Cols:       cols,
+		Lines:      lines,
+		PosX:       posX,
+		PosY:       posY,
+		Title:      title,
+		Borderless: true,
+		Profile:    cfg.Terminal.Profile,
+	}
 
 	exePath, _ := os.Executable()
 	childArgs := append([]string{exePath}, args...)
-	cmdArgs := b.LaunchArgs(configFile, title, childArgs)
+	cmdArgs := b.LaunchArgs(opts, childArgs)
 
 	logging.Info("Launch: %s %v", b.Binary(), cmdArgs)
 	cmd := exec.Command(b.Binary(), cmdArgs...)
@@ -37,13 +45,13 @@ func Launch(cols, lines int, title string, args ...string) (int, error) {
 }
 
 // LaunchProgramDefault opens the user's preferred terminal without any karchy
-// config overrides, so the terminal's own settings (decorations, theme, etc.)
+// overrides, so the terminal's own settings (decorations, theme, etc.)
 // are used as-is. Suitable for interactive sessions like WSL distros.
 func LaunchProgramDefault(program string, args ...string) (int, error) {
 	cfg := config.Load()
 	b := GetBackend(cfg.Terminal.App)
 	childArgs := append([]string{program}, args...)
-	cmdArgs := b.LaunchArgs("", "", childArgs)
+	cmdArgs := b.LaunchArgs(LaunchOpts{}, childArgs)
 
 	logging.Info("LaunchProgramDefault: %s %v", b.Binary(), cmdArgs)
 	cmd := exec.Command(b.Binary(), cmdArgs...)
@@ -58,15 +66,23 @@ func LaunchProgramDefault(program string, args ...string) (int, error) {
 	return pid, nil
 }
 
-// LaunchProgram opens a terminal running an arbitrary program (not karchy).
+// LaunchProgram opens a borderless terminal running an arbitrary program (not karchy).
 func LaunchProgram(cols, lines int, program string, args ...string) (int, error) {
 	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
 	b := GetBackend(cfg.Terminal.App)
-	configFile := b.WriteConfig(cols, lines, 4, 4, pal, cfg.Appearance)
+	posX, posY := estimateCenter(cols, lines)
+
+	opts := LaunchOpts{
+		Cols:       cols,
+		Lines:      lines,
+		PosX:       posX,
+		PosY:       posY,
+		Borderless: true,
+		Profile:    cfg.Terminal.Profile,
+	}
 
 	childArgs := append([]string{program}, args...)
-	cmdArgs := b.LaunchArgs(configFile, "", childArgs)
+	cmdArgs := b.LaunchArgs(opts, childArgs)
 
 	logging.Info("LaunchProgram: %s %v", b.Binary(), cmdArgs)
 	cmd := exec.Command(b.Binary(), cmdArgs...)
@@ -81,12 +97,21 @@ func LaunchProgram(cols, lines int, program string, args ...string) (int, error)
 	return pid, nil
 }
 
-// LaunchShell opens a terminal running a shell command via cmd /c (Windows) or sh -c.
+// LaunchShell opens a borderless terminal running a shell command via cmd /c (Windows) or sh -c.
 func LaunchShell(cols, lines int, title, script string) (int, error) {
 	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
 	b := GetBackend(cfg.Terminal.App)
-	configFile := b.WriteConfig(cols, lines, 16, 12, pal, cfg.Appearance)
+	posX, posY := estimateCenter(cols, lines)
+
+	opts := LaunchOpts{
+		Cols:       cols,
+		Lines:      lines,
+		PosX:       posX,
+		PosY:       posY,
+		Title:      title,
+		Borderless: true,
+		Profile:    cfg.Terminal.Profile,
+	}
 
 	var shell, flag string
 	if runtime.GOOS == "windows" {
@@ -98,7 +123,7 @@ func LaunchShell(cols, lines int, title, script string) (int, error) {
 	}
 
 	childArgs := []string{shell, flag, script}
-	cmdArgs := b.LaunchArgs(configFile, title, childArgs)
+	cmdArgs := b.LaunchArgs(opts, childArgs)
 
 	logging.Info("LaunchShell: %s %v", b.Binary(), cmdArgs)
 	cmd := exec.Command(b.Binary(), cmdArgs...)

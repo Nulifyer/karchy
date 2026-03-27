@@ -10,7 +10,6 @@ import (
 
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/logging"
-	"github.com/nulifyer/karchy/internal/theme"
 )
 
 var (
@@ -23,12 +22,21 @@ var (
 // so the child program inherits the elevated token.
 func LaunchProgramElevated(cols, lines int, title, program string, args ...string) error {
 	cfg := config.Load()
-	pal := theme.Load(cfg.Theme.Name)
 	b := GetBackend(cfg.Terminal.App)
-	configFile := b.WriteConfig(cols, lines, 16, 12, pal, cfg.Appearance)
+	posX, posY := estimateCenter(cols, lines)
+
+	opts := LaunchOpts{
+		Cols:       cols,
+		Lines:      lines,
+		PosX:       posX,
+		PosY:       posY,
+		Title:      title,
+		Borderless: true,
+		Profile:    cfg.Terminal.Profile,
+	}
 
 	childArgs := append([]string{program}, args...)
-	cmdArgs := b.LaunchArgs(configFile, title, childArgs)
+	cmdArgs := b.LaunchArgs(opts, childArgs)
 
 	var parts []string
 	for _, a := range cmdArgs {
