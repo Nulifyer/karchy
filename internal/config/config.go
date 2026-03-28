@@ -24,7 +24,8 @@ type WindowConfig struct {
 }
 
 type HotkeyConfig struct {
-	Toggle string `toml:"toggle"`
+	Toggle       string `toml:"toggle"`
+	OpenTerminal string `toml:"open_terminal"`
 }
 
 type TerminalConfig struct {
@@ -45,7 +46,7 @@ func defaultTerminalApp() string {
 
 func Default() Config {
 	return Config{
-		Hotkey:   HotkeyConfig{Toggle: "Super+Space"},
+		Hotkey:   HotkeyConfig{Toggle: "Super+Space", OpenTerminal: "Super+Return"},
 		Terminal: TerminalConfig{App: defaultTerminalApp()},
 		Projects: ProjectsConfig{Editor: "code"},
 		Window:   WindowConfig{SummonOn: "mouse"},

@@ -137,13 +137,21 @@ func run() {
 	if hotkey == "" {
 		hotkey = "Super+Space"
 	}
+	terminalHotkey := cfg.Hotkey.OpenTerminal
+	if terminalHotkey == "" {
+		terminalHotkey = "Super+Return"
+	}
 
-	// Register global shortcut via KDE's kglobalaccel (retry until D-Bus is ready)
+	// Register global shortcuts via KDE's kglobalaccel (retry until D-Bus is ready)
 	var hotkeyActivated <-chan struct{}
+	var terminalHotkeyActivated <-chan struct{}
 	var dbusDisconnect <-chan struct{}
 	for attempt := 1; ; attempt++ {
 		var err error
-		hotkeyActivated, dbusDisconnect, err = registerKGlobalAccel(hotkey)
+		hotkeyActivated, dbusDisconnect, err = registerKGlobalAccel(hotkey, "toggle-menu", "Toggle Karchy Menu")
+		if err == nil {
+			terminalHotkeyActivated, _, err = registerKGlobalAccel(terminalHotkey, "open-terminal", "Open Terminal")
+		}
 		if err == nil {
 			break
 		}
@@ -211,6 +219,11 @@ func run() {
 				menuPID = 0
 			}
 			launchMenu()
+		case <-terminalHotkeyActivated:
+			logging.Info("daemon: open-terminal hotkey activated")
+			if _, err := terminal.LaunchTerminal(); err != nil {
+				logging.Error("daemon: LaunchTerminal: %v", err)
+			}
 		case status := <-updateCh:
 			hasBadge := false
 			if status.systemCount > 0 {
@@ -423,12 +436,12 @@ func qtKeyCode(hotkey string) (int32, error) {
 
 // registerKGlobalAccel registers a global shortcut via KDE's kglobalaccel D-Bus
 // service and listens for activation signals.
-func registerKGlobalAccel(hotkey string) (<-chan struct{}, <-chan struct{}, error) {
+func registerKGlobalAccel(hotkey, actionName, actionDesc string) (<-chan struct{}, <-chan struct{}, error) {
 	keyCode, err := qtKeyCode(hotkey)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse hotkey: %w", err)
 	}
-	logging.Info("kglobalaccel: hotkey=%s keyCode=0x%08X", hotkey, keyCode)
+	logging.Info("kglobalaccel: hotkey=%s keyCode=0x%08X action=%s", hotkey, keyCode, actionName)
 
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
@@ -437,7 +450,7 @@ func registerKGlobalAccel(hotkey string) (<-chan struct{}, <-chan struct{}, erro
 
 	kga := conn.Object("org.kde.kglobalaccel", "/kglobalaccel")
 
-	actionID := []string{"karchy", "Karchy", "toggle-menu", "Toggle Karchy Menu"}
+	actionID := []string{"karchy", "Karchy", actionName, actionDesc}
 
 	// Register action so we receive globalShortcutPressed signals
 	err = kga.Call("org.kde.KGlobalAccel.doRegister", 0, actionID).Err

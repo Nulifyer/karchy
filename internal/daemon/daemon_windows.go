@@ -69,6 +69,7 @@ const (
 	wmTrayIcon         = 0x8001 // WM_APP + 1
 	wmLaunchMenu       = 0x8003 // WM_APP + 3 — posted by hook to trigger launch on msg thread
 	wmMenuHostDied     = 0x8004 // WM_APP + 4 — posted by monitor goroutine when menu host exits
+	wmOpenTerminal     = 0x8005 // WM_APP + 5 — posted by hook to open a terminal window
 	wmWindowPosChanging = 0x0046 // WM_WINDOWPOSCHANGING — tray icon recovery fallback
 	wsOverlappedWindow = 0x00CF0000
 
@@ -85,6 +86,7 @@ const (
 	pbtApmResumeSuspend   = 0x0007 // fired when user-initiated resume
 
 	// Virtual key codes
+	vkReturn   = 0x0D
 	vkSpace    = 0x20
 	vkLWin     = 0x5B
 	vkRWin     = 0x5C
@@ -125,6 +127,8 @@ var (
 	hookCallback     uintptr // cached syscall.NewCallback — must be created once
 	targetMod        uint32 // VK code for modifier (e.g. vkLWin)
 	targetKey        uint32 // VK code for key (e.g. vkSpace)
+	terminalMod      uint32 // VK code for open-terminal modifier
+	terminalKey      uint32 // VK code for open-terminal key
 	selfUpdateVer    string // newer karchy version available (empty if up to date)
 	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
 
@@ -349,6 +353,7 @@ func run() {
 	// Parse config
 	cfg := config.Load()
 	parseHotkey(cfg.Hotkey.Toggle)
+	terminalMod, terminalKey = parseHotkeyPair(cfg.Hotkey.OpenTerminal, vkLWin, vkReturn)
 	terminal.SetMonitorBehavior(terminal.ParseMonitorBehavior(cfg.Window.SummonOn))
 
 	// Create work area shared memory (written on each hotkey, read by menuhost).
@@ -445,6 +450,12 @@ func keyboardProc(nCode int32, wParam uintptr, lParam uintptr) uintptr {
 				// Send a dummy key-up to prevent Start Menu from activating (PowerToys technique)
 				sendDummyKeyUp()
 				return 1 // swallow the key
+			}
+			if terminalKey != 0 && kb.VkCode == terminalKey && isModDown(terminalMod) {
+				logging.Info("keyboardProc: open-terminal hotkey detected vk=0x%x mod=0x%x", kb.VkCode, terminalMod)
+				procPostMessageW.Call(trayHwnd, wmOpenTerminal, 0, 0)
+				sendDummyKeyUp()
+				return 1
 			}
 		}
 	}
@@ -669,6 +680,15 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		}
 		return 0
 
+	case wmOpenTerminal:
+		logging.Info("trayWndProc: opening terminal")
+		go func() {
+			if _, err := terminal.LaunchTerminal(); err != nil {
+				logging.Error("trayWndProc: LaunchTerminal: %v", err)
+			}
+		}()
+		return 0
+
 	case wmMenuHostDied:
 		logging.Info("trayWndProc: menu host died, respawning")
 		if menuShowEvent != 0 {
@@ -812,26 +832,48 @@ func parseHotkey(s string) {
 		return
 	}
 
-	switch parts[0] {
-	case "super", "win", "cmd", "command":
-		targetMod = vkLWin
-	case "alt", "option":
-		targetMod = vkLMenu
-	case "ctrl", "control":
-		targetMod = vkLControl
-	case "shift":
-		targetMod = vkLShift
-	}
+	targetMod = parseMod(parts[0])
+	targetKey = parseKey(parts[len(parts)-1])
+}
 
-	key := parts[len(parts)-1]
-	switch key {
-	case "space":
-		targetKey = vkSpace
-	default:
-		if len(key) == 1 && key[0] >= 'a' && key[0] <= 'z' {
-			targetKey = uint32(key[0] - 'a' + 'A')
-		}
+// parseHotkeyPair parses a hotkey string into a (mod, key) pair.
+// Returns the provided defaults if the string is empty or unparseable.
+func parseHotkeyPair(s string, defaultMod, defaultKey uint32) (uint32, uint32) {
+	if s == "" {
+		return defaultMod, defaultKey
 	}
+	parts := splitHotkey(s)
+	if len(parts) < 2 {
+		return defaultMod, defaultKey
+	}
+	return parseMod(parts[0]), parseKey(parts[len(parts)-1])
+}
+
+func parseMod(s string) uint32 {
+	switch s {
+	case "super", "win", "cmd", "command":
+		return vkLWin
+	case "alt", "option":
+		return vkLMenu
+	case "ctrl", "control":
+		return vkLControl
+	case "shift":
+		return vkLShift
+	}
+	return vkLWin
+}
+
+func parseKey(s string) uint32 {
+	switch s {
+	case "space":
+		return vkSpace
+	case "return", "enter":
+		return vkReturn
+	}
+	if len(s) == 1 && s[0] >= 'a' && s[0] <= 'z' {
+		return uint32(s[0] - 'a' + 'A')
+	}
+	return 0
 }
 
 func splitHotkey(s string) []string {

@@ -137,3 +137,26 @@ func LaunchShell(cols, lines int, title, script string) (int, error) {
 	logging.Info("LaunchShell: pid=%d", pid)
 	return pid, nil
 }
+
+// LaunchTerminal opens a new terminal window in the user's home directory
+// using the configured terminal backend with default settings.
+func LaunchTerminal() (int, error) {
+	cfg := config.Load()
+	b := GetBackend(cfg.Terminal.App)
+
+	home, _ := os.UserHomeDir()
+	cmdArgs := b.LaunchArgs(LaunchOpts{}, nil)
+
+	logging.Info("LaunchTerminal: %s %v (dir=%s)", b.Binary(), cmdArgs, home)
+	cmd := exec.Command(b.Binary(), cmdArgs...)
+	cmd.Dir = home
+	platform.Detach(cmd)
+
+	if err := cmd.Start(); err != nil {
+		logging.Error("LaunchTerminal: %v", err)
+		return 0, err
+	}
+	pid := cmd.Process.Pid
+	logging.Info("LaunchTerminal: pid=%d", pid)
+	return pid, nil
+}
