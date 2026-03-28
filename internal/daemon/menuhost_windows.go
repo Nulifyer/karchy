@@ -97,6 +97,7 @@ func menuHostShow(mu *sync.Mutex, termPID *int, termHwnd *uintptr) {
 			mu.Lock()
 			*termHwnd = found
 			mu.Unlock()
+			writeHwndToShm(found)
 			logging.Info("menuhost: focused existing hwnd=%x pid=%d", found, pid)
 			return
 		}
@@ -158,6 +159,7 @@ func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int, termHwnd *uintptr) {
 		mu.Lock()
 		*termHwnd = hwnd
 		mu.Unlock()
+		writeHwndToShm(hwnd)
 
 		// Give the terminal 300ms to finish rendering before focusing.
 		time.Sleep(300 * time.Millisecond)
@@ -172,6 +174,7 @@ func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int, termHwnd *uintptr) {
 			mu.Lock()
 			*termHwnd = hwnd
 			mu.Unlock()
+			writeHwndToShm(hwnd)
 		}
 
 		if hwnd == 0 {
@@ -201,6 +204,7 @@ func menuHostMonitor(pid int, mu *sync.Mutex, termPID *int, termHwnd *uintptr) {
 	}
 	*termHwnd = 0
 	mu.Unlock()
+	writeHwndToShm(0)
 	logging.Info("menuhost: terminal exited pid=%d", pid)
 }
 

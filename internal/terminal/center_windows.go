@@ -35,6 +35,10 @@ var (
 	procMonitorFromWindow        = user32.NewProc("MonitorFromWindow")
 	procGetMonitorInfoW          = user32.NewProc("GetMonitorInfoW")
 	procGetWindowTextW           = user32.NewProc("GetWindowTextW")
+
+	procOpenFileMappingW = kernel32.NewProc("OpenFileMappingW")
+	procMapViewOfFile    = kernel32.NewProc("MapViewOfFile")
+	procUnmapViewOfFile  = kernel32.NewProc("UnmapViewOfFile")
 )
 
 const (
@@ -72,6 +76,28 @@ type monitorInfo struct {
 	RcMonitor rect
 	RcWork    rect
 	DwFlags   uint32
+}
+
+const (
+	hwndShmName = `Local\KarchyHwnd`
+	fileMapRead = 0x0004
+)
+
+// readHwndShm reads the terminal HWND from shared memory written by the menuhost.
+// Returns 0 if the mapping does not exist or has not been written yet.
+func readHwndShm() uintptr {
+	namePtr, _ := syscall.UTF16PtrFromString(hwndShmName)
+	h, _, _ := procOpenFileMappingW.Call(fileMapRead, 0, uintptr(unsafe.Pointer(namePtr)))
+	if h == 0 {
+		return 0
+	}
+	defer syscall.CloseHandle(syscall.Handle(h))
+	addr, _, _ := procMapViewOfFile.Call(h, fileMapRead, 0, 0, 8)
+	if addr == 0 {
+		return 0
+	}
+	defer procUnmapViewOfFile.Call(addr)
+	return *(*uintptr)(unsafe.Pointer(addr))
 }
 
 // capturedWorkArea holds the work area captured by the daemon at hotkey time.
@@ -162,13 +188,17 @@ func workAreaForWindow(hwnd uintptr) rect {
 	return mi.RcWork
 }
 
-// ResizeAndCenter finds the terminal window by walking up the process tree,
-// resizes it (cols/lines), centers it within the work area of its current
-// monitor, and gives it focus.
+// ResizeAndCenter resizes the terminal window (cols/lines), centers it within
+// the work area of its current monitor, and gives it focus. It reads the HWND
+// from shared memory (written by the menuhost), falling back to a process tree
+// walk if shared memory is not available.
 func ResizeAndCenter(cols, lines int) {
-	hwnd := findAncestorWindow()
+	hwnd := readHwndShm()
 	if hwnd == 0 {
-		logging.Info("ResizeAndCenter: no ancestor window found")
+		hwnd = findAncestorWindow()
+	}
+	if hwnd == 0 {
+		logging.Info("ResizeAndCenter: no window found")
 		return
 	}
 
@@ -207,8 +237,9 @@ func ResizeAndCenter(cols, lines int) {
 }
 
 // findAncestorWindow walks up the process tree from the current process,
-// returning the first visible top-level window it finds. This handles
-// wrappers like cmd /c that sit between karchy and the terminal window.
+// returning the first visible top-level window it finds. When launchTitle
+// is set and a process owns multiple windows (e.g. Windows Terminal), the
+// title-matching window is preferred over the largest.
 func findAncestorWindow() uintptr {
 	pid := os.Getpid()
 	// Build a PID→ParentPID map from a process snapshot.

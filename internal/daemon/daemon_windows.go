@@ -138,6 +138,7 @@ var (
 	menuShowEvent    uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
 	jobObject        uintptr   // job object — kills menuhost when daemon exits
 	workAreaShmHandle uintptr  // handle to Local\KarchyWorkArea shared memory
+	hwndShmHandle     uintptr  // handle to Local\KarchyHwnd shared memory
 
 	// Debounce for WM_WINDOWPOSCHANGING tray icon re-add.
 	lastReaddTick uint32
@@ -356,8 +357,9 @@ func run() {
 	terminalMod, terminalKey = parseHotkeyPair(cfg.Hotkey.OpenTerminal, vkLWin, vkReturn)
 	terminal.SetMonitorBehavior(terminal.ParseMonitorBehavior(cfg.Window.SummonOn))
 
-	// Create work area shared memory (written on each hotkey, read by menuhost).
+	// Create shared memory blocks (daemon owns lifetime, menuhost reads/writes).
 	workAreaShmHandle = createWorkAreaShm()
+	hwndShmHandle = createHwndShm()
 
 	// Register "TaskbarCreated" so we can re-add the tray icon if Explorer restarts
 	tcStr, _ := syscall.UTF16PtrFromString("TaskbarCreated")
@@ -411,6 +413,10 @@ func run() {
 	if workAreaShmHandle != 0 {
 		procCloseHandle.Call(workAreaShmHandle)
 		workAreaShmHandle = 0
+	}
+	if hwndShmHandle != 0 {
+		procCloseHandle.Call(hwndShmHandle)
+		hwndShmHandle = 0
 	}
 	removeTrayIcon()
 }

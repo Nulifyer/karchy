@@ -2,7 +2,7 @@ package terminal
 
 import "github.com/nulifyer/karchy/internal/logging"
 
-// launchCols/launchLines tracks the initial Alacritty dimensions so we can
+// launchCols/launchLines tracks the initial terminal dimensions so we can
 // derive actual cell size from the rendered window rect.
 var (
 	launchCols  int

@@ -11,6 +11,7 @@ const (
 	menuHostShowEventName = `Local\KarchyShowMenu`
 	menuHostMutexName     = `Local\KarchyMenuHost`
 	workAreaShmName       = `Local\KarchyWorkArea`
+	hwndShmName           = `Local\KarchyHwnd`
 
 	waitObject0  = 0x00000000
 	waitInfinite = 0xFFFFFFFF
@@ -127,3 +128,32 @@ func waitForProcessExit(pid int) {
 	defer procCloseHandle.Call(h)
 	procWaitForSingleObject.Call(h, uintptr(waitInfinite))
 }
+
+// createHwndShm creates an 8-byte named shared-memory block for the terminal HWND.
+func createHwndShm() uintptr {
+	namePtr, _ := syscall.UTF16PtrFromString(hwndShmName)
+	h, _, _ := procCreateFileMappingW.Call(
+		^uintptr(0), 0, pageReadWrite, 0, 8,
+		uintptr(unsafe.Pointer(namePtr)),
+	)
+	return h
+}
+
+// writeHwndToShm writes the terminal HWND into the named shared-memory block.
+// Opens the mapping by name so it works from the menuhost process (which doesn't
+// hold the creation handle — that belongs to the daemon).
+func writeHwndToShm(hwnd uintptr) {
+	namePtr, _ := syscall.UTF16PtrFromString(hwndShmName)
+	h, _, _ := procOpenFileMappingW.Call(fileMapWrite, 0, uintptr(unsafe.Pointer(namePtr)))
+	if h == 0 {
+		return
+	}
+	defer procCloseHandle.Call(h)
+	addr, _, _ := procMapViewOfFile.Call(h, fileMapWrite, 0, 0, 8)
+	if addr == 0 {
+		return
+	}
+	defer procUnmapViewOfFile.Call(addr)
+	*(*uintptr)(unsafe.Pointer(addr)) = hwnd
+}
+
