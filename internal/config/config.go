@@ -14,6 +14,15 @@ type Config struct {
 	Terminal TerminalConfig `toml:"terminal"`
 	Projects ProjectsConfig `toml:"projects"`
 	Window   WindowConfig   `toml:"window"`
+	Theme    ThemeConfig    `toml:"theme"`
+}
+
+type ThemeConfig struct {
+	Accent  string `toml:"accent"`  // borders, highlights, selected items (default: ANSI 4)
+	Fg      string `toml:"fg"`      // normal text (default: ANSI 7)
+	Dim     string `toml:"dim"`     // hints, secondary text (default: ANSI 8)
+	Green   string `toml:"green"`   // checked/installed indicators (default: ANSI 2)
+	Yellow  string `toml:"yellow"`  // picked/updatable indicators (default: ANSI 3)
 }
 
 // WindowConfig controls window placement behavior.

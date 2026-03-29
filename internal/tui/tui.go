@@ -65,7 +65,7 @@ func initialModel() model {
 	m := model{
 		menu:      menuMain,
 		title:     title,
-		styles:    newStyles(),
+		styles:    newStyles(cfg.Theme),
 		menuItems: items,
 	}
 	m.syncFilterItems()
