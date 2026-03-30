@@ -147,12 +147,14 @@ func run() {
 	var terminalHotkeyActivated <-chan struct{}
 	var dbusDisconnect <-chan struct{}
 	for attempt := 1; ; attempt++ {
-		var err error
-		hotkeyActivated, dbusDisconnect, err = registerKGlobalAccel(hotkey, "toggle-menu", "Toggle Karchy Menu")
+		results, disconnCh, err := registerKGlobalAccelAll(
+			kglobalAccelAction{hotkey, "toggle_menu", "Toggle Karchy Menu"},
+			kglobalAccelAction{terminalHotkey, "open_terminal", "Open Terminal"},
+		)
 		if err == nil {
-			terminalHotkeyActivated, _, err = registerKGlobalAccel(terminalHotkey, "open-terminal", "Open Terminal")
-		}
-		if err == nil {
+			hotkeyActivated = results["toggle_menu"]
+			terminalHotkeyActivated = results["open_terminal"]
+			dbusDisconnect = disconnCh
 			break
 		}
 		if attempt >= 30 {
@@ -434,15 +436,16 @@ func qtKeyCode(hotkey string) (int32, error) {
 	return mods | key, nil
 }
 
-// registerKGlobalAccel registers a global shortcut via KDE's kglobalaccel D-Bus
-// service and listens for activation signals.
-func registerKGlobalAccel(hotkey, actionName, actionDesc string) (<-chan struct{}, <-chan struct{}, error) {
-	keyCode, err := qtKeyCode(hotkey)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse hotkey: %w", err)
-	}
-	logging.Info("kglobalaccel: hotkey=%s keyCode=0x%08X action=%s", hotkey, keyCode, actionName)
+type kglobalAccelAction struct {
+	hotkey     string
+	actionName string
+	actionDesc string
+}
 
+// registerKGlobalAccelAll registers all shortcuts under a single "karchy" component
+// on one D-Bus connection. The globalShortcutPressed signal body is
+// [componentUnique, shortcutUnique, timestamp], so we dispatch by body[1].
+func registerKGlobalAccelAll(actions ...kglobalAccelAction) (map[string]<-chan struct{}, <-chan struct{}, error) {
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
 		return nil, nil, fmt.Errorf("connect session bus: %w", err)
@@ -450,39 +453,41 @@ func registerKGlobalAccel(hotkey, actionName, actionDesc string) (<-chan struct{
 
 	kga := conn.Object("org.kde.kglobalaccel", "/kglobalaccel")
 
-	actionID := []string{"karchy", "Karchy", actionName, actionDesc}
+	for _, a := range actions {
+		keyCode, err := qtKeyCode(a.hotkey)
+		if err != nil {
+			conn.Close()
+			return nil, nil, fmt.Errorf("parse hotkey %q: %w", a.hotkey, err)
+		}
+		logging.Info("kglobalaccel: hotkey=%s keyCode=0x%08X action=%s", a.hotkey, keyCode, a.actionName)
 
-	// Register action so we receive globalShortcutPressed signals
-	err = kga.Call("org.kde.KGlobalAccel.doRegister", 0, actionID).Err
-	if err != nil {
-		conn.Close()
-		return nil, nil, fmt.Errorf("doRegister: %w", err)
+		actionID := []string{"karchy", a.actionName, "Karchy", a.actionDesc}
+
+		if err := kga.Call("org.kde.KGlobalAccel.doRegister", 0, actionID).Err; err != nil {
+			conn.Close()
+			return nil, nil, fmt.Errorf("doRegister %s: %w", a.actionName, err)
+		}
+
+		keys := []int32{keyCode}
+
+		var defaultResult []int32
+		if err := kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
+			actionID, keys, uint32(8)).Store(&defaultResult); err != nil {
+			conn.Close()
+			return nil, nil, fmt.Errorf("setShortcut (default) %s: %w", a.actionName, err)
+		}
+		logging.Info("kglobalaccel: %s default keys set, result=%v", a.actionName, defaultResult)
+
+		var activeResult []int32
+		if err := kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
+			actionID, keys, uint32(2)).Store(&activeResult); err != nil {
+			conn.Close()
+			return nil, nil, fmt.Errorf("setShortcut (active) %s: %w", a.actionName, err)
+		}
+		logging.Info("kglobalaccel: %s active keys set, result=%v", a.actionName, activeResult)
 	}
-	logging.Info("kglobalaccel: action registered")
 
-	keys := []int32{keyCode}
-
-	// Set default keys (flag 8 = IsDefault)
-	var defaultResult []int32
-	err = kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
-		actionID, keys, uint32(8)).Store(&defaultResult)
-	if err != nil {
-		conn.Close()
-		return nil, nil, fmt.Errorf("setShortcut (default): %w", err)
-	}
-	logging.Info("kglobalaccel: default keys set, result=%v", defaultResult)
-
-	// Set active keys (flag 2 = SetPresent)
-	var activeResult []int32
-	err = kga.Call("org.kde.KGlobalAccel.setShortcut", 0,
-		actionID, keys, uint32(2)).Store(&activeResult)
-	if err != nil {
-		conn.Close()
-		return nil, nil, fmt.Errorf("setShortcut (active): %w", err)
-	}
-	logging.Info("kglobalaccel: active keys set, result=%v", activeResult)
-
-	// Watch for D-Bus disconnect (session bus goes away on logout)
+	// Watch for D-Bus disconnect.
 	disconnectCh := make(chan struct{}, 1)
 	go func() {
 		<-conn.Context().Done()
@@ -493,24 +498,50 @@ func registerKGlobalAccel(hotkey, actionName, actionDesc string) (<-chan struct{
 		}
 	}()
 
+	// Listen on the karchy component path.
 	componentPath := dbus.ObjectPath("/component/karchy")
 	conn.BusObject().Call("org.freedesktop.DBus.AddMatch", 0,
 		fmt.Sprintf("type='signal',sender='org.kde.kglobalaccel',path='%s',interface='org.kde.kglobalaccel.Component',member='globalShortcutPressed'", componentPath))
 	signalCh := make(chan *dbus.Signal, 10)
 	conn.Signal(signalCh)
 
-	activatedCh := make(chan struct{}, 1)
+	// Build per-action channels.
+	channels := make(map[string]chan struct{}, len(actions))
+	for _, a := range actions {
+		channels[a.actionName] = make(chan struct{}, 1)
+	}
+
 	go func() {
 		for sig := range signalCh {
-			if sig.Name == "org.kde.kglobalaccel.Component.globalShortcutPressed" {
-				logging.Info("kglobalaccel: shortcut pressed: %v", sig.Body)
+			if sig.Name != "org.kde.kglobalaccel.Component.globalShortcutPressed" {
+				continue
+			}
+			logging.Info("kglobalaccel: signal received: body=%v", sig.Body)
+
+			// body[1] is the shortcutUnique (action name).
+			var target string
+			if len(sig.Body) >= 2 {
+				if name, ok := sig.Body[1].(string); ok {
+					if _, exists := channels[name]; exists {
+						target = name
+					}
+				}
+			}
+
+			if target != "" {
 				select {
-				case activatedCh <- struct{}{}:
+				case channels[target] <- struct{}{}:
 				default:
 				}
+			} else {
+				logging.Info("kglobalaccel: unmatched action in body[1]=%v", sig.Body[1])
 			}
 		}
 	}()
 
-	return activatedCh, disconnectCh, nil
+	result := make(map[string]<-chan struct{}, len(channels))
+	for name, ch := range channels {
+		result[name] = ch
+	}
+	return result, disconnectCh, nil
 }

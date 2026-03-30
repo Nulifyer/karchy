@@ -1,6 +1,10 @@
 package terminal
 
-import "os/exec"
+import (
+	"os/exec"
+	"runtime"
+	"strings"
+)
 
 // LaunchOpts holds the parameters backends translate into CLI flags.
 type LaunchOpts struct {
@@ -50,6 +54,12 @@ func GetBackend(name string) Backend {
 	if b, ok := backendRegistry[name]; ok {
 		return b
 	}
+	// On Linux, check the DE's configured default terminal first.
+	if runtime.GOOS == "linux" {
+		if b := detectDETerminal(); b != nil {
+			return b
+		}
+	}
 	// Auto-detect: walk priority list and return the first whose binary is in PATH.
 	for _, n := range detectOrder {
 		if b, ok := backendRegistry[n]; ok {
@@ -61,6 +71,24 @@ func GetBackend(name string) Backend {
 	// Last resort fallback to whatever is registered first.
 	for _, b := range backendRegistry {
 		return b
+	}
+	return nil
+}
+
+// detectDETerminal checks the desktop environment's configured default terminal.
+func detectDETerminal() Backend {
+	// KDE: read TerminalApplication from kdeglobals
+	out, err := exec.Command("kreadconfig6", "--key", "TerminalApplication", "--group", "General").Output()
+	if err == nil {
+		bin := strings.TrimSpace(string(out))
+		if bin != "" {
+			// Match binary name against registered backends
+			for _, b := range backendRegistry {
+				if b.Binary() == bin {
+					return b
+				}
+			}
+		}
 	}
 	return nil
 }
