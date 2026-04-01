@@ -38,6 +38,13 @@
         "cyan": "#95E6CB",
         "white": "#F3F4F5"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "ayu_mirage": {
@@ -79,6 +86,13 @@
         "cyan": "#95E6CB",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "carbonfox": {
@@ -119,6 +133,13 @@
         "cyan": "#52BDFF",
         "white": "#F2F4F8"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "catppuccin_frappe": {
@@ -160,6 +181,13 @@
         "cyan": "#81C8BE",
         "white": "#A5ADCE"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "catppuccin_latte": {
@@ -201,6 +229,13 @@
         "cyan": "#179299",
         "white": "#BCC0CC"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "catppuccin_macchiato": {
@@ -242,6 +277,13 @@
         "cyan": "#8BD5CA",
         "white": "#A5ADCB"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "catppuccin_mocha": {
@@ -283,6 +325,13 @@
         "cyan": "#94E2D5",
         "white": "#A6ADC8"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "challengerdeep": {
@@ -324,6 +373,13 @@
         "cyan": "#AAFFE4",
         "white": "#FBFCFC"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "dracula": {
@@ -365,6 +421,13 @@
         "cyan": "#A4FFFF",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "everforest": {
@@ -406,6 +469,13 @@
         "cyan": "#83C092",
         "white": "#D3C6AA"
       }
+    },
+    "vscode": {
+      "accent": "green",
+      "link": "blue",
+      "match": "cyan",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "everforest_light": {
@@ -447,6 +517,13 @@
         "cyan": "#35A77C",
         "white": "#5C6A72"
       }
+    },
+    "vscode": {
+      "accent": "green",
+      "link": "blue",
+      "match": "cyan",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "flexoki": {
@@ -488,6 +565,13 @@
         "cyan": "#3AA99F",
         "white": "#FFFCF0"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "cyan",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "flexoki_light": {
@@ -529,6 +613,13 @@
         "cyan": "#3AA99F",
         "white": "#F2F0E5"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "cyan",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "github_dark": {
@@ -570,6 +661,13 @@
         "cyan": "#388BFD",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "gruvbox": {
@@ -611,6 +709,13 @@
         "cyan": "#89B482",
         "white": "#EBDBB2"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "gruvbox_light": {
@@ -652,6 +757,13 @@
         "cyan": "#427B58",
         "white": "#3C3836"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "horizon": {
@@ -693,6 +805,13 @@
         "cyan": "#59E1E3",
         "white": "#E3E6EE"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "iceberg": {
@@ -734,6 +853,13 @@
         "cyan": "#95C4CE",
         "white": "#D2D4DE"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "iceberg_light": {
@@ -775,6 +901,13 @@
         "cyan": "#3F83A6",
         "white": "#262A3F"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "kanagawa": {
@@ -816,6 +949,13 @@
         "cyan": "#6A9589",
         "white": "#DCD7BA"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "lume": {
@@ -856,6 +996,13 @@
         "cyan": "#88C0B8",
         "white": "#D8D0E4"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "material_darker": {
@@ -897,6 +1044,13 @@
         "cyan": "#89DDFF",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "cyan",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "mellow": {
@@ -937,6 +1091,13 @@
         "cyan": "#F591B2",
         "white": "#CAC9DD"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "monokai": {
@@ -978,6 +1139,13 @@
         "cyan": "#A1EFE4",
         "white": "#F9F8F5"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "moonfly": {
@@ -1018,6 +1186,13 @@
         "cyan": "#36C692",
         "white": "#E4E4E4"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "nightfox": {
@@ -1059,6 +1234,13 @@
         "cyan": "#7AD5D6",
         "white": "#E4E4E5"
       }
+    },
+    "vscode": {
+      "accent": "cyan",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "nord": {
@@ -1100,6 +1282,13 @@
         "cyan": "#8FBCBB",
         "white": "#ECEFF4"
       }
+    },
+    "vscode": {
+      "accent": "cyan",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "onedark": {
@@ -1141,6 +1330,13 @@
         "cyan": "#56B6C2",
         "white": "#ABB2BF"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "oxocarbon": {
@@ -1182,6 +1378,13 @@
         "cyan": "#33B1FF",
         "white": "#F2F4F8"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "oxocarbon_light": {
@@ -1223,6 +1426,13 @@
         "cyan": "#08BDBA",
         "white": "#F2F4F8"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "palenight": {
@@ -1264,6 +1474,13 @@
         "cyan": "#89DDFF",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "poimandres": {
@@ -1304,6 +1521,13 @@
         "cyan": "#5DE4C7",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "green",
+      "link": "blue",
+      "match": "cyan",
+      "find": "yellow",
+      "bracket": "green"
     }
   },
   "rose_pine": {
@@ -1345,6 +1569,13 @@
         "cyan": "#9CCFD8",
         "white": "#E0DEF4"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "rose_pine_dawn": {
@@ -1386,6 +1617,13 @@
         "cyan": "#56949F",
         "white": "#575279"
       }
+    },
+    "vscode": {
+      "accent": "magenta",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "magenta"
     }
   },
   "solarized": {
@@ -1427,6 +1665,13 @@
         "cyan": "#93A1A1",
         "white": "#FDF6E3"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "spaceduck": {
@@ -1468,6 +1713,13 @@
         "cyan": "#00A3CC",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "tokyonight": {
@@ -1509,6 +1761,13 @@
         "cyan": "#7DCFFF",
         "white": "#C0CAF5"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "tokyonight_light": {
@@ -1550,6 +1809,13 @@
         "cyan": "#166775",
         "white": "#343B58"
       }
+    },
+    "vscode": {
+      "accent": "blue",
+      "link": "blue",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "blue"
     }
   },
   "vesper": {
@@ -1591,6 +1857,13 @@
         "cyan": "#99FFE4",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "yellow",
+      "link": "green",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   },
   "zenburn": {
@@ -1632,6 +1905,13 @@
         "cyan": "#7CB8BB",
         "white": "#FFFFFF"
       }
+    },
+    "vscode": {
+      "accent": "cyan",
+      "link": "cyan",
+      "match": "green",
+      "find": "yellow",
+      "bracket": "yellow"
     }
   }
 }

@@ -6,9 +6,11 @@ import (
 
 	"github.com/nulifyer/karchy/internal/actions/webapp"
 	"github.com/nulifyer/karchy/internal/arger"
+	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/daemon"
 	"github.com/nulifyer/karchy/internal/logging"
 	"github.com/nulifyer/karchy/internal/selfupdate"
+	"github.com/nulifyer/karchy/internal/theme"
 	"github.com/nulifyer/karchy/internal/tui"
 )
 
@@ -104,6 +106,46 @@ func main() {
 		} else {
 			// fall through to TUI update menu
 			tui.Run()
+		}
+	case "theme":
+		if len(extra) == 0 {
+			fmt.Println("Usage: karchy theme <set|get|list> [name]")
+			os.Exit(1)
+		}
+		switch extra[0] {
+		case "set":
+			if len(extra) < 2 {
+				fmt.Println("Usage: karchy theme set <name>")
+				os.Exit(1)
+			}
+			name := extra[1]
+			if name != "" && name != "inherit" {
+				if _, ok := theme.Load(name); !ok {
+					fmt.Printf("Unknown theme: %s\n", name)
+					os.Exit(1)
+				}
+			}
+			if name == "inherit" {
+				name = ""
+			}
+			if err := config.SaveTheme(name); err != nil {
+				fmt.Fprintf(os.Stderr, "Failed to save theme: %v\n", err)
+				os.Exit(1)
+			}
+		case "get":
+			cfg := config.Load()
+			if cfg.Theme.Name == "" {
+				fmt.Println("inherit")
+			} else {
+				fmt.Println(cfg.Theme.Name)
+			}
+		case "list":
+			for _, name := range theme.List() {
+				fmt.Println(name)
+			}
+		default:
+			fmt.Printf("Unknown theme action: %s\n", extra[0])
+			os.Exit(1)
 		}
 	case "version":
 		fmt.Println("karchy " + Version)

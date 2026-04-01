@@ -87,59 +87,112 @@ func All() map[string]Theme {
 	return out
 }
 
-// TUIColors holds the resolved colors for the TUI style targets.
-type TUIColors struct {
-	Accent string
+// TUIMapping specifies which palette fields to use for TUI style targets.
+// Empty strings mean "use the default" (accent=blue, fg=white, dim=bright_black,
+// green=green, yellow=yellow).
+type TUIMapping struct {
+	Accent string // palette field name
 	FG     string
 	Dim    string
 	Green  string
 	Yellow string
 }
 
-// TUIOverrides returns per-theme TUI color corrections for themes where the
-// default mapping (accent=blue, fg=white, dim=bright.black, green=green,
-// yellow=yellow) produces clashing or semantically wrong colors.
-// Only the overridden fields are non-empty.
-func TUIOverrides(name string) TUIColors {
-	o, _ := tuiOverrides[name]
-	return o
+// TUIFieldMap returns the palette field mapping for a theme's TUI colors.
+func TUIFieldMap(name string) TUIMapping {
+	if m, ok := tuiFieldMap[name]; ok {
+		return m
+	}
+	return TUIMapping{}
 }
 
-var tuiOverrides = map[string]TUIColors{
-	// green (#A9B665) and yellow (#D8A657) are both warm olive/amber — too close.
-	// Use red for the "updatable" indicator.
-	"gruvbox": {Yellow: "#EA6962"},
+// ResolveTUI returns the concrete hex colors for the TUI given a theme.
+func ResolveTUI(t Theme, m TUIMapping) (accent, fg, dim, green, yellow string) {
+	get := func(field, fallback string) string {
+		if field == "" {
+			field = fallback
+		}
+		return paletteField(t, field)
+	}
+	accent = get(m.Accent, "blue")
+	fg = get(m.FG, "white")
+	dim = get(m.Dim, "bright_black")
+	green = get(m.Green, "green")
+	yellow = get(m.Yellow, "yellow")
+	return
+}
 
-	// Same olive/gold clash as gruvbox dark.
-	"gruvbox_light": {Yellow: "#CC241D"},
+func paletteField(t Theme, field string) string {
+	switch field {
+	case "black":
+		return t.Terminal.Normal.Black
+	case "red":
+		return t.Terminal.Normal.Red
+	case "green":
+		return t.Terminal.Normal.Green
+	case "yellow":
+		return t.Terminal.Normal.Yellow
+	case "blue":
+		return t.Terminal.Normal.Blue
+	case "magenta":
+		return t.Terminal.Normal.Magenta
+	case "cyan":
+		return t.Terminal.Normal.Cyan
+	case "white":
+		return t.Terminal.Normal.White
+	case "bright_black":
+		return t.Terminal.Bright.Black
+	case "bright_red":
+		return t.Terminal.Bright.Red
+	case "bright_green":
+		return t.Terminal.Bright.Green
+	case "bright_yellow":
+		return t.Terminal.Bright.Yellow
+	case "bright_blue":
+		return t.Terminal.Bright.Blue
+	case "bright_magenta":
+		return t.Terminal.Bright.Magenta
+	case "bright_cyan":
+		return t.Terminal.Bright.Cyan
+	case "bright_white":
+		return t.Terminal.Bright.White
+	case "fg":
+		return t.Terminal.FG
+	case "bg":
+		return t.Terminal.BG
+	case "cursor":
+		return t.Terminal.Cursor
+	case "selection":
+		return t.Terminal.Selection
+	default:
+		return ""
+	}
+}
 
-	// green (#859900 olive) and yellow (#B58900 gold) are nearly identical hues.
-	"solarized": {Yellow: "#DC322F"},
+// Per-theme palette field mappings. Only overridden fields need to be set.
+var tuiFieldMap = map[string]TUIMapping{
+	// Gruvbox's identity is warm yellow. green and yellow are too close — use red for "updatable".
+	"gruvbox":      {Accent: "yellow", Yellow: "red"},
+	"gruvbox_light": {Accent: "yellow", Yellow: "red"},
 
-	// green (#8DA101 olive) and yellow (#DFA000 amber) are too close.
-	"everforest_light": {Yellow: "#F85552"},
+	// green and yellow are nearly identical olive/gold hues.
+	"solarized": {Yellow: "red"},
 
-	// green (#66800B) and yellow (#AD8301) — both dark olive/brown.
-	"flexoki_light": {Yellow: "#AF3029"},
+	// green and yellow are too close (olive/amber).
+	"everforest_light": {Yellow: "red"},
+	"flexoki_light":    {Yellow: "red"},
 
-	// blue (#31748F) and green (#9CCFD8) are both blue-cyan.
-	// Use iris (magenta) as accent — it's Rosé Pine's identity color.
-	"rose_pine": {Accent: "#C4A7E7"},
+	// blue and green are both blue-cyan. Use magenta (iris) as accent.
+	"rose_pine":      {Accent: "magenta"},
+	"rose_pine_dawn": {Accent: "magenta"},
 
-	// Same blue-teal clash as rose_pine dark.
-	"rose_pine_dawn": {Accent: "#907AA9"},
+	// blue and green are both cyan-mint. Use magenta (pink) as accent.
+	"horizon": {Accent: "magenta"},
 
-	// blue (#26BBD9) and green (#29D398) are both cyan-mint.
-	// Use the pink as accent — it's Horizon's signature.
-	"horizon": {Accent: "#EE64AC"},
+	// "yellow" slot is actually cyan. Use red (pink) for "updatable".
+	"carbonfox": {Yellow: "red"},
+	"oxocarbon": {Yellow: "red"},
 
-	// "yellow" (#08BDBA) is actually cyan — doesn't read as "needs attention".
-	"carbonfox": {Yellow: "#EE5396"},
-
-	// Same cyan-as-yellow issue as carbonfox.
-	"oxocarbon": {Yellow: "#EE5396"},
-
-	// blue, green, and cyan are all #99FFE4 (identical).
-	// magenta and yellow are both #FFC799. Only 3 distinct colors total.
-	"vesper": {Accent: "#FFC799", Green: "#99FFE4", Yellow: "#FF8080"},
+	// blue=green=cyan (identical), magenta=yellow (identical). Remap all three.
+	"vesper": {Accent: "yellow", Green: "cyan", Yellow: "red"},
 }

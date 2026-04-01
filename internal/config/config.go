@@ -19,49 +19,49 @@ type Config struct {
 }
 
 type ThemeConfig struct {
-	Name    string `toml:"name"`    // theme key from colors.json (e.g. "catppuccin_mocha")
-	Variant string `toml:"variant"` // "dark" or "light" — auto-set from colors.json
+	Name    string `toml:"name,omitempty"`    // theme key from colors.json (e.g. "catppuccin_mocha")
+	Variant string `toml:"variant,omitempty"` // "dark" or "light" — auto-set from colors.json
 
 	// TUI-specific overrides (take precedence over theme-derived values)
-	Accent string `toml:"accent"` // borders, highlights, selected items (default: ANSI 4)
-	Fg     string `toml:"fg"`     // normal text (default: ANSI 7)
-	Dim    string `toml:"dim"`    // hints, secondary text (default: ANSI 8)
-	Green  string `toml:"green"`  // checked/installed indicators (default: ANSI 2)
-	Yellow string `toml:"yellow"` // picked/updatable indicators (default: ANSI 3)
+	Accent string `toml:"accent,omitempty"` // borders, highlights, selected items (default: ANSI 4)
+	Fg     string `toml:"fg,omitempty"`     // normal text (default: ANSI 7)
+	Dim    string `toml:"dim,omitempty"`    // hints, secondary text (default: ANSI 8)
+	Green  string `toml:"green,omitempty"`  // checked/installed indicators (default: ANSI 2)
+	Yellow string `toml:"yellow,omitempty"` // picked/updatable indicators (default: ANSI 3)
 
 	// Full theme structure (mirrors colors.json)
-	Prompt   ThemePromptConfig   `toml:"prompt"`
-	Terminal ThemeTerminalConfig `toml:"terminal"`
+	Prompt   ThemePromptConfig   `toml:"prompt,omitempty"`
+	Terminal ThemeTerminalConfig `toml:"terminal,omitempty"`
 }
 
 type ThemePromptConfig struct {
-	OS       string `toml:"os"`
-	User     string `toml:"user"`
-	Path     string `toml:"path"`
-	Git      string `toml:"git"`
-	OK       string `toml:"ok"`
-	Err      string `toml:"err"`
-	Duration string `toml:"duration"`
+	OS       string `toml:"os,omitempty"`
+	User     string `toml:"user,omitempty"`
+	Path     string `toml:"path,omitempty"`
+	Git      string `toml:"git,omitempty"`
+	OK       string `toml:"ok,omitempty"`
+	Err      string `toml:"err,omitempty"`
+	Duration string `toml:"duration,omitempty"`
 }
 
 type ThemeTerminalConfig struct {
-	BG        string             `toml:"bg"`
-	FG        string             `toml:"fg"`
-	Cursor    string             `toml:"cursor"`
-	Selection string             `toml:"selection"`
-	Normal    ThemePaletteConfig `toml:"normal"`
-	Bright    ThemePaletteConfig `toml:"bright"`
+	BG        string             `toml:"bg,omitempty"`
+	FG        string             `toml:"fg,omitempty"`
+	Cursor    string             `toml:"cursor,omitempty"`
+	Selection string             `toml:"selection,omitempty"`
+	Normal    ThemePaletteConfig `toml:"normal,omitempty"`
+	Bright    ThemePaletteConfig `toml:"bright,omitempty"`
 }
 
 type ThemePaletteConfig struct {
-	Black   string `toml:"black"`
-	Red     string `toml:"red"`
-	Green   string `toml:"green"`
-	Yellow  string `toml:"yellow"`
-	Blue    string `toml:"blue"`
-	Magenta string `toml:"magenta"`
-	Cyan    string `toml:"cyan"`
-	White   string `toml:"white"`
+	Black   string `toml:"black,omitempty"`
+	Red     string `toml:"red,omitempty"`
+	Green   string `toml:"green,omitempty"`
+	Yellow  string `toml:"yellow,omitempty"`
+	Blue    string `toml:"blue,omitempty"`
+	Magenta string `toml:"magenta,omitempty"`
+	Cyan    string `toml:"cyan,omitempty"`
+	White   string `toml:"white,omitempty"`
 }
 
 // Resolve returns the effective TUI colors by layering: ANSI defaults → theme → explicit overrides.
@@ -69,33 +69,11 @@ func (tc ThemeConfig) Resolve() (accent, fg, dim, green, yellow string) {
 	// Start with ANSI defaults
 	accent, fg, dim, green, yellow = "4", "7", "8", "2", "3"
 
-	// If a named theme is set, derive from its palette
+	// If a named theme is set, derive from its palette using the field mapping
 	if tc.Name != "" {
 		if t, ok := theme.Load(tc.Name); ok {
-			accent = t.Terminal.Normal.Blue
-			fg = t.Terminal.Normal.White
-			dim = t.Terminal.Bright.Black
-			green = t.Terminal.Normal.Green
-			yellow = t.Terminal.Normal.Yellow
-
-			// Apply per-theme semantic corrections (e.g. swap yellow→red
-			// when green and yellow are too visually similar).
-			o := theme.TUIOverrides(tc.Name)
-			if o.Accent != "" {
-				accent = o.Accent
-			}
-			if o.FG != "" {
-				fg = o.FG
-			}
-			if o.Dim != "" {
-				dim = o.Dim
-			}
-			if o.Green != "" {
-				green = o.Green
-			}
-			if o.Yellow != "" {
-				yellow = o.Yellow
-			}
+			m := theme.TUIFieldMap(tc.Name)
+			accent, fg, dim, green, yellow = theme.ResolveTUI(t, m)
 		}
 	}
 
@@ -196,7 +174,7 @@ func SaveEditor(editor string) error {
 // SaveTheme updates the theme name in the config file.
 func SaveTheme(name string) error {
 	cfg := Load()
-	cfg.Theme.Name = name
+	cfg.Theme = ThemeConfig{Name: name}
 	return Save(cfg)
 }
 
