@@ -20,19 +20,13 @@ type styles struct {
 	menuUpdatable lipgloss.Style
 }
 
-func colorOrDefault(value, fallback string) lipgloss.Color {
-	if value != "" {
-		return lipgloss.Color(value)
-	}
-	return lipgloss.Color(fallback)
-}
-
 func newStyles(theme config.ThemeConfig) styles {
-	accent := colorOrDefault(theme.Accent, "4")
-	fg := colorOrDefault(theme.Fg, "7")
-	dim := colorOrDefault(theme.Dim, "8")
-	green := colorOrDefault(theme.Green, "2")
-	yellow := colorOrDefault(theme.Yellow, "3")
+	a, f, d, g, y := theme.Resolve()
+	accent := lipgloss.Color(a)
+	fg := lipgloss.Color(f)
+	dim := lipgloss.Color(d)
+	green := lipgloss.Color(g)
+	yellow := lipgloss.Color(y)
 
 	return styles{
 		title: lipgloss.NewStyle().

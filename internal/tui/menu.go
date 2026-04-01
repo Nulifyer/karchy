@@ -10,6 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/nulifyer/karchy/internal/actions/apps"
+	"github.com/nulifyer/karchy/internal/theme"
 	"github.com/nulifyer/karchy/internal/actions/cleanup"
 	"github.com/nulifyer/karchy/internal/actions/fonts"
 	"github.com/nulifyer/karchy/internal/actions/install"
@@ -173,6 +174,7 @@ func setupMenu() []MenuItem {
 		items = append(items, MenuItem{Label: "Restart Hardware", Action: submenu(menuHardwareRestart)})
 	}
 	items = append(items,
+		MenuItem{Label: "Theme", Action: submenu(menuTheme)},
 		MenuItem{Label: "Font", Action: submenu(menuSetupFont)},
 		MenuItem{Label: "Terminal", Action: submenu(menuTerminal)},
 	)
@@ -493,6 +495,39 @@ func loadRemoveFontItems() []TypedItem[fonts.Font] {
 	return items
 }
 
+func themeMenu() []MenuItem {
+	current := config.Load().Theme.Name
+	names := theme.List()
+	items := make([]MenuItem, 0, len(names)+1)
+	// "inherit" option to clear theme and fall back to ANSI defaults
+	inheritLabel := "inherit"
+	if current == "" {
+		inheritLabel += " (current)"
+	}
+	items = append(items, MenuItem{
+		Label: inheritLabel,
+		Action: func() menuResult {
+			config.SaveTheme("")
+			return menuResult{kind: resultBack}
+		},
+	})
+	for _, name := range names {
+		n := name
+		label := n
+		if n == current {
+			label += " (current)"
+		}
+		items = append(items, MenuItem{
+			Label: label,
+			Action: func() menuResult {
+				config.SaveTheme(n)
+				return menuResult{kind: resultBack}
+			},
+		})
+	}
+	return items
+}
+
 func terminalMenu() []MenuItem {
 	current := config.Load().Terminal.App
 	names := terminal.BackendNames()
@@ -576,6 +611,8 @@ func getMenuSize(s submenuKind) menuSize {
 	switch s {
 	case menuPackages, menuRemovePackages, menuAUR:
 		return menuSize{80, 35}
+	case menuTheme:
+		return menuSize{50, 30}
 	case menuApps, menuProjects, menuEditor:
 		return menuSize{60, 25}
 	case menuFonts:
@@ -627,6 +664,8 @@ func getMenu(s submenuKind) ([]MenuItem, string) {
 		return nil, "Remove Distro"
 	case menuAUR:
 		return nil, "AUR Packages"
+	case menuTheme:
+		return themeMenu(), "Theme"
 	case menuTerminal:
 		return terminalMenu(), "Terminal"
 	case menuPowerProfile:

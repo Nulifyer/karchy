@@ -7,6 +7,7 @@ import (
 	"runtime"
 
 	"github.com/BurntSushi/toml"
+	"github.com/nulifyer/karchy/internal/theme"
 )
 
 type Config struct {
@@ -18,11 +19,84 @@ type Config struct {
 }
 
 type ThemeConfig struct {
-	Accent  string `toml:"accent"`  // borders, highlights, selected items (default: ANSI 4)
-	Fg      string `toml:"fg"`      // normal text (default: ANSI 7)
-	Dim     string `toml:"dim"`     // hints, secondary text (default: ANSI 8)
-	Green   string `toml:"green"`   // checked/installed indicators (default: ANSI 2)
-	Yellow  string `toml:"yellow"`  // picked/updatable indicators (default: ANSI 3)
+	Name    string `toml:"name"`    // theme key from colors.json (e.g. "catppuccin_mocha")
+	Variant string `toml:"variant"` // "dark" or "light" — auto-set from colors.json
+
+	// TUI-specific overrides (take precedence over theme-derived values)
+	Accent string `toml:"accent"` // borders, highlights, selected items (default: ANSI 4)
+	Fg     string `toml:"fg"`     // normal text (default: ANSI 7)
+	Dim    string `toml:"dim"`    // hints, secondary text (default: ANSI 8)
+	Green  string `toml:"green"`  // checked/installed indicators (default: ANSI 2)
+	Yellow string `toml:"yellow"` // picked/updatable indicators (default: ANSI 3)
+
+	// Full theme structure (mirrors colors.json)
+	Prompt   ThemePromptConfig   `toml:"prompt"`
+	Terminal ThemeTerminalConfig `toml:"terminal"`
+}
+
+type ThemePromptConfig struct {
+	OS       string `toml:"os"`
+	User     string `toml:"user"`
+	Path     string `toml:"path"`
+	Git      string `toml:"git"`
+	OK       string `toml:"ok"`
+	Err      string `toml:"err"`
+	Duration string `toml:"duration"`
+}
+
+type ThemeTerminalConfig struct {
+	BG        string             `toml:"bg"`
+	FG        string             `toml:"fg"`
+	Cursor    string             `toml:"cursor"`
+	Selection string             `toml:"selection"`
+	Normal    ThemePaletteConfig `toml:"normal"`
+	Bright    ThemePaletteConfig `toml:"bright"`
+}
+
+type ThemePaletteConfig struct {
+	Black   string `toml:"black"`
+	Red     string `toml:"red"`
+	Green   string `toml:"green"`
+	Yellow  string `toml:"yellow"`
+	Blue    string `toml:"blue"`
+	Magenta string `toml:"magenta"`
+	Cyan    string `toml:"cyan"`
+	White   string `toml:"white"`
+}
+
+// Resolve returns the effective TUI colors by layering: ANSI defaults → theme → explicit overrides.
+func (tc ThemeConfig) Resolve() (accent, fg, dim, green, yellow string) {
+	// Start with ANSI defaults
+	accent, fg, dim, green, yellow = "4", "7", "8", "2", "3"
+
+	// If a named theme is set, derive from its palette
+	if tc.Name != "" {
+		if t, ok := theme.Load(tc.Name); ok {
+			accent = t.Terminal.Normal.Blue
+			fg = t.Terminal.Normal.White
+			dim = t.Terminal.Bright.Black
+			green = t.Terminal.Normal.Green
+			yellow = t.Terminal.Normal.Yellow
+		}
+	}
+
+	// Explicit overrides take precedence
+	if tc.Accent != "" {
+		accent = tc.Accent
+	}
+	if tc.Fg != "" {
+		fg = tc.Fg
+	}
+	if tc.Dim != "" {
+		dim = tc.Dim
+	}
+	if tc.Green != "" {
+		green = tc.Green
+	}
+	if tc.Yellow != "" {
+		yellow = tc.Yellow
+	}
+	return
 }
 
 // WindowConfig controls window placement behavior.
@@ -97,6 +171,13 @@ func SaveTerminal(app string) error {
 func SaveEditor(editor string) error {
 	cfg := Load()
 	cfg.Projects.Editor = editor
+	return Save(cfg)
+}
+
+// SaveTheme updates the theme name in the config file.
+func SaveTheme(name string) error {
+	cfg := Load()
+	cfg.Theme.Name = name
 	return Save(cfg)
 }
 
