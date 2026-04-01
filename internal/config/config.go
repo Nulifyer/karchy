@@ -77,6 +77,25 @@ func (tc ThemeConfig) Resolve() (accent, fg, dim, green, yellow string) {
 			dim = t.Terminal.Bright.Black
 			green = t.Terminal.Normal.Green
 			yellow = t.Terminal.Normal.Yellow
+
+			// Apply per-theme semantic corrections (e.g. swap yellow→red
+			// when green and yellow are too visually similar).
+			o := theme.TUIOverrides(tc.Name)
+			if o.Accent != "" {
+				accent = o.Accent
+			}
+			if o.FG != "" {
+				fg = o.FG
+			}
+			if o.Dim != "" {
+				dim = o.Dim
+			}
+			if o.Green != "" {
+				green = o.Green
+			}
+			if o.Yellow != "" {
+				yellow = o.Yellow
+			}
 		}
 	}
 

@@ -86,3 +86,60 @@ func All() map[string]Theme {
 	}
 	return out
 }
+
+// TUIColors holds the resolved colors for the TUI style targets.
+type TUIColors struct {
+	Accent string
+	FG     string
+	Dim    string
+	Green  string
+	Yellow string
+}
+
+// TUIOverrides returns per-theme TUI color corrections for themes where the
+// default mapping (accent=blue, fg=white, dim=bright.black, green=green,
+// yellow=yellow) produces clashing or semantically wrong colors.
+// Only the overridden fields are non-empty.
+func TUIOverrides(name string) TUIColors {
+	o, _ := tuiOverrides[name]
+	return o
+}
+
+var tuiOverrides = map[string]TUIColors{
+	// green (#A9B665) and yellow (#D8A657) are both warm olive/amber — too close.
+	// Use red for the "updatable" indicator.
+	"gruvbox": {Yellow: "#EA6962"},
+
+	// Same olive/gold clash as gruvbox dark.
+	"gruvbox_light": {Yellow: "#CC241D"},
+
+	// green (#859900 olive) and yellow (#B58900 gold) are nearly identical hues.
+	"solarized": {Yellow: "#DC322F"},
+
+	// green (#8DA101 olive) and yellow (#DFA000 amber) are too close.
+	"everforest_light": {Yellow: "#F85552"},
+
+	// green (#66800B) and yellow (#AD8301) — both dark olive/brown.
+	"flexoki_light": {Yellow: "#AF3029"},
+
+	// blue (#31748F) and green (#9CCFD8) are both blue-cyan.
+	// Use iris (magenta) as accent — it's Rosé Pine's identity color.
+	"rose_pine": {Accent: "#C4A7E7"},
+
+	// Same blue-teal clash as rose_pine dark.
+	"rose_pine_dawn": {Accent: "#907AA9"},
+
+	// blue (#26BBD9) and green (#29D398) are both cyan-mint.
+	// Use the pink as accent — it's Horizon's signature.
+	"horizon": {Accent: "#EE64AC"},
+
+	// "yellow" (#08BDBA) is actually cyan — doesn't read as "needs attention".
+	"carbonfox": {Yellow: "#EE5396"},
+
+	// Same cyan-as-yellow issue as carbonfox.
+	"oxocarbon": {Yellow: "#EE5396"},
+
+	// blue, green, and cyan are all #99FFE4 (identical).
+	// magenta and yellow are both #FFC799. Only 3 distinct colors total.
+	"vesper": {Accent: "#FFC799", Green: "#99FFE4", Yellow: "#FF8080"},
+}
