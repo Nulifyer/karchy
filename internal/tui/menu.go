@@ -10,7 +10,6 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/nulifyer/karchy/internal/actions/apps"
-	"github.com/nulifyer/karchy/internal/theme"
 	"github.com/nulifyer/karchy/internal/actions/cleanup"
 	"github.com/nulifyer/karchy/internal/actions/fonts"
 	"github.com/nulifyer/karchy/internal/actions/install"
@@ -20,6 +19,7 @@ import (
 	"github.com/nulifyer/karchy/internal/actions/wsl"
 	"github.com/nulifyer/karchy/internal/config"
 	"github.com/nulifyer/karchy/internal/terminal"
+	"github.com/nulifyer/karchy/internal/theme"
 )
 
 // MenuItem represents a single menu entry.
@@ -331,8 +331,12 @@ func loadPackageItems() []TypedItem[install.PackageEntry] {
 }
 
 func removeMenu() []MenuItem {
+	pkgLabel := "Pacman"
+	if runtime.GOOS == "windows" {
+		pkgLabel = "Winget"
+	}
 	return []MenuItem{
-		{Label: "Package Manager", Action: submenu(menuRemovePackages)},
+		{Label: pkgLabel, Action: submenu(menuRemovePackages)},
 		{Label: "Web App", Action: action(func() {
 			terminal.Launch(60, 25, "Remove Web Apps", "webapp", "remove")
 		})},
@@ -535,8 +539,8 @@ func terminalMenu() []MenuItem {
 
 	items := []MenuItem{
 		{
-			Label:   "auto" + autoCurrentLabel(current, ""),
-			Action:  action(func() { config.SaveTerminal("") }),
+			Label:  "auto" + autoCurrentLabel(current, ""),
+			Action: action(func() { config.SaveTerminal("") }),
 		},
 	}
 	for _, name := range names {

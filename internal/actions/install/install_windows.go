@@ -4,20 +4,18 @@ package install
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nulifyer/karchy/internal/logging"
-	"github.com/nulifyer/karchy/internal/terminal"
 	"golang.org/x/sys/windows/registry"
 	_ "modernc.org/sqlite"
 )
 
 // SearchPackages returns all available packages by reading the winget SQLite index directly.
-// Falls back to winget CLI table parsing if the DB is unavailable.
 func SearchPackages() []PackageEntry {
 	dbPath := findSourceIndex()
 	if dbPath != "" {
@@ -27,8 +25,8 @@ func SearchPackages() []PackageEntry {
 			return entries
 		}
 	}
-	logging.Info("SearchPackages: SQLite unavailable, falling back to CLI")
-	return searchPackagesCLI()
+	logging.Info("SearchPackages: source index unavailable")
+	return nil
 }
 
 // InstalledIDs returns a set of installed package IDs.
@@ -43,8 +41,8 @@ func InstalledIDs() map[string]string {
 		}
 	}
 
-	logging.Info("InstalledIDs: source index unavailable, falling back to CLI")
-	return installedIDsCLI()
+	logging.Info("InstalledIDs: source index unavailable")
+	return nil
 }
 
 // --- SQLite paths ---
@@ -152,7 +150,6 @@ func matchARPInstalled(sourceDBPath string) map[string]string {
 	}
 	defer rows.Close()
 
-	// Map lowercase product code -> package ID
 	pcToID := make(map[string]string)
 	for rows.Next() {
 		var pc, id string
@@ -163,7 +160,6 @@ func matchARPInstalled(sourceDBPath string) map[string]string {
 	}
 	logging.Info("matchARPInstalled: %d product codes in index", len(pcToID))
 
-	// Scan ARP registry keys
 	arpPaths := []struct {
 		root registry.Key
 		path string
@@ -186,7 +182,6 @@ func matchARPInstalled(sourceDBPath string) map[string]string {
 		}
 		for _, sk := range subkeys {
 			if id, ok := pcToID[strings.ToLower(sk)]; ok {
-				// Read DisplayVersion from the ARP entry
 				ver := readARPVersion(arp.root, arp.path+`\`+sk)
 				ids[id] = ver
 			}
@@ -209,174 +204,46 @@ func readARPVersion(root registry.Key, path string) string {
 	return ver
 }
 
-// --- CLI fallbacks ---
+func sourceIndexLastUpdated() time.Time {
+	dbPath := findSourceIndex()
+	if dbPath == "" {
+		return time.Time{}
+	}
 
-func searchPackagesCLI() []PackageEntry {
-	out, err := exec.Command("winget", "search",
-		"-q", ".",
-		"--disable-interactivity",
-		"--accept-source-agreements",
-	).Output()
+	db, err := sql.Open("sqlite", dbPath+"?mode=ro")
 	if err != nil {
-		logging.Info("searchPackagesCLI: winget search failed: %v", err)
-		return nil
+		logging.Info("sourceIndexLastUpdated: open failed: %v", err)
+		return time.Time{}
 	}
-	return parseWingetTable(string(out))
-}
+	defer db.Close()
 
-func installedIDsCLI() map[string]string {
-	out, err := exec.Command("winget", "list",
-		"--disable-interactivity",
-		"--accept-source-agreements",
-	).Output()
+	var raw string
+	if err := db.QueryRow("SELECT value FROM metadata WHERE name = 'lastwritetime'").Scan(&raw); err != nil {
+		logging.Info("sourceIndexLastUpdated: query failed: %v", err)
+		return time.Time{}
+	}
+
+	sec, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil {
-		logging.Info("installedIDsCLI: winget list failed: %v", err)
-		return nil
+		logging.Info("sourceIndexLastUpdated: parse failed: %v", err)
+		return time.Time{}
 	}
 
-	entries := parseWingetTable(string(out))
-	ids := make(map[string]string, len(entries))
-	for _, e := range entries {
-		ids[e.ID] = e.Version
-	}
-	logging.Info("installedIDsCLI: %d installed", len(ids))
-	return ids
+	return time.Unix(sec, 0)
 }
 
-// --- winget table parser (fallback) ---
-
-func parseWingetTable(output string) []PackageEntry {
-	lines := strings.Split(output, "\n")
-
-	sepIdx := -1
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if len(trimmed) > 10 && strings.Count(trimmed, "-") == len(trimmed) {
-			sepIdx = i
-			break
-		}
-	}
-	if sepIdx < 1 || sepIdx+1 >= len(lines) {
-		return nil
-	}
-
-	header := lines[sepIdx-1]
-	idCol := strings.Index(header, "Id")
-	versionCol := strings.Index(header, "Version")
-	if idCol < 0 {
-		return nil
-	}
-
-	var entries []PackageEntry
-	for _, line := range lines[sepIdx+1:] {
-		if len(strings.TrimSpace(line)) == 0 {
-			continue
-		}
-
-		name := safeSlice(line, 0, idCol)
-		var id, version string
-		if versionCol > 0 {
-			id = safeSlice(line, idCol, versionCol)
-			version = safeSlice(line, versionCol, len(line))
-		} else {
-			id = safeSlice(line, idCol, len(line))
-		}
-
-		name = strings.TrimSpace(name)
-		id = strings.TrimSpace(id)
-		version = strings.TrimSpace(version)
-
-		if id == "" {
-			continue
-		}
-
-		if sp := strings.IndexByte(version, ' '); sp > 0 {
-			version = version[:sp]
-		}
-
-		entries = append(entries, PackageEntry{
-			Name:    name,
-			ID:      id,
-			Version: version,
-		})
-	}
-
-	logging.Info("parseWingetTable: parsed %d packages", len(entries))
-	return entries
-}
-
-func safeSlice(s string, start, end int) string {
-	if start >= len(s) {
-		return ""
-	}
-	if end > len(s) {
-		end = len(s)
-	}
-	return s[start:end]
-}
-
-// safePkgID returns the ID only if it contains safe characters for shell interpolation.
-// Winget package IDs are dot-separated identifiers (e.g. "Mozilla.Firefox").
-func safePkgID(id string) string {
-	for _, c := range id {
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_') {
-			return ""
-		}
-	}
-	return id
-}
-
-// refreshSources runs winget source update to refresh the package source database.
-func refreshSources() {
-	logging.Info("refreshSources: running winget source update")
-	if err := exec.Command("winget", "source", "update",
-		"--disable-interactivity",
-		"--accept-source-agreements",
-	).Run(); err != nil {
-		logging.Info("refreshSources: winget source update failed: %v", err)
-	}
-}
-
-// InstallPackage spawns a new terminal window running winget install for the given package ID.
+// InstallPackage installs a package via Karchy's native batch pipeline.
 func InstallPackage(pkg PackageEntry) {
 	logging.Info("InstallPackage: %s (%s)", pkg.Name, pkg.ID)
-	id := safePkgID(pkg.ID)
-	if id == "" {
-		logging.Error("InstallPackage: unsafe package ID: %q", pkg.ID)
-		return
-	}
-	script := `winget source update --disable-interactivity --accept-source-agreements && winget install -e --id ` + id + ` --accept-source-agreements --accept-package-agreements & pause`
-	terminal.LaunchShell(80, 20, "Installing "+pkg.Name, script)
+	batchPipeline([]PackageEntry{pkg}, true)
 }
 
-// InstallPackages spawns a single terminal window running winget install for all given packages.
+// InstallPackages installs packages via Karchy's native batch pipeline.
 func InstallPackages(pkgs []PackageEntry) {
 	if len(pkgs) == 0 {
 		return
 	}
-	if len(pkgs) == 1 {
-		InstallPackage(pkgs[0])
-		return
-	}
-
-	var cmds []string
-	var names []string
-	for _, p := range pkgs {
-		id := safePkgID(p.ID)
-		if id == "" {
-			logging.Error("InstallPackages: unsafe package ID: %q", p.ID)
-			continue
-		}
-		cmds = append(cmds, "winget install -e --id "+id+" --accept-source-agreements --accept-package-agreements")
-		names = append(names, p.Name)
-	}
-	if len(cmds) == 0 {
-		return
-	}
-	logging.Info("InstallPackages: %d packages: %v", len(pkgs), names)
-
-	script := "winget source update --disable-interactivity --accept-source-agreements && " + strings.Join(cmds, " && ") + " & pause"
-	terminal.LaunchShell(100, 30, fmt.Sprintf("Installing %d packages", len(pkgs)), script)
+	batchPipeline(pkgs, true)
 }
 
 func HasAUR() bool                          { return false }

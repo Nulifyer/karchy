@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"time"
 	"unicode/utf16"
 
 	"github.com/nulifyer/karchy/internal/logging"
@@ -24,15 +25,19 @@ func encodePSCommand(script string) string {
 	return base64.StdEncoding.EncodeToString(b)
 }
 
-// SystemUpdate finds all installed packages and runs them through the batch pipeline.
-// Returns 0 since the update runs inline (no external terminal PID to wait on).
+// SystemUpdate runs a full winget package upgrade in a dedicated terminal window.
 func SystemUpdate() int {
 	terminal.ResizeAndCenter(100, 30)
 
-	fmt.Printf("\n :: Refreshing sources...\n\n")
-	refreshSources()
-
-	fmt.Printf("\n :: Checking for updates...\n\n")
+	fmt.Printf("\n :: Checking for updates from the local source index...\n\n")
+	if lastUpdated := sourceIndexLastUpdated(); !lastUpdated.IsZero() {
+		age := time.Since(lastUpdated)
+		if age > 24*time.Hour {
+			fmt.Printf(" Warning: package source index is %s old (%s).\n",
+				age.Round(time.Hour), lastUpdated.Local().Format(time.RFC1123))
+			fmt.Printf(" Updates may be incomplete until the local source index is refreshed.\n\n")
+		}
+	}
 
 	installed := InstalledIDs()
 	if len(installed) == 0 {
@@ -50,7 +55,6 @@ func SystemUpdate() int {
 		return 0
 	}
 
-	// Collect all installed packages that exist in the search index
 	var candidates []PackageEntry
 	for _, pkg := range all {
 		if _, ok := installed[pkg.ID]; ok {
@@ -66,8 +70,6 @@ func SystemUpdate() int {
 	}
 
 	logging.Info("SystemUpdate: %d installed packages found in index", len(candidates))
-
-	// batchPipeline handles version check, download, verify, install
 	batchPipeline(candidates, true)
 	return 0
 }

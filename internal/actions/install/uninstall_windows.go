@@ -32,13 +32,11 @@ type InstalledPackage struct {
 // InstalledPackages returns all removable packages from the ARP registry,
 // enriched with winget package IDs where possible.
 func InstalledPackages() []InstalledPackage {
-	// Build product code -> package ID map from winget source index
 	pcToID := make(map[string]string)
 	if srcPath := findSourceIndex(); srcPath != "" {
 		pcToID = loadProductCodeMap(srcPath)
 	}
 
-	// Scan ARP registry
 	arpPaths := []struct {
 		root registry.Key
 		path string
@@ -75,7 +73,6 @@ func InstalledPackages() []InstalledPackage {
 			entry.RegistryKey = sk
 			entry.RegistryRoot = arp.root
 
-			// Try to match winget ID via product code
 			if id, ok := pcToID[strings.ToLower(sk)]; ok {
 				entry.ID = id
 			}
@@ -97,11 +94,9 @@ func readARPEntry(root registry.Key, path string) *InstalledPackage {
 	}
 	defer key.Close()
 
-	// Skip system components
 	if val, _, err := key.GetIntegerValue("SystemComponent"); err == nil && val == 1 {
 		return nil
 	}
-	// Skip sub-components
 	if val, _, err := key.GetStringValue("ParentKeyName"); err == nil && val != "" {
 		return nil
 	}
@@ -113,8 +108,6 @@ func readARPEntry(root registry.Key, path string) *InstalledPackage {
 
 	uninstall, _, _ := key.GetStringValue("UninstallString")
 	quietUninstall, _, _ := key.GetStringValue("QuietUninstallString")
-
-	// Must have at least one uninstall method
 	if uninstall == "" && quietUninstall == "" {
 		return nil
 	}
@@ -169,8 +162,6 @@ func loadProductCodeMap(sourceDBPath string) map[string]string {
 func UninstallPackage(pkg InstalledPackage) error {
 	logging.Info("UninstallPackage: %s (key=%s)", pkg.Name, pkg.RegistryKey)
 
-	// Strategy 1: Karchy ZIP install — run stored cmd string directly (no elevation needed, user-level).
-	// Uses SysProcAttr.CmdLine to avoid Go's argument escaping mangling the compound cmd /c command.
 	if pkg.Publisher == "Karchy (ZIP install)" {
 		uninstall := pkg.QuietUninstallString
 		if uninstall == "" {
@@ -190,17 +181,14 @@ func UninstallPackage(pkg InstalledPackage) error {
 		return nil
 	}
 
-	// Strategy 2: MSI — use msiexec /x with the product code
 	if pkg.IsWindowsInstaller {
 		return uninstallMSI(pkg)
 	}
 
-	// Strategy 3: QuietUninstallString — already has silent flags
 	if pkg.QuietUninstallString != "" {
 		return runUninstallString(pkg.QuietUninstallString)
 	}
 
-	// Strategy 4: UninstallString
 	if pkg.UninstallString != "" {
 		return runUninstallString(pkg.UninstallString)
 	}
@@ -209,10 +197,8 @@ func UninstallPackage(pkg InstalledPackage) error {
 }
 
 func uninstallMSI(pkg InstalledPackage) error {
-	// Extract product code — prefer registry key if it's a GUID
 	productCode := pkg.RegistryKey
 	if !strings.HasPrefix(productCode, "{") {
-		// Try to extract from UninstallString: MsiExec.exe /X{GUID}
 		if idx := strings.Index(pkg.UninstallString, "{"); idx >= 0 {
 			end := strings.Index(pkg.UninstallString[idx:], "}")
 			if end >= 0 {
@@ -245,7 +231,6 @@ func parseUninstallString(s string) (exe, args string) {
 	}
 
 	if s[0] == '"' {
-		// Quoted path
 		end := strings.Index(s[1:], `"`)
 		if end < 0 {
 			return s[1:], ""
@@ -255,7 +240,6 @@ func parseUninstallString(s string) (exe, args string) {
 		return exe, args
 	}
 
-	// Unquoted — split on first space after .exe
 	lower := strings.ToLower(s)
 	if idx := strings.Index(lower, ".exe "); idx >= 0 {
 		return s[:idx+4], strings.TrimSpace(s[idx+5:])
@@ -264,7 +248,6 @@ func parseUninstallString(s string) (exe, args string) {
 		return s[:idx+4], ""
 	}
 
-	// No .exe found — could be msiexec or similar
 	parts := strings.SplitN(s, " ", 2)
 	if len(parts) == 2 {
 		return parts[0], parts[1]
@@ -347,7 +330,6 @@ func BatchUninstall(pkgs []InstalledPackage) {
 	restoreVT := enableVT()
 	defer restoreVT()
 
-	// List packages and confirm
 	fmt.Printf("\n Packages (%d)\n\n", len(pkgs))
 	for _, pkg := range pkgs {
 		if pkg.Version != "" && !strings.Contains(pkg.Name, pkg.Version) {
@@ -383,7 +365,6 @@ func BatchUninstall(pkgs []InstalledPackage) {
 		}
 	}
 
-	// Summary
 	fmt.Println()
 	if failed == 0 {
 		fmt.Printf(" %s%s:: %d package(s) removed successfully.%s\n\n",

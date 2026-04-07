@@ -157,11 +157,15 @@ func phaseResolve(pkgs []PackageEntry) []resolvedPkg {
 
 	results := make([]resolvedPkg, len(pkgs))
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, 4)
 
 	for i, pkg := range pkgs {
 		wg.Add(1)
 		go func(i int, pkg PackageEntry) {
 			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
 			r := resolvedPkg{pkg: pkg}
 
 			manifest, err := FetchManifest(pkg.ID, pkg.Version)

@@ -1,20 +1,32 @@
 package install
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nulifyer/karchy/internal/logging"
 )
 
 const manifestBaseURL = "https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests"
+const manifestContentsAPIBase = "https://api.github.com/repos/microsoft/winget-pkgs/contents/manifests"
 
 var manifestHTTPClient = &http.Client{Timeout: 30 * time.Second}
+var manifestURLCache sync.Map
+var githubContentsCache sync.Map
+
+type githubContentEntry struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	DownloadURL string `json:"download_url"`
+	URL         string `json:"url"`
+}
 
 // NestedInstallerFile identifies a file inside a ZIP archive to run as the actual installer.
 type NestedInstallerFile struct {
@@ -150,33 +162,141 @@ func (e InstallerEntry) NeedsElevation(m *InstallerManifest) bool {
 
 // FetchManifest downloads and parses the installer manifest for a package.
 func FetchManifest(id, version string) (*InstallerManifest, error) {
-	url := buildManifestURL(id, version)
-	logging.Info("FetchManifest: GET %s", url)
-
-	resp, err := manifestHTTPClient.Get(url)
+	body, err := fetchManifestBody(id, version)
 	if err != nil {
-		return nil, fmt.Errorf("fetch manifest: %w", err)
+		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("fetch manifest: HTTP %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read manifest: %w", err)
-	}
-
-	return parseManifest(string(body))
+	return parseManifest(body)
 }
 
-func buildManifestURL(id, version string) string {
+func buildLegacyManifestURL(id, version string) string {
 	firstLetter := strings.ToLower(id[:1])
 	parts := strings.Split(id, ".")
 	pathSegments := strings.Join(parts, "/")
 	return fmt.Sprintf("%s/%s/%s/%s/%s.installer.yaml",
 		manifestBaseURL, firstLetter, pathSegments, version, id)
+}
+
+func resolveManifestURL(id, version string) (string, error) {
+	cacheKey := id + "@" + version
+	if cached, ok := manifestURLCache.Load(cacheKey); ok {
+		return cached.(string), nil
+	}
+
+	legacy := buildLegacyManifestURL(id, version)
+	resp, err := manifestRequest(legacy)
+	if err != nil {
+		return "", fmt.Errorf("resolve manifest: fetch legacy manifest: %w", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		manifestURLCache.Store(cacheKey, legacy)
+		return legacy, nil
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		return "", fmt.Errorf("resolve manifest: legacy manifest HTTP %d", resp.StatusCode)
+	}
+
+	baseDir := manifestRepoVersionDir(id, version)
+	entries, err := githubContents(baseDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve manifest: %w", err)
+	}
+
+	installerName := id + ".installer.yaml"
+	if url := findManifestDownloadURL(entries, installerName); url != "" {
+		manifestURLCache.Store(cacheKey, url)
+		return url, nil
+	}
+
+	for _, entry := range entries {
+		if entry.Type != "dir" || entry.URL == "" {
+			continue
+		}
+		nested, err := githubContents(entry.URL)
+		if err != nil {
+			continue
+		}
+		if url := findManifestDownloadURL(nested, installerName); url != "" {
+			manifestURLCache.Store(cacheKey, url)
+			return url, nil
+		}
+	}
+
+	return "", fmt.Errorf("resolve manifest: installer manifest not found for %s %s", id, version)
+}
+
+func manifestRepoVersionDir(id, version string) string {
+	firstLetter := strings.ToLower(id[:1])
+	parts := strings.Split(id, ".")
+	return fmt.Sprintf("%s/%s/%s/%s", manifestContentsAPIBase, firstLetter, strings.Join(parts, "/"), version)
+}
+
+func findManifestDownloadURL(entries []githubContentEntry, name string) string {
+	for _, entry := range entries {
+		if entry.Type == "file" && strings.EqualFold(entry.Name, name) && entry.DownloadURL != "" {
+			return entry.DownloadURL
+		}
+	}
+	return ""
+}
+
+func fetchManifestBody(id, version string) (string, error) {
+	url, err := resolveManifestURL(id, version)
+	if err != nil {
+		return "", err
+	}
+	logging.Info("FetchManifest: GET %s", url)
+
+	resp, err := manifestRequest(url)
+	if err != nil {
+		return "", fmt.Errorf("fetch manifest: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("fetch manifest: HTTP %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read manifest: %w", err)
+	}
+	return string(body), nil
+}
+
+func githubContents(url string) ([]githubContentEntry, error) {
+	if cached, ok := githubContentsCache.Load(url); ok {
+		entries := cached.([]githubContentEntry)
+		return append([]githubContentEntry(nil), entries...), nil
+	}
+
+	resp, err := manifestRequest(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GitHub contents: HTTP %d", resp.StatusCode)
+	}
+
+	var entries []githubContentEntry
+	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
+		return nil, fmt.Errorf("GitHub contents decode: %w", err)
+	}
+	githubContentsCache.Store(url, append([]githubContentEntry(nil), entries...))
+	return entries, nil
+}
+
+func manifestRequest(url string) (*http.Response, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", "karchy")
+	req.Header.Set("Accept", "application/vnd.github+json")
+	return manifestHTTPClient.Do(req)
 }
 
 // parseManifest does line-based YAML parsing of the installer manifest.
