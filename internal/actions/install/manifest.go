@@ -7,11 +7,14 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nulifyer/karchy/internal/logging"
 )
 
 const manifestBaseURL = "https://raw.githubusercontent.com/microsoft/winget-pkgs/master/manifests"
+
+var manifestHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 // NestedInstallerFile identifies a file inside a ZIP archive to run as the actual installer.
 type NestedInstallerFile struct {
@@ -36,12 +39,12 @@ type InstallerManifest struct {
 	Version string
 
 	// Top-level defaults (can be overridden per-installer)
-	InstallerType        string
-	Scope                string // "user", "machine", or ""
-	ElevationRequirement string // "elevationRequired", "elevatesSelf", "elevationProhibited"
-	Silent               string
-	SilentProgress       string
-	Custom               string
+	InstallerType         string
+	Scope                 string // "user", "machine", or ""
+	ElevationRequirement  string // "elevationRequired", "elevatesSelf", "elevationProhibited"
+	Silent                string
+	SilentProgress        string
+	Custom                string
 	InstallerSuccessCodes []int
 	NestedInstallerType   string
 	NestedInstallerFiles  []NestedInstallerFile
@@ -52,16 +55,16 @@ type InstallerManifest struct {
 
 // InstallerEntry represents a single installer variant.
 type InstallerEntry struct {
-	Architecture         string
-	Scope                string // "user", "machine", or ""
-	InstallerType        string // overrides top-level if set
-	InstallerURL         string
-	SHA256               string
-	Locale               string
-	ElevationRequirement string // overrides top-level if set
-	Silent               string // overrides top-level if set
-	SilentProgress       string // overrides top-level if set
-	Custom               string // overrides top-level if set
+	Architecture          string
+	Scope                 string // "user", "machine", or ""
+	InstallerType         string // overrides top-level if set
+	InstallerURL          string
+	SHA256                string
+	Locale                string
+	ElevationRequirement  string // overrides top-level if set
+	Silent                string // overrides top-level if set
+	SilentProgress        string // overrides top-level if set
+	Custom                string // overrides top-level if set
 	InstallerSuccessCodes []int
 	NestedInstallerType   string
 	NestedInstallerFiles  []NestedInstallerFile
@@ -150,7 +153,7 @@ func FetchManifest(id, version string) (*InstallerManifest, error) {
 	url := buildManifestURL(id, version)
 	logging.Info("FetchManifest: GET %s", url)
 
-	resp, err := http.Get(url)
+	resp, err := manifestHTTPClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("fetch manifest: %w", err)
 	}
@@ -186,13 +189,13 @@ func parseManifest(yaml string) (*InstallerManifest, error) {
 	// Empty string means not in any list section.
 	type listMode string
 	const (
-		listNone              listMode = ""
-		listSuccessCodes      listMode = "InstallerSuccessCodes"
-		listNestedFiles       listMode = "NestedInstallerFiles"
-		listDeps              listMode = "Dependencies"
-		listPkgDeps           listMode = "PackageDependencies"
-		listWinFeatures       listMode = "WindowsFeatures"
-		listSwitches          listMode = "InstallerSwitches"
+		listNone         listMode = ""
+		listSuccessCodes listMode = "InstallerSuccessCodes"
+		listNestedFiles  listMode = "NestedInstallerFiles"
+		listDeps         listMode = "Dependencies"
+		listPkgDeps      listMode = "PackageDependencies"
+		listWinFeatures  listMode = "WindowsFeatures"
+		listSwitches     listMode = "InstallerSwitches"
 	)
 
 	inInstallers := false

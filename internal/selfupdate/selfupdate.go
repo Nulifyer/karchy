@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 type release struct {
@@ -25,6 +26,8 @@ type asset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
 }
+
+var httpClient = &http.Client{Timeout: 30 * time.Second}
 
 // Run checks GitHub for a newer release and updates the binary in-place.
 // Returns true if an update was applied.
@@ -77,7 +80,7 @@ func Run(currentVersion string) bool {
 }
 
 func fetchLatest() (*release, error) {
-	resp, err := http.Get("https://api.github.com/repos/Nulifyer/karchy/releases/latest")
+	resp, err := httpClient.Get("https://api.github.com/repos/Nulifyer/karchy/releases/latest")
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +114,7 @@ func fetchExpectedHash(checksumURL, archiveName string) (string, error) {
 	if checksumURL == "" {
 		return "", nil
 	}
-	resp, err := http.Get(checksumURL)
+	resp, err := httpClient.Get(checksumURL)
 	if err != nil {
 		return "", fmt.Errorf("fetch checksums: %w", err)
 	}
@@ -133,7 +136,7 @@ func fetchExpectedHash(checksumURL, archiveName string) (string, error) {
 }
 
 func downloadAndExtract(url, checksumURL, archiveName string) error {
-	resp, err := http.Get(url)
+	resp, err := httpClient.Get(url)
 	if err != nil {
 		return err
 	}

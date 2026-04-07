@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -55,23 +56,24 @@ var (
 	procRegisterWindowMessageW   = user32.NewProc("RegisterWindowMessageW")
 	procShellNotifyIconW         = shell32.NewProc("Shell_NotifyIconW")
 
-	procCreateJobObjectW              = kernel32.NewProc("CreateJobObjectW")
-	procSetInformationJobObject       = kernel32.NewProc("SetInformationJobObject")
-	procAssignProcessToJobObject      = kernel32.NewProc("AssignProcessToJobObject")
+	procCreateJobObjectW         = kernel32.NewProc("CreateJobObjectW")
+	procSetInformationJobObject  = kernel32.NewProc("SetInformationJobObject")
+	procAssignProcessToJobObject = kernel32.NewProc("AssignProcessToJobObject")
 )
 
 const (
 	mutexName          = "Global\\KarchyDaemon"
 	errorAlreadyExists = 183
 
-	wmDestroy          = 0x0002
-	wmCommand          = 0x0111
-	wmTrayIcon         = 0x8001 // WM_APP + 1
-	wmLaunchMenu       = 0x8003 // WM_APP + 3 — posted by hook to trigger launch on msg thread
-	wmMenuHostDied     = 0x8004 // WM_APP + 4 — posted by monitor goroutine when menu host exits
-	wmOpenTerminal     = 0x8005 // WM_APP + 5 — posted by hook to open a terminal window
+	wmDestroy           = 0x0002
+	wmCommand           = 0x0111
+	wmTrayIcon          = 0x8001 // WM_APP + 1
+	wmLaunchMenu        = 0x8003 // WM_APP + 3 — posted by hook to trigger launch on msg thread
+	wmMenuHostDied      = 0x8004 // WM_APP + 4 — posted by monitor goroutine when menu host exits
+	wmOpenTerminal      = 0x8005 // WM_APP + 5 — posted by hook to open a terminal window
+	wmSelfUpdateReady   = 0x8006 // WM_APP + 6 — posted by background checker to update tray on msg thread
 	wmWindowPosChanging = 0x0046 // WM_WINDOWPOSCHANGING — tray icon recovery fallback
-	wsOverlappedWindow = 0x00CF0000
+	wsOverlappedWindow  = 0x00CF0000
 
 	// Low-level keyboard hook
 	whKeyboardLL = 13
@@ -125,23 +127,26 @@ var (
 	trayHwnd         uintptr
 	hookHandle       uintptr
 	hookCallback     uintptr // cached syscall.NewCallback — must be created once
-	targetMod        uint32 // VK code for modifier (e.g. vkLWin)
-	targetKey        uint32 // VK code for key (e.g. vkSpace)
-	terminalMod      uint32 // VK code for open-terminal modifier
-	terminalKey      uint32 // VK code for open-terminal key
-	selfUpdateVer    string // newer karchy version available (empty if up to date)
-	wmTaskbarCreated uint32 // registered message ID for "TaskbarCreated"
+	targetMod        uint32  // VK code for modifier (e.g. vkLWin)
+	targetKey        uint32  // VK code for key (e.g. vkSpace)
+	terminalMod      uint32  // VK code for open-terminal modifier
+	terminalKey      uint32  // VK code for open-terminal key
+	selfUpdateVer    string  // newer karchy version available (empty if up to date)
+	wmTaskbarCreated uint32  // registered message ID for "TaskbarCreated"
 
 	// Menu host subprocess state (all accessed only on the message thread).
-	menuHostCmd      *exec.Cmd // persistent menu host process
-	menuHostPID      int       // PID of the menu host (0 = not running)
-	menuShowEvent    uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
-	jobObject        uintptr   // job object — kills menuhost when daemon exits
-	workAreaShmHandle uintptr  // handle to Local\KarchyWorkArea shared memory
-	hwndShmHandle     uintptr  // handle to Local\KarchyHwnd shared memory
+	menuHostCmd       *exec.Cmd // persistent menu host process
+	menuHostPID       int       // PID of the menu host (0 = not running)
+	menuShowEvent     uintptr   // handle to Local\KarchyShowMenu (0 = not yet open)
+	jobObject         uintptr   // job object — kills menuhost when daemon exits
+	workAreaShmHandle uintptr   // handle to Local\KarchyWorkArea shared memory
+	hwndShmHandle     uintptr   // handle to Local\KarchyHwnd shared memory
 
 	// Debounce for WM_WINDOWPOSCHANGING tray icon re-add.
 	lastReaddTick uint32
+
+	selfUpdateMu         = sync.Mutex{}
+	pendingSelfUpdateVer string
 )
 
 // KBDLLHOOKSTRUCT
@@ -683,6 +688,11 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		} else {
 			logging.Info("wmLaunchMenu: menu host not ready, spawning")
 			spawnMenuHost()
+			if menuShowEvent != 0 && menuHostPID != 0 {
+				procAllowSetForegroundWindow.Call(uintptr(menuHostPID))
+				signalEvent(menuShowEvent)
+				logging.Info("wmLaunchMenu: signaled freshly spawned menu host pid=%d", menuHostPID)
+			}
 		}
 		return 0
 
@@ -696,7 +706,12 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		return 0
 
 	case wmMenuHostDied:
-		logging.Info("trayWndProc: menu host died, respawning")
+		exitedPID := int(wParam)
+		if exitedPID != 0 && exitedPID != menuHostPID {
+			logging.Info("trayWndProc: ignoring stale menuhost exit pid=%d current=%d", exitedPID, menuHostPID)
+			return 0
+		}
+		logging.Info("trayWndProc: menu host died pid=%d, respawning", exitedPID)
 		if menuShowEvent != 0 {
 			procCloseHandle.Call(menuShowEvent)
 			menuShowEvent = 0
@@ -704,6 +719,20 @@ func trayWndProc(hwnd uintptr, umsg uint32, wParam, lParam uintptr) uintptr {
 		menuHostPID = 0
 		menuHostCmd = nil
 		spawnMenuHost()
+		return 0
+
+	case wmSelfUpdateReady:
+		selfUpdateMu.Lock()
+		ver := pendingSelfUpdateVer
+		pendingSelfUpdateVer = ""
+		selfUpdateMu.Unlock()
+		if ver == "" {
+			return 0
+		}
+		selfUpdateVer = ver
+		logging.Info("trayWndProc: applying self-update notification for %s", ver)
+		updateTrayTooltip(fmt.Sprintf("Karchy - %s available", ver))
+		updateTrayIcon(assets.IconBadgeICO)
 		return 0
 
 	case wmCommand:
@@ -764,6 +793,7 @@ func spawnMenuHost() {
 	menuHostCmd = cmd
 	menuHostPID = cmd.Process.Pid
 	logging.Info("spawnMenuHost: pid=%d", menuHostPID)
+	pid := menuHostPID
 
 	// Assign to job object so it's killed when the daemon exits.
 	// Assign to job object so it's killed when the daemon exits.
@@ -790,8 +820,8 @@ func spawnMenuHost() {
 	// Monitor for exit and notify the message thread to respawn.
 	go func() {
 		cmd.Wait()
-		logging.Info("spawnMenuHost: menu host exited pid=%d", menuHostPID)
-		procPostMessageW.Call(trayHwnd, wmMenuHostDied, 0, 0)
+		logging.Info("spawnMenuHost: menu host exited pid=%d", pid)
+		procPostMessageW.Call(trayHwnd, wmMenuHostDied, uintptr(pid), 0)
 	}()
 }
 
@@ -895,16 +925,18 @@ func splitHotkey(s string) []string {
 	return parts
 }
 
-
 func checkSelfUpdate() {
 	if Version == "" || Version == "dev" {
 		return
 	}
 	if v := selfupdate.CheckAvailable(Version); v != "" {
-		selfUpdateVer = v
 		logging.Info("daemon: karchy update available: %s", v)
-		updateTrayTooltip(fmt.Sprintf("Karchy - %s available", v))
-		updateTrayIcon(assets.IconBadgeICO)
+		selfUpdateMu.Lock()
+		pendingSelfUpdateVer = v
+		selfUpdateMu.Unlock()
+		if trayHwnd != 0 {
+			procPostMessageW.Call(trayHwnd, wmSelfUpdateReady, 0, 0)
+		}
 	}
 }
 
