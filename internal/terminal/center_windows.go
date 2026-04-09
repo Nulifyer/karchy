@@ -70,6 +70,16 @@ func (r rect) Height() int { return int(r.Bottom - r.Top) }
 
 type point struct{ X, Y int32 }
 
+// packPoint encodes a POINT for pass-by-value to Win32 functions like
+// MonitorFromPoint. On the Windows x64 ABI, POINT (two int32s, 8 bytes)
+// is passed in a single register with X in the low 32 bits and Y in the
+// high 32 bits. The int32 -> uint32 cast is required so negative
+// coordinates (common on multi-monitor setups where a secondary display
+// is left of or above primary) don't sign-extend into the Y half.
+func packPoint(p point) uintptr {
+	return uintptr(uint32(p.X)) | (uintptr(uint32(p.Y)) << 32)
+}
+
 // monitorInfo mirrors MONITORINFO (Win32).
 type monitorInfo struct {
 	CbSize    uint32
@@ -130,9 +140,8 @@ func workAreaForBehavior(b MonitorBehavior) rect {
 	switch b {
 	case MonitorPrimary:
 		// Primary monitor always contains virtual point (0,0).
-		var pt point
 		hmon, _, _ = procMonitorFromPoint.Call(
-			uintptr(unsafe.Pointer(&pt)),
+			packPoint(point{}),
 			monitorDefaultToPrimary,
 		)
 	case MonitorActiveWindow:
@@ -144,16 +153,15 @@ func workAreaForBehavior(b MonitorBehavior) rect {
 		var pt point
 		procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt)))
 		hmon, _, _ = procMonitorFromPoint.Call(
-			uintptr(unsafe.Pointer(&pt)),
+			packPoint(pt),
 			monitorDefaultToNearest,
 		)
 	}
 
 	if hmon == 0 {
 		// Fallback: primary monitor
-		var pt point
 		hmon, _, _ = procMonitorFromPoint.Call(
-			uintptr(unsafe.Pointer(&pt)),
+			packPoint(point{}),
 			monitorDefaultToPrimary,
 		)
 	}

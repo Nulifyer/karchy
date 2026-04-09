@@ -192,7 +192,7 @@ func isProject(dir string) bool {
 // Open launches the project in the configured editor.
 func Open(entry ProjectEntry) {
 	editor := CurrentEditor()
-	ed := findEditor(editor)
+	ed := FindEditor(editor)
 	logging.Info("projects.Open: %s (terminal=%v) %s", editor, ed.Terminal, entry.Path)
 
 	if ed.Terminal {
@@ -217,7 +217,10 @@ func openInTerminal(editor, path string) {
 	cmd.Start()
 }
 
-func findEditor(command string) Editor {
+// FindEditor returns the Editor entry for the given command. If the command
+// is not in AllEditors, a bare non-terminal Editor with the command as its
+// name is returned so callers can still launch it.
+func FindEditor(command string) Editor {
 	for _, ed := range AllEditors {
 		if ed.Command == command {
 			return ed

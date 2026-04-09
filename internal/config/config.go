@@ -199,3 +199,19 @@ func configPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "karchy", "config.toml")
 }
+
+// Path returns the absolute path to the karchy config file.
+func Path() string { return configPath() }
+
+// EnsureExists writes the current (default-merged) config to disk if the
+// file does not already exist. Returns the config path in either case.
+func EnsureExists() (string, error) {
+	path := configPath()
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	}
+	if err := Save(Load()); err != nil {
+		return path, err
+	}
+	return path, nil
+}

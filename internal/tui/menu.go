@@ -177,6 +177,7 @@ func setupMenu() []MenuItem {
 		MenuItem{Label: "Theme", Action: submenu(menuTheme)},
 		MenuItem{Label: "Font", Action: submenu(menuSetupFont)},
 		MenuItem{Label: "Terminal", Action: submenu(menuTerminal)},
+		MenuItem{Label: "Config", Action: action(setup.OpenConfig)},
 	)
 	if runtime.GOOS == "windows" {
 		items = append(items, MenuItem{Label: "Chris Titus WinUtil", Action: action(setup.WinUtil)})
