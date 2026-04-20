@@ -306,6 +306,7 @@ func loadAURItems() []TypedItem[install.PackageEntry] {
 }
 
 func loadPackageItems() []TypedItem[install.PackageEntry] {
+	install.RefreshSources()
 	entries, installed := install.SearchPackages(), install.InstalledIDs()
 	items := make([]TypedItem[install.PackageEntry], len(entries))
 	for i, e := range entries {

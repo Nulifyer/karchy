@@ -29,6 +29,9 @@ func encodePSCommand(script string) string {
 func SystemUpdate() int {
 	terminal.ResizeAndCenter(100, 30)
 
+	fmt.Printf("\n :: Refreshing winget sources...\n")
+	RefreshSources()
+
 	fmt.Printf("\n :: Checking for updates from the local source index...\n\n")
 	if lastUpdated := sourceIndexLastUpdated(); !lastUpdated.IsZero() {
 		age := time.Since(lastUpdated)
