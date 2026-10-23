@@ -31,6 +31,7 @@ Item {
   readonly property int padding: Style.spacing.panelPadding
   readonly property int cardWidth: Math.min(Style.space(720), panel.width - Style.gapsOut * 2)
   readonly property int cardHeight: Math.min(Style.space(500), panel.height - Style.gapsOut * 2)
+  readonly property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", Color.menu.selectedBorder, 0)
 
   function open(payloadJson) {
     var initialQuery = ""
@@ -228,9 +229,11 @@ Item {
         spacing: Style.spacing.sm
 
         Item {
+          id: header
           width: parent.width
-          height: Style.space(26)
+          height: Math.max(Style.space(26), title.implicitHeight, resultCount.implicitHeight)
           Text {
+            id: title
             text: "Projects"
             textFormat: Text.PlainText
             color: Color.menu.text
@@ -240,62 +243,42 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
           }
           Text {
+            id: resultCount
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: scan.running ? "Searching…" : root.results.length + " / " + root.projects.length
             textFormat: Text.PlainText
-            color: Color.muted
+            color: Color.menu.text
+            opacity: 0.58
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
           }
         }
 
-        Rectangle {
+        TextField {
+          id: search
           width: parent.width
-          height: Style.space(40)
-          radius: Style.cornerRadius
-          color: Style.controlFill(search.activeFocus, false, Color.menu.text, Color.accent)
-          border.color: Color.menu.border
-          border.width: Math.max(1, Style.space(1))
-
-          TextInput {
-            id: search
-            anchors.fill: parent
-            anchors.margins: Style.spacing.md
-            verticalAlignment: TextInput.AlignVCenter
-            color: Color.menu.text
-            selectionColor: Color.menu.selectedBackground
-            selectedTextColor: Color.menu.selectedText
-            font.family: Style.font.menuFamily
-            font.pixelSize: Style.font.body
-            clip: true
-            selectByMouse: true
-            focus: true
-            onTextChanged: { root.selectedIndex = 0; filterDelay.restart() }
-            Keys.priority: Keys.BeforeItem
-            Keys.onPressed: function(event) {
-              var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
-              if (event.key === Qt.Key_Escape) root.dismiss()
-              else if (ctrl && event.key === Qt.Key_E) { filterDelay.stop(); root.rebuild(false); root.activate("terminal") }
-              else if (ctrl && event.key === Qt.Key_R) root.refresh()
-              else if (event.key === Qt.Key_Down || (ctrl && event.key === Qt.Key_N)) { filterDelay.stop(); root.rebuild(true); root.select(1) }
-              else if (event.key === Qt.Key_Up || (ctrl && event.key === Qt.Key_P)) { filterDelay.stop(); root.rebuild(true); root.select(-1) }
-              else if (event.key === Qt.Key_PageDown) root.select(7)
-              else if (event.key === Qt.Key_PageUp) root.select(-7)
-              else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { filterDelay.stop(); root.rebuild(true); root.activate("editor") }
-              else return
-              event.accepted = true
-            }
-
-            Text {
-              anchors.fill: parent
-              verticalAlignment: Text.AlignVCenter
-              visible: !search.text.length
-              text: "Search projects or paths…"
-              textFormat: Text.PlainText
-              color: Color.muted
-              font: search.font
-            }
+          height: Math.max(Style.space(40), implicitHeight)
+          foreground: Color.menu.text
+          font.family: Style.font.menuFamily
+          font.pixelSize: Style.font.body
+          placeholderText: "Search projects or paths…"
+          selectByMouse: true
+          focus: true
+          onTextChanged: { root.selectedIndex = 0; filterDelay.restart() }
+          Keys.priority: Keys.BeforeItem
+          Keys.onPressed: function(event) {
+            var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+            if (event.key === Qt.Key_Escape) root.dismiss()
+            else if (ctrl && event.key === Qt.Key_E) { filterDelay.stop(); root.rebuild(false); root.activate("terminal") }
+            else if (ctrl && event.key === Qt.Key_R) root.refresh()
+            else if (event.key === Qt.Key_Down || (ctrl && event.key === Qt.Key_N)) { filterDelay.stop(); root.rebuild(true); root.select(1) }
+            else if (event.key === Qt.Key_Up || (ctrl && event.key === Qt.Key_P)) { filterDelay.stop(); root.rebuild(true); root.select(-1) }
+            else if (event.key === Qt.Key_PageDown) root.select(7)
+            else if (event.key === Qt.Key_PageUp) root.select(-7)
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) { filterDelay.stop(); root.rebuild(true); root.activate("editor") }
+            else return
+            event.accepted = true
           }
         }
 
@@ -303,27 +286,31 @@ Item {
           id: list
           width: parent.width
           height: Math.max(0, card.height - card.contentTopInset - card.contentBottomInset
-            - Style.space(26) - Style.space(40) - footer.height - errorLabel.height - parent.spacing * 4)
+            - header.height - search.height - footer.height - errorLabel.height - parent.spacing * 4)
           clip: true
           model: root.results
           boundsBehavior: Flickable.StopAtBounds
           currentIndex: root.selectedIndex
-          delegate: Rectangle {
+          delegate: BorderSurface {
             id: row
             required property var modelData
             required property int index
             width: list.width
-            height: root.rowHeight
+            height: Math.max(root.rowHeight, rowContent.implicitHeight + Style.spacing.controlPaddingY * 2
+              + Border.top(root.selectedBorderSpec) + Border.bottom(root.selectedBorderSpec))
             radius: Style.cornerRadius
             color: index === root.selectedIndex ? Color.menu.selectedBackground : "transparent"
+            borderSpec: index === root.selectedIndex ? root.selectedBorderSpec : Border.none()
 
             Column {
+              id: rowContent
               anchors.left: parent.left
               anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
-              anchors.leftMargin: Style.spacing.md
-              anchors.rightMargin: Style.spacing.md
-              spacing: Style.space(2)
+              anchors.leftMargin: Style.spacing.md + Border.left(root.selectedBorderSpec)
+              anchors.rightMargin: Style.spacing.md + Border.right(root.selectedBorderSpec)
+              anchors.verticalCenterOffset: (Border.top(root.selectedBorderSpec) - Border.bottom(root.selectedBorderSpec)) / 2
+              spacing: Style.spacing.xxs
               Text {
                 width: parent.width
                 text: Search.plainLabel(row.modelData.name)
@@ -339,8 +326,8 @@ Item {
                 text: Search.plainLabel(row.modelData.displayPath)
                 textFormat: Text.PlainText
                 elide: Text.ElideMiddle
-                color: row.index === root.selectedIndex ? Color.menu.selectedText : Color.muted
-                opacity: row.index === root.selectedIndex ? 0.8 : 1
+                color: Color.menu.text
+                opacity: 0.52
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.caption
               }
@@ -360,7 +347,8 @@ Item {
             visible: root.results.length === 0
             text: scan.running ? "Looking for projects…" : search.text.length ? "No matching projects" : "Add a folder to ~/Projects to get started"
             textFormat: Text.PlainText
-            color: Color.muted
+            color: Color.menu.text
+            opacity: 0.58
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
             width: parent.width
@@ -388,7 +376,8 @@ Item {
           width: parent.width
           text: "Enter  editor     Ctrl+E  terminal     Ctrl+R  refresh     Esc  close"
           textFormat: Text.PlainText
-          color: Color.muted
+          color: Color.menu.text
+          opacity: 0.58
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.caption
           wrapMode: Text.Wrap

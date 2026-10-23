@@ -91,6 +91,20 @@ as separate arguments, without shell evaluation. Launching checks that the
 directory still exists. Application startup after handing off to `uwsm-app`
 is managed by the desktop session.
 
+## Theme integration
+
+The picker uses the same `[menu]` surface roles as Omarchy's menu, clipboard,
+and emoji plugins. Background, text, scrim, selected-row colors, and border
+specifications come from `qs.Commons.Color` and `Border`. Selected rows support
+the menu's border widths, gradients, and per-side overrides. Secondary text
+uses the menu foreground with reduced opacity, matching the built-in menu.
+
+The search field is Omarchy's shared `qs.Ui.TextField`, so focus borders,
+text selection, padding, and control fills follow the shell's `[style]`
+settings. Fonts use `Style.font.menuFamily` and the shared size tokens. Input,
+header, and row heights grow with their text. Theme changes update the bound
+colors and geometry without restarting the plugin.
+
 ## Configure
 
 Edit the plugin's entry inside the existing `plugins` array in
