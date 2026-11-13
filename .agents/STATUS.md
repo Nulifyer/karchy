@@ -1,40 +1,39 @@
 # Project status
 
 Updated: 2026-11-13
-State: inception complete; phase 1 not started
+State: phase 1 — architecture proposal awaiting approval
 
 ## Project state
 
-Goals, scope, decisions, the component list, keybindings, menu, phases and the milestone 1 evidence standard are agreed and recorded. No implementation exists yet. The repo is local only (`git init`, no remote), and no GitHub repos have been created or renamed (D-01, D-26).
+- Inception records are on `main` (`c2ab371`) at github.com/Nulifyer/karchy (public).
+- The old launcher repo is Nulifyer/karchy-launcher (archived).
+- No implementation yet.
 
 ## Current batch
 
-Phase 1: VM bring-up.
+Phase 1 architecture proposal: `docs/architecture.md`, on branch `phase1-architecture-proposal`.
 
 ## In progress
 
-- None.
+- The architecture proposal PR. Owner: coordinating agent. Waiting on the user's answers to Q1–Q5 in `docs/architecture.md`.
 
 ## Next action
 
-Owner: coordinating agent. Draft the phase 1 repo layout as a proposal for the user. It covers:
-- the vendored-path manifest from Omarchy v4.5.0: the shell, themes, templates, Hyprland helpers, and the `omarchy-*` commands that the kept shell parts and menu call
-- the sync script
-- the installer form plus the archinstall config
-- the setup script layout
-- the VM launch script
-
-Then ask the user to approve the GitHub steps in D-01 before pushing anything.
+Owner: coordinating agent. After the user approves or adjusts the proposal:
+1. Record the answers in `DECISIONS.md`.
+2. Merge the PR.
+3. Start phase 1 implementation on new branches, in this order: `tools/vm` → `tools/vendor-sync` + `vendor/omarchy.lock` → installer form + disk/base → setup → the karchy Hyprland layer and menu.
 
 ## Blockers
 
-- None. GitHub changes wait on the user's approval.
+- The proposal needs approval, in particular Q1, which would change D-08 from archinstall to karchy's own pacstrap scripts.
 
 ## Verification
 
-- No checks have run; nothing is implemented yet.
+- The command trace was run against Omarchy v4.5.0 (`ac2690cd7`): 560 commands, 205 reached after pruning, plus 11 inert theme and restart commands.
+- archinstall 4.5 source checked: it forces the busybox `encrypt` hook without a hardware security key (`installer.py:125`), and its swap support is zram only.
+- Host VM tooling present: qemu-desktop 11.1.3, libvirt, edk2-ovmf with the Secure Boot firmware, swtpm, `/dev/kvm`.
 
 ## Project notes
 
-- Inception notes: `/home/nulifyer/Projects/Omarchy/INCEPTION-NOTES.md`. These records replace them.
-- Audit and reference clones: `/home/nulifyer/Projects/Omarchy/{audit,reference}`.
+- Omarchy references: `/home/nulifyer/Projects/Omarchy/reference/omarchy-v4.5.0` (worktree at the release tag) and `/home/nulifyer/Projects/Omarchy/audit/`.
