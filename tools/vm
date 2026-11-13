@@ -1,0 +1,437 @@
+#!/bin/bash
+
+# Create, boot and snapshot QEMU/KVM test VMs for karchy.
+#
+# Usage: tools/vm <command> [options]
+#
+#   fetch                       Download the current Arch ISO and verify it
+#   new [--secureboot] [--size 40G] [--force]
+#                               Create a VM disk and UEFI variables
+#   run [--iso] [--headless] [--tpm]
+#                               Boot the VM (--iso attaches the Arch ISO)
+#   screenshot [file.png]       Save the running VM's screen
+#   type [--no-enter] <text>    Type text into the VM (US layout), then Enter
+#   snap <name>                 Snapshot the (stopped) VM disk
+#   restore <name>              Return the (stopped) VM disk to a snapshot
+#   snapshots                   List snapshots
+#   stop                        Power the running VM off
+#   status                      Show VM files and whether it is running
+#   destroy                     Delete the VM (asks first)
+#
+# Every command takes --name <vm> (default: default). VM files live in
+# ${KARCHY_VM_DIR:-$XDG_STATE_HOME/karchy-vm}/<vm>; the ISO cache is shared.
+# The repository is shared read-only into the guest as 9p tag "karchy":
+#   mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /mnt/karchy
+
+set -euo pipefail
+
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+VM_ROOT=${KARCHY_VM_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/karchy-vm}
+ISO_DIR="$VM_ROOT/iso"
+ISO_MIRROR=${KARCHY_ISO_MIRROR:-https://geo.mirror.pkgbuild.com/iso/latest}
+ISO_NAME="archlinux-x86_64.iso"
+OVMF_DIR=/usr/share/edk2/x64
+ARCH_KEYRING=/usr/share/pacman/keyrings/archlinux.gpg
+
+VM_NAME="default"
+COMMAND=""
+ARGS=()
+
+die() {
+  echo "vm: $*" >&2
+  exit 1
+}
+
+info() {
+  echo "vm: $*"
+}
+
+usage() {
+  awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"
+}
+
+need() {
+  local cmd
+  for cmd in "$@"; do
+    command -v "$cmd" >/dev/null || die "missing command: $cmd"
+  done
+}
+
+vm_dir() {
+  echo "$VM_ROOT/$VM_NAME"
+}
+
+qmp_socket() {
+  echo "$(vm_dir)/qmp.sock"
+}
+
+vm_running() {
+  local pidfile
+  pidfile="$(vm_dir)/qemu.pid"
+  [[ -f $pidfile ]] && kill -0 "$(<"$pidfile")" 2>/dev/null
+}
+
+require_stopped() {
+  if vm_running; then
+    die "VM '$VM_NAME' is running; stop it first (tools/vm stop --name $VM_NAME)"
+  fi
+}
+
+require_vm() {
+  [[ -f "$(vm_dir)/disk.qcow2" ]] || die "no VM '$VM_NAME'; create it with: tools/vm new --name $VM_NAME"
+}
+
+qmp() {
+  # Send one QMP command and print the reply line for it.
+  local command="$1"
+  need socat
+  printf '%s\n%s\n' '{"execute":"qmp_capabilities"}' "$command" |
+    socat -t 5 - "UNIX-CONNECT:$(qmp_socket)" | tail -n 1
+}
+
+cmd_fetch() {
+  need curl gpg sha256sum
+  mkdir -p "$ISO_DIR"
+  cd "$ISO_DIR"
+
+  info "downloading $ISO_MIRROR/$ISO_NAME"
+  curl -fL --retry 3 -o "$ISO_NAME.part" "$ISO_MIRROR/$ISO_NAME"
+  curl -fsSL --retry 3 -o "$ISO_NAME.sig" "$ISO_MIRROR/$ISO_NAME.sig"
+  curl -fsSL --retry 3 -o sha256sums.txt "$ISO_MIRROR/sha256sums.txt"
+
+  local expected actual
+  expected=$(awk -v name="$ISO_NAME" '$2 == name { print $1 }' sha256sums.txt)
+  actual=$(sha256sum "$ISO_NAME.part" | awk '{ print $1 }')
+  [[ -n $expected ]] || die "sha256sums.txt has no entry for $ISO_NAME"
+  [[ $expected == "$actual" ]] || die "checksum mismatch for $ISO_NAME"
+
+  # Verify the signature against the Arch keyring the host already trusts.
+  [[ -r $ARCH_KEYRING ]] || die "missing $ARCH_KEYRING (install archlinux-keyring)"
+  local gnupg_home status
+  gnupg_home=$(mktemp -d)
+  gpg --homedir "$gnupg_home" --quiet --import "$ARCH_KEYRING" 2>/dev/null
+  if status=$(gpg --homedir "$gnupg_home" --status-fd 1 --verify "$ISO_NAME.sig" "$ISO_NAME.part" 2>/dev/null); then
+    rm -rf "$gnupg_home"
+  else
+    rm -rf "$gnupg_home"
+    die "signature verification failed for $ISO_NAME"
+  fi
+
+  mv -f "$ISO_NAME.part" "$ISO_NAME"
+  local signer version
+  signer=$(awk '/GOODSIG/ { $1=$2=$3=""; sub(/^ +/, ""); print }' <<<"$status")
+  version=$(isoinfo_version)
+  info "verified $ISO_NAME ${version:+($version) }signed by: $signer"
+}
+
+isoinfo_version() {
+  # The ISO's volume label is ARCH_YYYYMM; print it when file(1) can read it.
+  file -b "$ISO_DIR/$ISO_NAME" 2>/dev/null | grep -oE "ARCH_[0-9]+" | head -n 1 || true
+}
+
+cmd_new() {
+  local secureboot=false size="40G" force=false
+  while (($#)); do
+    case "$1" in
+      --secureboot) secureboot=true ;;
+      --size)
+        size="${2:-}"
+        shift
+        ;;
+      --force) force=true ;;
+      *) die "new: unknown option $1" ;;
+    esac
+    shift
+  done
+
+  need qemu-img
+  local dir
+  dir=$(vm_dir)
+  if [[ -e "$dir/disk.qcow2" ]]; then
+    if [[ $force == "true" ]]; then
+      require_stopped
+      rm -f "$dir/disk.qcow2" "$dir/OVMF_VARS.4m.fd"
+    else
+      die "VM '$VM_NAME' already exists (use --force to replace it)"
+    fi
+  fi
+
+  local code="$OVMF_DIR/OVMF_CODE.4m.fd"
+  if [[ $secureboot == "true" ]]; then
+    code="$OVMF_DIR/OVMF_CODE.secboot.4m.fd"
+  fi
+  [[ -r $code && -r "$OVMF_DIR/OVMF_VARS.4m.fd" ]] || die "missing OVMF firmware (install edk2-ovmf)"
+
+  mkdir -p "$dir"
+  qemu-img create -q -f qcow2 "$dir/disk.qcow2" "$size"
+  # Blank variables: no keys enrolled, so Secure Boot firmware starts in Setup Mode.
+  cp "$OVMF_DIR/OVMF_VARS.4m.fd" "$dir/OVMF_VARS.4m.fd"
+  printf 'code=%s\nsecureboot=%s\nsize=%s\n' "$code" "$secureboot" "$size" >"$dir/vm.conf"
+  info "created VM '$VM_NAME' ($size, secureboot=$secureboot) in $dir"
+}
+
+conf_value() {
+  local key="$1"
+  sed -n "s/^$key=//p" "$(vm_dir)/vm.conf"
+}
+
+cmd_run() {
+  local with_iso=false headless=false tpm=false
+  while (($#)); do
+    case "$1" in
+      --iso) with_iso=true ;;
+      --headless) headless=true ;;
+      --tpm) tpm=true ;;
+      *) die "run: unknown option $1" ;;
+    esac
+    shift
+  done
+
+  need qemu-system-x86_64
+  require_vm
+  require_stopped
+  [[ -r /dev/kvm ]] || die "/dev/kvm is not available"
+
+  local dir
+  dir=$(vm_dir)
+  local code
+  code=$(conf_value code)
+
+  local -a qemu=(
+    qemu-system-x86_64
+    -name "karchy-$VM_NAME"
+    -enable-kvm
+    -machine "q35,smm=on"
+    -global "driver=cfi.pflash01,property=secure,value=on"
+    -cpu host
+    -smp "${KARCHY_VM_CPUS:-4}"
+    -m "${KARCHY_VM_MEMORY:-8G}"
+    -drive "if=pflash,format=raw,unit=0,readonly=on,file=$code"
+    -drive "if=pflash,format=raw,unit=1,file=$dir/OVMF_VARS.4m.fd"
+    -drive "if=virtio,format=qcow2,file=$dir/disk.qcow2,discard=unmap"
+    -nic "user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:${KARCHY_VM_SSH_PORT:-2222}-:22"
+    -device qemu-xhci
+    -device usb-tablet
+    -audiodev "pipewire,id=snd"
+    -device ich9-intel-hda
+    -device "hda-output,audiodev=snd"
+    -virtfs "local,path=$REPO_ROOT,mount_tag=karchy,security_model=none,readonly=on"
+    -qmp "unix:$(qmp_socket),server=on,wait=off"
+    -pidfile "$dir/qemu.pid"
+  )
+
+  if [[ $headless == "true" ]]; then
+    qemu+=(-device virtio-vga -display none)
+  else
+    qemu+=(-device virtio-vga-gl -display "${KARCHY_VM_DISPLAY:-gtk},gl=on")
+  fi
+
+  if [[ $with_iso == "true" ]]; then
+    [[ -r "$ISO_DIR/$ISO_NAME" ]] || die "no ISO; run: tools/vm fetch"
+    qemu+=(-drive "media=cdrom,readonly=on,file=$ISO_DIR/$ISO_NAME" -boot "order=d,menu=on")
+  fi
+
+  if [[ $tpm == "true" ]]; then
+    need swtpm
+    mkdir -p "$dir/tpm"
+    swtpm socket --tpm2 --tpmstate "dir=$dir/tpm" --ctrl "type=unixio,path=$dir/tpm/swtpm.sock" \
+      --daemon --terminate
+    qemu+=(-chardev "socket,id=chrtpm,path=$dir/tpm/swtpm.sock" -tpmdev "emulator,id=tpm0,chardev=chrtpm" -device "tpm-tis,tpmdev=tpm0")
+  fi
+
+  rm -f "$(qmp_socket)"
+  info "booting VM '$VM_NAME' (iso=$with_iso, headless=$headless, tpm=$tpm)"
+  "${qemu[@]}" -daemonize
+  info "running; screenshot with: tools/vm screenshot --name $VM_NAME"
+}
+
+cmd_screenshot() {
+  vm_running || die "VM '$VM_NAME' is not running"
+  local out="${1:-$(vm_dir)/screenshot-$(date +%Y%m%d-%H%M%S).png}"
+  out=$(realpath -m "$out")
+  local reply
+  reply=$(qmp "{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"$out\",\"format\":\"png\"}}")
+  [[ $reply == *'"return"'* ]] || die "screendump failed: $reply"
+  info "saved $out"
+}
+
+key_for_char() {
+  # Print the QEMU sendkey name for one character.
+  local c="$1"
+  case "$c" in
+    [a-z0-9]) echo "$c" ;;
+    [A-Z]) echo "shift-${c,,}" ;;
+    " ") echo "spc" ;;
+    "-") echo "minus" ;;
+    "_") echo "shift-minus" ;;
+    "=") echo "equal" ;;
+    "+") echo "shift-equal" ;;
+    "/") echo "slash" ;;
+    "?") echo "shift-slash" ;;
+    ".") echo "dot" ;;
+    ">") echo "shift-dot" ;;
+    ",") echo "comma" ;;
+    "<") echo "shift-comma" ;;
+    ";") echo "semicolon" ;;
+    ":") echo "shift-semicolon" ;;
+    "'") echo "apostrophe" ;;
+    '"') echo "shift-apostrophe" ;;
+    "\\") echo "backslash" ;;
+    "|") echo "shift-backslash" ;;
+    "[") echo "bracket_left" ;;
+    "{") echo "shift-bracket_left" ;;
+    "]") echo "bracket_right" ;;
+    "}") echo "shift-bracket_right" ;;
+    "\`") echo "grave_accent" ;;
+    "~") echo "shift-grave_accent" ;;
+    "!") echo "shift-1" ;;
+    "@") echo "shift-2" ;;
+    "#") echo "shift-3" ;;
+    "$") echo "shift-4" ;;
+    "%") echo "shift-5" ;;
+    "^") echo "shift-6" ;;
+    "&") echo "shift-7" ;;
+    "*") echo "shift-8" ;;
+    "(") echo "shift-9" ;;
+    ")") echo "shift-0" ;;
+    *) return 1 ;;
+  esac
+}
+
+cmd_type() {
+  # Type text into the VM (US layout), then Enter unless --no-enter.
+  local enter=true text=""
+  while (($#)); do
+    case "$1" in
+      --no-enter) enter=false ;;
+      *) text+="${text:+ }$1" ;;
+    esac
+    shift
+  done
+  vm_running || die "VM '$VM_NAME' is not running"
+  need socat
+
+  local -a lines=('{"execute":"qmp_capabilities"}')
+  local i key
+  for ((i = 0; i < ${#text}; i++)); do
+    key=$(key_for_char "${text:i:1}") || die "type: unsupported character '${text:i:1}'"
+    lines+=("{\"execute\":\"human-monitor-command\",\"arguments\":{\"command-line\":\"sendkey $key 30\"}}")
+  done
+  if [[ $enter == "true" ]]; then
+    lines+=('{"execute":"human-monitor-command","arguments":{"command-line":"sendkey ret"}}')
+  fi
+  # Each key is held 30 ms; leave socat enough time to deliver all of them.
+  local wait=$((5 + ${#text} / 10))
+  printf '%s\n' "${lines[@]}" | socat -t "$wait" - "UNIX-CONNECT:$(qmp_socket)" >/dev/null
+}
+
+cmd_stop() {
+  vm_running || die "VM '$VM_NAME' is not running"
+  qmp '{"execute":"quit"}' >/dev/null 2>&1 || true
+  local tries=0
+  while vm_running && ((tries < 50)); do
+    sleep 0.1
+    tries=$((tries + 1))
+  done
+  vm_running && die "VM '$VM_NAME' did not stop"
+  info "stopped VM '$VM_NAME'"
+}
+
+cmd_snap() {
+  local name="${1:-}"
+  [[ -n $name ]] || die "snap: name required"
+  require_vm
+  require_stopped
+  qemu-img snapshot -c "$name" "$(vm_dir)/disk.qcow2"
+  cp "$(vm_dir)/OVMF_VARS.4m.fd" "$(vm_dir)/OVMF_VARS.$name.fd"
+  info "snapshot '$name' saved"
+}
+
+cmd_restore() {
+  local name="${1:-}"
+  [[ -n $name ]] || die "restore: name required"
+  require_vm
+  require_stopped
+  qemu-img snapshot -a "$name" "$(vm_dir)/disk.qcow2"
+  if [[ -f "$(vm_dir)/OVMF_VARS.$name.fd" ]]; then
+    cp "$(vm_dir)/OVMF_VARS.$name.fd" "$(vm_dir)/OVMF_VARS.4m.fd"
+  fi
+  info "restored snapshot '$name'"
+}
+
+cmd_snapshots() {
+  require_vm
+  qemu-img snapshot -l "$(vm_dir)/disk.qcow2"
+}
+
+cmd_status() {
+  local dir
+  dir=$(vm_dir)
+  echo "vm:       $VM_NAME"
+  echo "dir:      $dir"
+  if [[ -f "$dir/vm.conf" ]]; then
+    echo "firmware: $(conf_value code)"
+    echo "size:     $(conf_value size)"
+  else
+    echo "state:    not created"
+  fi
+  if vm_running; then
+    echo "running:  yes (pid $(<"$dir/qemu.pid"))"
+  else
+    echo "running:  no"
+  fi
+  if [[ -r "$ISO_DIR/$ISO_NAME" ]]; then
+    echo "iso:      $ISO_DIR/$ISO_NAME"
+  else
+    echo "iso:      not fetched"
+  fi
+}
+
+cmd_destroy() {
+  require_stopped
+  local dir
+  dir=$(vm_dir)
+  [[ -d $dir ]] || die "no VM '$VM_NAME'"
+  read -r -p "Delete VM '$VM_NAME' at $dir? Type the VM name to confirm: " answer
+  [[ $answer == "$VM_NAME" ]] || die "not confirmed"
+  rm -rf "$dir"
+  info "deleted VM '$VM_NAME'"
+}
+
+while (($#)); do
+  case "$1" in
+    --name)
+      VM_NAME="${2:-}"
+      [[ $VM_NAME =~ ^[A-Za-z0-9_-]+$ ]] || die "--name must be letters, digits, - or _"
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      if [[ -z $COMMAND ]]; then
+        COMMAND="$1"
+      else
+        ARGS+=("$1")
+      fi
+      ;;
+  esac
+  shift
+done
+
+case "$COMMAND" in
+  fetch) cmd_fetch "${ARGS[@]}" ;;
+  new) cmd_new "${ARGS[@]}" ;;
+  run) cmd_run "${ARGS[@]}" ;;
+  screenshot) cmd_screenshot "${ARGS[@]}" ;;
+  type) cmd_type "${ARGS[@]}" ;;
+  snap) cmd_snap "${ARGS[@]}" ;;
+  restore) cmd_restore "${ARGS[@]}" ;;
+  snapshots) cmd_snapshots ;;
+  stop) cmd_stop ;;
+  status) cmd_status ;;
+  destroy) cmd_destroy ;;
+  "") usage ;;
+  *) die "unknown command: $COMMAND (see tools/vm --help)" ;;
+esac
