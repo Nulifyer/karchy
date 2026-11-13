@@ -1,7 +1,7 @@
 # Project status
 
 Updated: 2026-11-13
-State: phase 1 — architecture proposal awaiting approval
+State: phase 1; architecture approved, PR #1 waiting to be merged
 
 ## Project state
 
@@ -15,18 +15,20 @@ Phase 1 architecture proposal: `docs/architecture.md`, on branch `phase1-archite
 
 ## In progress
 
-- The architecture proposal PR. Owner: coordinating agent. Waiting on the user's answers to Q1–Q5 in `docs/architecture.md`.
+- PR #1 (architecture): approved, with Q1–Q4 answered (D-41 to D-44). Waiting for the user to merge it (D-26).
 
 ## Next action
 
-Owner: coordinating agent. After the user approves or adjusts the proposal:
-1. Record the answers in `DECISIONS.md`.
-2. Merge the PR.
-3. Start phase 1 implementation on new branches, in this order: `tools/vm` → `tools/vendor-sync` + `vendor/omarchy.lock` → installer form + disk/base → setup → the karchy Hyprland layer and menu.
+Owner: coordinating agent. Start phase 1 implementation, one branch and PR each, in this order:
+1. `tools/vm`
+2. `tools/vendor-sync` + `vendor/omarchy.lock`
+3. installer form + disk/base
+4. setup
+5. the karchy Hyprland layer and menu
 
 ## Blockers
 
-- The proposal needs approval, in particular Q1, which would change D-08 from archinstall to karchy's own pacstrap scripts.
+- None.
 
 ## Verification
 
