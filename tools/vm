@@ -20,12 +20,15 @@
 #
 # Every command takes --name <vm> (default: default). VM files live in
 # ${KARCHY_VM_DIR:-$XDG_STATE_HOME/karchy-vm}/<vm>; the ISO cache is shared.
-# The repository is shared read-only into the guest as 9p tag "karchy":
+# The repository (or $KARCHY_VM_SHARE) is shared read-only into the guest as
+# 9p tag "karchy":
 #   mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /mnt/karchy
 
 set -euo pipefail
 
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# The checkout shared into the guest; defaults to the one this script is in.
+SHARE_ROOT=${KARCHY_VM_SHARE:-$REPO_ROOT}
 VM_ROOT=${KARCHY_VM_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/karchy-vm}
 ISO_DIR="$VM_ROOT/iso"
 ISO_MIRROR=${KARCHY_ISO_MIRROR:-https://geo.mirror.pkgbuild.com/iso/latest}
@@ -215,7 +218,7 @@ cmd_run() {
     -audiodev "pipewire,id=snd"
     -device ich9-intel-hda
     -device "hda-output,audiodev=snd"
-    -virtfs "local,path=$REPO_ROOT,mount_tag=karchy,security_model=none,readonly=on"
+    -virtfs "local,path=$SHARE_ROOT,mount_tag=karchy,security_model=none,readonly=on"
     -qmp "unix:$(qmp_socket),server=on,wait=off"
     -pidfile "$dir/qemu.pid"
   )
