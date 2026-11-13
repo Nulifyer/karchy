@@ -24,19 +24,26 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 ## Fast checks
 
 ```text
-To be defined in phase 1, for example: shellcheck on install/ and bin/, and bash -n on all scripts.
+shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they land
 ```
 
 ## Full checks
 
 ```text
-To be defined in phase 1: a VM create/boot script and the milestone checklist run.
+tools/vm fetch                       # download + verify (sha256 and Arch keyring signature) the Arch ISO
+tools/vm new [--secureboot]          # 40 GiB qcow2 + blank UEFI vars (Setup Mode)
+tools/vm run --iso                   # boot the ISO; repo is shared read-only as 9p tag "karchy"
+tools/vm screenshot <file.png>       # evidence screenshots via QMP
+tools/vm snap/restore <name>         # retry installs from a known state
 ```
+
+Inside the live ISO: `mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /mnt/karchy`.
 
 ## Environment
 
-- Host: CachyOS with KDE Plasma, RTX 5080, 31 GiB RAM. QEMU/KVM with libvirt or a scripted qemu run (to be set up in phase 1).
-- Install media: the current stock Arch Linux ISO.
+- Host: CachyOS with KDE Plasma, RTX 5080, 31 GiB RAM. QEMU/KVM via `tools/vm`; it needs qemu-desktop, edk2-ovmf, socat, gpg and archlinux-keyring, and swtpm for `--tpm`.
+- VM files: `${KARCHY_VM_DIR:-~/.local/state/karchy-vm}`. Override the VM size with `KARCHY_VM_CPUS`, `KARCHY_VM_MEMORY` and `KARCHY_VM_DISPLAY`.
+- Install media: the current stock Arch Linux ISO, from `geo.mirror.pkgbuild.com/iso/latest`.
 
 ## Known gaps
 
