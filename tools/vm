@@ -314,18 +314,41 @@ cmd_type() {
   vm_running || die "VM '$VM_NAME' is not running"
   need socat
 
-  local -a lines=('{"execute":"qmp_capabilities"}')
+  local -a keys=()
   local i key
   for ((i = 0; i < ${#text}; i++)); do
     key=$(key_for_char "${text:i:1}") || die "type: unsupported character '${text:i:1}'"
-    lines+=("{\"execute\":\"human-monitor-command\",\"arguments\":{\"command-line\":\"sendkey $key 30\"}}")
+    keys+=("$key")
   done
   if [[ $enter == "true" ]]; then
-    lines+=('{"execute":"human-monitor-command","arguments":{"command-line":"sendkey ret"}}')
+    keys+=("ret")
   fi
-  # Each key is held 30 ms; leave socat enough time to deliver all of them.
-  local wait=$((5 + ${#text} / 10))
-  printf '%s\n' "${lines[@]}" | socat -t "$wait" - "UNIX-CONNECT:$(qmp_socket)" >/dev/null
+
+  local line
+  coproc QMP_CONN { socat - "UNIX-CONNECT:$(qmp_socket)"; }
+  read -r -u "${QMP_CONN[0]}" line # greeting
+  qmp_send '{"execute":"qmp_capabilities"}'
+  # QEMU acknowledges sendkey at once, but the emulated keyboard's buffer is
+  # small, so pace the keys or some are dropped.
+  for key in "${keys[@]}"; do
+    qmp_send "{\"execute\":\"human-monitor-command\",\"arguments\":{\"command-line\":\"sendkey $key 10\"}}"
+    sleep 0.03
+  done
+  local write_fd=${QMP_CONN[1]}
+  exec {write_fd}>&-
+  wait "$QMP_CONN_PID" 2>/dev/null || true
+}
+
+# Send one command on the open QMP connection and wait for its reply,
+# skipping asynchronous event lines.
+qmp_send() {
+  local line
+  printf '%s\n' "$1" >&"${QMP_CONN[1]}"
+  while read -r -t 10 -u "${QMP_CONN[0]}" line; do
+    [[ $line == *'"return"'* ]] && return 0
+    [[ $line == *'"error"'* ]] && die "QMP error: $line"
+  done
+  die "no reply from QEMU"
 }
 
 cmd_stop() {
