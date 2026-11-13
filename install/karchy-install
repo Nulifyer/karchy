@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# Install karchy from the stock Arch Linux live ISO.
+#
+# Usage: karchy-install [--config FILE] [--reboot]
+#
+#   --config FILE   Read answers from FILE instead of showing the form
+#                   (unattended installs and VM tests; FILE sets KARCHY_* vars)
+#   --reboot        Reboot when the install finishes
+#
+# Erases the chosen disk. Every step is logged to /var/log/karchy-install.log
+# and copied into the installed system.
+
+set -eEuo pipefail
+
+KARCHY_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+source "$KARCHY_SRC/install/lib.sh"
+source "$KARCHY_SRC/install/form.sh"
+source "$KARCHY_SRC/install/disk.sh"
+source "$KARCHY_SRC/install/base.sh"
+trap on_error ERR
+
+config_file=""
+reboot_after=false
+while (($#)); do
+  case "$1" in
+    --config)
+      config_file="${2:-}"
+      shift
+      ;;
+    --reboot) reboot_after=true ;;
+    -h | --help)
+      awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"
+      exit 0
+      ;;
+    *) die "unknown option: $1" ;;
+  esac
+  shift
+done
+
+preflight() {
+  ((EUID == 0)) || die "run as root (the live ISO logs in as root)"
+  [[ -d /sys/firmware/efi/efivars ]] || die "karchy needs UEFI boot; this system booted in BIOS mode"
+  curl -fsS --max-time 10 -o /dev/null https://archlinux.org || die "no network connection"
+  timedatectl set-ntp true
+}
+
+summary() {
+  cat <<EOF
+
+  Disk:      $KARCHY_DISK (will be erased)
+  User:      $KARCHY_USER
+  Computer:  $KARCHY_HOSTNAME
+  Keyboard:  $KARCHY_KEYMAP
+  Timezone:  $KARCHY_TIMEZONE
+  bees:      $KARCHY_BEES
+
+EOF
+}
+
+: >"$KARCHY_INSTALL_LOG"
+chmod 600 "$KARCHY_INSTALL_LOG"
+preflight
+
+if [[ -n $config_file ]]; then
+  form_load "$config_file"
+else
+  form_run
+fi
+summary
+
+step "Partition $KARCHY_DISK" disk_partition
+step "Encrypt the root partition" disk_encrypt
+step "Create filesystems and subvolumes" disk_filesystems
+step "Mount subvolumes" disk_mount
+step "Create the swap file" disk_swapfile
+
+step "Add repositories and keys" base_repos_live
+step "Install the base system" base_pacstrap
+step "Write fstab" base_fstab
+step "Configure repositories" base_repos_target
+step "Locale, time and hostname" base_locale
+step "Create user $KARCHY_USER" base_user
+step "Install system files" base_system_files
+step "Configure snapshots" base_snapper
+step "Install the bootloader" base_bootloader
+step "Enable services" base_services
+step "Clone karchy" base_checkout
+step "Git identity" base_git_identity
+step "Link resolv.conf" base_resolved_link
+
+unset KARCHY_PASSWORD
+install -Dm 0600 "$KARCHY_INSTALL_LOG" "$KARCHY_MNT/var/log/karchy-install.log"
+swapoff "$KARCHY_MNT/swap/swapfile" || true
+umount -R "$KARCHY_MNT"
+cryptsetup close "$KARCHY_ROOT_MAPPER" || true
+log "karchy is installed."
+
+if [[ $reboot_after == "true" ]]; then
+  reboot
+else
+  log "Remove the install media and reboot."
+fi

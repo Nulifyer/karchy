@@ -1,0 +1,40 @@
+# Packages pacstrapped by the installer. CPU microcode and NVIDIA packages are
+# added when detected (install/base.sh). Desktop packages come later, from setup.
+
+# System
+base
+base-devel
+linux-cachyos
+linux-lts
+mkinitcpio
+linux-firmware
+sudo
+man-db
+man-pages
+
+# Disk, boot and snapshots
+btrfs-progs
+cryptsetup
+dosfstools
+efibootmgr
+limine
+limine-mkinitcpio-hook
+limine-snapper-sync
+snapper
+snap-pac
+
+# Networking (iptables-nft named so pacstrap doesn't ask for a libxtables provider)
+networkmanager
+iptables-nft
+
+# Repository keys and mirrors
+cachyos-keyring
+cachyos-mirrorlist
+omarchy-keyring
+
+# Shell and tools
+fish
+git
+# Terminal editor: micro or nano is still open (DECISIONS.md); both for now.
+micro
+nano

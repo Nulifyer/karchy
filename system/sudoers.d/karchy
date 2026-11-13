@@ -1,0 +1,5 @@
+# karchy sudo policy (D-14): wheel members use sudo with their password.
+# The credential is cached per terminal for 10 minutes.
+%wheel ALL=(ALL:ALL) ALL
+Defaults timestamp_timeout=10
+Defaults passwd_tries=10
