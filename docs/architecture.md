@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **proposed for phase 1**. Needs the user's approval; the open questions are at the end. It is based on Omarchy `v4.5.0` (`ac2690cd7`), read at `/home/nulifyer/Projects/Omarchy/reference/omarchy-v4.5.0`.
+Status: **approved for phase 1** on 2026-11-13, with Q1–Q4 answered (D-41 to D-44). Q5 is still open, for phase 2. It is based on Omarchy `v4.5.0` (`ac2690cd7`), read at `/home/nulifyer/Projects/Omarchy/reference/omarchy-v4.5.0`.
 
 ## Repository layout
 
@@ -10,7 +10,7 @@ The repository root is `$OMARCHY_PATH` on an installed machine, a git checkout a
 karchy/
 ├── bin/                      vendored omarchy-* (subset) + karchy-* (ours)
 ├── shell/                    vendored Quickshell shell, dropped plugins left out
-├── themes/                   our themes only (nulifyer); Omarchy's 23 are fetched (see Themes)
+├── themes/                   vendored, Omarchy's 23 themes + nulifyer (ours)
 ├── default/                  vendored defaults (hypr modules, themed templates, fonts, omarchy/*)
 ├── karchy/                   karchy's default layer (ours)
 │   ├── hypr/                 init.lua, bindings.lua, autostart.lua, qconsole.lua
@@ -46,7 +46,7 @@ karchy/
 
 ## Themes
 
-Omarchy's 23 themes are 161 MB, mostly wallpapers (up to 24 MB per theme). Committing them would make every upstream sync grow karchy's git history. Proposal: `karchy update` fetches `themes/` from the locked upstream tag into `~/.local/share/karchy/vendor/themes`, and a `themes/` lookup includes both that folder and karchy's own `themes/` (nulifyer). The alternative is to commit them, or use Git LFS (see question Q2).
+Omarchy's 23 themes (161 MB, mostly wallpapers) are committed under `themes/` as vendored files, alongside karchy's own `nulifyer` (D-42). The repo is then self-contained. The cost: theme updates from upstream grow git history, so `tools/vendor-sync` reports theme changes on their own, and we take them deliberately.
 
 ## karchy's Hyprland composition
 
@@ -72,7 +72,7 @@ require("default.hypr.toggles")
 | `default/hypr/qconsole.lua:17-27` | Runs `omarchy-agent` the first time the drop-down opens | karchy's `karchy/hypr/qconsole.lua` starts a foot window instead |
 | `default/hypr/omarchy.lua`, `autostart.lua` | Loads every binding, herdr and first-run | Replaced by `karchy.hypr.init` |
 | `shell/plugins/menu/MenuModel.js`, `Menu.qml` | Guards and providers for dropped entries (agent, dock, kernel, channel, dictation, nightlight) | Inert once `karchy/menu.jsonc` drops those entries; checked in the VM |
-| `shell/plugins/panels/network/Panel.qml` | DNS provider switch (`omarchy-dns` + NOPASSWD sudoers) | Question Q4 |
+| `shell/plugins/panels/network/Panel.qml` | DNS provider switch (`omarchy-dns` + NOPASSWD sudoers), always shown (lines 125–248) | `override` without the DNS section; `omarchy-dns` and its sudoers rule are not vendored (D-44) |
 | `bin/omarchy-theme-set:531-554` | Runs 17 per-app theme commands and reports missing ones as failures | Vendor all of them; each exits early when its app is absent. `omarchy-theme-set-vscode` gets an override (D-23) |
 | `bin/omarchy-pkg-aur-install` | Hard-codes `yay` | karchy override that uses paru (D-20) |
 | `config/omarchy/shell.json` | Default bar layout includes the dropped modules | `karchy/shell.json` |
@@ -82,7 +82,7 @@ require("default.hypr.toggles")
 
 The **form** is a gum TUI in Omarchy's style (D-08), run from the stock Arch ISO. It asks for: disk (with typed confirmation), keyboard, username, one password, name and email, hostname, timezone, and bees (off by default). Secure Boot is detected automatically.
 
-**Disk and base: change from D-08 proposed.** archinstall 4.5 replaces `systemd`/`sd-encrypt` with udev/busybox `encrypt` unless the disk uses a hardware security key (`archinstall/lib/installer.py:125`), and its only swap option is zram. Both conflict with D-12 and D-10. Proposal: karchy's own `install/disk.sh` + `install/base.sh`:
+**Disk and base (D-41).** archinstall is not used. archinstall 4.5 replaces `systemd`/`sd-encrypt` with udev/busybox `encrypt` unless the disk uses a hardware security key (`archinstall/lib/installer.py:125`), and its only swap option is zram. Both conflict with D-12 and D-10. karchy's own `install/disk.sh` + `install/base.sh` do:
 
 1. `sgdisk`: 4 GiB ESP plus a LUKS partition.
 2. `cryptsetup luksFormat --type luks2`.
@@ -93,7 +93,7 @@ The **form** is a gum TUI in Omarchy's style (D-08), run from the stock Arch ISO
 7. fstab, locale, user, mkinitcpio `HOOKS` with `systemd … sd-encrypt`.
 8. Limine + limine-entry-tool + limine-snapper-sync, with `rd.luks.name=` on the kernel command line.
 
-That's about 300 lines of bash, with each step logged and safe to retry. The alternative is archinstall followed by a rewrite of the hooks and swap (question Q1).
+That's about 300 lines of bash, with each step logged and safe to retry.
 
 **Setup** (`install/setup.sh`, also re-run by `karchy update` for new steps):
 
@@ -134,13 +134,13 @@ Host check: `qemu-desktop` 11.1.3, libvirt, `edk2-ovmf` (including `OVMF_CODE.se
 - the keyring choice
 - the dotfiles user layer: milestone 1 uses karchy's stubs only
 
-## Open questions
+## Questions
 
-- **Q1. Disk and base:** karchy's own pacstrap scripts (recommended) or archinstall plus a hooks and swap rewrite?
-- **Q2. Themes:** fetch them at update time (recommended), commit them, or Git LFS?
-- **Q3. Command names:** vendored commands stay `omarchy-*`. karchy's own are `karchy-*`, with a small `karchy` router for `karchy update` and `karchy vm …`. The `omarchy` router stays for `omarchy plugin` and `omarchy bar`. Acceptable?
-- **Q4. DNS switch** in the network panel: keep Omarchy's DNS presets (Cloudflare, Google, DHCP) with their NOPASSWD rule, or remove that section?
-- **Q5. Dotfiles checkout location** (phase 2): `~/.local/share/karchy-user` or `~/Projects/dotfiles`?
+- **Q1. Disk and base:** karchy's own pacstrap scripts (D-41).
+- **Q2. Themes:** committed (D-42).
+- **Q3. Command names:** vendored commands keep their `omarchy-*` names; karchy's own are `karchy-*`, with a `karchy` router for `karchy update` and `karchy vm`; the `omarchy` router stays (D-43).
+- **Q4. DNS switch:** removed (D-44).
+- **Q5. Dotfiles checkout location** (phase 2, still open): `~/.local/share/karchy-user` or `~/Projects/dotfiles`?
 
 ## Appendix: vendored commands (v4.5.0)
 
