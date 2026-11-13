@@ -53,6 +53,7 @@ All rows were confirmed by the user during inception (2026-11-13). Tags: [O] Oma
 
 ## Open decisions
 
+- **NVIDIA with linux-cachyos (blocks phase 5).** `linux-cachyos-nvidia-open` requires CachyOS's `nvidia-utils` (620.70.06 on 2026-11-13). Arch's `nvidia-utils` (615.78) shadows it, because Arch's repos come first (D-03), so the driver can't be installed. Options: list `[cachyos]` before Arch on NVIDIA machines; use Arch's `linux` + `nvidia-open` there (slower kernel updates); or another approach. Found in the PR #4 VM test.
 - **Keyring:** evaluate `oo7` (Arch extra 0.7.1, a Secret Service provider) in the VM, including whether it can unlock through PAM. Fallback: gnome-keyring + `pam_systemd_loadkey` in greetd's PAM stack, with the keyring password equal to the LUKS passphrase. Decide in phase 2.
 - **Terminal editor:** micro vs nano (with `nano-syntax-highlighting`). Try both in the VM.
 - **Minimize in floating mode:** Omarchy restores minimized windows through the dock, which is dropped. Choose a restore path, such as a menu entry or a bar indicator, or remove the minimize button.
