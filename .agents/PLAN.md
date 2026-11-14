@@ -50,7 +50,7 @@ Guiding rule from the user: minimal software (small, fast, few dependencies), bu
 ## Product boundaries
 
 - Hardware targets: a QEMU/KVM VM on this host (first), an older Framework 13 AMD laptop, and the RTX 5080 desktop. All x86_64.
-- Package sources, in order: Arch live mirrors, then `[omarchy]`, then `[cachyos]` (generic, for the kernel). Arch's packages win when a package exists in several repos.
+- Package sources, in order: `[cachyos]` (generic), then Arch live mirrors, then `[omarchy]` (D-45). The first repo that has a package wins.
 - The look and behavior follow Omarchy unless `DECISIONS.md` says otherwise. The keybindings are exactly the list in `docs/keybindings.md`, and the menu is exactly `docs/menu.md`.
 - The interactive shell is fish, kept native and fast. Omarchy's commands stay bash scripts.
 

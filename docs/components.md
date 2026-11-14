@@ -6,8 +6,8 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 
 | Area | Choice | Source |
 |---|---|---|
-| Repos | Arch live mirrors, then `[omarchy]`, then `[cachyos]` (generic) | [New] |
-| Kernel | `linux-cachyos` (+ `linux-cachyos-nvidia-open` on NVIDIA machines); Arch `linux-lts` as fallback | [C] |
+| Repos | `[cachyos]` (generic), then Arch live mirrors, then `[omarchy]` (D-45) | [C] + [O] |
+| Kernel | `linux-cachyos`, with `linux-cachyos-lts` as the fallback; NVIDIA machines add both `-nvidia-open` modules and CachyOS's `nvidia-utils` (D-45) | [C] |
 | Disk | LUKS2, btrfs `zstd:1,noatime`, subvolumes `@ @home @root @srv @cache @log @tmp @swap`, 4 GiB ESP at `/boot` | [O+C] |
 | Initramfs | systemd + `sd-encrypt` | [C] |
 | Boot | Limine + limine-snapper-sync; text console, no Plymouth | [O+C] |
