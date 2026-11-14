@@ -1,0 +1,24 @@
+# Python bytecode (tools/vendor-sync)
+__pycache__/
+*.py[cod]
+
+# Editors and OS files
+*.swp
+*.swo
+*~
+.idea/
+.DS_Store
+
+# Local install answers: real passwords never go in the repo. Only the
+# throwaway VM example (tests/vm-install.conf) is tracked.
+*.local.conf
+install.conf
+
+# Local agent and tool settings
+.claude/settings.local.json
+
+# VM files, ISOs and screenshots live outside the repo
+# (${KARCHY_VM_DIR:-~/.local/state/karchy-vm}); keep strays out too.
+*.qcow2
+*.iso
+*.fd
