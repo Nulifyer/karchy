@@ -6,7 +6,7 @@ karchy installs from the stock Arch Linux ISO. The installer erases one disk and
 - LUKS2 encryption
 - btrfs with the subvolumes `@ @home @root @srv @cache @log @tmp @swap`
 - a swap file sized to RAM, with zswap
-- `linux-cachyos` plus `linux-lts`
+- `linux-cachyos` plus `linux-cachyos-lts` (and the NVIDIA driver when an NVIDIA GPU is detected)
 - Limine, with snapshot boot entries (snapper + snap-pac + limine-snapper-sync)
 - NetworkManager and systemd-resolved
 - your user, with fish as the login shell
@@ -51,5 +51,4 @@ The installer clones the committed `HEAD` of the checkout it runs from, so commi
 
 ## Known limitations
 
-- **NVIDIA:** the NVIDIA driver is not installed yet. `linux-cachyos-nvidia-open` needs CachyOS's `nvidia-utils`, which Arch's repository shadows in karchy's repository order. This is an open decision.
 - **Desktop:** the base install has no desktop yet. Desktop setup is the next phase 1 step.

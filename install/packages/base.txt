@@ -5,7 +5,7 @@
 base
 base-devel
 linux-cachyos
-linux-lts
+linux-cachyos-lts
 mkinitcpio
 linux-firmware
 sudo

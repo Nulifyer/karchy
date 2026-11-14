@@ -97,7 +97,7 @@ That's about 300 lines of bash, with each step logged and safe to retry.
 
 **Setup** (`install/setup.sh`, also re-run by `karchy update` for new steps):
 
-1. Repos: `[omarchy]` and `[cachyos]` added after Arch's, with keyrings.
+1. Repos: `[cachyos]` before Arch's and `[omarchy]` after (D-45), with keyrings.
 2. Packages: the Always tier plus the Detected tier.
 3. `/etc` files from `system/`.
 4. Services: greetd auto-login, NetworkManager, resolved, ufw, bluetooth, fstrim, scrub, smartd, paccache, oomd, power-profiles-daemon (laptop).

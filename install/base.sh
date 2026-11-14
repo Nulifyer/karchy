@@ -7,8 +7,8 @@ KARCHY_CACHYOS_KEY="882DCFE48E2051D48E2562ABF3B607488DB35A47"
 KARCHY_REMOTE_URL=${KARCHY_REMOTE_URL:-https://github.com/Nulifyer/karchy.git}
 
 # Trust the [omarchy] and [cachyos] signing keys in the live environment and
-# add both repositories after Arch's (D-03). pacstrap copies this keyring into
-# the target.
+# add the repositories: [cachyos] before Arch's (D-45), [omarchy] after (D-03).
+# pacstrap copies this keyring into the target.
 base_repos_live() {
   pacman-key --recv-keys "$KARCHY_OMARCHY_KEY" --keyserver hkps://keys.openpgp.org
   pacman-key --lsign-key "$KARCHY_OMARCHY_KEY"
@@ -20,9 +20,7 @@ base_repos_live() {
     # shellcheck disable=SC2016  # pacman expands $arch and $repo
     echo 'Server = https://cdn77.cachyos.org/repo/$arch/$repo' >/etc/pacman.d/cachyos-mirrorlist
   fi
-  if ! grep -q '^\[omarchy\]' /etc/pacman.conf; then
-    cat "$KARCHY_SRC/system/pacman/karchy-repos.conf" >>/etc/pacman.conf
-  fi
+  base_add_repos /etc/pacman.conf
   pacman -Sy
   # The stock ISO has no git; the installer needs it to clone karchy.
   pacman -S --noconfirm --needed git
@@ -36,10 +34,7 @@ base_packages() {
     GenuineIntel) packages+=(intel-ucode) ;;
   esac
   if has_nvidia; then
-    # linux-cachyos-nvidia-open needs CachyOS's nvidia-utils, which Arch's
-    # earlier repo shadows (DECISIONS.md: NVIDIA open decision). Until that is
-    # decided the desktop installs without the NVIDIA driver.
-    log "warning: NVIDIA GPU found; NVIDIA driver not installed yet (pending decision)"
+    packages+=(linux-cachyos-nvidia-open linux-cachyos-lts-nvidia-open nvidia-utils)
   fi
   printf '%s\n' "${packages[@]}"
 }
@@ -56,9 +51,22 @@ base_fstab() {
 }
 
 base_repos_target() {
-  if ! grep -q '^\[omarchy\]' "$KARCHY_MNT/etc/pacman.conf"; then
-    cat "$KARCHY_SRC/system/pacman/karchy-repos.conf" >>"$KARCHY_MNT/etc/pacman.conf"
+  base_add_repos "$KARCHY_MNT/etc/pacman.conf"
+}
+
+# Insert [cachyos] just before Arch's [core] and append [omarchy] at the end.
+base_add_repos() {
+  local conf="$1"
+  if ! grep -q '^\[cachyos\]' "$conf"; then
+    awk -v block="$KARCHY_SRC/system/pacman/repo-cachyos.conf" '
+      /^\[core\]/ && !done { while ((getline line < block) > 0) print line; done = 1 }
+      { print }
+    ' "$conf" >"$conf.karchy" && mv "$conf.karchy" "$conf"
   fi
+  if ! grep -q '^\[omarchy\]' "$conf"; then
+    cat "$KARCHY_SRC/system/pacman/repo-omarchy.conf" >>"$conf"
+  fi
+  grep -q '^\[cachyos\]' "$conf" && grep -q '^\[omarchy\]' "$conf"
 }
 
 base_locale() {
