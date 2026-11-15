@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>nulifyer-vpn</vendor>
+  <vendor_url>https://github.com/Nulifyer/omarchy-vpn-plugin</vendor_url>
+
+  <!-- Mode changes, the sign-in pause and reconnecting. 49-nulifyer-vpn.rules
+       allows exactly these for local, active members of wheel without a
+       password; anything else asks for an administrator. -->
+  <action id="org.nulifyer.vpn.control">
+    <description>Change the VPN mode</description>
+    <message>Authentication is required to change the VPN</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/nulifyer-vpn/control</annotate>
+  </action>
+
+  <action id="org.nulifyer.vpn.configure">
+    <description>Set up the VPN</description>
+    <message>Authentication is required to set up the VPN</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/nulifyer-vpn/configure</annotate>
+  </action>
+</policyconfig>

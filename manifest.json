@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "nulifyer.vpn",
   "name": "WireGuard VPN",
-  "version": "1.5.2",
+  "version": "2.0.0",
   "author": "Nulifyer",
-  "description": "Wi-Fi-style status panel for the handshake and reachability-aware WireGuard policy",
+  "description": "Bar widget for the nulifyer-vpn package: WireGuard with a kill switch, Auto on untrusted networks",
   "kinds": [
     "bar-widget"
   ],

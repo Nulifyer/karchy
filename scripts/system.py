@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Install root-owned VPN helpers independently of the Omarchy widget."""
+"""Remove a 1.x installation (root-owned helpers copied by this script).
+
+From 2.0 the helpers are the nulifyer-vpn pacman package (see README.md);
+this script only takes a 1.x installation back out before switching.
+"""
 
 import argparse
 import hashlib
@@ -345,7 +349,8 @@ def main():
     try:
         system = System(args.root)
         if args.command == "install":
-            system.install(args)
+            raise ValueError("2.0 installs as the nulifyer-vpn package; see README.md. "
+                             "This script only removes a 1.x installation (uninstall).")
         elif args.command == "check":
             system.check()
         else:
