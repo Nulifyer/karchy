@@ -9,6 +9,7 @@ Text {
   id: root
 
   property color foreground: Commons.Color.foreground
+  property color surface: Commons.Color.background
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.caption
 
@@ -16,10 +17,13 @@ Text {
   // here. AutoText would let a section title that happens to carry a device or
   // network name promote itself to rich text.
   textFormat: Text.PlainText
-  color: Qt.darker(foreground, 1.4)
+  // The `label` type role: caption, bold, caps, spaced.
+  color: Commons.Color.secondaryText(foreground, surface)
   font.family: fontFamily
   font.pixelSize: fontSize
   font.bold: true
+  font.capitalization: Font.AllUppercase
+  font.letterSpacing: Style.font.labelSpacing
 
   // Glyphs can paint above the box Text reserves for them: JetBrainsMono Nerd
   // Font's outlines run 10% of the em past its own ascent, and a patched or

@@ -11,14 +11,14 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.bluetooth"
-  ipcTarget: "omarchy.bluetooth"
+  moduleName: "karchy.bluetooth"
+  ipcTarget: "karchy.bluetooth"
   // manageIpc: false so this panel can own the single IpcHandler the target
   // permits — needed for the toggleBluetooth method below.
   manageIpc: false
 
   // Address -> "connecting" | "disconnecting" | "forgetting".
-  // The actual Bluetooth sequencing lives in bin/omarchy-bluetooth-device;
+  // The actual Bluetooth sequencing lives in bin/karchy-bluetooth-device;
   // this map only keeps the panel responsive while BlueZ catches up.
   property var pendingActions: ({})
 
@@ -57,28 +57,24 @@ Panel {
   readonly property var discoveredDevices: deviceGroups.discovered || []
 
   readonly property string icon: {
-    if (!adapter) return ""
-    if (!adapter.enabled) return "󰂲"
-    if (connectedDevices.length > 0) return "󰂱"
-    return "󰂯"
+    // No adapter reads like switched off, so the header keeps its shape.
+    if (!adapter || !adapter.enabled) return Icons.glyph("bluetooth.off")
+    if (connectedDevices.length > 0) return Icons.glyph("bluetooth.connected")
+    return Icons.glyph("bluetooth")
   }
 
-  property int phraseIndex: 0
-  readonly property var activePhrases: [
-    Commons.I18n.t("bluetooth.phrase1"),
-    Commons.I18n.t("bluetooth.phrase2"),
-    Commons.I18n.t("bluetooth.phrase3"),
-    Commons.I18n.t("bluetooth.phrase4"),
-    Commons.I18n.t("bluetooth.phrase5"),
-    Commons.I18n.t("bluetooth.phrase6"),
-    Commons.I18n.t("bluetooth.phrase7"),
-    Commons.I18n.t("bluetooth.phrase8")
-  ]
-  readonly property bool rotatingPhrases: adapter && adapter.enabled
+  // The real state, not a rotating phrase (the network panel says the same
+  // kind of thing): searching, what's connected, or simply on.
   readonly property string heroStatusText: {
     if (!adapter) return Commons.I18n.t("bluetooth.noAdapter")
     if (!adapter.enabled) return Commons.I18n.t("bluetooth.turnedOff")
-    return activePhrases[phraseIndex % activePhrases.length]
+    if (connectedDevices.length === 1) {
+      var only = connectedDevices[0]
+      return "Connected to " + (only.name || only.deviceName || only.address || "a device")
+    }
+    if (connectedDevices.length > 1) return connectedDevices.length + " devices connected"
+    if (adapter.discovering) return "Searching for devices"
+    return "On"
   }
 
   // Single cursor model shared by keyboard and mouse. Sections:
@@ -105,10 +101,10 @@ Panel {
   readonly property string toggleHint: root.adapter && root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOff") : Commons.I18n.t("bluetooth.turnOn")
 
   readonly property color hoverFill: bar
-    ? Style.hoverFillFor(bar.foreground, Commons.Color.accent)
+    ? Style.hoverFillFor(panelText, Commons.Color.accent)
     : "transparent"
   readonly property color selectedFill: bar
-    ? Style.selectedFillFor(bar.foreground, Commons.Color.accent)
+    ? Style.selectedFillFor(panelText, Commons.Color.accent)
     : "transparent"
 
   function sectionCount(section) {
@@ -209,7 +205,7 @@ Panel {
     Pipewire.preferredDefaultAudioSink = sink
     if (sink.id !== undefined && sink.name) {
       Quickshell.execDetached([
-        "omarchy-audio-output-set-default",
+        "karchy-audio-output-set-default",
         String(sink.id),
         String(sink.name)
       ])
@@ -265,7 +261,7 @@ Panel {
   }
 
   function deviceCommand(action, address) {
-    return ["omarchy-bluetooth-device", action, address]
+    return ["karchy-bluetooth-device", action, address]
   }
 
   function runDeviceAction(device, action, pending) {
@@ -398,7 +394,7 @@ Panel {
   }
 
   // 'x' forgets remembered devices. For connected devices this first
-  // disconnects, then removes the BlueZ pairing record via omarchy-bluetooth-device.
+  // disconnects, then removes the BlueZ pairing record via karchy-bluetooth-device.
   function deleteSelected() {
     if (focusSection !== "known" && focusSection !== "connected") return
     var dev = deviceAt(focusSection, selectedIndex)
@@ -592,41 +588,8 @@ Panel {
     onTriggered: root.switchPendingAudioOutput()
   }
 
-  Timer {
-    id: phraseTimer
-    interval: 2800
-    running: root.opened && root.rotatingPhrases
-    repeat: true
-    onTriggered: phraseSwap.restart()
-  }
-
-  SequentialAnimation {
-    id: phraseSwap
-    PropertyAnimation {
-      target: panel.loadedContent ? panel.loadedContent.heroStatus : null; property: "opacity"
-      to: 0.0; duration: Style.duration(150); easing.type: Easing.OutCubic
-    }
-    ScriptAction {
-      script: root.phraseIndex = (root.phraseIndex + 1) % root.activePhrases.length
-    }
-    PropertyAnimation {
-      target: panel.loadedContent ? panel.loadedContent.heroStatus : null; property: "opacity"
-      to: 1.0; duration: Style.duration(200); easing.type: Easing.OutCubic
-    }
-  }
-
-  Connections {
-    target: root
-    function onRotatingPhrasesChanged() {
-      if (!root.rotatingPhrases) {
-        phraseSwap.stop()
-        if (panel.loadedContent) panel.loadedContent.heroStatus.opacity = 1.0
-      }
-    }
-  }
-
   // Not adapter.enabled: that writes BlueZ's Powered, which nothing persists, so
-  // the adapter came back on at the next boot. omarchy-bluetooth-power moves the
+  // the adapter came back on at the next boot. karchy-bluetooth-power moves the
   // rfkill soft block instead, which systemd-rfkill restores across reboots.
   // Powered still follows the block, so the switch and icon read it as before.
   //
@@ -635,11 +598,11 @@ Panel {
   // would re-read the old state and undo the first.
   function toggleBluetooth() {
     if (!adapter) return
-    Quickshell.execDetached(["omarchy-bluetooth-power", adapter.enabled ? "off" : "on"])
+    Quickshell.execDetached(["karchy-bluetooth-power", adapter.enabled ? "off" : "on"])
   }
 
   ShellIpc {
-    target: "omarchy.bluetooth"
+    target: "karchy.bluetooth"
 
     function open() { root.open() }
     function close() { root.close() }
@@ -672,7 +635,7 @@ Panel {
 
     content: PanelKeyCatcher {
       id: keyCatcher
-      property alias heroStatus: heroStatus
+      property alias heroStatus: hero
       implicitHeight: column.implicitHeight
       anchors.fill: parent
       onMoveRequested: function(dx, dy) {
@@ -693,75 +656,32 @@ Panel {
         anchors.fill: parent
         spacing: Style.space(14)
 
-        // ---------- Hero: Bluetooth icon · status ----------
-        Item {
-          width: parent.width
-          implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, powerSwitch.implicitHeight)
+        // ---------- Hero: Bluetooth icon · status · power switch ----------
+        // Status only on the left; the switch owns toggling, mouse and
+        // keyboard alike, and is the header's only cursor target.
+        PanelHero {
+          id: hero
+          iconText: root.icon
+          iconColor: root.adapter && root.adapter.enabled ? root.panelText : Commons.Color.secondaryText(root.panelText, root.panelSurface)
+          title: Commons.I18n.t("bluetooth.title")
+          meta: root.heroStatusText
+          fontFamily: root.bar.fontFamily
+          trailingControl: Component {
+            ToggleSwitch {
+              id: powerSwitch
+              visible: !!root.adapter
+              checked: !!root.adapter && root.adapter.enabled
+              hasCursor: root.headerHasCursor
+              foreground: root.panelText
+              accessibleName: Commons.I18n.t("bluetooth.title")
+              onHovered: function(on) { if (on) root.setHeaderCursor() }
+              onToggled: root.toggleBluetooth()
 
-          // Status only — the switch owns toggling, mouse and keyboard alike.
-          Text {
-            id: heroIcon
-            textFormat: Text.PlainText
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-            text: root.icon
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.display
-            opacity: root.adapter && root.adapter.enabled ? 1.0 : 0.5
-          }
-
-          // Compact on/off switch on the trailing edge of the hero, and the
-          // header's only cursor target.
-          ToggleSwitch {
-            id: powerSwitch
-            visible: !!root.adapter
-            checked: !!root.adapter && root.adapter.enabled
-            hasCursor: root.headerHasCursor
-            foreground: root.bar.foreground
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            onHovered: function(on) { if (on) root.setHeaderCursor() }
-            onToggled: root.toggleBluetooth()
-
-            PanelToolTip {
-              visible: powerSwitch.containsMouse
-              text: root.toggleHint
-              fontFamily: root.bar.fontFamily
-            }
-          }
-
-          Column {
-            id: heroLabels
-            anchors.left: heroIcon.right
-            anchors.leftMargin: Style.space(14)
-            anchors.right: parent.right
-            anchors.rightMargin: powerSwitch.visible ? powerSwitch.width + Style.space(12) : 0
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
-
-            Text {
-              text: Commons.I18n.t("bluetooth.title")
-              textFormat: Text.PlainText
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.title
-              font.bold: true
-              elide: Text.ElideRight
-              width: parent.width
-            }
-
-            Text {
-              id: heroStatus
-              textFormat: Text.PlainText
-              text: root.heroStatusText.toUpperCase()
-              color: Qt.darker(root.bar.foreground, 1.4)
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              elide: Text.ElideRight
-              width: parent.width
+              PanelToolTip {
+                visible: powerSwitch.containsMouse
+                text: root.toggleHint
+                fontFamily: root.bar.fontFamily
+              }
             }
           }
         }
@@ -769,7 +689,7 @@ Panel {
         // Scrollable device list — capped so a noisy neighborhood doesn't
         // grow the popup past the screen.
         PanelSeparator {
-          foreground: root.bar.foreground
+          foreground: root.panelText
         }
 
         Column {
@@ -780,7 +700,7 @@ Panel {
 
           PanelSectionHeader {
             text: Commons.I18n.t("bluetooth.connected")
-            foreground: root.bar.foreground
+            foreground: root.panelText
             fontFamily: root.bar.fontFamily
           }
 
@@ -800,7 +720,7 @@ Panel {
 
         PanelSeparator {
           visible: root.connectedDevices.length > 0 && root.scrollRows.length > 0
-          foreground: root.bar.foreground
+          foreground: root.panelText
         }
 
         // ListView, not a Flickable: it owns the scroll position, so it keeps
@@ -846,14 +766,14 @@ Panel {
               PanelSeparator {
                 visible: index > 0 && sectionTitle !== ""
                 height: visible ? implicitHeight : 0
-                foreground: root.bar.foreground
+                foreground: root.panelText
               }
 
               PanelSectionHeader {
                 visible: sectionTitle !== ""
                 height: visible ? implicitHeight : 0
                 text: sectionTitle
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
               }
 
@@ -868,17 +788,21 @@ Panel {
           }
         }
 
-        Text {
-          textFormat: Text.PlainText
+        // Why the list is empty, and the next step when there is one. With
+        // no adapter the hero already says so; this says what to do.
+        EmptyState {
           visible: root.connectedDevices.length === 0 && root.scrollRows.length === 0
-          text: !root.adapter ? Commons.I18n.t("bluetooth.noBluetoothAdapter")
-              : !root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOnToScan")
-              : Commons.I18n.t("bluetooth.scanning")
-          color: Qt.darker(root.bar.foreground, 1.5)
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.bodySmall
-          wrapMode: Text.WordWrap
           width: parent.width
+          iconName: !root.adapter || !root.adapter.enabled ? "bluetooth.off" : "bluetooth"
+          title: !root.adapter ? Commons.I18n.t("bluetooth.noBluetoothAdapter")
+            : !root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOnToScan")
+            : Commons.I18n.t("bluetooth.scanning")
+          body: !root.adapter ? Commons.I18n.t("bluetooth.noAdapterHint") : ""
+          actionText: root.adapter && !root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOn") : ""
+          foreground: root.panelText
+          surface: root.panelSurface
+          fontFamily: root.bar.fontFamily
+          onAction: root.toggleBluetooth()
         }
       }
     }
@@ -909,7 +833,7 @@ Panel {
 
     hasCursor: rowSelected && !root.actionFocused
     current: isConnected
-    foreground: root.bar.foreground
+    foreground: root.panelText
     fill: root.hoverFill
     currentFill: root.selectedFill
 
@@ -927,9 +851,9 @@ Panel {
     }
 
     readonly property color statusColor: {
-      if (isConnected) return root.bar.foreground
-      if (action !== "" || devState === 3 || dev.pairing === true) return root.bar.foreground
-      return Qt.darker(root.bar.foreground, 1.5)
+      if (isConnected) return root.panelText
+      if (action !== "" || devState === 3 || dev.pairing === true) return root.panelText
+      return Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
     }
 
     implicitHeight: rowContent.implicitHeight + Style.spacing.rowPaddingX
@@ -979,10 +903,10 @@ Panel {
       Text {
         id: deviceIcon
         textFormat: Text.PlainText
-        text: row.isConnected ? "󰂱" : "󰂯"
+        text: Icons.glyph(row.isConnected ? "bluetooth.connected" : "bluetooth")
         color: row.statusColor
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.heading
+        font.family: Icons.family
+        font.pixelSize: Style.font.icon
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
       }
@@ -999,7 +923,7 @@ Panel {
         Text {
           textFormat: Text.PlainText
           text: root.deviceLabel(row.dev) || Commons.I18n.t("bluetooth.device")
-          color: root.bar.foreground
+          color: root.panelText
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.body
           elide: Text.ElideRight
@@ -1022,10 +946,10 @@ Panel {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         visible: row.showForgetButton
-        iconText: "󰅙"
+        iconText: Icons.glyph("ui.close.circle")
         tooltipText: Commons.I18n.t("bluetooth.forget")
-        foreground: root.bar.foreground
-        hoverColor: root.bar.foreground
+        foreground: root.panelText
+        hoverColor: root.panelText
         fontFamily: root.bar.fontFamily
         hasCursor: row.rowSelected && root.actionFocused
         onHovered: function(isHovered) {

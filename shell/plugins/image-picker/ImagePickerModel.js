@@ -7,7 +7,7 @@ function labelForPath(path) {
 }
 
 // Extra (user-installed) theme names, one per line, as listed from the user
-// themes directory: the set omarchy-theme-remove can delete.
+// themes directory: the set karchy-theme-remove can delete.
 function parseThemeNames(text) {
   var names = []
   var lines = String(text || "").split("\n")

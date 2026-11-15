@@ -26,7 +26,7 @@ Item {
   readonly property bool hot: toast ? toast.pointerOver(button) : false
 
   // A tick rather than a past-tense verb, so the width does not change.
-  readonly property string labelText: taken ? "\u{f012c}" : String(deed.label || "")
+  readonly property string labelText: taken ? Icons.glyph("ui.check") : String(deed.label || "")
 
   Rectangle {
     anchors { fill: parent; topMargin: button.rule; leftMargin: button.leftRule ? button.rule : 0 }
@@ -72,8 +72,9 @@ Item {
       text: button.labelText
       textFormat: Text.PlainText
       elide: tooLong ? Text.ElideRight : Text.ElideNone
-      color: button.hot ? Commons.Color.notifications.text : Qt.darker(Commons.Color.notifications.text, 1.15)
-      font.family: Style.font.family
+      // Full text color: these are controls, not metadata.
+      color: Commons.Color.notifications.text
+      font.family: button.taken ? Icons.family : Style.font.family
       font.pixelSize: Style.font.body
     }
   }

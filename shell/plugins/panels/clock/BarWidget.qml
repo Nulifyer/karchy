@@ -12,7 +12,7 @@ import "Model.js" as Model
 // middle click opens the timezone picker.
 BarWidget {
   id: root
-  moduleName: "omarchy.clock"
+  moduleName: "karchy.clock"
 
   property date displayDate: clock.date
 
@@ -56,7 +56,7 @@ BarWidget {
       root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
-  // Day and month names follow the Omarchy language, not the system locale,
+  // Day and month names follow the Karchy language, not the system locale,
   // which only catches up at the next login.
   readonly property var formatLocale: Qt.locale(I18n.formatLocale)
 
@@ -139,7 +139,7 @@ BarWidget {
   }
 
   ShellIpc {
-    target: "omarchy.clock"
+    target: "karchy.clock"
 
     function refresh(): void { root.broadcast("refresh") }
     function cycleFormat(): void { root.cycleFormat() }
@@ -168,7 +168,7 @@ BarWidget {
 
     onPressed: function(b) {
       if (b === Qt.RightButton) root.cycleFormat()
-      else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("omarchy-menu-timezone") }
+      else if (b === Qt.MiddleButton) { if (root.bar) root.bar.run("karchy-menu-timezone") }
       else root.togglePanel()
     }
 

@@ -47,7 +47,7 @@ function openExternalUrl(raw) {
   return safe ? Qt.openUrlExternally(safe) : false
 }
 
-// The omarchy-exec-argv hint (omarchy-notification-send --exec). Structural
+// The karchy-exec-argv hint (karchy-notification-send --exec). Structural
 // only: fails closed on a malformed or oversized argv or a leading-dash
 // program, but does not judge intent. Any session-bus sender may set it (see
 // docs/notifications.md); Util.execArgv never re-parses it as a shell string.
@@ -69,7 +69,7 @@ function parseExecArgv(value) {
   return parsed
 }
 
-// The omarchy-actions hint (omarchy-notification-send --action): up to three
+// The karchy-actions hint (karchy-notification-send --action): up to three
 // buttons, each a label and an argv held to the same rules as the click.
 var MAX_EXEC_ACTIONS = 3
 function parseExecActions(value) {
@@ -90,7 +90,7 @@ function parseExecActions(value) {
   return out
 }
 
-// The omarchy-glyph hint: a few code points for the icon slot.
+// The karchy-glyph hint: a few code points for the icon slot.
 function safeGlyph(value) {
   var text = typeof value === "string" ? value : ""
   if (!text || text.length > 16 || /[\x00-\x1f\x7f-\x9f]/.test(text)) return ""

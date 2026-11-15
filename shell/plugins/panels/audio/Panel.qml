@@ -11,14 +11,14 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.audio"
-  ipcTarget: "omarchy.audio"
+  moduleName: "karchy.audio"
+  ipcTarget: "karchy.audio"
 
   readonly property var sink: Pipewire.defaultAudioSink
   readonly property var source: Pipewire.defaultAudioSource
   readonly property var nodes: Pipewire.nodes ? Pipewire.nodes.values : []
   readonly property var mprisPlayers: Mpris.players ? Mpris.players.values : []
-  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("omarchy.media")
+  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("karchy.media")
   readonly property var activeMediaPlayer: mediaService ? mediaService.activePlayer : null
 
   // Nodes of a platform's audio processing, which are neither devices nor apps,
@@ -64,7 +64,7 @@ Panel {
       if (!n || !n.isStream || !isPlaybackStream(n)) continue
       // A tuning's output is a playback stream too, but it is the processing
       // itself rather than an application, so it does not belong in the list.
-      if (String(n.name || "").indexOf("omarchy_speaker_tuning") === 0) continue
+      if (String(n.name || "").indexOf("karchy_speaker_tuning") === 0) continue
       if (platformHides(n)) continue
       list.push(n)
     }
@@ -133,7 +133,7 @@ Panel {
   // *into* the processing, so the slider would move while the speakers did not,
   // and on a chain with a limiter it would change the tone as well.
   //
-  // omarchy-audio-output-sink resolves the *current* default output through any
+  // karchy-audio-output-sink resolves the *current* default output through any
   // such sink to the physical one, which is the same definition the volume keys
   // and the output switcher use. Resolving the default (rather than "whatever a
   // tuning fronts") is what keeps this correct when headphones or HDMI are
@@ -173,7 +173,7 @@ Panel {
 
   function resolveVolumeSink() {
     volumeSinkGeneration++
-    // A hardware output is its own volume sink, as omarchy-audio-output-sink
+    // A hardware output is its own volume sink, as karchy-audio-output-sink
     // reports without looking further, so only a DSP sink needs the script.
     if (sink && String(sink.name).indexOf("alsa_output.") === 0) {
       volumeSinkName = String(sink.name)
@@ -237,10 +237,10 @@ Panel {
   readonly property string toggleHint: anyAudible ? Commons.I18n.t("audio.mute") : Commons.I18n.t("audio.unmute")
 
   readonly property color hoverFill: bar
-    ? Style.hoverFillFor(bar.foreground, Commons.Color.accent)
+    ? Style.hoverFillFor(panelText, Commons.Color.accent)
     : "transparent"
   readonly property color selectedFill: bar
-    ? Style.selectedFillFor(bar.foreground, Commons.Color.accent)
+    ? Style.selectedFillFor(panelText, Commons.Color.accent)
     : "transparent"
 
   function sectionCount(section) {
@@ -472,22 +472,25 @@ Panel {
     if (selectedIndex < floor) selectedIndex = floor
   }
 
-  function outputIcon(volume) {
-    // Match the old Waybar pulseaudio glyph set. The Material Design speaker
-    // icons render visually smaller in JetBrainsMono Nerd Font.
-    if (!sink || !sink.audio) return ""
-    if (isHeadphones(sink)) return "󰋋"
-    if (outputMuted) return ""
+  // The output icon's name in default/karchy/icons.json; the OSD takes the
+  // name, the bar and hero draw outputIcon().
+  function outputIconName(volume) {
+    if (!sink || !sink.audio) return "audio.volume.muted"
+    if (isHeadphones(sink)) return "audio.headphones"
+    if (outputMuted) return "audio.volume.muted"
     var v = volume === undefined ? outputVolume : volume
-    if (v >= 0.67) return ""
-    if (v >= 0.34) return ""
-    if (v > 0) return ""
-    return ""
+    if (v >= 0.67) return "audio.volume.high"
+    if (v >= 0.34) return "audio.volume.medium"
+    if (v > 0) return "audio.volume.low"
+    return "audio.volume.muted"
+  }
+
+  function outputIcon(volume) {
+    return Icons.glyph(outputIconName(volume))
   }
 
   function inputIcon() {
-    if (!hasInput) return "󰍭"
-    return inputMuted ? "󰍭" : "󰍬"
+    return Icons.glyph(hasInput && !inputMuted ? "audio.mic" : "audio.mic.muted")
   }
 
   // Playful mood-name for a given output volume. Mirrors the brightness
@@ -506,8 +509,8 @@ Panel {
 
   function showVolumeOsd(volume) {
     if (!bar || !bar.shell) return
-    bar.shell.summon("omarchy.osd", JSON.stringify({
-      icon: outputIcon(volume),
+    bar.shell.summon("karchy.osd", JSON.stringify({
+      icon: outputIconName(volume),
       value: Math.round(volume * 100)
     }))
   }
@@ -547,7 +550,7 @@ Panel {
     Pipewire.preferredDefaultAudioSink = node
     if (node.id !== undefined && node.name) {
       Quickshell.execDetached([
-        "omarchy-audio-output-set-default",
+        "karchy-audio-output-set-default",
         String(node.id),
         String(node.name)
       ])
@@ -560,7 +563,7 @@ Panel {
     if (node.audio) Pipewire.preferredDefaultAudioSource = node
     if (node.id !== undefined && node.name) {
       Quickshell.execDetached([
-        "omarchy-audio-input-set-default",
+        "karchy-audio-input-set-default",
         String(node.id),
         String(node.name)
       ])
@@ -595,11 +598,11 @@ Panel {
   }
 
   function sinkGlyph(node) {
-    return Model.sinkGlyph(node)
+    return Icons.glyph(Model.sinkGlyph(node))
   }
 
   function sourceGlyph(node) {
-    return Model.sourceGlyph(node)
+    return Icons.glyph(Model.sourceGlyph(node))
   }
 
   function friendlyStreamLabel(label) {
@@ -671,7 +674,7 @@ Panel {
 
   Process {
     id: sinkAvailabilityProc
-    command: ["omarchy-audio-sink-availability"]
+    command: ["karchy-audio-sink-availability"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.updateSinkAvailability(text)
@@ -680,7 +683,7 @@ Panel {
 
   Process {
     id: sourceAvailabilityProc
-    command: ["omarchy-audio-sink-availability", "sources"]
+    command: ["karchy-audio-sink-availability", "sources"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.sourceAvailability = Model.parseSinkAvailability(text)
@@ -689,7 +692,7 @@ Panel {
 
   Process {
     id: volumeSinkProc
-    command: ["omarchy-audio-output-sink"]
+    command: ["karchy-audio-output-sink"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -811,86 +814,39 @@ Panel {
           width: scrollArea.availableWidth
           spacing: Style.space(14)
 
-          // ---------- Hero: speaker icon · title/status ----------
-          Item {
-            id: heroItem
-            width: parent.width
-            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, powerSwitch.implicitHeight)
+          // ---------- Hero: speaker icon · title/status · mute-all switch ----------
+          // Status only on the left; the switch owns muting, mouse and
+          // keyboard alike, and is the header's only cursor target. Checked
+          // means something is still audible, so muting everything reads as
+          // switching audio off.
+          PanelHero {
+            iconText: root.outputIcon()
+            iconColor: root.outputMuted ? Commons.Color.secondaryText(root.panelText, root.panelSurface) : root.panelText
+            title: Commons.I18n.t("audio.title")
+            meta: root.outputVolumeName(outputSlider.dragging ? outputSlider.liveValue : root.outputVolume, root.outputMuted)
+            fontFamily: root.bar.fontFamily
+            trailingControl: Component {
+              ToggleSwitch {
+                id: powerSwitch
+                checked: root.anyAudible
+                hasCursor: root.headerHasCursor
+                foreground: root.panelText
+                accessibleName: root.toggleHint
+                onHovered: function(on) { if (on) root.setHeaderCursor() }
+                onToggled: root.toggleAllMuted()
 
-            // Status only — the switch owns muting, mouse and keyboard alike.
-            Text {
-              id: heroIcon
-              textFormat: Text.PlainText
-              text: root.outputIcon()
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.display
-              opacity: root.outputMuted ? 0.5 : 1.0
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-            }
-
-            // Compact on/off switch on the trailing edge of the hero, and the
-            // header's only cursor target. Checked means something is still
-            // audible, so muting everything reads as switching audio off.
-            ToggleSwitch {
-              id: powerSwitch
-              checked: root.anyAudible
-              hasCursor: root.headerHasCursor
-              foreground: root.bar.foreground
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              onHovered: function(on) { if (on) root.setHeaderCursor() }
-              onToggled: root.toggleAllMuted()
-
-              PanelToolTip {
-                visible: powerSwitch.containsMouse
-                text: root.toggleHint
-                fontFamily: root.bar.fontFamily
-              }
-            }
-
-            Column {
-              id: heroLabels
-              anchors.left: heroIcon.right
-              anchors.leftMargin: Style.space(14)
-              anchors.right: parent.right
-              anchors.rightMargin: powerSwitch.width + Style.space(12)
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(2)
-
-              Text {
-                text: Commons.I18n.t("audio.title")
-                textFormat: Text.PlainText
-                color: root.bar.foreground
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.title
-                font.bold: true
-                elide: Text.ElideRight
-                width: parent.width
-              }
-
-              Text {
-                id: heroLabel
-                textFormat: Text.PlainText
-                text: root.outputVolumeName(
-                  outputSlider.dragging ? outputSlider.liveValue : root.outputVolume,
-                  root.outputMuted
-                ).toUpperCase()
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                elide: Text.ElideRight
-                width: parent.width
+                PanelToolTip {
+                  visible: powerSwitch.containsMouse
+                  text: root.toggleHint
+                  fontFamily: root.bar.fontFamily
+                }
               }
             }
           }
 
           // ---- Output devices ----
           PanelSeparator {
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -904,7 +860,7 @@ Panel {
               PanelSectionHeader {
                 id: outputHeader
                 text: Commons.I18n.t("audio.output")
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
@@ -914,7 +870,7 @@ Panel {
                 id: outputPercent
                 textFormat: Text.PlainText
                 text: Commons.I18n.formatNumber(Math.round((outputSlider.dragging ? outputSlider.liveValue : root.outputVolume) * 100)) + "%"
-                color: Qt.darker(root.bar.foreground, 1.4)
+                color: Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -931,7 +887,7 @@ Panel {
               height: outputSlider.implicitHeight + Style.spacing.controlGap
               hasCursor: root.cursorActive && root.focusSection === "output" && root.selectedIndex === -1
               onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(outputSliderRow)
-              foreground: root.bar.foreground
+              foreground: root.panelText
               outline: true
 
               PanelSlider {
@@ -976,7 +932,7 @@ Panel {
           // ---- Input ----
           PanelSeparator {
             visible: root.displayAudioSources.length > 0 || !!root.source
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -991,7 +947,7 @@ Panel {
               PanelSectionHeader {
                 id: microphoneHeader
                 text: Commons.I18n.t("audio.input")
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
@@ -1001,7 +957,7 @@ Panel {
                 id: microphonePercent
                 textFormat: Text.PlainText
                 text: root.inputLevelKnown ? Commons.I18n.formatNumber(Math.round((inputSlider.dragging ? inputSlider.liveValue : root.inputVolume) * 100)) + "%" : "–"
-                color: Qt.darker(root.bar.foreground, 1.4)
+                color: Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -1019,7 +975,7 @@ Panel {
               height: inputControls.implicitHeight + Style.spacing.controlGap
               hasCursor: root.cursorActive && root.focusSection === "input" && root.selectedIndex === -1
               onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(inputSliderRow)
-              foreground: root.bar.foreground
+              foreground: root.panelText
               outline: true
 
               Column {
@@ -1052,13 +1008,13 @@ Panel {
                   visible: root.inputLevelShown
                   width: parent.width
                   height: Math.max(Style.space(5), Style.spacing.xs)
-                  color: Util.alpha(root.bar.foreground, 0.18)
+                  color: Util.alpha(root.panelText, 0.18)
                   opacity: root.inputMuted ? 0.35 : 1.0
 
                   Rectangle {
                     height: parent.height
                     width: parent.width * Math.max(0, Math.min(1, inputPeakMonitor.peak))
-                    color: root.bar.foreground
+                    color: root.panelText
                     Behavior on width { NumberAnimation { duration: Style.duration(70) } }
                   }
                 }
@@ -1089,7 +1045,7 @@ Panel {
           // ---- Per-app streams ----
           PanelSeparator {
             visible: root.displayAudioStreams.length > 0
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -1099,7 +1055,7 @@ Panel {
 
             PanelSectionHeader {
               text: Commons.I18n.t("audio.sources")
-              foreground: root.bar.foreground
+              foreground: root.panelText
               fontFamily: root.bar.fontFamily
             }
 
@@ -1134,7 +1090,7 @@ Panel {
     hasCursor: root.cursorActive && root.focusSection === "output" && root.selectedIndex === rowIndex
     onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(sinkRow)
     current: isActive
-    foreground: root.bar.foreground
+    foreground: root.panelText
     fill: root.hoverFill
     currentFill: root.selectedFill
     implicitHeight: sinkInner.implicitHeight + Style.spacing.xl
@@ -1151,9 +1107,9 @@ Panel {
       Text {
         textFormat: Text.PlainText
         text: root.sinkGlyph(sinkRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
+        color: root.panelText
+        font.family: Icons.family
+        font.pixelSize: Style.font.icon
         width: Style.space(22)
         horizontalAlignment: Text.AlignHCenter
         anchors.verticalCenter: parent.verticalCenter
@@ -1162,7 +1118,7 @@ Panel {
       Text {
         textFormat: Text.PlainText
         text: root.nodeLabel(sinkRow.node)
-        color: root.bar.foreground
+        color: root.panelText
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body
         font.bold: sinkRow.isActive
@@ -1195,7 +1151,7 @@ Panel {
     hasCursor: root.cursorActive && root.focusSection === "input" && root.selectedIndex === rowIndex
     onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(sourceRow)
     current: isActive
-    foreground: root.bar.foreground
+    foreground: root.panelText
     fill: root.hoverFill
     currentFill: root.selectedFill
     implicitHeight: sourceInner.implicitHeight + Style.spacing.xl
@@ -1212,9 +1168,9 @@ Panel {
       Text {
         textFormat: Text.PlainText
         text: root.sourceGlyph(sourceRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
+        color: root.panelText
+        font.family: Icons.family
+        font.pixelSize: Style.font.icon
         width: Style.space(22)
         horizontalAlignment: Text.AlignHCenter
         anchors.verticalCenter: parent.verticalCenter
@@ -1223,7 +1179,7 @@ Panel {
       Text {
         textFormat: Text.PlainText
         text: root.nodeLabel(sourceRow.node)
-        color: root.bar.foreground
+        color: root.panelText
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body
         font.bold: sourceRow.isActive
@@ -1262,7 +1218,7 @@ Panel {
     hasCursor: root.cursorActive && root.focusSection === "streams" && root.selectedIndex === rowIndex
     onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(streamRow)
     current: isActive
-    foreground: root.bar.foreground
+    foreground: root.panelText
     fill: root.hoverFill
     currentFill: root.selectedFill
     implicitHeight: streamColumn.implicitHeight + Style.spacing.xl
@@ -1283,10 +1239,10 @@ Panel {
         Text {
           id: streamMuteIcon
           textFormat: Text.PlainText
-          text: streamRow.streamMuted ? "󰝟" : "󰕾"
-          color: root.bar.foreground
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.title
+          text: Icons.glyph(streamRow.streamMuted ? "audio.volume.muted" : "audio.volume.high")
+          color: root.panelText
+          font.family: Icons.family
+          font.pixelSize: Style.font.icon
           width: Style.space(22)
           horizontalAlignment: Text.AlignHCenter
           anchors.verticalCenter: parent.verticalCenter
@@ -1305,7 +1261,7 @@ Panel {
         Text {
           textFormat: Text.PlainText
           text: root.streamLabel(streamRow.node)
-          color: root.bar.foreground
+          color: root.panelText
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.body
           font.bold: streamRow.isActive
@@ -1318,7 +1274,7 @@ Panel {
           id: streamPct
           textFormat: Text.PlainText
           text: Commons.I18n.formatNumber(Math.round(streamRow.streamVolume * 100)) + "%"
-          color: Qt.darker(root.bar.foreground, 1.5)
+          color: Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
           font.family: root.bar.fontFamily
           font.pixelSize: Style.font.caption
           font.bold: true

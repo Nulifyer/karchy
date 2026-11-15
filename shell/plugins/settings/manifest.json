@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.settings",
+  "name": "Settings",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "Settings window: displays, appearance and more, saved beside your own config files",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Settings.qml"
+  }
+}

@@ -11,7 +11,7 @@ Item {
   id: root
 
   property bool opened: false
-  property string icon: ""
+  property string icon: Icons.glyph("audio.volume.high")
   property string message: ""
   property string iconKey: ""
   property int value: 0
@@ -52,7 +52,7 @@ Item {
     : (root.message === "" ? root.iconWidth : root.iconWidth + root.messageGap + root.messageWidth)
 
   function iconFor(name, percent) {
-    return OsdModel.iconFor(name, percent)
+    return Icons.resolve(OsdModel.iconFor(name, percent))
   }
 
   function show(iconName, rawMessage, rawValue, rawMax, rawProgressText, rawDuration) {
@@ -64,7 +64,7 @@ Item {
     hasProgress = next.hasProgress
     value = next.value
     message = next.message
-    icon = next.icon
+    icon = Icons.resolve(next.icon)
     duration = next.duration
     opened = true
     if (duration > 0) hideTimer.restart()
@@ -102,15 +102,17 @@ Item {
 
   TextMetrics {
     id: iconMetrics
-    font.family: Style.font.family
-    font.pixelSize: Style.font.displayLarge
+    font.family: Icons.family
+    // The icon font fills its em, so display reads as large as the text
+    // font's displayLarge glyphs did.
+    font.pixelSize: Style.font.display
     text: root.icon
   }
 
   TextMetrics {
     id: widestIconMetrics
     font: iconMetrics.font
-    text: OsdModel.widestIcon
+    text: Icons.glyph(OsdModel.widestIcon)
   }
 
   ShellIpc {
@@ -128,7 +130,7 @@ Item {
     id: panel
     shown: root.opened
     shownKeyboardFocus: WlrKeyboardFocus.None
-    WlrLayershell.namespace: "omarchy-osd"
+    WlrLayershell.namespace: "karchy-osd"
     // Visual-only surface: keep the layer-shell input region empty so the OSD
     // never blocks clicks to the desktop below it.
     mask: Region {}
@@ -140,9 +142,9 @@ Item {
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom
       anchors.bottomMargin: Style.space(67)
-      color: Util.alpha(Commons.Color.background, 0.97)
-      borderSpec: Border.surfaceSpec("popups", "border", Commons.Color.popups.border, Math.max(1, Style.space(2)))
-      radius: Style.cornerRadius
+      color: Commons.Color.popups.background
+      borderSpec: Border.surfaceSpec("popups", "border", Commons.Color.popups.border, Style.border.surface)
+      radius: Style.radius.surface
       opacity: root.opened ? 1 : 0
 
       Row {

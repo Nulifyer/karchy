@@ -3,7 +3,8 @@ import QtQuick.Controls
 import qs.Commons
 import qs.Commons as Commons
 
-// Styled wrapper around Qt Quick Controls ToolTip. Drop-in: declare inside
+// The tooltip: the one component every tooltip in the shell uses (Button,
+// PanelActionButton, the panels). Drop-in: declare inside
 // the hovered item and bind `visible` to the hover state, e.g.
 //   PanelToolTip {
 //     visible: mouse.containsMouse
@@ -25,7 +26,7 @@ ToolTip {
   property string fontFamily: Style.font.family
   property real fontSize: Style.font.bodySmall
 
-  readonly property var panelBorderSpec: Border.localOrSurfaceSpec("tooltip", "border", panelBorder, Commons.Color.tooltip.border, Style.normalBorderWidth)
+  readonly property var panelBorderSpec: Border.localOrSurfaceSpec("tooltip", "border", panelBorder, Commons.Color.tooltip.border, Style.border.control)
 
   delay: 400
   padding: 0
@@ -33,7 +34,7 @@ ToolTip {
   background: BorderSurface {
     color: root.panelBackground
     borderSpec: root.panelBorderSpec
-    radius: Style.cornerRadius
+    radius: Style.radius.surface
   }
 
   contentItem: Text {

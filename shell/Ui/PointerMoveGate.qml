@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Commons
 
 // Filters synthetic hover churn from moving delegates under a stationary
 // pointer. Call reset() after keyboard/list mutations, then moved() from a
@@ -49,6 +50,7 @@ QtObject {
     root.primed = true
     root.initialSampleAllowed = false
 
+    if (didMove) InputMode.pointerMoved()
     return didMove
   }
 }

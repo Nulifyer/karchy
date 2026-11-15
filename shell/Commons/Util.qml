@@ -48,6 +48,31 @@ QtObject {
     return Qt.rgba(c.r, c.g, c.b, a)
   }
 
+  // `a` blended toward `b`: weight 1 is all `a`, 0 is all `b`. Straight sRGB
+  // interpolation, alpha included.
+  function mix(a, b, weight) {
+    var t = clampAlpha(weight)
+    if (typeof a === "string") a = Qt.color(a)
+    if (typeof b === "string") b = Qt.color(b)
+    if (!a || !b) return a || b || Qt.rgba(0, 0, 0, 0)
+    return Qt.rgba(a.r * t + b.r * (1 - t), a.g * t + b.g * (1 - t),
+      a.b * t + b.b * (1 - t), a.a * t + b.a * (1 - t))
+  }
+
+  // WCAG 2 relative luminance and contrast ratio (1 to 21). Alpha is ignored:
+  // callers pass the color as it lands on an opaque surface.
+  function luminance(c) {
+    if (typeof c === "string") c = Qt.color(c)
+    if (!c) return 0
+    function channel(v) { return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b)
+  }
+
+  function contrast(a, b) {
+    var la = luminance(a), lb = luminance(b)
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+  }
+
   // file:// URL with each path segment percent-encoded so spaces and
   // special chars in user paths don't break Image.source.
   function fileUrl(path) {

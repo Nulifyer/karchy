@@ -9,8 +9,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.monitor"
-  ipcTarget: "omarchy.monitor"
+  moduleName: "karchy.monitor"
+  ipcTarget: "karchy.monitor"
   manageIpc: false
 
   // manageIpc: false so this panel can own the single IpcHandler the target
@@ -42,7 +42,7 @@ Panel {
   //                  j/k walks each row.
   // Mouse hover on a target updates root state via the components' `hovered`
   // signal so keyboard cursor and pointer share one highlight.
-  readonly property var scalePresets: ["1", "1.25", "1.6", "2", "3", "4"]
+  readonly property var scalePresets: Model.SCALE_PRESETS
   readonly property var scaleValues: {
     for (var i = 0; i < displays.length; i++) {
       var display = displays[i]
@@ -56,7 +56,7 @@ Panel {
   property bool cursorActive: false
 
   // Text size slider — curated macOS-style notches (px). The panel snaps to
-  // these stops; the CLI (omarchy-display-text-size) accepts any integer in range.
+  // these stops; the CLI (karchy-display-text-size) accepts any integer in range.
   readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
   // While a change is in flight, the chosen stop index overrides the live
   // base-size so the knob doesn't snap back during the file round-trip. -1 =
@@ -220,7 +220,7 @@ Panel {
   }
 
   ShellIpc {
-    target: "omarchy.monitor"
+    target: "karchy.monitor"
 
     function brightness(percent: string): string { return root.brightnessIpc(percent) }
     function state(): string { return root.stateIpc() }
@@ -246,7 +246,7 @@ Panel {
     }
 
     root.brightnessSetQueued = false
-    setBrightnessProc.command = ["omarchy-brightness-display", "--no-osd", "--monitor", root.focusedMonitor, percent + "%"]
+    setBrightnessProc.command = ["karchy-brightness-display", "--no-osd", "--monitor", root.focusedMonitor, percent + "%"]
     setBrightnessProc.running = true
   }
 
@@ -257,7 +257,7 @@ Panel {
 
   function showBrightnessOsd(percent) {
     if (!bar || !bar.shell) return
-    bar.shell.summon("omarchy.osd", JSON.stringify({
+    bar.shell.summon("karchy.osd", JSON.stringify({
       icon: "brightness",
       value: percent
     }))
@@ -315,7 +315,7 @@ Panel {
   }
 
   function setScale(scale) {
-    actionProc.command = ["bash", "-c", "omarchy-hyprland-monitor-scaling " + scale]
+    actionProc.command = ["bash", "-c", "karchy-hyprland-monitor-scaling " + scale]
     if (!actionProc.running) actionProc.running = true
   }
 
@@ -343,7 +343,7 @@ Panel {
   }
 
   function setTextSize(px) {
-    textScaleProc.command = ["omarchy-display-text-size", String(px)]
+    textScaleProc.command = ["karchy-display-text-size", String(px)]
     if (!textScaleProc.running) textScaleProc.running = true
   }
 
@@ -395,7 +395,7 @@ Panel {
 
   Process {
     id: stateProc
-    command: ["omarchy-monitor-state"]
+    command: ["karchy-monitor-state"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
@@ -426,7 +426,7 @@ Panel {
     stdout: StdioCollector { waitForEnd: true }
     // Do NOT call refresh() after a brightness set completes. The local
     // brightnessPercent we just wrote is authoritative; re-reading via
-    // `omarchy-brightness-display` races the hardware/driver and can
+    // `karchy-brightness-display` races the hardware/driver and can
     // return an empty string, which the parser then coerces to 0 —
     // visible as a "bounce to zero" after h/l keypresses. External
     // brightness changes are still picked up by the 5s periodic refresh,
@@ -479,7 +479,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: Quickshell.screens.length > 1 ? "󰍺" : "󰍹"
+    text: Icons.glyph(Quickshell.screens.length > 1 ? "display.multiple" : "display")
     onPressed: function(b) { root.toggle() }
     onWheelMoved: function(delta) {
       if (!root.brightnessAvailable) return
@@ -537,64 +537,19 @@ Panel {
           spacing: Style.space(14)
 
           // ---------- Hero: display icon · title/status ----------
-          Item {
-            width: parent.width
-            implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight)
-
-            Text {
-              id: heroIcon
-              textFormat: Text.PlainText
-              text: root.displays.length > 1 ? "󰍺" : "󰍹"
-              color: root.bar.foreground
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.display
-              anchors.left: parent.left
-              anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Column {
-              id: heroLabels
-              anchors.left: heroIcon.right
-              anchors.leftMargin: Style.space(14)
-              anchors.right: parent.right
-              anchors.verticalCenter: parent.verticalCenter
-              spacing: Style.space(2)
-
-              Text {
-                text: Commons.I18n.t("monitor.display")
-                textFormat: Text.PlainText
-                color: root.bar.foreground
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.title
-                font.bold: true
-                elide: Text.ElideRight
-                width: parent.width
-              }
-
-              Text {
-                id: heroLabel
-                textFormat: Text.PlainText
-                text: {
-                  if (root.brightnessAvailable) {
-                    return root.brightnessName(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent).toUpperCase()
-                  }
-                  return Commons.I18n.t("monitor.fixedBrightness")
-                }
-                color: Qt.darker(root.bar.foreground, 1.4)
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                elide: Text.ElideRight
-                width: parent.width
-              }
-            }
+          PanelHero {
+            iconText: Icons.glyph(root.displays.length > 1 ? "display.multiple" : "display")
+            title: Commons.I18n.t("monitor.display")
+            meta: root.brightnessAvailable
+              ? root.brightnessName(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent)
+              : Commons.I18n.t("monitor.fixedBrightness")
+            fontFamily: root.bar.fontFamily
           }
 
           // ---------- Brightness ----------
           PanelSeparator {
             visible: root.brightnessAvailable
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -609,7 +564,7 @@ Panel {
               PanelSectionHeader {
                 id: brightnessHeader
                 text: Commons.I18n.t("monitor.brightness")
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
@@ -619,7 +574,7 @@ Panel {
                 id: brightnessPercent
                 textFormat: Text.PlainText
                 text: Commons.I18n.formatNumber(Math.round(brightnessSlider.dragging ? brightnessSlider.liveValue : root.brightnessPercent)) + "%"
-                color: Qt.darker(root.bar.foreground, 1.4)
+                color: Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -635,7 +590,7 @@ Panel {
               height: brightnessSlider.implicitHeight + Style.spacing.controlGap
               hasCursor: root.cursorActive && root.focusSection === "brightness" && root.selectedIndex === -1
               onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(brightnessRow)
-              foreground: root.bar.foreground
+              foreground: root.panelText
               outline: true
 
               PanelSlider {
@@ -668,7 +623,7 @@ Panel {
 
           // ---------- Text size ----------
           PanelSeparator {
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -682,7 +637,7 @@ Panel {
               PanelSectionHeader {
                 id: textSizeHeader
                 text: Commons.I18n.t("monitor.textSize")
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
@@ -694,7 +649,7 @@ Panel {
                 text: Commons.I18n.formatNumber(textSizeSlider.dragging
                        ? root.textSizeStops[Math.round(textSizeSlider.liveValue)]
                        : root.displayedTextPx()) + "px"
-                color: Qt.darker(root.bar.foreground, 1.4)
+                color: Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -710,7 +665,7 @@ Panel {
               height: textSizeSlider.implicitHeight + Style.spacing.controlGap
               hasCursor: root.cursorActive && root.focusSection === "textsize" && root.selectedIndex === -1
               onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(textSizeRow)
-              foreground: root.bar.foreground
+              foreground: root.panelText
               outline: true
 
               PanelSlider {
@@ -740,7 +695,7 @@ Panel {
 
           // ---------- Scale ----------
           PanelSeparator {
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -754,7 +709,7 @@ Panel {
               PanelSectionHeader {
                 id: scaleHeader
                 text: Commons.I18n.t("monitor.scale")
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
@@ -768,7 +723,7 @@ Panel {
                 text: root.focusedMonitor
                 // Only worth naming when more than one display is in play.
                 visible: root.focusedMonitor !== "" && root.enabledDisplayCount > 1
-                color: Qt.darker(root.bar.foreground, 1.4)
+                color: Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
                 font.family: root.bar.fontFamily
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -806,7 +761,7 @@ Panel {
           // ---------- Monitors ----------
           PanelSeparator {
             visible: root.displays.length > 1
-            foreground: root.bar.foreground
+            foreground: root.panelText
           }
 
           Column {
@@ -816,7 +771,7 @@ Panel {
 
             PanelSectionHeader {
               text: Commons.I18n.t("monitor.displays")
-              foreground: root.bar.foreground
+              foreground: root.panelText
               fontFamily: root.bar.fontFamily
             }
 
@@ -850,7 +805,7 @@ Panel {
 
     text: Commons.I18n.formatNumber(root.effectiveScale(scaleValue)) + "x"
     fontSize: Style.font.caption
-    foreground: root.bar.foreground
+    foreground: root.panelText
     fontFamily: root.bar.fontFamily
     horizontalPadding: Style.spacing.sm
     verticalPadding: Style.spacing.controlPaddingY
@@ -879,9 +834,9 @@ Panel {
     hasCursor: root.cursorActive && root.focusSection === "monitors" && root.selectedIndex === rowIndex
     onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(monitorRow)
     current: isFocused
-    foreground: root.bar.foreground
-    fill: Style.hoverFillFor(root.bar.foreground, Commons.Color.accent)
-    currentFill: Style.selectedFillFor(root.bar.foreground, Commons.Color.accent)
+    foreground: root.panelText
+    fill: Style.hoverFillFor(root.panelText, Commons.Color.accent)
+    currentFill: Style.selectedFillFor(root.panelText, Commons.Color.accent)
     implicitHeight: monitorInner.implicitHeight + Style.spacing.xl
     opacity: canToggle ? 1.0 : 0.45
 
@@ -895,10 +850,10 @@ Panel {
       spacing: Style.space(8)
 
       Text {
-        text: "󰍹"
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
+        text: Icons.glyph("display")
+        color: root.panelText
+        font.family: Icons.family
+        font.pixelSize: Style.font.icon
         width: Style.space(22)
         horizontalAlignment: Text.AlignHCenter
         anchors.verticalCenter: parent.verticalCenter
@@ -909,7 +864,7 @@ Panel {
         text: monitorRow.display.focused
           ? Commons.I18n.t("monitor.displayFocused").arg(monitorRow.display.name)
           : monitorRow.display.name
-        color: root.bar.foreground
+        color: root.panelText
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body
         elide: Text.ElideRight
@@ -919,10 +874,10 @@ Panel {
 
       Text {
         textFormat: Text.PlainText
-        text: monitorRow.display.enabled ? "󰄬" : ""
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.subtitle
+        text: monitorRow.display.enabled ? Icons.glyph("ui.check") : ""
+        color: root.panelText
+        font.family: Icons.family
+        font.pixelSize: Style.font.icon
         width: Style.space(14)
         horizontalAlignment: Text.AlignRight
         anchors.verticalCenter: parent.verticalCenter

@@ -11,7 +11,7 @@ import qs.Ui
 // stops the traffic, so the download workers never keep saturating the link
 // behind a closed overlay. The payload may carry the connection's display
 // name -- {"connection": "MyWifi"} -- and the panel looks it up itself via
-// omarchy-network-status when the caller doesn't know it.
+// karchy-network-status when the caller doesn't know it.
 Item {
   id: root
 
@@ -63,7 +63,7 @@ Item {
 
   function dismiss() {
     if (root.shell && typeof root.shell.hide === "function")
-      root.shell.hide((root.manifest && root.manifest.id) || "omarchy.speedtest")
+      root.shell.hide((root.manifest && root.manifest.id) || "karchy.speedtest")
     else close()
   }
 
@@ -99,7 +99,7 @@ Item {
     expectedStop = false
     phase = nextPhase
     stderrText = ""
-    speedTestProc.command = ["omarchy-network-speedtest", nextPhase]
+    speedTestProc.command = ["karchy-network-speedtest", nextPhase]
     speedTestProc.running = true
     phaseTimer.restart()
   }
@@ -173,27 +173,32 @@ Item {
   }
 
   // Names the connection under test when the summoner didn't. First tab
-  // field is the kind, second the SSID (wifi) or device (ethernet).
+  // field is the kind, second the SSID (wifi) or device (ethernet), fifth the
+  // VPN carrying the traffic.
   Process {
     id: statusProc
-    command: ["omarchy-network-status"]
+    command: ["karchy-network-status"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: {
-        var fields = String(text || "").trim().split("\t")
-        if (fields[0] === "wifi") root.connectionName = fields[1] || "Wi-Fi"
-        else if (fields[0] === "ethernet") root.connectionName = I18n.t("network.ethernet")
+        var fields = String(text || "").replace(/\n+$/, "").split("\t")
+        var name = ""
+        if (fields[0] === "wifi") name = fields[1] || "Wi-Fi"
+        else if (fields[0] === "ethernet") name = I18n.t("network.ethernet")
+        // The fifth field is the VPN the internet goes through, if any.
+        if (name && fields[4]) name = I18n.t("network.viaVpn").arg(name)
+        if (name) root.connectionName = name
       }
     }
   }
 
   SpeedTestOverlay {
     fontFamily: Style.font.family
-    layerNamespace: "omarchy-network-speedtest"
+    layerNamespace: "karchy-network-speedtest"
     title: root.connectionName
     leftLabel: I18n.t("speedtest.download")
     rightLabel: I18n.t("speedtest.upload")
-    runAgainTooltip: I18n.t("speedtest.measureAgainVia").arg("speed.omarchy.org")
+    runAgainTooltip: I18n.t("speedtest.measureAgainVia").arg("speed.karchy.org")
     running: root.running
     leftValue: root.downloadValue
     rightValue: root.uploadValue

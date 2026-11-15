@@ -114,31 +114,32 @@ function isHeadphones(node) {
     || blob.indexOf("airpod") !== -1
 }
 
+// Icon names from default/karchy/icons.json; the QML draws them with Icons.glyph.
 function sinkGlyph(node) {
-  if (!node) return "󰓃"
-  if (isHeadphones(node)) return "󰋋"
+  if (!node) return "audio.speaker"
+  if (isHeadphones(node)) return "audio.headphones"
   var p = nodeProps(node)
   var blob = String([
     node.name, node.description, node.nickname,
     p["device.icon-name"] || "",
     p["device.product.name"] || ""
   ].join(" ")).toLowerCase()
-  if (blob.indexOf("bluetooth") !== -1) return "󰂯"
-  if (blob.indexOf("hdmi") !== -1 || blob.indexOf("display") !== -1) return "󰍹"
-  return "󰓃"
+  if (blob.indexOf("bluetooth") !== -1) return "bluetooth"
+  if (blob.indexOf("hdmi") !== -1 || blob.indexOf("display") !== -1) return "display"
+  return "audio.speaker"
 }
 
 function sourceGlyph(node) {
-  if (!node) return "󰍬"
+  if (!node) return "audio.mic"
   var p = nodeProps(node)
   var blob = String([
     node.name, node.description, node.nickname,
     p["device.icon-name"] || ""
   ].join(" ")).toLowerCase()
-  if (blob.indexOf("headset") !== -1) return "󰋋"
-  if (blob.indexOf("bluetooth") !== -1) return "󰂯"
-  if (blob.indexOf("webcam") !== -1 || blob.indexOf("camera") !== -1) return "󰄀"
-  return "󰍬"
+  if (blob.indexOf("headset") !== -1) return "audio.headphones"
+  if (blob.indexOf("bluetooth") !== -1) return "bluetooth"
+  if (blob.indexOf("webcam") !== -1 || blob.indexOf("camera") !== -1) return "audio.camera"
+  return "audio.mic"
 }
 
 function friendlyStreamLabel(label) {

@@ -24,8 +24,11 @@ function normalizeItem(id, raw) {
     id: id,
     parent: parent,
     kind: kind,
+    // iconName is a name from default/karchy/icons.json; icon is a glyph
+    // written out, for user menus and plugins. An entry that sets both shows
+    // icon. The shell resolves names when it draws the row.
     icon: value.icon || "",
-    iconFont: value.iconFont || "",
+    iconName: value.iconName || "",
     label: value.label || id,
     title: value.title || "",
     target: value.target || "",
@@ -110,7 +113,7 @@ function mergeMenuSources(defaultItems, userItems, rootLabel) {
   }
 
   if (!nextItems.root) {
-    nextItems.root = { id: "root", parent: "", kind: "menu", icon: "", iconFont: "", label: (typeof rootLabel === "string" && rootLabel) ? rootLabel : "Go", title: "", target: "", description: "", aliases: [], searchTerms: [], when: "", checked: "", disabled: "", action: "", provider: "" }
+    nextItems.root = { id: "root", parent: "", kind: "menu", icon: "", iconName: "", label: (typeof rootLabel === "string" && rootLabel) ? rootLabel : "Go", title: "", target: "", description: "", aliases: [], searchTerms: [], when: "", checked: "", disabled: "", action: "", provider: "" }
     nextOrder.unshift("root")
   }
   for (var k3 = 0; k3 < nextOrder.length; k3++) nextItems[nextOrder[k3]].order = k3
@@ -305,12 +308,17 @@ function isDisabled(disabledResults, entry) {
   return !!(disabledResults && disabledResults[entry.id])
 }
 
-// A disabled row is software you already have, which is the same thing the ✓
-// says everywhere else in the menu, so it earns the same marker.
-function labelFor(entry, checkedResults, disabledResults) {
-  if (!entry) return ""
-  var marked = (entry.checked && checkedResults && checkedResults[entry.id]) || isDisabled(disabledResults, entry)
-  return marked ? entry.label + " ✓" : entry.label
+// A row is marked (the menu draws the `ui.check` icon after it) when its
+// `checked:` evaluated true. A disabled row is software you already have,
+// which is the same thing the check says everywhere else in the menu, so it
+// earns the same marker.
+function isMarked(entry, checkedResults, disabledResults) {
+  if (!entry) return false
+  return !!((entry.checked && checkedResults && checkedResults[entry.id]) || isDisabled(disabledResults, entry))
+}
+
+function labelFor(entry) {
+  return entry ? entry.label : ""
 }
 
 function searchableToken(value) {
@@ -394,11 +402,12 @@ function displayRow(items, itemOrder, checkedResults, disabledResults, entry, de
     itemId: entry.id,
     disabled: isDisabled(disabledResults, entry),
     kind: entry.kind,
-    icon: entry.icon,
-    iconFont: entry.iconFont || "",
+    icon: entry.icon || "",
+    iconName: entry.iconName || "",
     appIcon: entry.appIcon || "",
     appId: entry.appId || "",
-    label: labelFor(entry, checkedResults, disabledResults),
+    label: labelFor(entry),
+    marked: isMarked(entry, checkedResults, disabledResults),
     target: target,
     detail: detail || "",
     path: pathFor(items, entry.id),
@@ -412,32 +421,32 @@ function displayRow(items, itemOrder, checkedResults, disabledResults, entry, de
 
 // Commands a `checked:` expression reads a value out of. Every sibling row
 // asks the same one -- Defaults > Browser has seven rows all comparing
-// against `omarchy-default-browser` -- so the batch runs it once and the rows
+// against `karchy-default-browser` -- so the batch runs it once and the rows
 // read the captured answer.
 //
 // The capture has to be eager. These are read inside `$(...)`, and a value
 // cached while one expression runs lives in that subshell only, so a lazy
 // memo never survives to the expression after it.
 var GUARD_READERS = [
-  "omarchy-bar background",
-  "omarchy-bar get omarchy.power showPercentage",
-  "omarchy-bar get omarchy.clock format",
-  "omarchy-bar get omarchy.clock verticalFormat",
-  "omarchy-bar position",
-  "omarchy-channel-current",
-  "omarchy-default-agent",
-  "omarchy-default-browser",
-  "omarchy-default-editor",
-  "omarchy-default-terminal",
-  "omarchy-default-dictation",
-  "omarchy-dns",
-  "omarchy-dock autohide",
-  "omarchy-dock position",
-  "omarchy-hyprland-corners",
-  "omarchy-hyprland-window-transparency",
-  "omarchy-hyprland-workspace-layout-default",
-  "omarchy-shell notifications isDnd",
-  "omarchy-toggle-nightlight --status"
+  "karchy-bar background",
+  "karchy-bar get karchy.power showPercentage",
+  "karchy-bar get karchy.clock format",
+  "karchy-bar get karchy.clock verticalFormat",
+  "karchy-bar position",
+  "karchy-channel-current",
+  "karchy-default-agent",
+  "karchy-default-browser",
+  "karchy-default-editor",
+  "karchy-default-terminal",
+  "karchy-default-dictation",
+  "karchy-dns",
+  "karchy-dock autohide",
+  "karchy-dock position",
+  "karchy-hyprland-corners",
+  "karchy-hyprland-window-transparency",
+  "karchy-hyprland-workspace-layout-default",
+  "karchy-shell notifications isDnd",
+  "karchy-toggle-nightlight --status"
 ]
 
 // Package and command presence account for most of what the guards ask, and
@@ -482,41 +491,41 @@ function guardPackageSnapshot() {
     + " | awk '/^[A-Za-z]/ { provides = ($0 ~ /^Provides/); sub(/^[^:]*: /, \"\") }"
     + ' provides && $0 != "None" { n = split($0, p, " ");'
     + ' for (i = 1; i <= n; i++) { sub(/[<>=].*/, "", p[i]); print p[i] } }\' && echo /; } 2>/dev/null'
-  var stamp = 'stat -c "%d:%i:%.9Y:%.9Z" -- "$__omarchy_pkg_db/local" 2>/dev/null'
+  var stamp = 'stat -c "%d:%i:%.9Y:%.9Z" -- "$__karchy_pkg_db/local" 2>/dev/null'
 
-  return '__omarchy_pkg_db=${OMARCHY_PACMAN_DB_PATH:-$(pacman-conf DBPath 2>/dev/null)} || __omarchy_pkg_db=""\n'
-    + '__omarchy_pkg_db=${__omarchy_pkg_db%/}\n'
-    + '__omarchy_pkg_cache=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/omarchy-menu-packages}\n'
-    + '__omarchy_pkg_stamp=""\n'
-    + '[[ -z $__omarchy_pkg_db ]] || __omarchy_pkg_stamp=$(' + stamp + ') || __omarchy_pkg_stamp=""\n'
-    + '__omarchy_pkg_names=()\n'
-    + 'if [[ -n $__omarchy_pkg_cache && -n $__omarchy_pkg_stamp ]]'
-    + ' && { IFS= read -r __omarchy_pkg_line && [[ $__omarchy_pkg_line == "$__omarchy_pkg_stamp" ]]'
-    + ' && mapfile -t __omarchy_pkg_names; } 2>/dev/null <"$__omarchy_pkg_cache"; then :\n'
+  return '__karchy_pkg_db=${KARCHY_PACMAN_DB_PATH:-$(pacman-conf DBPath 2>/dev/null)} || __karchy_pkg_db=""\n'
+    + '__karchy_pkg_db=${__karchy_pkg_db%/}\n'
+    + '__karchy_pkg_cache=${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/karchy-menu-packages}\n'
+    + '__karchy_pkg_stamp=""\n'
+    + '[[ -z $__karchy_pkg_db ]] || __karchy_pkg_stamp=$(' + stamp + ') || __karchy_pkg_stamp=""\n'
+    + '__karchy_pkg_names=()\n'
+    + 'if [[ -n $__karchy_pkg_cache && -n $__karchy_pkg_stamp ]]'
+    + ' && { IFS= read -r __karchy_pkg_line && [[ $__karchy_pkg_line == "$__karchy_pkg_stamp" ]]'
+    + ' && mapfile -t __karchy_pkg_names; } 2>/dev/null <"$__karchy_pkg_cache"; then :\n'
     + 'else\n'
-    + '  __omarchy_pkg_names=()\n'
-    + '  [[ ! -e $__omarchy_pkg_db/db.lck ]] || __omarchy_pkg_stamp=""\n'
-    + '  mapfile -t __omarchy_pkg_names < <(' + build + ')\n'
-    + '  if ((${#__omarchy_pkg_names[@]})) && [[ ${__omarchy_pkg_names[-1]} == "/" ]]; then unset "__omarchy_pkg_names[-1]"; else __omarchy_pkg_stamp=""; fi\n'
-    + '  if [[ -n $__omarchy_pkg_cache && -n $__omarchy_pkg_stamp && ! -e $__omarchy_pkg_db/db.lck ]]'
-    + ' && [[ $(' + stamp + ') == "$__omarchy_pkg_stamp" ]]; then\n'
-    + '    { printf "%s\\n" "$__omarchy_pkg_stamp" "${__omarchy_pkg_names[@]}" >"$__omarchy_pkg_cache.$$"'
-    + ' && mv -f -- "$__omarchy_pkg_cache.$$" "$__omarchy_pkg_cache"; } 2>/dev/null'
-    + ' || rm -f -- "$__omarchy_pkg_cache.$$" 2>/dev/null || :\n'
+    + '  __karchy_pkg_names=()\n'
+    + '  [[ ! -e $__karchy_pkg_db/db.lck ]] || __karchy_pkg_stamp=""\n'
+    + '  mapfile -t __karchy_pkg_names < <(' + build + ')\n'
+    + '  if ((${#__karchy_pkg_names[@]})) && [[ ${__karchy_pkg_names[-1]} == "/" ]]; then unset "__karchy_pkg_names[-1]"; else __karchy_pkg_stamp=""; fi\n'
+    + '  if [[ -n $__karchy_pkg_cache && -n $__karchy_pkg_stamp && ! -e $__karchy_pkg_db/db.lck ]]'
+    + ' && [[ $(' + stamp + ') == "$__karchy_pkg_stamp" ]]; then\n'
+    + '    { printf "%s\\n" "$__karchy_pkg_stamp" "${__karchy_pkg_names[@]}" >"$__karchy_pkg_cache.$$"'
+    + ' && mv -f -- "$__karchy_pkg_cache.$$" "$__karchy_pkg_cache"; } 2>/dev/null'
+    + ' || rm -f -- "$__karchy_pkg_cache.$$" 2>/dev/null || :\n'
     + '  fi\n'
     + 'fi\n'
 }
 
 function guardHelpers() {
-  return 'declare -A __omarchy_pkgs=()\n'
+  return 'declare -A __karchy_pkgs=()\n'
     + guardPackageSnapshot()
-    + 'for __omarchy_pkg in "${__omarchy_pkg_names[@]}"; do __omarchy_pkgs[$__omarchy_pkg]=1; done\n'
-    + '__omarchy_pkg_has() { [[ -n ${__omarchy_pkgs[$1]-} ]] && return 0; '
+    + 'for __karchy_pkg in "${__karchy_pkg_names[@]}"; do __karchy_pkgs[$__karchy_pkg]=1; done\n'
+    + '__karchy_pkg_has() { [[ -n ${__karchy_pkgs[$1]-} ]] && return 0; '
     + '[[ $1 == *[\\<\\>=]* ]] && { pacman -Q "$1" &>/dev/null; return; }; return 1; }\n'
-    + 'omarchy-pkg-present() { local p; for p in "$@"; do __omarchy_pkg_has "$p" || return 1; done; return 0; }\n'
-    + 'omarchy-pkg-missing() { local p; for p in "$@"; do __omarchy_pkg_has "$p" || return 0; done; return 1; }\n'
-    + 'omarchy-cmd-present() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 1; done; return 0; }\n'
-    + 'omarchy-cmd-missing() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 0; done; return 1; }\n'
+    + 'karchy-pkg-present() { local p; for p in "$@"; do __karchy_pkg_has "$p" || return 1; done; return 0; }\n'
+    + 'karchy-pkg-missing() { local p; for p in "$@"; do __karchy_pkg_has "$p" || return 0; done; return 1; }\n'
+    + 'karchy-cmd-present() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 1; done; return 0; }\n'
+    + 'karchy-cmd-missing() { local c; for c in "$@"; do command -v "$c" &>/dev/null || return 0; done; return 1; }\n'
 }
 
 // Substitute the captured answer into the expression rather than shadowing
@@ -539,8 +548,8 @@ function guardPrelude(guards) {
     // The guards arrive already substituted, so what marks a reader as wanted
     // is the slot standing in for it, not the call it replaced.
     if (guards.indexOf(guardReaderSlot(i)) < 0) continue
-    var value = "__omarchy_read_" + i
-    var fd = "__omarchy_read_fd_" + i
+    var value = "__karchy_read_" + i
+    var fd = "__karchy_read_fd_" + i
     start += "exec {" + fd + "}< <(" + GUARD_READERS[i] + " 2>/dev/null)\n"
     // `|| :` because read reports the EOF it stops at, and a login shell may
     // have turned on errexit.
@@ -553,7 +562,7 @@ function guardPrelude(guards) {
 }
 
 function guardReaderSlot(index) {
-  return "${__omarchy_read_" + index + "}"
+  return "${__karchy_read_" + index + "}"
 }
 
 function substituteGuardReaders(expression) {
@@ -610,11 +619,11 @@ function guardScript(items) {
     groups[group] = (groups[group] || "") + lines[j]
   }
 
-  var script = guardPrelude(lines.join("")) + "__omarchy_groups=()\n"
-  for (var k = 0; k < groups.length; k++) script += "{\n" + groups[k] + "} &\n__omarchy_groups+=($!)\n"
-  return script + "__omarchy_failed=0\n"
-    + 'for __omarchy_group in "${__omarchy_groups[@]}"; do wait "$__omarchy_group" || __omarchy_failed=1; done\n'
-    + "((__omarchy_failed == 0))\n"
+  var script = guardPrelude(lines.join("")) + "__karchy_groups=()\n"
+  for (var k = 0; k < groups.length; k++) script += "{\n" + groups[k] + "} &\n__karchy_groups+=($!)\n"
+  return script + "__karchy_failed=0\n"
+    + 'for __karchy_group in "${__karchy_groups[@]}"; do wait "$__karchy_group" || __karchy_failed=1; done\n'
+    + "((__karchy_failed == 0))\n"
 }
 
 // An action that only asks this shell to summon one of its own plugins can be
@@ -622,7 +631,7 @@ function guardScript(items) {
 // bare call, such as a second command or a shell-expanded payload, is left to
 // bash.
 function summonAction(action) {
-  var match = /^omarchy-shell shell summon ([A-Za-z0-9._-]+)(?: '([^']*)')?$/.exec(String(action || ""))
+  var match = /^karchy-shell shell summon ([A-Za-z0-9._-]+)(?: '([^']*)')?$/.exec(String(action || ""))
   if (!match) return null
   return { id: match[1], payload: match[2] || "{}" }
 }
@@ -708,6 +717,7 @@ if (typeof module !== "undefined") {
     isVisible: isVisible,
     isDisabled: isDisabled,
     labelFor: labelFor,
+    isMarked: isMarked,
     searchableToken: searchableToken,
     leafIdFor: leafIdFor,
     nameSearchText: nameSearchText,

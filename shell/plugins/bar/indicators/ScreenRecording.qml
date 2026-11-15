@@ -9,14 +9,14 @@ BarIndicator {
   property bool recording: false
 
   active: recording
-  activeText: "󰻂"
-  inactiveText: "󰻂"
+  activeText: Icons.glyph("record")
+  inactiveText: Icons.glyph("record")
   activeTooltipText: I18n.t("bar.stopRecording")
   inactiveTooltipText: I18n.t("bar.screenRecording")
 
   function refresh() {
     if (!root.bar || statusProc.running) return
-    statusProc.command = ["omarchy-capture-screenrecording", "--status"]
+    statusProc.command = ["karchy-capture-screenrecording", "--status"]
     statusProc.running = true
   }
 
@@ -38,7 +38,9 @@ BarIndicator {
 
   onPressed: function() {
     if (root.bar) {
-      root.bar.run(root.recording ? "omarchy-capture-screenrecording --stop-recording" : "omarchy-menu toggle trigger.capture.screenrecord")
+      // Idle, it starts a recording as Alt+Print does (the Capture submenu it
+      // used to open was dropped with the menu, D-18).
+      root.bar.run(root.recording ? "karchy-capture-screenrecording --stop-recording" : "karchy-capture-screenrecording")
     }
   }
 }

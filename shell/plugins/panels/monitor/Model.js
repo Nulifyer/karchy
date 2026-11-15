@@ -1,3 +1,8 @@
+// The scale presets offered everywhere a monitor scale is picked: the display
+// panel and Settings › Displays. karchy-hyprland-monitor-scaling's SCALES
+// (keyboard up/down) is the same list.
+var SCALE_PRESETS = ["1", "1.25", "1.6", "2", "3", "4"]
+
 function clampBrightness(value) {
   var n = Number(value)
   if (!isFinite(n)) return 1

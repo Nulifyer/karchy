@@ -8,7 +8,7 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "omarchy.workspaces"
+  moduleName: "karchy.workspaces"
 
   // Every monitor has workspaces 1-10 of its own, which Hyprland numbers in a
   // block of ten per monitor: 1-10, 11-20, and so on (see
@@ -37,7 +37,7 @@ BarWidget {
   }
 
   FileView {
-    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/omarchy/monitor-workspaces"
+    path: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state") + "/karchy/monitor-workspaces"
     watchChanges: true
     printErrors: false
     onFileChanged: reload()
@@ -136,9 +136,9 @@ BarWidget {
   property bool modeStale: false
 
   function modeGlyph(mode) {
-    if (mode === "scrolling") return "󰝥"
-    if (mode === "floating") return "󰔶"
-    return "󱓻"
+    if (mode === "scrolling") return Icons.glyph("look.layout.scrolling")
+    if (mode === "floating") return Icons.glyph("look.layout.floating")
+    return Icons.glyph("look.layout.tiling")
   }
 
   // A layout only changes through the layout commands, which ask for a refresh,
@@ -164,7 +164,7 @@ BarWidget {
     if (id === -1) return
     root.modeProcWorkspace = id
     root.modeProcGeneration = root.modeGeneration
-    modeProc.command = ["omarchy-hyprland-workspace-layout-current", String(id)]
+    modeProc.command = ["karchy-hyprland-workspace-layout-current", String(id)]
     modeProc.running = true
   }
 
@@ -178,7 +178,7 @@ BarWidget {
   // monitor's bar focuses that monitor first.
   function cycleLayout() {
     if (!root.bar) return
-    var command = "omarchy-hyprland-workspace-layout-toggle"
+    var command = "karchy-hyprland-workspace-layout-toggle"
     if (root.monitor && !root.monitor.focused) {
       command = "hyprctl dispatch " + Util.shellQuote("hl.dsp.focus({ monitor = \"" + root.monitorName + "\" })") + " >/dev/null && " + command
     }
@@ -234,7 +234,7 @@ BarWidget {
   // Super + L and the default layout change the mode without a focus change,
   // so they ask every bar to read it again.
   ShellIpc {
-    target: "omarchy.workspaces"
+    target: "karchy.workspaces"
 
     function refresh(): void { root.broadcast("refresh") }
   }

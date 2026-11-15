@@ -73,6 +73,8 @@ QtObject {
     if (role === "accent") return cssColor(Commons.Color.accent, a)
     if (role === "urgent") return cssColor(Commons.Color.urgent, a)
     if (role === "background") return cssColor(Commons.Color.background, a)
+    if (role === "focus") return cssColor(Commons.Color.focus, a)
+    if (role === "error" || role === "warning" || role === "success") return cssColor(Commons.Color.status[role], a)
     if (role === "transparent") return "transparent"
     return Geometry.canonicalColor(s, a)
   }
@@ -176,7 +178,7 @@ QtObject {
   }
 
   function controlColor(prefix, foreground, accent, urgent) {
-    if (prefix === "focus") return Style.focusStateColor(foreground, accent, urgent)
+    if (prefix === "focus") return Commons.Color.focus
     if (prefix === "hover-cursor") return Style.hoverStateColor(foreground, accent, urgent)
     if (prefix === "selected") return Style.selectedStateColor(foreground, accent, urgent)
     return Style.normalStateColor(foreground, accent, urgent)
@@ -224,6 +226,14 @@ QtObject {
     )
 
     return { color: resolved.color, widths: controlWidths(prefix), gradient: resolved.gradient }
+  }
+
+  // The keyboard focus ring: [controls] focus-border / -width / -alpha, by
+  // default Commons.Color.focus at full strength, Style.focusBorderWidth wide.
+  // Drawn by FocusRing over a control rather than as the control's own
+  // border, so gaining focus never shifts the layout.
+  function focusSpec() {
+    return controlSpec("focus", Commons.Color.foreground, Commons.Color.focus)
   }
 
   function withWidth(spec, width) {

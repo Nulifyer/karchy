@@ -308,7 +308,7 @@ function dropRoom(drop, source, sections, drawn) {
 }
 
 // An entry as JSON with its keys in order, so a config written back with its
-// keys sorted (omarchy-shell-config does) reads as the same entry.
+// keys sorted (karchy-shell-config does) reads as the same entry.
 function entryJson(value) {
   if (Array.isArray(value)) return "[" + value.map(entryJson).join(",") + "]"
   if (isPlainObject(value))
@@ -686,8 +686,56 @@ function fullscreenOn(toplevels, workspaceId) {
   return false
 }
 
+// The bar's style setting: "auto" floats it and docks it while a window is
+// maximized, "floating" and "docked" hold it so. Anything else, a missing key
+// included, is auto.
+function normalizeStyle(value) {
+  var next = String(value || "").trim()
+  return next === "floating" || next === "docked" ? next : "auto"
+}
+
+// Whether a monitor's bar docks against its screen edge rather than floating
+// inset from it. `workspaces` are the workspaces the monitor shows, each as
+// { id, name }: its active one and, while one is open, its special one. A
+// hidden special workspace (minimized windows, a closed drop-down terminal)
+// isn't among them, so it never docks the bar. Special workspaces are matched
+// by name, since Hyprland reports no id for them. In auto, a mapped, visible
+// window maximized on one of them (fullscreen bit 1) docks the bar; a real
+// fullscreen window (bit 2) does not, as the bar sits under it anyway.
+// `opts.notched`: a top bar thickened to cover a display notch always docks.
+function dockedOn(toplevels, workspaces, opts) {
+  var options = opts || {}
+  var style = normalizeStyle(options.style)
+  if (style === "docked" || options.notched === true) return true
+  if (style === "floating") return false
+  var shown = workspaces || []
+  var list = toplevels || []
+  for (var i = 0; i < list.length; i++) {
+    var toplevel = list[i]
+    var workspace = toplevel ? toplevel.workspace : null
+    if (!workspace || !shownWorkspace(shown, workspace)) continue
+    var ipc = toplevel.lastIpcObject
+    if (!ipc || ipc.mapped === false || ipc.hidden === true) continue
+    if ((Number(ipc.fullscreen) & 1) !== 0) return true
+  }
+  return false
+}
+
+function shownWorkspace(shown, workspace) {
+  var name = String(workspace.name || "")
+  for (var i = 0; i < shown.length; i++) {
+    var entry = shown[i]
+    if (!entry) continue
+    if (name !== "" && String(entry.name || "") === name) return true
+    if (name.indexOf("special:") !== 0 && entry.id !== undefined && entry.id !== null && Number(entry.id) === Number(workspace.id)) return true
+  }
+  return false
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
+    normalizeStyle: normalizeStyle,
+    dockedOn: dockedOn,
     barSizeFor: barSizeFor,
     nextPeekEdge: nextPeekEdge,
     peeksAt: peeksAt,

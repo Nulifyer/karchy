@@ -165,7 +165,7 @@ PopupWindow {
     color: Commons.Color.popups.background
     borderSpec: root.borderSpec
     padding: root.padding
-    radius: Style.cornerRadius
+    radius: Style.radius.surface
 
     // Grows out of the bar from just under full size as it fades in, as the
     // keyboard panels do, and goes in two thirds of the time.

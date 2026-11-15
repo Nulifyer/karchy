@@ -29,7 +29,7 @@ Column {
     textFormat: Text.PlainText
     visible: root.label !== ""
     text: root.label
-    color: Qt.darker(root.foreground, 1.4)
+    color: Commons.Color.secondaryText(root.foreground)
     font.family: root.fontFamily
     font.pixelSize: Style.font.bodySmall
   }
@@ -48,7 +48,7 @@ Column {
 
     readonly property bool _focused: spin.activeFocus
     readonly property bool _hot: root._hovered || root.hasCursor
-    readonly property var _borderSpec: Border.controlSpec(_focused ? "focus" : (_hot ? "hover-cursor" : "normal"), root.foreground, root.accent)
+    readonly property var _borderSpec: Border.controlSpec(_focused || _hot ? "hover-cursor" : "normal", root.foreground, root.accent)
 
     leftPadding: Border.left(_borderSpec) + Style.spacing.controlPaddingX
     rightPadding: Border.right(_borderSpec) + Style.spacing.controlPaddingX
@@ -60,7 +60,9 @@ Column {
     background: BorderSurface {
       color: Style.controlFill(spin._focused, spin._hot, root.foreground, root.accent)
       borderSpec: spin._borderSpec
-      radius: Style.cornerRadius
+      radius: Style.radius.control
+
+      FocusRing { shown: spin._focused || root.hasCursor; control: spin; textEntry: true }
 
       HoverHandler {
         onHoveredChanged: {

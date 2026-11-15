@@ -17,8 +17,8 @@ import "Model.js" as Model
 // anchor against.
 Panel {
   id: root
-  moduleName: "omarchy.clock"
-  ipcTarget: "omarchy.clock"
+  moduleName: "karchy.clock"
+  ipcTarget: "karchy.clock"
   manageIpc: false
 
   property var anchorItem: null
@@ -67,7 +67,7 @@ Panel {
   // convention. Clicking the grid's "W" heading writes the choice back to
   // shell.json.
   readonly property int weekStart: Model.normalizedWeekStart(setting("weekStartDay", null), labelLocale.firstDayOfWeek)
-  // Names and the default week start follow the Omarchy language rather than
+  // Names and the default week start follow the Karchy language rather than
   // the system locale, which only catches up at the next login.
   readonly property var labelLocale: Qt.locale(Commons.I18n.formatLocale)
   // Qt's MMMM is the genitive form ("октября"), right beside a day but not
@@ -83,7 +83,7 @@ Panel {
 
   // Guarded so the widget renders before the bar is injected (the bar-widget
   // contract instantiates it bare).
-  readonly property color contentForeground: bar ? bar.foreground : Commons.Color.foreground
+  readonly property color contentForeground: Commons.Color.popups.text
   readonly property string contentFontFamily: bar ? bar.fontFamily : Style.font.family
 
   readonly property int cellWidth: Style.space(52)
@@ -320,15 +320,15 @@ Panel {
                 // descender, so centering the two boxes leaves the icon
                 // sitting visibly low against the digits.
                 anchors.baseline: heroDate.baseline
-                text: "󰃭"
+                text: Icons.glyph("calendar")
                 color: heroMouse.containsMouse
                   ? Style.hoverStateColor(root.contentForeground, Commons.Color.accent)
                   : root.contentForeground
-                font.family: root.contentFontFamily
-                // Decorative, and deliberately outside the Style.font.*
-                // scale. Sized so the glyph reads at the cap height of the
-                // date beside it rather than towering over it.
-                font.pixelSize: 48
+                font.family: Icons.family
+                // Decorative, and sized from the date beside it rather than
+                // from the Style.font.* scale, so the glyph reads at the
+                // date's cap height rather than towering over it.
+                font.pixelSize: Math.round(heroDate.font.pixelSize * 0.8)
               }
 
               Text {
@@ -393,7 +393,7 @@ Panel {
                   anchors.verticalCenter: parent.verticalCenter
                   text: Commons.I18n.t("clock.born")
                   textFormat: Text.PlainText
-                  color: Qt.darker(root.contentForeground, 1.5)
+                  color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                   font.family: root.contentFontFamily
                   font.pixelSize: Style.font.bodySmall
                   font.letterSpacing: 1
@@ -417,7 +417,7 @@ Panel {
                   leftPadding: Style.space(6)
                   text: Commons.I18n.t("clock.liveTo")
                   textFormat: Text.PlainText
-                  color: Qt.darker(root.contentForeground, 1.5)
+                  color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                   font.family: root.contentFontFamily
                   font.pixelSize: Style.font.bodySmall
                   font.letterSpacing: 1
@@ -443,7 +443,7 @@ Panel {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 text: Commons.I18n.formatNumber(root.today.getFullYear())
-                color: Qt.darker(root.contentForeground, 1.5)
+                color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.bodySmall
                 font.letterSpacing: 1
@@ -505,7 +505,7 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Commons.I18n.t("clock.life")
                 textFormat: Text.PlainText
-                color: Qt.darker(root.contentForeground, 1.5)
+                color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.bodySmall
                 font.letterSpacing: 1
@@ -607,7 +607,7 @@ Panel {
                     text: Commons.I18n.t("clock.weekShort")
                     color: weekStartMouse.containsMouse
                       ? Style.hoverStateColor(root.contentForeground, Commons.Color.accent)
-                      : Qt.darker(root.contentForeground, 1.9)
+                      : Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                     font.family: root.contentFontFamily
                     font.pixelSize: Style.font.caption
                     font.letterSpacing: 1
@@ -645,7 +645,7 @@ Panel {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     text: root.weekdayLabel(modelData)
-                    color: Qt.darker(root.contentForeground, 1.5)
+                    color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                     font.family: root.contentFontFamily
                     font.pixelSize: Style.font.caption
                     font.letterSpacing: 1
@@ -668,7 +668,7 @@ Panel {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                     text: Commons.I18n.formatNumber(modelData.week)
-                    color: Qt.darker(root.contentForeground, 1.9)
+                    color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                     font.family: root.contentFontFamily
                     font.pixelSize: Style.font.caption
                   }
@@ -698,8 +698,8 @@ Panel {
                         anchors.centerIn: parent
                         text: Commons.I18n.formatNumber(modelData.day)
                         color: modelData.inMonth
-                          ? (modelData.weekend ? Qt.darker(root.contentForeground, 1.45) : root.contentForeground)
-                          : Qt.darker(root.contentForeground, 2.2)
+                          ? (modelData.weekend ? Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background) : root.contentForeground)
+                          : Commons.Color.disabledText(root.contentForeground, Commons.Color.popups.background)
                         font.family: root.contentFontFamily
                         font.pixelSize: Style.font.body
                         font.bold: modelData.today
@@ -752,7 +752,7 @@ Panel {
                 width: Style.space(130)
                 horizontalAlignment: Text.AlignHCenter
                 text: root.monthYearLabel.toUpperCase()
-                color: Qt.darker(root.contentForeground, 1.4)
+                color: Commons.Color.secondaryText(root.contentForeground, Commons.Color.popups.background)
                 font.family: root.contentFontFamily
                 font.pixelSize: Style.font.body
                 font.letterSpacing: 1
@@ -765,7 +765,7 @@ Panel {
                 anchors.leftMargin: -Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
                 // Previous points back along the reading direction.
-                iconText: Commons.I18n.rightToLeft ? "󰅂" : "󰅁"
+                iconText: Icons.glyph(Commons.I18n.rightToLeft ? "ui.chevron.right" : "ui.chevron.left")
                 tooltipText: Commons.I18n.t("clock.previousMonth")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily
@@ -776,7 +776,7 @@ Panel {
                 anchors.right: parent.right
                 anchors.rightMargin: -Style.space(8)
                 anchors.verticalCenter: parent.verticalCenter
-                iconText: Commons.I18n.rightToLeft ? "󰅁" : "󰅂"
+                iconText: Icons.glyph(Commons.I18n.rightToLeft ? "ui.chevron.left" : "ui.chevron.right")
                 tooltipText: Commons.I18n.t("clock.nextMonth")
                 foreground: root.contentForeground
                 fontFamily: root.contentFontFamily

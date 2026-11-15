@@ -234,10 +234,10 @@ Item {
         anchors.rightMargin: inputField.borderRight + 18
         anchors.verticalCenter: parent.verticalCenter
         visible: root.fingerprintConfigured
-        text: root.fingerprintUnavailable ? "󰺱" : "󰈷"
+        text: Icons.glyph(root.fingerprintUnavailable ? "security.fingerprint.off" : "security.fingerprint")
         color: root.fingerprintUnavailable ? Commons.Color.lock.textError : Commons.Color.lock.placeholder
-        font.family: Style.font.family
-        font.pixelSize: Math.round(root.fieldFontSize * 1.1)
+        font.family: Icons.family
+        font.pixelSize: Style.font.iconLarge
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
       }

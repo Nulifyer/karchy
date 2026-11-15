@@ -141,7 +141,7 @@ function slug(text) {
 function regroup(row) {
   var app = String(row.app || "")
   var source = String(row.source || "")
-  if (app === "omarchy-action" || app === "notify-send") return "toast:" + String(row.key || "")
+  if (app === "karchy-action" || app === "notify-send") return "toast:" + String(row.key || "")
   if (isBrowser(app) && source && source !== app && hostname(source)) return "web:" + hostname(source)
   return "app:" + slug(app)
 }

@@ -8,8 +8,8 @@ import qs.Commons as Commons
 // `hasCursor` / `current`. That's what guarantees a single highlight on
 // screen at any time across both keyboard and mouse interaction.
 //
-// Cursor paint is always the shared hover-cursor fill plus optional
-// hover-cursor border. `outline` remains as a compatibility flag for
+// Cursor paint is always the shared hover-cursor fill and border plus the
+// FocusRing. `outline` remains as a compatibility flag for
 // callers that used to request border-only rows, but slider rows still
 // receive the same hover-cursor background as every other row.
 BorderSurface {
@@ -25,7 +25,10 @@ BorderSurface {
   property color fill: Style.hoverFillFor(foreground, accent)
   property color currentFill: Style.selectedFillFor(foreground, accent)
 
-  radius: Style.cornerRadius
+  radius: Style.radius.control
+
+  // The keyboard cursor (which the pointer also moves) gets the focus ring.
+  FocusRing { shown: root.hasCursor }
 
   color: hasCursor ? fill : (current ? currentFill : "transparent")
   borderSpec: root.hasCursor

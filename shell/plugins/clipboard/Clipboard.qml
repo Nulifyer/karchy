@@ -10,7 +10,7 @@ import "ClipboardHistory.js" as ClipboardHistory
 Item {
   id: root
 
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  property string karchyPath: Quickshell.env("KARCHY_PATH")
   property bool opened: false
   property string filterText: ""
   property int selectedIndex: 0
@@ -18,8 +18,8 @@ Item {
   property bool clearConfirmOpen: false
   property var history: []
 
-  property string historyPath: Quickshell.env("HOME") + "/.local/state/omarchy/clipboard-history.json"
-  property string captureScript: root.omarchyPath + "/shell/plugins/clipboard/capture.sh"
+  property string historyPath: Quickshell.env("HOME") + "/.local/state/karchy/clipboard-history.json"
+  property string captureScript: root.karchyPath + "/shell/plugins/clipboard/capture.sh"
   // Shares the [menu] surface tokens — themes that style the menu also
   // style the clipboard. Selected-row colors composed in the
   // singleton so consumers drop them straight into Rectangle bindings.
@@ -92,7 +92,6 @@ Item {
 
   function requestClearHistory() {
     if (root.history.length === 0) return
-    clearConfirm.selectedIndex = 1
     root.clearConfirmOpen = true
   }
 
@@ -224,9 +223,9 @@ Item {
     if (!row) return
     root.opened = false
     if (row.entryType === "image") {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-file", row.mime, row.path])
+      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-file", row.mime, row.path])
     } else if (row.fullText) {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-text", "--shift-insert", "--history-index", String(row.historyIndex)])
+      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-text", "--shift-insert", "--history-index", String(row.historyIndex)])
     }
   }
 
@@ -234,16 +233,16 @@ Item {
     if (!row) return
     root.opened = false
     if (row.entryType === "image") {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-file", "--copy-only", row.mime, row.path])
+      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-file", "--copy-only", row.mime, row.path])
     } else if (row.fullText) {
-      Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-paste-text", "--copy-only", "--history-index", String(row.historyIndex)])
+      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-text", "--copy-only", "--history-index", String(row.historyIndex)])
     }
   }
 
   function openSelected(row) {
     if (!row) return
     root.opened = false
-    Quickshell.execDetached([root.omarchyPath + "/bin/omarchy-clipboard-open", "--history-index", String(row.historyIndex)])
+    Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-open", "--history-index", String(row.historyIndex)])
   }
 
   Component.onCompleted: initProc.running = true
@@ -322,7 +321,7 @@ Item {
   OverlayWindow {
     id: panel
     shown: root.opened
-    WlrLayershell.namespace: "omarchy-clipboard"
+    WlrLayershell.namespace: "karchy-clipboard"
 
     Rectangle {
       anchors.fill: parent
@@ -354,6 +353,7 @@ Item {
 
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
+          InputMode.keyPressed()
           if (root.clearConfirmOpen) {
             if (clearConfirm.handleKey(event)) event.accepted = true
             return
@@ -485,6 +485,8 @@ Item {
                   radius: root.cornerRadius
                   color: hasCursor ? root.selectedBackground : "transparent"
 
+                  FocusRing { shown: parent.hasCursor }
+
                   Row {
                     anchors.fill: parent
                     anchors.leftMargin: Style.space(12)
@@ -589,10 +591,10 @@ Item {
             visible: displayModel.count === 0
 
             Text {
-              text: "󰅌"
+              text: Icons.glyph("clipboard")
               color: root.selectedText
               opacity: 0.8
-              font.family: root.fontFamily
+              font.family: Icons.family
               font.pixelSize: Style.font.displayLarge
               horizontalAlignment: Text.AlignHCenter
               anchors.horizontalCenter: parent.horizontalCenter

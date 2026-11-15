@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "omarchy.indicators",
+  "id": "karchy.indicators",
   "name": "Indicators",
   "version": "1.0.0",
-  "author": "Omarchy",
+  "author": "Karchy",
   "description": "Manual state indicators",
   "kinds": [
     "bar-widget"
@@ -27,9 +27,9 @@
         "emptyText": "No indicators",
         "options": [
           {
-            "value": "PasswordlessSudo",
-            "label": "Passwordless sudo",
-            "description": "Warning while passwordless root access is enabled"
+            "value": "Updates",
+            "label": "Updates",
+            "description": "Shows while karchy or package updates are waiting; click to update"
           },
           {
             "value": "ScreenRecording",
@@ -37,29 +37,14 @@
             "description": "GPU screen recorder status"
           },
           {
-            "value": "RemoteSession",
-            "label": "Remote session",
-            "description": "Warning while someone is connected through gliff"
-          },
-          {
             "value": "Reminder",
             "label": "Reminder",
             "description": "Queued reminder status"
           },
           {
-            "value": "NightLight",
-            "label": "Night light",
-            "description": "Blue-light filter"
-          },
-          {
-            "value": "Dnd",
-            "label": "Do not disturb",
-            "description": "Notification silencing"
-          },
-          {
-            "value": "StayAwake",
-            "label": "Stay awake",
-            "description": "Idle lock and screensaver override"
+            "value": "Minimized",
+            "label": "Minimized windows",
+            "description": "Shows while windows are minimized; click to bring one back"
           }
         ]
       },
@@ -72,7 +57,7 @@
       }
     ]
   },
-  "omarchy": {
+  "karchy": {
     "clonePaths": [
       {
         "source": "../indicators",

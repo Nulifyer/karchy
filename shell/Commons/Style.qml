@@ -40,7 +40,9 @@ QtObject {
   //   normal       — idle control chrome
   //   hover-cursor — mouse hover OR panel keyboard cursor (`hasCursor`)
   //   selected     — persistent chosen/current state
-  //   focus        — actual Qt activeFocus, defaulting to hover-cursor
+  //   focus        — actual Qt activeFocus, and the keyboard cursor of the
+  //                  panels and the menu: the hover-cursor fill plus a ring
+  //                  (FocusRing, Border.focusSpec) in Commons.Color.focus
   //
   // Each state has a color token plus fill/border alphas. Color tokens
   // may be palette roles (`foreground`, `accent`, `urgent`, `background`)
@@ -79,19 +81,20 @@ QtObject {
   readonly property int normalBorderWidth: Math.max(0, Math.round(styleNum("normal-border-width", 1)))
   readonly property int hoverBorderWidth: Math.max(0, Math.round(styleNum("hover-cursor-border-width", normalBorderWidth)))
   readonly property int selectedBorderWidth: Math.max(0, Math.round(styleNum("selected-border-width", 0)))
-  readonly property int focusBorderWidth: Math.max(0, Math.round(styleNum("focus-border-width", hoverBorderWidth)))
+  // The focus ring: two pixels at the default text size, growing with it.
+  readonly property int focusBorderWidth: Math.max(0, Math.round(styleNum("focus-border-width", Math.max(1, space(2)))))
 
   readonly property real normalFillAlpha:    styleAlpha("normal-fill-alpha", 0.04)
-  readonly property real hoverFillAlpha:     styleAlpha("hover-cursor-fill-alpha", 0.08)
+  readonly property real hoverFillAlpha:     styleAlpha("hover-cursor-fill-alpha", 0.12)
   readonly property real selectedFillAlpha:  styleAlpha("selected-fill-alpha", 0.18)
   readonly property real pressedFillAlpha:   styleAlpha("pressed-fill-alpha", 0.22)
   readonly property real focusFillAlpha:     styleAlpha("focus-fill-alpha", hoverFillAlpha)
   readonly property real selectionFillAlpha: styleAlpha("selection-fill-alpha", 0.35)
 
   readonly property real normalBorderAlpha:   styleAlpha("normal-border-alpha", 0.4)
-  readonly property real hoverBorderAlpha:    styleAlpha("hover-cursor-border-alpha", 0.25)
+  readonly property real hoverBorderAlpha:    styleAlpha("hover-cursor-border-alpha", 0.4)
   readonly property real selectedBorderAlpha: styleAlpha("selected-border-alpha", 1.0)
-  readonly property real focusBorderAlpha:    styleAlpha("focus-border-alpha", hoverBorderAlpha)
+  readonly property real focusBorderAlpha:    styleAlpha("focus-border-alpha", 1.0)
 
   function colorFromHex(value, fallback) {
     var s = String(value || "").replace(/^\s+|\s+$/g, "")
@@ -163,12 +166,15 @@ QtObject {
   function normalBorderFor(foreground, accent, urgent) { return Util.alpha(normalStateColor(foreground, accent, urgent), normalBorderAlpha) }
   function hoverBorderFor(foreground, accent, urgent) { return Util.alpha(hoverStateColor(foreground, accent, urgent), hoverBorderAlpha) }
   function selectedBorderFor(foreground, accent, urgent) { return Util.alpha(selectedStateColor(foreground, accent, urgent), selectedBorderAlpha) }
-  function focusBorderFor(foreground, accent, urgent) { return Util.alpha(focusStateColor(foreground, accent, urgent), focusBorderAlpha) }
+  // The focus ring's color is the theme-wide Commons.Color.focus, never the
+  // control's own foreground: it has to read on every surface.
+  function focusBorderFor(foreground, accent, urgent) { return Util.alpha(Commons.Color.focus, focusBorderAlpha) }
 
   // Composite helpers for the focus > hover > normal priority chain used by
   // every form control surface (TextField, NumberField, Dropdown, Toggle,
   // etc.). Saves callers from re-writing the three-line ternary ladder for
-  // fill / border / border-width on every Rectangle background.
+  // fill / border / border-width on every Rectangle background. A focused
+  // control paints the hover fill here; its ring is a FocusRing on top.
   function controlFill(focused, hot, foreground, accent) {
     if (focused) return focusFillFor(foreground, accent)
     if (hot) return hoverFillFor(foreground, accent)
@@ -260,19 +266,55 @@ QtObject {
     readonly property int panelGap: root.spacingToken("panel-gap", 14)
     readonly property int panelPadding: root.spacingToken("panel-padding", 18)
     readonly property int popupPadding: root.spacingToken("popup-padding", 14)
+
+    // Sizes the shell had been repeating as literals.
+    readonly property int panelWidth: root.spacingToken("panel-width", 380)
+    readonly property int panelWidthWide: root.spacingToken("panel-width-wide", 560)
+    readonly property int sidebarWidth: root.spacingToken("sidebar-width", 200)
+    readonly property int formLabelWidth: root.spacingToken("form-label-width", 170)
+    readonly property int actionButtonSize: root.spacingToken("action-button-size", 22)
+    readonly property int heroGap: root.spacingToken("hero-gap", 14)
+  }
+
+  // ---------------------------------------------------------- shape
+  //
+  // `surface` is for things that stand on their own: cards, windows, panels,
+  // dialogs, tooltips. `control` is for what sits inside one (buttons, rows,
+  // fields), a little tighter so nested corners stay inside their container's.
+  readonly property QtObject radius: QtObject {
+    readonly property int surface: root.cornerRadius
+    readonly property int control: Math.min(root.cornerRadius, root.space(4))
+  }
+
+  readonly property QtObject border: QtObject {
+    // Popups, the menu, polkit, notifications, the OSD.
+    readonly property int surface: Math.max(1, root.space(2))
+    // Controls, cards and tooltips.
+    readonly property int control: root.normalBorderWidth
+  }
+
+  // ---------------------------------------------------------- motion
+  //
+  // Durations in ms; pass them through Style.duration() so reduced motion
+  // turns them off. fast: hover and color changes. base: opening, morphing,
+  // moving. slow: a toast sliding in, a progress fill.
+  readonly property QtObject motion: QtObject {
+    readonly property int fast: 120
+    readonly property int base: 200
+    readonly property int slow: 320
   }
 
   // ---------------------------------------------------------- typography
   //
   // `fontFamily` defaults to "monospace" so the bar and every qs.Ui
-  // component follows the fontconfig alias `omarchy-font-set` writes.
+  // component follows the fontconfig alias `karchy-font-set` writes.
   // Themes can override per-token via [font] in shell.toml, but the
   // family stays system-wide.
   property string fontFamily: "monospace"
 
   // The concrete family `monospace` resolves to right now, e.g.
   // "JetBrainsMono Nerd Font". Bind `font.family` to `fontFamily` (so the
-  // alias path keeps working when the user runs `omarchy font set`), but
+  // alias path keeps working when the user runs `karchy font set`), but
   // read `resolvedFontFamily` when you want to *display* what's drawing.
   property string resolvedFontFamily: "monospace"
 
@@ -312,11 +354,11 @@ QtObject {
   }
 
   // The menu, polkit, emojis, and clipboard surfaces honor an
-  // OMARCHY_MENU_FONT override for users who want a different family on the
+  // KARCHY_MENU_FONT override for users who want a different family on the
   // summoned popups than on the bar. Resolved once at startup; an empty env
   // value falls back to the shared fontconfig alias.
   readonly property string menuFontFamily: {
-    var override = Quickshell.env("OMARCHY_MENU_FONT")
+    var override = Quickshell.env("KARCHY_MENU_FONT")
     return (override && override.length > 0) ? override : fontFamily
   }
 
@@ -326,7 +368,12 @@ QtObject {
     readonly property string menuFamily: root.menuFontFamily
     readonly property int baseSize: root.fontBaseSize
 
-    readonly property int caption:      root.fontToken("caption",       root.fontPx(0.833))   // 10
+    // Type roles (docs/architecture.md, "Shell design foundations"):
+    // pageTitle = heading bold, one per view; title = title bold; body;
+    // secondary = bodySmall in Color.secondaryText; label = caption bold caps
+    // with `labelSpacing`, for section headers and hero status lines.
+    // Nothing people read is smaller than caption, 11px at the default size.
+    readonly property int caption:      root.fontToken("caption",       root.fontPx(0.917))   // 11
     readonly property int bodySmall:    root.fontToken("body-small",    root.fontPx(0.917))   // 11
     readonly property int body:         root.fontToken("body",          root.fontPx(1.0))     // 12
     readonly property int subtitle:     root.fontToken("subtitle",      root.fontPx(1.083))   // 13
@@ -335,9 +382,16 @@ QtObject {
     readonly property int display:      root.fontToken("display",       root.fontPx(2.0))     // 24
     readonly property int displayLarge: root.fontToken("display-large", root.fontPx(2.333))   // 28
 
-    readonly property int iconSmall:    root.fontToken("icon-small",    bodySmall)
-    readonly property int icon:         root.fontToken("icon",          title)
-    readonly property int iconLarge:    root.fontToken("icon-large",    root.fontPx(1.5))     // 18
+    // Symbols Nerd Font Mono fills its em, and a Material icon's ink is about
+    // 5/6 of it, so an icon one step above the text it sits beside matches
+    // that text's capitals and stems instead of towering over them.
+    readonly property int iconSmall:    root.fontToken("icon-small",    root.fontPx(0.833))   // 10, inline with body
+    readonly property int icon:         root.fontToken("icon",          root.fontPx(1.083))   // 13, rows and buttons
+    readonly property int iconLarge:    root.fontToken("icon-large",    root.fontPx(1.333))   // 16, dialogs
+    readonly property int iconHero:     root.fontToken("icon-hero",     root.fontPx(1.833))   // 22, panel and page heroes
+
+    // Letter spacing of the caps `label` role, growing with the text.
+    readonly property real labelSpacing: root.spaceReal(1.2)
   }
 
   readonly property QtObject bar: QtObject {
@@ -350,14 +404,24 @@ QtObject {
       var v = Number(root.barOverrides["notch-height"])
       return (isFinite(v) && v > 0) ? Math.round(v) : 0
     }
-    readonly property int iconSlot:       root.barToken("icon-slot",       27)
+    // A floating bar's gap to its screen edges and its corner rounding. They
+    // follow the windows (gapsOut, cornerRadius) unless the theme sets them.
+    readonly property int floatMargin: {
+      var v = Number(root.barOverrides["float-margin"])
+      return ("float-margin" in root.barOverrides && isFinite(v) && v >= 0) ? Math.round(v) : root.gapsOut
+    }
+    readonly property int floatRadius: {
+      var v = Number(root.barOverrides["float-radius"])
+      return ("float-radius" in root.barOverrides && isFinite(v) && v >= 0) ? Math.round(v) : root.cornerRadius
+    }
+    readonly property int iconSlot:      root.barToken("icon-slot",       27)
     readonly property int iconCanvas:     root.barToken("icon-canvas",     16)
     readonly property int iconFont:       root.barToken("icon-font",       13)
     readonly property int iconSize:       Math.min(iconCanvas, root.barToken("icon-size", 12))
     readonly property int statusSlot:     root.barToken("status-slot",     21)
   }
 
-  // Off with Hyprland's own animations, as `omarchy toggle animations` turns
+  // Off with Hyprland's own animations, as `karchy toggle animations` turns
   // them off for machines that render on the CPU. Every shell animation runs
   // for Style.duration(ms), which is then 0, so nothing is drawn in between.
   property bool reduceMotion: false
@@ -431,7 +495,8 @@ QtObject {
           nextBarScaleWithFont = boolToken(raw, nextBarScaleWithFont)
         } else if (key === "size-horizontal" || key === "size-vertical" || key === "notch-height"
           || key === "icon-slot" || key === "icon-canvas" || key === "icon-font"
-          || key === "icon-size" || key === "status-slot") {
+          || key === "icon-size" || key === "status-slot"
+          || key === "float-margin" || key === "float-radius") {
           var b = parseInt(raw, 10)
           if (isFinite(b)) barOut[key] = b
         }
@@ -507,9 +572,10 @@ QtObject {
     }
   }
 
-  // Resolve the fontconfig alias to a concrete family name. `omarchy font
-  // set <name>` rewrites ~/.config/fontconfig/fonts.conf and restarts the
-  // shell, but rerun on file change anyway so manual edits propagate too.
+  // Resolve the fontconfig alias to a concrete family name. `karchy font
+  // set <name>` writes ~/.config/fontconfig/conf.d/60-karchy-font.conf and
+  // restarts the shell; both that file and a hand-written fonts.conf are
+  // watched so manual edits propagate too.
   function resolveFontFamily() {
     fcMatchProc.running = true
   }
@@ -535,6 +601,13 @@ QtObject {
     onLoadFailed: root.resolveFontFamily()
   }
 
+  property FileView karchyFontFile: FileView {
+    path: Quickshell.env("HOME") + "/.config/fontconfig/conf.d/60-karchy-font.conf"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: root.resolveFontFamily()
+  }
+
   // Re-poll Hyprland a beat after either input file changes. Hyprland's
   // auto-reload runs asynchronously when its sourced .lua files change,
   // so racing it with an immediate hyprctl gives the old value. 200ms is
@@ -546,11 +619,11 @@ QtObject {
     onTriggered: root.refresh()
   }
 
-  // `omarchy toggle window-gaps` creates/removes this flag file. Hyprland
+  // `karchy toggle window-gaps` creates/removes this flag file. Hyprland
   // reloads its config when sourced files change, then hyprctl reflects
   // the new effective value.
   property FileView windowNoGapsToggle: FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/toggles/hypr/window-no-gaps.lua"
+    path: Quickshell.env("HOME") + "/.local/state/karchy/toggles/hypr/window-no-gaps.lua"
     watchChanges: true
     printErrors: false
     onFileChanged: refreshTimer.restart()
