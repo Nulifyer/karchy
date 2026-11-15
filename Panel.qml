@@ -96,7 +96,7 @@ Panel {
   function setMode(mode) {
     if (modeProcess.running || ["on", "off", "auto"].indexOf(mode) < 0) return
     lastError = ""
-    modeProcess.command = ["/usr/local/bin/nulifyer-vpn", mode]
+    modeProcess.command = ["/usr/bin/nulifyer-vpn", "mode", mode]
     modeProcess.running = true
   }
 
@@ -230,9 +230,9 @@ Panel {
 
   Process {
     id: statusProcess
-    command: ["/usr/local/bin/nulifyer-vpn-status", "--json"]
+    command: ["/usr/bin/nulifyer-vpn-status", "--json"]
     onExited: function(exitCode) {
-      if (exitCode !== 0) root.lastError = "VPN system setup is unavailable. Follow the repository's setup instructions."
+      if (exitCode !== 0) root.lastError = "The VPN package isn't installed or set up. See the README."
     }
     stdout: StdioCollector {
       waitForEnd: true
@@ -240,8 +240,20 @@ Panel {
     }
   }
 
+  // The policy rewrites its status file on every change; the widget reads it
+  // then, instead of on a timer. While the panel is open the live tunnel
+  // details (handshake age) are refreshed below as well.
   FileView {
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    path: "/run/nulifyer-vpn/status"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: { reload(); root.refresh() }
+  }
+
+  FileView {
+    // Omarchy's theme, or karchy's when the widget runs there.
+    path: Quickshell.env("HOME") + "/.local/state/" + (Quickshell.env("KARCHY_PATH") ? "karchy" : "omarchy")
+      + "/current/theme/colors.toml"
     watchChanges: true
     printErrors: false
     onLoaded: root.loadThemeGreen(text())
@@ -266,10 +278,9 @@ Panel {
   }
 
   Timer {
-    interval: root.opened ? 1000 : 2000
-    running: true
+    interval: 2000
+    running: root.opened
     repeat: true
-    triggeredOnStart: true
     onTriggered: root.refresh()
   }
 
