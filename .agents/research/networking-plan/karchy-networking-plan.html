@@ -1,0 +1,282 @@
+<title>karchy Networking Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column with wide tables and diagrams; status chips mark what's decided vs needs a green light. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --fg: #1d2421;
+  --muted: #59635e;
+  --line: #d9dfdb;
+  --accent: #1f6f5c;
+  --accent-soft: #e2efea;
+  --warn: #8a5a00;
+  --warn-soft: #fbf0d9;
+  --done: #2d6a2d;
+  --done-soft: #e3f1e1;
+  --ask: #7a3e9d;
+  --ask-soft: #f1e6f7;
+  --code-bg: #eef1ef;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131816; --surface: #1a201d; --fg: #e3e8e5; --muted: #9aa6a0; --line: #2c3531;
+    --accent: #6cc4a8; --accent-soft: #1d3029; --warn: #e2b55a; --warn-soft: #33290f;
+    --done: #8fd08f; --done-soft: #1c2e1c; --ask: #d2a4ec; --ask-soft: #2c2033; --code-bg: #222a26;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131816; --surface: #1a201d; --fg: #e3e8e5; --muted: #9aa6a0; --line: #2c3531;
+  --accent: #6cc4a8; --accent-soft: #1d3029; --warn: #e2b55a; --warn-soft: #33290f;
+  --done: #8fd08f; --done-soft: #1c2e1c; --ask: #d2a4ec; --ask-soft: #2c2033; --code-bg: #222a26;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15.5px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 44px; }
+header { display: grid; gap: 10px; }
+h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 2rem; font-weight: 600; }
+h2 { font-size: 1.4rem; font-weight: 600; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; max-width: 70ch; }
+.lede { color: var(--muted); font-size: 1.05rem; }
+section { display: grid; gap: 16px; }
+.sub { color: var(--muted); max-width: 70ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; max-width: 75ch; }
+a { color: var(--accent); }
+.chip { display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 2px; }
+.chip.done { background: var(--done-soft); color: var(--done); }
+.chip.ask { background: var(--ask-soft); color: var(--ask); }
+.chip.fix { background: var(--warn-soft); color: var(--warn); }
+.chip.new { background: var(--accent-soft); color: var(--accent); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card h3 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card p, .card li { color: var(--fg); }
+.card .q { color: var(--muted); font-size: 0.92rem; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.93rem; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 500; }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; background: transparent; }
+.scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.scen .card h3 { font-size: 1rem; }
+.steps { display: grid; gap: 10px; counter-reset: none; }
+.phase { display: grid; grid-template-columns: 110px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.phase .when { font-family: var(--font-head); font-weight: 600; color: var(--accent); }
+@media (max-width: 560px) { .phase { grid-template-columns: 1fr; gap: 6px; } h1 { font-size: 1.6rem; } }
+.wire { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.45; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; white-space: pre; margin: 0; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.88rem; color: var(--muted); align-items: center; }
+.green { border: 2px solid var(--ask); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<main>
+<header>
+  <h1>karchy Networking Plan</h1>
+  <p class="lede">How Wi-Fi, VPN, DNS and the firewall fit together, who owns each part, how it's maintained, and the order it gets built. Plus the rule for what is core, a package or a plugin.</p>
+  <div class="legend"><span class="chip done">Decided</span> you already said yes <span class="chip ask">Green light</span> needs your yes <span class="chip fix">Fix</span> something broken today <span class="chip new">New</span> a feature</div>
+</header>
+
+<section>
+  <h2>In short</h2>
+  <div class="grid2">
+    <div class="card"><h3>One idea drives everything: “trusted network”</h3><p>You mark home as trusted once. That one switch decides three things: LocalSend can receive files, the VPN stands by, and the router's DNS is used (so <code>nas.lan</code> works). Everywhere else: VPN on, your encrypted DNS, LocalSend closed.</p></div>
+    <div class="card"><h3>Trust follows the router, not the name</h3><p>Today trusting “Wired connection 1” trusts every Ethernet jack you ever plug into. Trust will record your router's hardware address, so a hotel cable or a fake “Home-5G” is never trusted.</p></div>
+    <div class="card"><h3>The VPN becomes part of the network panel</h3><p>One icon, one panel. The VPN's system half becomes a pacman package built from its own repo; its controls (Off / Auto / On) live in the network panel. Your plugin repo keeps working on stock Omarchy.</p></div>
+    <div class="card"><h3>Café sign-in works with the VPN on</h3><p>“Sign in to network” pauses the VPN's block for up to 5 minutes, opens the sign-in page, and turns protection back on by itself once you're online.</p></div>
+  </div>
+</section>
+
+<section id="rule">
+  <h2>Core, package or plugin <span class="chip ask">Green light</span></h2>
+  <p class="sub">Four questions, asked in order. The first yes decides. This applies to everything in karchy, not just networking.</p>
+  <div class="grid2">
+    <div class="card"><h3>1 · Does it run as root, or ship system files?</h3><p><strong>Package.</strong> Root code, systemd units, polkit rules, udev rules and anything in <code>/etc</code> or <code>/usr</code> come from a signed pacman package. Never from a plugin cloned with git (the rule that root never runs code your user can edit).</p></div>
+    <div class="card"><h3>2 · Does every karchy machine need it, or do other core parts depend on it?</h3><p><strong>Core</strong>, inside the <code>karchy</code> package. The bar, menu, Settings, panels, theme engine and commands.</p></div>
+    <div class="card"><h3>3 · Only some machines (hardware) or opt-in (a feature)?</h3><p><strong>Package in a tier</strong>: detected at install or offered in Settings. Its screen stays in core and hides until the package is installed, as Containers and VMs do today. One release, no plugin to keep in step.</p></div>
+    <div class="card"><h3>4 · User-level UI only, optional, maybe for Omarchy too or from someone else?</h3><p><strong>Plugin</strong> (<code>karchy plugin add</code>). Runs as you, lives in its own repo, can't touch the system. If it ever needs root, its system half becomes a package (question 1).</p></div>
+  </div>
+  <h3>Where everything lands</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Kind</th><th>What</th><th>Ships as</th><th>Change from today</th></tr></thead>
+    <tbody>
+      <tr><td>Core</td><td>Shell, bar, menu, notifications, lock, OSD, Settings, panels (network, audio, Bluetooth, power, monitor, clock, Wi-Fi QR, speed tests), theme engine, commands, Containers and VMs screens</td><td><code>karchy</code></td><td>The VPN's controls move into the network panel</td></tr>
+      <tr><td>Base packages</td><td>System defaults and starter configs, themes, signing key, titlebars</td><td><code>karchy-settings</code>, <code>karchy-themes</code>, <code>karchy-keyring</code>, <code>karchy-hyprland-titlebars</code></td><td>Network tuning and DNS rules go into <code>karchy-settings</code></td></tr>
+      <tr><td>Detected packages</td><td>Laptop, NVIDIA, running in a VM</td><td><code>karchy-laptop</code>, <code>karchy-nvidia</code>, <code>karchy-vm</code></td><td>none</td></tr>
+      <tr><td>Optional features</td><td>Printing, containers, VMs</td><td>today: scripts that install packages and run setup</td><td><span class="chip ask">Green light</span> become packages <code>karchy-printing</code>, <code>karchy-containers</code>, <code>karchy-vms</code>, so pacman owns their files, updates them and removes them cleanly. Settings installs the package. Fits with the Install page</td></tr>
+      <tr><td>Companion package</td><td>The VPN's system half: policy service, kill switch, portal pause, polkit rule</td><td><code>nulifyer-vpn</code>, built by karchy's CI from a tagged release of your VPN repo</td><td>Replaces <code>sudo python3 scripts/system.py install</code> from your home folder</td></tr>
+      <tr><td>Plugins</td><td>Project picker; the VPN's own bar widget for stock Omarchy; anything third-party</td><td><code>karchy plugin add</code></td><td>On karchy the VPN widget isn't needed (the network panel has the VPN)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="how">
+  <h2>How it works</h2>
+  <p class="sub">Arch's standard parts do the work. karchy adds one policy layer on top: the trusted-network list, read by everything that needs it.</p>
+  <div class="diagram"><pre class="mermaid">
+flowchart LR
+  subgraph You["What you touch"]
+    P["Network panel<br/>status, Wi-Fi, VPN Off/Auto/On"]
+    S["Settings › Network<br/>saved networks, DNS, VPN, firewall"]
+  end
+  subgraph Policy["karchy policy (core + karchy-settings)"]
+    T[("Trusted networks<br/>/etc/karchy/trusted-networks<br/>network + router address")]
+    D["DNS helper<br/>applies your DNS on untrusted networks"]
+    L["LocalSend firewall<br/>opens port only when trusted"]
+  end
+  subgraph VPN["nulifyer-vpn package"]
+    V["Policy service<br/>Auto: on unless trusted"]
+    K["Kill switch<br/>blocks internet until tunnel is up"]
+    PP["Portal pause<br/>max 5 min"]
+  end
+  subgraph Arch["Arch / upstream"]
+    NM["NetworkManager<br/>Wi-Fi, Ethernet, WireGuard"]
+    R["systemd-resolved<br/>DNS, encrypted DNS"]
+    A["avahi<br/>.local names"]
+    U["ufw<br/>blocks incoming"]
+  end
+  P --> NM
+  P --> V
+  S --> T
+  S --> D
+  T --> L
+  T --> V
+  T --> D
+  D --> R
+  L --> U
+  V --> NM
+  V --> K
+  NM --> R
+  P -. "Sign in" .-> PP
+  PP --> K
+  </pre></div>
+
+  <h3>What happens where</h3>
+  <div class="scen">
+    <div class="card"><h3>At home (trusted)</h3><ul><li>VPN in Auto stands by</li><li>DNS from your router, so <code>nas.lan</code> and printers resolve</li><li>LocalSend can receive</li><li>Panel: “Connected · Trusted network”</li></ul></div>
+    <div class="card"><h3>At a café</h3><ul><li>Join Wi-Fi; panel shows “Sign in to this network”</li><li>Click: VPN block paused, sign-in page opens</li><li>Once online: VPN connects, protection back, page closes</li><li>DNS: your encrypted DNS until the VPN is up, then the VPN's</li></ul></div>
+    <div class="card"><h3>The VPN can't connect</h3><ul><li>Internet stays blocked (no leak)</li><li>Panel says so in words, with “Retry” and “Use without VPN”</li><li>“Use without VPN” switches the mode to Off and says it did</li></ul></div>
+    <div class="card"><h3>Hotel Ethernet</h3><ul><li>Same profile as home, different router</li><li>Not trusted, so VPN on and LocalSend closed</li><li>Settings shows “Trusted, but a different router: not trusted now”</li></ul></div>
+    <div class="card"><h3>On a plane</h3><ul><li>Airplane key or panel: all radios off</li><li>Panel and an on-screen message say “Airplane mode”</li></ul></div>
+    <div class="card"><h3>Desktop, wired only</h3><ul><li>No Wi-Fi list or switch shown</li><li>Ethernet, VPN row and details only</li></ul></div>
+  </div>
+</section>
+
+<section id="ownership">
+  <h2>Ownership: one owner per job</h2>
+  <p class="sub">Today two lists decide trust, two programs answer <code>.local</code>, two parties set DNS and three write firewall rules. After this plan, each job has one owner.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Job</th><th>Owner</th><th>Where it lives</th><th>Today</th></tr></thead>
+    <tbody>
+      <tr><td>Connecting to Wi-Fi and Ethernet; saved networks</td><td>NetworkManager</td><td>NM profiles (band, metered, private address, auto-connect are profile settings)</td><td>same</td></tr>
+      <tr><td>Is this network trusted?</td><td>karchy</td><td><code>/etc/karchy/trusted-networks</code>, changed only through <code>karchy-trusted-networks</code> with your password</td><td>two lists (karchy's and the VPN's)</td></tr>
+      <tr><td>Upstream DNS</td><td>karchy</td><td>DNS helper, applied to the live connection on untrusted networks, never written into your saved networks</td><td>VPN rewrites saved networks to point at dnscrypt-proxy</td></tr>
+      <tr><td>DNS while the tunnel is up</td><td>VPN</td><td>the WireGuard profile's DNS takes priority</td><td>same</td></tr>
+      <tr><td><code>.local</code> names (NAS, printers)</td><td>avahi</td><td>resolved's own mDNS and LLMNR switched off in <code>karchy-settings</code></td><td>avahi and resolved both answer</td></tr>
+      <tr><td>Incoming firewall</td><td>ufw</td><td>karchy only adds its tagged LocalSend rule; the VPN's “answer local devices” rule becomes a file shipped by its package</td><td>VPN inserts live iptables rules into ufw's chains</td></tr>
+      <tr><td>Outgoing block while VPN connects</td><td>VPN</td><td>its own nftables table</td><td>same</td></tr>
+      <tr><td>Café sign-in flow</td><td>karchy</td><td>panel button and <code>karchy-network-captive-portal</code>, asking the VPN for a timed pause</td><td>only knows how to pause Tailscale (dropped)</td></tr>
+      <tr><td>VPN status shown in the bar</td><td>VPN publishes, karchy shows</td><td>VPN writes <code>/run/nulifyer-vpn/status</code>; the panel watches the file</td><td>VPN widget runs a status script every 2 s</td></tr>
+      <tr><td>Wi-Fi country</td><td>karchy</td><td>udev rule plus timezone menu (built today); Settings › Network › Advanced shows it</td><td>new today</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The contract between karchy and the VPN package</h3>
+  <p class="sub">Four promises, written down in both repos. Either side can change its insides freely as long as these hold.</p>
+  <div class="grid2">
+    <div class="card"><h3>Trust: karchy writes, VPN reads</h3><p>The VPN reads karchy's trusted list (network ID plus router address) and keeps no list of its own.</p></div>
+    <div class="card"><h3>Status: VPN writes, karchy reads</h3><p>One JSON file in <code>/run/nulifyer-vpn/</code> with mode and state (standing by, connecting, protecting, failed, paused). The panel reacts to changes; nothing polls.</p></div>
+    <div class="card"><h3>Commands: karchy calls, VPN acts</h3><p><code>nulifyer-vpn mode off|auto|on</code> and <code>nulifyer-vpn portal-pause</code>, allowed for your user without a password by the package's polkit rule.</p></div>
+    <div class="card"><h3>DNS: each in its lane</h3><p>The VPN sets DNS only on its tunnel; karchy sets it only on untrusted Wi-Fi and Ethernet. Neither edits saved networks.</p></div>
+  </div>
+</section>
+
+<section id="ui">
+  <h2>What you see</h2>
+  <p class="sub">The panel answers “am I online, am I protected, does anything need me?” Settings holds everything you set once.</p>
+  <div class="grid2">
+    <div class="card"><h3>Network panel</h3>
+<pre class="wire">[wifi] Home-5G              [QR][speed][on]
+       CONNECTED · VPN STANDING BY
+────────────────────────────────────────
+⚠ Sign in to this network        [Sign in]
+  (only when something needs you)
+────────────────────────────────────────
+VPN   Standing by on trusted network
+      [ Off | Auto | On ]
+────────────────────────────────────────
+Ping 12 ms   Loss 0%   IP 192.168.50.23
+Wi-Fi band  5 GHz          [Automatic]
+KNOWN NETWORKS / OTHER NETWORKS ...
+[ Network settings…                    ]</pre></div>
+    <div class="card"><h3>Settings › Network</h3><ul>
+      <li><strong>Status</strong>: one card per active connection (IP, gateway, DNS in use, speed, band)</li>
+      <li><strong>Saved networks</strong>: each opens in place: trusted, connect automatically, metered, band, private address, IP settings, share, forget</li>
+      <li><strong>DNS</strong>: Automatic, Quad9, Cloudflare or custom; encrypted DNS; “use on trusted networks too” (off)</li>
+      <li><strong>VPN</strong>: import a WireGuard file, default mode, block internet while connecting, allow local devices on trusted networks</li>
+      <li><strong>Sharing and firewall</strong>: what's open right now (read-only)</li>
+      <li><strong>Advanced</strong>: Wi-Fi country, connectivity check</li>
+    </ul><p class="q">Not now: hotspot, proxy, Bluetooth tethering.</p></div>
+  </div>
+  <p class="sub">The bar shows one network icon. It gets a VPN variant while protected and turns to the warning or error color while the VPN connects or has failed, so a blocked internet is never hidden. The rotating “Bending light” phrases go; the status line says the real state.</p>
+</section>
+
+<section id="maintain">
+  <h2>How it's maintained</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Piece</th><th>Code lives in</th><th>How updates reach machines</th><th>Checked by</th></tr></thead>
+    <tbody>
+      <tr><td>Network panel, Settings › Network, sign-in flow, trusted list, DNS helper</td><td>karchy repo</td><td><code>karchy</code> and <code>karchy-settings</code> packages on your channel (stable, rc, nightly)</td><td>VM tests: test sign-in page, simulated Wi-Fi radio, trust on two “routers”</td></tr>
+      <tr><td>Tuning (Wi-Fi power save, ARP, TCP, mDNS)</td><td>karchy repo, <code>system/</code></td><td><code>karchy-settings</code>; files in <code>/usr/lib</code>, so your own files in <code>/etc</code> win</td><td>values read back in the VM</td></tr>
+      <tr><td>VPN policy, kill switch, portal pause</td><td>your VPN repo (stays usable on Omarchy)</td><td>you tag a release; karchy's PKGBUILD pins that tag; CI builds and signs <code>nulifyer-vpn</code> into <code>[karchy]</code></td><td>the VPN repo's own checks, plus the contract test in the VM</td></tr>
+      <tr><td>NetworkManager, resolved, avahi, ufw, iw</td><td>Arch</td><td>normal <code>pacman -Syu</code></td><td>upstream</td></tr>
+    </tbody>
+  </table></div>
+  <ul>
+    <li>Upstream behavior is changed only through drop-in files karchy ships, never by editing upstream's files.</li>
+    <li>Your saved networks are never rewritten behind your back; the only writes are ones you make in the panel or Settings.</li>
+    <li>Everything root runs comes from a signed package in <code>/usr</code>.</li>
+  </ul>
+</section>
+
+<section id="order">
+  <h2>Build order</h2>
+  <div class="steps">
+    <div class="phase"><div class="when">Step 1<br/><span class="chip done">Decided</span></div><div><strong>Quick fixes, all small.</strong> One <code>.local</code> answerer; network tuning; LocalSend's port closed at boot until a trusted network connects (today it stays open after a reboot); the password prompt says what really failed and keeps it on screen; Wi-Fi hardware switch shown; trust prompt reads in words and Cancel isn't an error; sign-in button opens <code>http://neverssl.com</code>; work/school Wi-Fi checks the server's certificate.</div></div>
+    <div class="phase"><div class="when">Step 2<br/><span class="chip fix">Fix</span></div><div><strong>Honest panel details.</strong> With the VPN up, the panel shows your real Wi-Fi or Ethernet plus a separate VPN line (today it shows the tunnel labelled “Ethernet” and hides the QR button).</div></div>
+    <div class="phase"><div class="when">Step 3<br/><span class="chip done">Decided</span></div><div><strong>One trusted list, bound to the router.</strong> Changes the trust file once; the VPN reads it. Settings flags “different router”.</div></div>
+    <div class="phase"><div class="when">Step 4<br/><span class="chip done">Decided</span></div><div><strong>VPN package.</strong> Package the VPN's system half, add the status file, the commands and the portal pause, drop dnscrypt-proxy, allow local devices on trusted networks. Done in your VPN repo, then packaged here.</div></div>
+    <div class="phase"><div class="when">Step 5<br/><span class="chip new">New</span></div><div><strong>Panel redesign.</strong> Attention row, VPN row, compact details, “Network settings…”.</div></div>
+    <div class="phase"><div class="when">Step 6<br/><span class="chip new">New</span></div><div><strong>Settings › Network.</strong> Status, saved networks, DNS, VPN import, firewall summary, Advanced. Airplane mode with the airplane key (a new keybinding).</div></div>
+  </div>
+</section>
+
+<section id="decide">
+  <h2>What I need from you</h2>
+  <div class="grid2">
+    <div class="card green"><h3>A · The core / package / plugin rule <span class="chip ask">Green light</span></h3><p>The four questions above, recorded as a decision and applied to new work.</p></div>
+    <div class="card green"><h3>B · Optional features become packages <span class="chip ask">Green light</span></h3><p><code>karchy-printing</code>, <code>karchy-containers</code>, <code>karchy-vms</code>. Recommended; I'd do it together with the Install page.</p></div>
+    <div class="card green"><h3>C · Default DNS on untrusted networks <span class="chip ask">Green light</span></h3><p>Quad9, encrypted, the same provider your VPN plugin uses today. Trusted networks keep the router's DNS. Changeable in Settings.</p></div>
+    <div class="card green"><h3>D · The plan as a whole <span class="chip ask">Green light</span></h3><p>Steps 1–6 in this order. Step 4 changes your VPN repo; I'd make those changes in a branch there and show you before anything is pushed.</p></div>
+  </div>
+  <p class="sub">Already decided: one trusted list tied to the router, karchy owns DNS, the VPN as a package inside the network panel, the neverssl sign-in page, and the network tuning.</p>
+</section>
+</main>

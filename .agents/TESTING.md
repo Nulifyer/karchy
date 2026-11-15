@@ -18,8 +18,8 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 - [ ] Print and Super+Shift+S take screenshots.
 - [ ] A notification and a polkit password prompt both appear.
 - [ ] A theme switch changes the shell, Hyprland and foot.
-- [ ] `karchy update` completes.
-- [ ] Only the chosen packages are installed: `pacman -Qqe` matches the package manifest.
+- [ ] After a change in the checkout and a rebuild, `karchy update` installs only the changed karchy packages and the session picks up the change.
+- [ ] Only the chosen packages are installed: `pacman -Qqe` is `install/packages/base.txt` plus microcode and `karchy-desktop` (and the detected metas).
 
 ## Fast checks
 
@@ -31,17 +31,24 @@ shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they 
 
 ```text
 tools/vm fetch                       # download + verify (sha256 and Arch keyring signature) the Arch ISO
-tools/vm new [--secureboot]          # 40 GiB qcow2 + blank UEFI vars (Setup Mode)
-tools/vm run --iso                   # boot the ISO; repo is shared read-only as 9p tag "karchy"
-tools/vm screenshot <file.png>       # evidence screenshots via QMP
+tools/vm new [--secureboot] [--tpm]  # 40 GiB qcow2 + blank UEFI vars (Setup Mode), defined in libvirt as karchy-<vm>
+tools/vm run --iso [--headless]      # boot the ISO and open the console in virt-manager; repo shared read-only as 9p tag "karchy"
+tools/vm screenshot <file.png>       # evidence screenshots via virsh
+tools/vm type <text> / key <combo>   # drive the VM for unattended checks
+tools/vm click <x> <y>               # click at a screenshot pixel
+tools/vm exec [--user] <command>     # run in the guest (as root, or in the desktop session) via the guest agent
+tools/vm stop [--force]              # clean shutdown; --force pulls the plug (recent guest writes can be lost)
 tools/vm snap/restore <name>         # retry installs from a known state
+tools/vm repo                        # serve out/repo-<channel> (from packaging/build) to guests at http://10.0.2.2:8090
 ```
 
-Inside the live ISO: `mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /mnt/karchy`.
+Inside the live ISO: `mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /root/karchy` (not under `/mnt`, which the installer mounts over), then `/root/karchy/install/karchy-install --config /root/karchy/tests/vm-install.conf`. Build the packages first with `packaging/build`.
+
+Dev mode in a test VM (D-55), to try shell and command changes without rebuilding packages: add `karchy /mnt/karchy 9p trans=virtio,version=9p2000.L,ro,nofail 0 0` to the guest's fstab and `KARCHY_PATH=/mnt/karchy` to `/etc/karchy.conf`, reboot, then `karchy-restart-shell` after each change. System files still come from the packages.
 
 ## Environment
 
-- Host: CachyOS with KDE Plasma, RTX 5080, 31 GiB RAM. QEMU/KVM via `tools/vm`; it needs qemu-desktop, edk2-ovmf, socat, gpg and archlinux-keyring, and swtpm for `--tpm`.
+- Host: CachyOS with KDE Plasma, RTX 5080, 31 GiB RAM. Test VMs are libvirt domains on `qemu:///system` (the user is in the `libvirt` group), visible in virt-manager. `tools/vm` needs libvirt, virt-manager, qemu-desktop, edk2-ovmf, acl (setfacl), imagemagick, gpg and archlinux-keyring, and swtpm for `--tpm`.
 - VM files: `${KARCHY_VM_DIR:-~/.local/state/karchy-vm}`. Override the VM size with `KARCHY_VM_CPUS`, `KARCHY_VM_MEMORY` and `KARCHY_VM_DISPLAY`.
 - Install media: the current stock Arch Linux ISO, from `geo.mirror.pkgbuild.com/iso/latest`.
 

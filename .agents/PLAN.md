@@ -56,8 +56,8 @@ Guiding rule from the user: minimal software (small, fast, few dependencies), bu
 
 ## Architecture boundaries
 
-- Delivery is a git checkout of karchy on each machine, for example `~/.local/share/karchy`. Running `karchy update` does `paru -Syu`, a fast-forward `git pull`, any karchy migrations, and a reload. A pacman package may come later with the ISO.
-- There are two repos: karchy for the system and defaults, and the dotfiles repo for the user layer. Files in `~/.config` are small include stubs or symlinks, created once. The update never overwrites them.
+- Delivery is pacman packages from the `[karchy]` repository of the release channel the user picked: stable, rc or nightly (D-51 to D-55, D-61; this replaced the planned git checkout). `karchy update` runs `paru -Syu` (karchy, Arch, CachyOS and AUR together), any karchy migrations, and a reload. Dev mode points `KARCHY_PATH` at a checkout (D-55).
+- There are two repos: karchy for the system, defaults and packaging, and the dotfiles repo for the user layer. Files in `~/.config` are small include stubs or symlinks, created once. The update never overwrites them.
 - Vendored Omarchy code is synced from release tags. A manifest lists the vendored paths, and the sync script shows the upstream diffs for just those paths. Vendored files keep their upstream names so that syncing stays mechanical.
 - The system must not break CachyOS-style boot assumptions. The initramfs is systemd-based with `sd-encrypt`, and Omarchy's mkinitcpio, pacman, limine and update-guard drop-ins are never installed.
 - Security:

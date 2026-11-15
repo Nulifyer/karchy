@@ -1,0 +1,226 @@
+<title>karchy System Tuning</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column with wide tables and diagrams; status chips mark what's decided vs needs a green light. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --fg: #1d2421;
+  --muted: #59635e;
+  --line: #d9dfdb;
+  --accent: #1f6f5c;
+  --accent-soft: #e2efea;
+  --warn: #8a5a00;
+  --warn-soft: #fbf0d9;
+  --done: #2d6a2d;
+  --done-soft: #e3f1e1;
+  --ask: #7a3e9d;
+  --ask-soft: #f1e6f7;
+  --code-bg: #eef1ef;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131816; --surface: #1a201d; --fg: #e3e8e5; --muted: #9aa6a0; --line: #2c3531;
+    --accent: #6cc4a8; --accent-soft: #1d3029; --warn: #e2b55a; --warn-soft: #33290f;
+    --done: #8fd08f; --done-soft: #1c2e1c; --ask: #d2a4ec; --ask-soft: #2c2033; --code-bg: #222a26;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131816; --surface: #1a201d; --fg: #e3e8e5; --muted: #9aa6a0; --line: #2c3531;
+  --accent: #6cc4a8; --accent-soft: #1d3029; --warn: #e2b55a; --warn-soft: #33290f;
+  --done: #8fd08f; --done-soft: #1c2e1c; --ask: #d2a4ec; --ask-soft: #2c2033; --code-bg: #222a26;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15.5px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 44px; }
+header { display: grid; gap: 10px; }
+h1, h2, h3 { font-family: var(--font-head); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 2rem; font-weight: 600; }
+h2 { font-size: 1.4rem; font-weight: 600; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; max-width: 70ch; }
+.lede { color: var(--muted); font-size: 1.05rem; }
+section { display: grid; gap: 16px; }
+.sub { color: var(--muted); max-width: 70ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; max-width: 75ch; }
+a { color: var(--accent); }
+.chip { display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 2px; }
+.chip.done { background: var(--done-soft); color: var(--done); }
+.chip.ask { background: var(--ask-soft); color: var(--ask); }
+.chip.fix { background: var(--warn-soft); color: var(--warn); }
+.chip.new { background: var(--accent-soft); color: var(--accent); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card h3 { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.card p, .card li { color: var(--fg); }
+.card .q { color: var(--muted); font-size: 0.92rem; }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 0.93rem; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-head); font-weight: 600; font-size: 0.85rem; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 500; }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; background: transparent; }
+.scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.scen .card h3 { font-size: 1rem; }
+.steps { display: grid; gap: 10px; counter-reset: none; }
+.phase { display: grid; grid-template-columns: 110px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.phase .when { font-family: var(--font-head); font-weight: 600; color: var(--accent); }
+@media (max-width: 560px) { .phase { grid-template-columns: 1fr; gap: 6px; } h1 { font-size: 1.6rem; } }
+.wire { font-family: var(--font-mono); font-size: 0.82rem; line-height: 1.45; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; overflow-x: auto; white-space: pre; margin: 0; }
+.legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.88rem; color: var(--muted); align-items: center; }
+.green { border: 2px solid var(--ask); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+<style>
+.kv { display: grid; grid-template-columns: 92px 1fr; gap: 4px 12px; font-size: 0.93rem; }
+.kv dt { color: var(--muted); font-weight: 500; }
+.kv dd { margin: 0; min-width: 0; }
+.items { display: grid; gap: 14px; }
+.item h3 { font-size: 1.08rem; }
+.verdict { font-weight: 600; }
+td.y { color: var(--done); font-weight: 600; }
+td.n { color: var(--muted); }
+</style>
+<main>
+<header>
+  <h1>karchy System Tuning</h1>
+  <p class="lede">Nine small settings from Omarchy and CachyOS that karchy doesn't have yet. Each is one small config file: no program added, nothing running in the background. Leave one out and you keep Arch's default.</p>
+  <div class="legend"><span class="chip done">Recommend</span> take it <span class="chip fix">Changed</span> recommended in a different form than Omarchy's <span class="chip new">Cosmetic</span> harmless, small</div>
+</header>
+
+<section>
+  <h2>At a glance</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Setting</th><th>What you'd notice with it</th><th>Your desktop</th><th>Your Framework</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>1 · Shutdown wait</td><td>Shutdown doesn't hang for 90 s on a stuck service</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip fix">Changed</span> CachyOS's 10 s</td></tr>
+      <tr><td>2 · Password lockout</td><td>A few lock-screen typos no longer lock <code>sudo</code> for 10 minutes</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip done">Recommend</span></td></tr>
+      <tr><td>3 · Disk scheduler</td><td>No desktop stutter during updates and big copies</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip fix">Changed</span> CachyOS's per-disk rules</td></tr>
+      <tr><td>4 · Open-file limit</td><td>Games, IDEs and file watchers stop hitting the limit</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip done">Recommend</span></td></tr>
+      <tr><td>5 · Mount event rate</td><td>Rarely anything; avoids boot hiccups with many drives</td><td class="y">yes</td><td class="n">little</td><td><span class="chip done">Recommend</span></td></tr>
+      <tr><td>6 · mpv on the GPU</td><td>Lower CPU and better battery while watching video</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip done">Recommend</span></td></tr>
+      <tr><td>7 · GPG key servers</td><td>Key imports stop failing when one server is down</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip done">Recommend</span></td></tr>
+      <tr><td>8 · Thunderbolt at boot</td><td>A USB4 dock's keyboard works at the disk-password prompt</td><td class="n">no USB4 ports</td><td class="y">yes</td><td><span class="chip done">Recommend</span></td></tr>
+      <tr><td>9 · Logout order</td><td>The wallpaper doesn't vanish a moment early at logout</td><td class="y">yes</td><td class="y">yes</td><td><span class="chip new">Cosmetic</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Each setting</h2>
+  <div class="items">
+
+    <div class="card item"><h3>1 · How long shutdown waits for a stuck service <span class="chip fix">Changed</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>Each service gets 90 seconds to stop before it's killed. One stuck service (often a network mount or a hung app) holds shutdown or reboot for a minute and a half.</dd>
+        <dt>Omarchy</dt><dd>5 seconds per service, and 5 seconds for your whole user session.</dd>
+        <dt>CachyOS</dt><dd>10 seconds per service; your user session keeps systemd's own limit.</dd>
+        <dt>The catch</dt><dd>Your VMs run inside your user session and ask for 15 seconds to shut down cleanly. Omarchy's 5-second session limit would cut a running VM off at shutdown, like pulling its power cord. CachyOS's version doesn't touch the session, so VMs get their 15 seconds.</dd>
+        <dt>Proposal</dt><dd class="verdict">CachyOS's 10 seconds, without Omarchy's session file.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>2 · Wrong passwords before a lockout <span class="chip done">Recommend</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>3 wrong passwords lock your account for 10 minutes for <code>sudo</code>, password prompts and the text console.</dd>
+        <dt>The problem</dt><dd>karchy's lock screen counts into the same tally, and it allows 10 tries. Mistype three times at the lock screen, unlock on the fourth, and <code>sudo</code> and Settings' password prompts are refused for the next 10 minutes, with no hint why.</dd>
+        <dt>Change</dt><dd>10 tries everywhere, matching the lock screen. The 10-minute lock after that stays.</dd>
+        <dt>Trade-off</dt><dd>Someone guessing at an unlocked console gets 7 more tries. On a personal machine with full-disk encryption that's a small cost.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>3 · Disk scheduler <span class="chip fix">Changed</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>On NVMe the kernel schedules nothing. During a big update, copy or build, the desktop's small reads wait behind the writes, and apps stutter or freeze for a moment.</dd>
+        <dt>Omarchy</dt><dd>One scheduler (Kyber) for every disk.</dd>
+        <dt>CachyOS</dt><dd>A scheduler per disk type: Kyber for NVMe, mq-deadline for SATA SSDs, BFQ for spinning drives (BFQ is much better for hard drives).</dd>
+        <dt>On your desktop</dt><dd>The NVMe system disk gets Kyber; the 3.6 TB SATA SSD gets mq-deadline. The Framework's NVMe gets Kyber.</dd>
+        <dt>Proposal</dt><dd class="verdict">CachyOS's rules.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>4 · How many files a program may open <span class="chip done">Recommend</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>Programs start allowed 1,024 open files. Programs that need more can raise it themselves, but not all do.</dd>
+        <dt>Who hits it</dt><dd>Games under Wine/Proton with esync, IDEs and language servers, file watchers in dev servers, sync tools. Symptoms: "too many open files", crashes, or a watcher that silently stops noticing changes.</dd>
+        <dt>Change</dt><dd>65,536 to start with. The hard ceiling stays 524,288.</dd>
+        <dt>Trade-off</dt><dd>None you'd notice.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>5 · Mount events per second <span class="chip done">Recommend</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>systemd processes 5 mount events per second.</dd>
+        <dt>Change</dt><dd>30 per second.</dd>
+        <dt>Why</dt><dd>Your desktop mounts several btrfs subvolumes, a data disk and NAS shares at boot. The low limit can delay local disks and other boot steps for a moment. Most of the time you'd see no difference.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>6 · mpv decodes on the graphics card <span class="chip done">Recommend</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>mpv decodes video on the CPU: the same problem Brave had with YouTube.</dd>
+        <dt>Change</dt><dd><code>hwdec=auto-safe</code>: mpv uses the GPU's decoder when it's known to be reliable for that video, and the CPU otherwise.</dd>
+        <dt>Why</dt><dd>Playback doesn't stutter when the CPU is busy, and the laptop's battery lasts longer during video.</dd>
+        <dt>Override</dt><dd>Your own <code>~/.config/mpv/mpv.conf</code> wins.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>7 · More GPG key servers <span class="chip done">Recommend</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>GPG asks one key server. When it's down or slow, importing a signing key fails: some AUR builds, <code>pacman-key --recv-keys</code>, verifying downloads.</dd>
+        <dt>Change</dt><dd>Five well-known key servers, giving up on each after 4 seconds.</dd>
+        <dt>Trade-off</dt><dd>None.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>8 · Thunderbolt and USB4 at the disk-password prompt <span class="chip done">Recommend</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>The Thunderbolt/USB4 driver loads after the disk is unlocked, so a keyboard on a USB4 dock doesn't work at the password prompt.</dd>
+        <dt>Change</dt><dd>Load it before the prompt, only where the kernel has it.</dd>
+        <dt>For you</dt><dd>Matters on the Framework with a USB4 dock. Your desktop board has no Thunderbolt or USB4, so nothing changes there.</dd>
+      </dl>
+    </div>
+
+    <div class="card item"><h3>9 · Logout order <span class="chip new">Cosmetic</span></h3>
+      <dl class="kv">
+        <dt>Arch today</dt><dd>At logout everything in the session is told to stop at once, so the bar and wallpaper vanish a split second before Hyprland closes.</dd>
+        <dt>Change</dt><dd>Hyprland stops first, then the rest.</dd>
+        <dt>Why</dt><dd>Polish only.</dd>
+      </dl>
+    </div>
+
+  </div>
+</section>
+
+<section>
+  <h2>Where each one lives, and how to undo it</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Setting</th><th>File</th><th>To change or undo</th></tr></thead>
+    <tbody>
+      <tr><td>1, 4, 5 · Shutdown wait, open files, mount events</td><td><code>/usr/lib/systemd/system.conf.d/</code> and <code>user.conf.d/</code></td><td rowspan="3">Put a file with the same name in the matching <code>/etc</code> folder; it replaces karchy's. An empty file switches it off.</td></tr>
+      <tr><td>3 · Disk scheduler</td><td><code>/usr/lib/udev/rules.d/</code></td></tr>
+      <tr><td>9 · Logout order</td><td><code>/usr/lib/systemd/user/…service.d/</code></td></tr>
+      <tr><td>2 · Lockout</td><td><code>/etc/security/faillock.conf</code> (the only file the lockout reads; it belongs to Arch's <code>pam</code> package)</td><td>The installer sets <code>deny = 10</code> once. Edit the line; pacman keeps your edit on updates.</td></tr>
+      <tr><td>6 · mpv</td><td><code>/etc/mpv/mpv.conf</code></td><td>Your <code>~/.config/mpv/mpv.conf</code> wins.</td></tr>
+      <tr><td>7 · GPG key servers</td><td><code>/etc/gnupg/dirmngr.conf</code></td><td>Your <code>~/.gnupg/dirmngr.conf</code> wins.</td></tr>
+      <tr><td>8 · Thunderbolt at boot</td><td><code>/etc/mkinitcpio.conf.d/</code> (the only place the boot-image tool reads)</td><td>Delete or edit it; pacman keeps your edit on updates.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</main>
