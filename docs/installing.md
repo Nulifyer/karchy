@@ -6,12 +6,13 @@ karchy installs from the stock Arch Linux ISO. The installer erases one disk and
 - LUKS2 encryption
 - btrfs with the subvolumes `@ @home @root @srv @cache @log @tmp @swap`
 - a swap file sized to RAM, with zswap
-- `linux-cachyos` plus `linux-cachyos-lts` (and the NVIDIA driver when an NVIDIA GPU is detected)
+- `linux-cachyos` plus `linux-cachyos-lts`
 - Limine, with snapshot boot entries (snapper + snap-pac + limine-snapper-sync)
 - NetworkManager and systemd-resolved
 - your user, with fish as the login shell
+- the karchy desktop from the `[karchy]` package repository: `karchy-desktop`, plus `karchy-laptop` on a machine with a battery and the NVIDIA driver with an NVIDIA GPU: `karchy-nvidia` for Turing (RTX 20 / GTX 16) and newer, `karchy-nvidia-580xx` for Maxwell, Pascal and Volta (GTX 900 and 10 series, Quadro M and P, Titan V; this also enables `[multilib]`). Kepler and older cards are not supported by NVIDIA's current drivers, so they keep nouveau; the installer prints a message when it finds one
 
-It also clones karchy into `~/.local/share/karchy`.
+After that, the system updates through pacman: `karchy update` (or `paru -Syu`) brings new versions of karchy's packages along with everything else.
 
 ## From the Arch ISO
 
@@ -24,31 +25,89 @@ It also clones karchy into `~/.local/share/karchy`.
    karchy/install/karchy-install
    ```
 
-3. Answer the form: disk (typed confirmation), keyboard, username, one password for both the disk and your login, name and email for git, computer name, timezone, and bees (off by default).
+3. Answer the form: disk (typed confirmation), keyboard, username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; default stable), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees (off by default).
 4. When it says it's done, remove the install media and reboot. At boot, type the password at the disk prompt.
 
 Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
 
 ## Unattended installs
 
-`karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL` and `KARCHY_BEES`. `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
+`karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL`, `KARCHY_BEES`, `KARCHY_CHANNEL` (`stable`, `rc`, `nightly`; `dev` for VM tests), `KARCHY_SECUREBOOT` (`auto`, the default, sets it up when the firmware is in Setup Mode; or `yes`/`no`), and `KARCHY_REPO_SERVER` and `KARCHY_REPO_SIGLEVEL` for another `[karchy]` repository. `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
 
 ## Testing in a VM
 
+Build the packages from the checkout (uncommitted changes included) and serve them to the VM:
+
 ```sh
+packaging/build                   # builds the packages into out/repo-dev
+tools/vm repo                     # leave running: serves out/ at http://10.0.2.2:8090
 tools/vm fetch
 tools/vm new --name inst
 tools/vm run --name inst --iso
 # in the VM:
-mkdir -p /root/src /mnt/karchy
-mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /mnt/karchy
-cp -r /mnt/karchy/. /root/src/ && umount /mnt/karchy
-/root/src/install/karchy-install --config /root/src/tests/vm-install.conf
+mkdir -p /root/karchy
+mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /root/karchy
+/root/karchy/install/karchy-install --config /root/karchy/tests/vm-install.conf
 # then stop the VM and boot it without --iso
 ```
 
-The installer clones the committed `HEAD` of the checkout it runs from, so commit before testing.
+To test an update, change the checkout, run `packaging/build` again and run `karchy update` in the VM. Only the packages whose contents changed get new versions.
+
+### On a Proxmox host, with 3D
+
+Local VMs draw in software (llvmpipe), so anything that needs a GPU can't be tested in them. With `--pve <ssh-target>` (or `KARCHY_VM_PVE`), `tools/vm` drives a VM on a Proxmox VE host instead, with VirGL (`vga: virtio-gl`) rendering on the host's GPU. The host must accept `ssh <ssh-target>` as root with a key and have `libgl1` and `libegl1` installed. The VM is the Proxmox VM named `karchy-<name>`, tagged `temp`; it boots with an empty CD drive unless started with `run --iso`.
+
+The guest is on the host's LAN bridge, so it can't see `10.0.2.2`. Instead, `repo` serves `out/` on this machine's loopback and opens an SSH reverse tunnel into the guest, through the Proxmox host. The guest reads the repository at `http://127.0.0.1:8090`, and this machine's firewall stays closed. `ssh`, `push` and `repo` log in with a throwaway key (`~/.local/state/karchy-vm/pve/`), which the guest agent installs for root along with starting sshd and, until the next reboot, an iptables rule that lets the Proxmox host through the installed system's ufw. Rerun `repo` after each guest reboot.
+
+```sh
+pve="tools/vm --pve root@pve --name test"
+packaging/build
+$pve fetch                  # current Arch ISO into the host's local ISO storage, checked
+$pve new                    # 8 cores, 8 GiB, 48 GiB on local-zfs, VirGL; --vmid N to choose the ID
+$pve run --iso              # watch it in the Proxmox web UI's console
+$pve push                   # once the ISO has booted: copies the checkout to /root/karchy
+$pve repo                   # leave running
+$pve ssh /root/karchy/install/karchy-install --config /root/karchy/tests/pve-install.conf
+$pve stop && $pve run       # boots the installed system; type karchy-test at the disk prompt
+```
+
+`screenshot`, `type`, `key`, `click`, `drag`, `exec [--user]`, `stop`, `status` and `snap`/`restore`/`snapshots` work as they do with libvirt. Screenshots come from the VM's VNC socket (QMP `screendump` has nothing to dump once the guest shows a VirGL frame), and need `gvnccapture` (gtk-vnc) on this machine. `define` and `destroy` aren't offered: change or delete the VM in the Proxmox web UI.
+
+## Dev mode
+
+To try changes on one machine without building packages, clone karchy and point `KARCHY_PATH` at it in `/etc/karchy.conf`:
+
+```sh
+KARCHY_PATH=/home/you/Projects/karchy
+```
+
+The session then runs the shell, Hyprland layer and commands from the checkout after the next login. Anything root runs still uses the packaged copy in `/usr/share/karchy` (D-55).
 
 ## Known limitations
 
-- **Desktop:** the base install has no desktop yet. Desktop setup is the next phase 1 step.
+- The `[karchy]` repository is not published yet and its packages are not signed; only a local build works, with `KARCHY_REPO_SIGLEVEL="Optional TrustAll"`.
+
+## Secure Boot
+
+To have the installer set up Secure Boot, put the firmware in Setup Mode first: in its Secure Boot settings, clear or delete the keys (sometimes called "Reset to Setup Mode" or "Erase all Secure Boot settings"). The form then offers Secure Boot (D-31):
+
+- sbctl creates karchy's own keys and enrolls them together with Microsoft's. Microsoft's keys are needed for GPU firmware (option ROMs) and for booting Windows.
+- Limine's EFI binary is signed, and the BLAKE2 hash of `limine.conf` is enrolled into it. Kernels and initramfs files aren't signed: `limine.conf` lists each file's hash, and Limine refuses any file that doesn't match. With a hash enrolled and Secure Boot on, Limine's config editor is disabled.
+- After each kernel, initramfs or snapshot change, limine's hooks update the hashes, re-enroll and re-sign. karchy's `95-karchy-limine-fallback` hook keeps the firmware's fallback copy (`EFI/BOOT/BOOTX64.EFI`) identical to the signed binary.
+- Then turn Secure Boot on in the firmware if it didn't turn on by itself.
+
+If a firmware update clears the keys, the machine still boots, without Secure Boot. At login a notification offers to enroll the keys again (`karchy-secureboot enroll`).
+
+## Updates and release channels
+
+`karchy update` (or the bar's updates indicator, or Settings › About) updates everything in one pass: karchy's own packages from `[karchy]`, and Arch, CachyOS and AUR packages through paru, with snapper snapshots before and after. It then reloads the desktop and shows the karchy release change with a link to its release notes.
+
+karchy's packages come from one release channel (D-61):
+
+| Channel | What you get |
+|---|---|
+| stable | releases, such as 3.0.0 |
+| rc | release candidates (3.1.0-rc.1) as well as releases |
+| nightly | every change to karchy's main branch |
+
+Pick one in the installer, change it in Settings › About or with `karchy channel set <channel>`. Moving to an older channel (nightly back to stable) installs that channel's versions even though they are older. `karchy channel` shows the channel and the installed release.

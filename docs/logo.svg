@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="karchy logo">
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="#202020"/>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="none" stroke="#d8a657" stroke-opacity="0.35" stroke-width="2"/>
+  <!-- a k whose arm is the slope of an arch -->
+  <g fill="none" stroke="#d8a657" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44 30 V98"/>
+    <path d="M86 34 L46 70"/>
+    <path d="M62 62 L88 98"/>
+  </g>
+  <circle cx="86" cy="34" r="5.5" fill="#ddc7a1"/>
+</svg>

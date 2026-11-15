@@ -7,7 +7,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Area | Choice | Source |
 |---|---|---|
 | Repos | `[cachyos]` (generic), then Arch live mirrors, then `[omarchy]` (D-45) | [C] + [O] |
-| Kernel | `linux-cachyos`, with `linux-cachyos-lts` as the fallback; NVIDIA machines add both `-nvidia-open` modules and CachyOS's `nvidia-utils` (D-45) | [C] |
+| Kernel | `linux-cachyos`, with `linux-cachyos-lts` as the fallback; NVIDIA machines add both `-nvidia-open` modules and CachyOS's `nvidia-utils` (D-45), or both `-nvidia-580xx` modules and `nvidia-580xx-utils` on Maxwell, Pascal and Volta cards | [C] |
 | Disk | LUKS2, btrfs `zstd:1,noatime`, subvolumes `@ @home @root @srv @cache @log @tmp @swap`, 4 GiB ESP at `/boot` | [O+C] |
 | Initramfs | systemd + `sd-encrypt` | [C] |
 | Boot | Limine + limine-snapper-sync; text console, no Plymouth | [O+C] |
@@ -15,10 +15,10 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Swap | zswap (zstd) + swap file on `@swap` sized to RAM; no zram | [New] |
 | /tmp | tmpfs, cap = RAM size, aged out after 10 days | [New] |
 | Login | greetd auto-login → uwsm → Hyprland | [New] |
-| Keyring | Open: oo7, or gnome-keyring + `pam_systemd_loadkey` | [New] |
+| Keyring | oo7 (Secret Service), unlocked at login by a random per-user key imported as a systemd credential (D-57); Brave and VS Code store passwords there | [New] |
 | sudo / polkit | Shell polkit overlay; per-terminal sudo cache (10 min); fingerprint with lid gate on the laptop | [O] |
 | Firewall | ufw deny incoming (+ rules for Podman as needed) | [O] |
-| Network | NetworkManager + wpa_supplicant + systemd-resolved; no Omarchy connectivity URL | [O] |
+| Network | NetworkManager + wpa_supplicant + systemd-resolved; portals detected with Arch's own check, and "Sign in to network" opens `http://neverssl.com` in a floating window. Tuning in karchy-settings (`/usr/lib`, so files in `/etc` win): Wi-Fi power save off, ARP only for the interface's own address, TCP MTU probing, BBR + fq; avahi is the only `.local` responder (resolved's LLMNR and mDNS off). Work or school Wi-Fi (802.1X) checks the server's certificate against the system CAs and a domain taken from the identity; skipping the check is an explicit choice behind a warning. Trusted networks (D-68): one list, bound to the router's hardware address (and, for Wi-Fi, the name and security), so the same profile behind another router isn't trusted; Settings › Network says "Trusted, but a different router: not trusted now". DNS: on networks that aren't trusted, the live connection uses Quad9 over TLS (`/etc/karchy/dns` changes the provider); trusted networks keep the router's DNS; saved networks are never rewritten, and a VPN's own DNS wins while it is up. The network panel (D-66, D-68) says the real state in its status line (no rotating phrases), shows one attention row only when something needs the person (networking off, airplane mode, the hardware switch, a sign-in page, a failed VPN, DNS blocked) with the action that resolves it, the VPN row, ping, loss, IP and gateway, the band, known and other networks, and "Network settings…", which opens Settings › Network at the connection. Airplane mode (`karchy-airplane`, the airplane key): every radio off with rfkill, kept across reboots by systemd-rfkill, with an on-screen message and the `net.airplane` bar icon | [O] + [New] |
 | Bluetooth | bluez + shell panel | [O] |
 | Printing + scanning | Optional feature (Settings › Printers & scanners), D-38 | [O] + [New] |
 | Audio | PipeWire + WirePlumber | [O+C] |
@@ -37,12 +37,12 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Compositor | Hyprland, Lua config with Omarchy's default/user layering and `o.*` helpers | [O] |
 | Look | gaps 5/10, 2 px theme-accent border, square corners, no blur or shadow | [O] |
 | Animations | Omarchy fast set, instant workspace switch | [O] |
-| Layouts | Dwindle + per-workspace floating mode with `omarchy-hyprland-titlebars` | [O] |
+| Layouts | Dwindle + per-workspace floating mode with titlebars (minimize, maximize, close): `karchy-hyprland-titlebars`, Omarchy's hyprbars fork built by karchy against Arch's Hyprland (D-60). Minimized windows come back from the bar's minimized indicator or Super+Shift+M | [O] + [New] |
 | Workspaces | Per-monitor blocks of 10 | [O] |
 | Special workspace | Drop-down terminal (no AI agent auto-start) | [O] |
 | Opacity | Omarchy default (terminals 0.985/0.96) | [O] |
 | Window rules | Omarchy tag system, pruned to installed apps | [O] |
-| Idle | Shell screensaver + lock + screen off | [O] |
+| Idle | Shell screensaver + lock + screen off [O]; laptops on battery also suspend (then hibernate) after 15 minutes idle: `idle.suspend` (seconds, 0 = off) and `idle.suspendOnAC` in `~/.config/karchy/shell.json` [New] | [O] + [New] |
 | Gestures | 3-finger swipe left/right = workspace | [O] |
 
 ## Shell (Omarchy Quickshell)
@@ -51,8 +51,10 @@ Kept:
 - **Core:** host, IPC, plugin registry and CLI, bar engine, `omarchy` router, Commons and Ui, `shell.json`.
 - **Services:** notifications (with the hover ✕), OSD, polkit, lock, idle, clipboard history, reminders, theme/background picker, speed tests, and the battery service (only on machines with a battery).
 - **Menu:** the engine, used as the launcher (app search). The tree is in `menu.md`.
-- **Bar modules:** workspaces, clock, tray, audio, microphone, network, Bluetooth, display brightness, power, media, and the indicators for kept features.
-- **Proposed, needs user approval:** the active-window title module, and a pacman/paru update badge [New] to replace Omarchy's update badge.
+- **Floating bar** [New]: floats inset from the screen edge and docks on a monitor while a window there is maximized; `bar.style` auto, floating or docked (`karchy bar style`, Settings › Appearance). See `architecture.md`, "The bar: floating and docked".
+- **Bar modules:** workspaces, clock, tray, audio, microphone, network, Bluetooth, display brightness, power, media, the indicators for kept features, and running VMs and containers (each shown only while something runs; D-63).
+- **Updates indicator** [New] (D-61): shows while karchy or package updates wait (`karchy-update-check`, a user timer every 6 hours, no root); click runs `karchy update`. A new karchy release is also announced once by notification. **Minimized indicator** [New] (D-60): shows while windows are minimized; click brings one back.
+- **Proposed, needs user approval:** the active-window title module.
 
 Dropped: dock and app grid, emoji picker, intro animations and owe, night light, weather, world clock, AI usage, Tailscale, Dropbox, remote session, dev gallery.
 
@@ -62,18 +64,25 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 |---|---|---|
 | Engine | Omarchy theme engine + templates | [O] |
 | Themes | All 23 Omarchy themes + **nulifyer** (default) | [O] + [New] |
-| GTK | `adw-gtk-theme` + a new `gtk.css.tpl` with theme colors for GTK3/4 | [New] |
-| Qt | qtengine colors template | [O] |
-| VS Code | Generated theme extension; `settings.json` never edited | [New] |
+| GTK | `adw-gtk-theme`; GTK 3 and GTK 4 (libadwaita) apps get the theme's full palette (`default/themed/gtk.css.tpl`, `gtk4.css.tpl`) and follow a switch live in open apps; checked with Thunar, GNOME Disks and Mission Center | [New] |
+| Qt | Qt's GTK 3 platform theme (`QT_QPA_PLATFORMTHEME=gtk3`), so Qt apps take the generated GTK 3 colors and follow a theme switch live; checked with qpwgraph. No separate Qt template | [O] |
+| VS Code | Generated theme extension; `settings.json` never edited. Pick "Karchy" once in the color theme picker | [New] |
 | fish prompt | Native prompt + theme-color template, fast git status, command duration and exit code | [New] |
-| Terminal | foot include line | [O] |
+| Terminal | foot include line. Starter configs for Ghostty, kitty and Alacritty (in `/etc/skel`) include the theme file the same way, so one installed later follows the theme; `karchy-restart-terminal` reloads open windows on a switch | [O] |
+| Optional apps | Not in the base install; each follows the theme once installed, and nothing is written for an app that isn't. The app's own config is never edited: the user picks the karchy theme once. All retint open windows on a switch. Checked in the VM under nulifyer and flexoki-light, switching with each app open (2026-11-14) | |
+| — Neovim | Plain color scheme from the theme (`default/themed/neovim-colors.lua.tpl`, VS Code's syntax colors, treesitter and LSP groups), linked to `~/.local/share/nvim/site/colors/karchy.lua`; select once with `:colorscheme karchy` (or `vim.cmd.colorscheme("karchy")` in your init.lua). LazyVim users can use `neovim.lua` in the current theme instead | [New] |
+| — Claude Code | `~/.claude/themes/karchy.json`; pick "Karchy" once in `/theme` | [O] |
+| — T3 Code | `~/.t3/userdata/themes/karchy.json`; pick it once in Settings › Appearance or with `t3 theme set karchy` | [O] |
+| — Pi | `~/.pi/agent/themes/karchy-system.json`; pick "karchy-system" once in `/settings` › Theme | [O] |
+| — Obsidian | A `Karchy` theme folder in each vault Obsidian knows (`<vault>/.obsidian/themes/Karchy`); pick it once in Settings › Appearance › Themes. A vault added later gets it on the next theme switch | [O] |
+| — Keyboard RGB | The accent color on ASUS ROG (`asusctl`) and Framework 16 (`qmk_hid`) keyboards, when that tool is installed; untested on hardware | [O] |
 
 ## Apps in the base install
 
 | Role | App | Source |
 |---|---|---|
 | Terminal | foot (server mode + footclient) | [O] |
-| Browser | Brave Origin (`brave-origin-bin`, `[omarchy]`); PDFs open in the browser | [O] |
+| Browser | Brave Origin (`brave-origin-bin`, `[omarchy]`); PDFs open in the browser; video is decoded on the graphics card (VA-API flags in `brave-origin-flags.conf`, NVIDIA through `nvidia-vaapi-driver`) | [O] |
 | File manager | Thunar + gvfs, gvfs-smb, gvfs-mtp, tumbler; right-click actions per D-36 | [New] |
 | Default apps | Settings › Default apps, writing `mimeapps.list` (D-37) | [New] |
 | Editor | VS Code (`visual-studio-code-bin`, `[omarchy]`) with the user's own settings | [O] |
@@ -85,8 +94,8 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 | Screenshots | Omasnap (screenshot + annotation, `[omarchy]`), plus screen recording | [O] |
 | Calculator | omacalc (`[omarchy]`) | [O] |
 | Disk utility | GNOME Disks | [O] |
-| File sharing | LocalSend (`[omarchy]`), port open only on trusted networks | [O] + [New] |
-| Settings | karchy Settings window (shell plugin, D-27) | [New] |
+| File sharing | LocalSend (`[omarchy]`), port open only on trusted networks (router included, D-68); closed at boot until one connects | [O] + [New] |
+| Settings | karchy Settings window (shell plugin, D-27, D-56): Displays, Input, Network, Appearance, Default apps, Optional features, About; more sections (Power, Printers) follow in phase 2. Network, on one scroll: Status (a card per active connection: addresses, gateway, DNS in use and whether it is encrypted, link, MAC), Saved networks (each opens in place: trusted network, connect automatically, metered, Wi-Fi band, private Wi-Fi address, IPv4 settings checked before saving, share, forget with Cancel focused; "Join hidden network…"), DNS (Automatic, Quad9, Cloudflare or custom servers; encrypted DNS; use on trusted networks too; encrypted only; each connection's state in words), VPN (the VPN package's mode, state and local devices on trusted networks, or plain VPN profiles with switches; importing a WireGuard file), Sharing and firewall (read-only), Advanced (Wi-Fi country, connectivity check) | [New] |
 | Web apps | Omarchy web-app mechanism, with fixed icons | [O] + [New] |
 | Shell | fish, native config from the dotfiles user layer | [New] |
 | Plugins | omarchy-vpn-plugin, omarchy-project-picker (Ctrl+Alt+P) | [New] |
@@ -94,8 +103,8 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 ## Mounts
 
 - **USB:** udisks2 + udiskie automount with a notification [O].
-- **Internal data disks:** fstab at `/mnt/<label>`, with `nofail` and `x-gvfs-show`, owned by the user, NTFS via `ntfs3`. The installer sets up existing ones; a notification offers new ones [New].
-- **NAS:** browse via gvfs-smb. The Thunar action "Keep this mount" writes an fstab systemd automount (`nofail,_netdev,x-systemd.idle-timeout`) with root-only credentials; "Remove kept mount" undoes it [New].
+- **Internal data disks:** fstab at `/mnt/<label>`, with `nofail` and `x-gvfs-show`, owned by the user, NTFS via `ntfs3`. The installer sets up existing ones; a notification offers new ones [New]. Built: `karchy-disk-fstab`, `karchy-disks-check`, `karchy-disk-keep`.
+- **NAS:** browse via gvfs-smb. The Thunar action "Keep this mount" writes an fstab systemd automount (`nofail,_netdev,x-systemd.idle-timeout`) with root-only credentials; "Remove kept mount" undoes it [New]. Built: `karchy-mount-keep`.
 
 ## Install tiers (D-28)
 
@@ -110,12 +119,20 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 - `avahi` + `nss-mdns`
 - LocalSend, GNOME Disks, omacalc, Omasnap
 - `xdg-user-dirs`, `man-db`
+- `openssh`, `rsync`, `unzip`
+- a check that the desktop draws on the graphics card: Settings › About shows what draws it (`karchy-hw-renderer`, through EGL like every Wayland app), and a login notification warns when it falls back to the processor (llvmpipe), with the likely cause and the fix; its actions are Open Settings and Don't show again, and About can turn the warning back on
+- the Wi-Fi regulatory domain, set from the timezone when a Wi-Fi device appears (each boot) and when the timezone is changed from the menu (`iw`, `wireless-regdb`; ported from CachyOS). Without it the kernel stays in the world domain, with no 6 GHz. A `COUNTRY=XX` line in `/etc/karchy/wifi-country` overrides it; Settings › Network › Advanced sets or clears it (`karchy-network-country`).
 
 **Detected at install:**
 - CPU microcode (`amd-ucode` or `intel-ucode`).
-- **NVIDIA GPU:** `linux-cachyos-nvidia-open` and `nvidia-utils`, `libva-nvidia-driver`, the NVIDIA suspend/resume/hibernate services.
-- **Battery:** the shell battery service (low and critical warnings), suspend-then-hibernate, `tzupdate` automatic timezone, power-profiles-daemon.
-- **Framework:** `framework-system` (charge limit, EC tools).
+- **NVIDIA GPU:** the driver follows the GPU generation, read from the PCI device ID in sysfs (`karchy-hw-nvidia-generation`; with several NVIDIA GPUs the newest generation decides):
+  - Turing and newer (device ID 0x1e00 and up): `karchy-nvidia`, with `linux-cachyos{,-lts}-nvidia-open` and `nvidia-utils`. The open modules need the GSP firmware these cards have.
+  - Maxwell, Pascal and Volta (0x1340 to 0x1dff): `karchy-nvidia-580xx`, with `linux-cachyos{,-lts}-nvidia-580xx` and `nvidia-580xx-utils`, NVIDIA's 580 legacy branch. That driver depends on its 32-bit libraries, so these machines also get `[multilib]` enabled. Hyprland uses the EGL backend for NVIDIA VA-API on these cards (no GSP).
+  - Kepler and older: no NVIDIA driver (NVIDIA's current drivers dropped them; the last was 470). The installer says so, and nouveau drives the card.
+
+  Both packages add `libva-nvidia-driver` and early KMS (NVIDIA's modules in the initramfs), and the installer enables the NVIDIA suspend/resume/hibernate services. `karchy-nvidia-580xx` provides and conflicts with `karchy-nvidia`, so only one is installed and anything that checks for `karchy-nvidia` (such as GPU containers) finds either.
+- **Battery:** the shell battery service (low and critical warnings), suspend-then-hibernate, power-profiles-daemon. Automatic timezone is not built yet: `tzupdate` is AUR-only and asks a web service where you are (needs a decision).
+- **Framework** (DMI vendor): `framework-system` (`framework_tool`: charge limit, firmware and EC state).
 - **Fingerprint reader:** fprintd + PAM (D-14).
 - **Firmware in Setup Mode:** the Secure Boot step (D-31).
 
@@ -123,8 +140,10 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 
 **Optional (Settings › Optional features):**
 - Printers & scanners: CUPS + hardened cups-browsed, `sane`, `sane-airscan`, `simple-scan`, plus group setup (D-38).
+- Containers: rootless Podman (`podman`, `crun`, `netavark`, `aardvark-dns`, `passt`), `podman-docker` for the `docker` command, `docker-compose` against the user's Podman socket (`DOCKER_HOST` via `/etc/environment.d`), and `nvidia-container-toolkit` with karchy-nvidia; the Containers panel and window (D-63).
+- Virtual machines: `qemu-desktop`, `edk2-ovmf`, `swtpm`, `spice-gtk`; `karchy vm`, VMs in `~/VMs` (no copy-on-write), no libvirt; the VMs panel and window (D-63).
 - Home backup to the NAS (phase 7).
 
 ## Installed later by the user (not in base)
 
-dotnet, go, zig, rust, bun, Podman, AI CLIs (from pacman, `[omarchy]` or the AUR), Steam, Flatpak, a password manager (the user's is Proton Pass).
+dotnet, go, zig, rust, bun, AI CLIs (from pacman, `[omarchy]` or the AUR), Steam, Flatpak, a password manager (the user's is Proton Pass).

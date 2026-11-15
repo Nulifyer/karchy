@@ -12,6 +12,8 @@ The Omarchy menu engine with a karchy tree (D-18). Super+Space opens it, and typ
   - Theme and background: opens the picker [O]
   - Font: must not rewrite dotfile-managed configs (D-23) [O]
   - Workspace layout: tiling or floating [O]
+- **Settings:** opens the karchy Settings window (D-27) [New]
+- **Record Screen:** without audio, with desktop audio, with desktop and microphone audio, with audio and webcam (only when a webcam is present); Stop Recording while one runs. Then pick a region, window or monitor [O], restored 2026-11-14 at the user's request
 - **Setup**
   - Plugins: enable, disable, add, clone, remove [O]
   - Security: fingerprint, FIDO2, sshd, SSH agent [O]
@@ -29,4 +31,4 @@ Proposed additions (need user approval):
 - **Add network share** (optional, D-24), if the Thunar "keep" flow is not enough [New].
 - Update › **karchy** runs `karchy update` [New].
 
-Dropped: Agent, Learn, the Install and Remove app catalogs, toggles, the Capture submenu, Share (LocalSend), bar and window style options, channels, kernel picker, branding, Direct Boot, Reset Computer.
+Dropped: Agent, Learn, the Install and Remove app catalogs, toggles, the rest of the Capture submenu (text, QR, color; screenshots stay on Print), Share (LocalSend), bar and window style options, channels, kernel picker, branding, Direct Boot, Reset Computer.

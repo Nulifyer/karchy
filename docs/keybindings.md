@@ -8,11 +8,13 @@ This is the complete default set. Anything not listed is unbound. New bindings n
 |---|---|---|
 | Alt+F4 | Close window | [New] (Omarchy: Super+W) |
 | Super+Up | Maximize | [New] |
-| Super+Down | Restore / unmaximize | [New] |
+| Super+Down | Restore a maximized window, otherwise minimize it (as in Windows) | [New] |
 | Super+Left / Super+Right | Focus window left/right | [O] |
 | Super+Shift+Arrows | Swap window | [O] |
 | Super+T | Toggle floating for one window | [O] |
 | Super+F | Fullscreen | [O] |
+| Super+M | Minimize all windows on the workspace (as in Windows) | [New] |
+| Super+Shift+M | Restore minimized windows to where they were (as in Windows) | [New] |
 | Super+Minus / Super+Equal | Resize width | [O] |
 | Super+Shift+Minus / Super+Shift+Equal | Resize height | [O] |
 | Super+LMB drag / Super+RMB drag | Move / resize | [O] |
@@ -49,7 +51,7 @@ This is the complete default set. Anything not listed is unbound. New bindings n
 | Super+Comma | Dismiss latest notification | [O] |
 | Super+Shift+Comma | Dismiss all notifications | [O] |
 | Super+Shift+Alt+Comma | Notification history | [O] |
-| Ctrl+Shift+Esc | btop (task manager) | [New] |
+| Ctrl+Shift+Esc | Mission Center (task manager: performance, apps, services); btop stays in the menu | [New] |
 
 ## Apps
 
@@ -76,6 +78,7 @@ This is Omarchy's full set [O]:
 - **Keyboard backlight:** up, down, cycle.
 - **Touchpad:** toggle.
 - **Eject.**
+- **Airplane mode** (the airplane key, `XF86RFKill`): every radio off or on, with an on-screen message [New]. The kernel switches the radios for this key (`CONFIG_RFKILL_INPUT`), also at the login prompt; the binding runs `karchy-airplane key`, which shows the result and toggles only on a kernel without that handler, so the two never undo each other. Approved by the user (D-68, N-5).
 
 ## Touchpad
 
