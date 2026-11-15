@@ -22,7 +22,18 @@ post_upgrade() {
 
 pre_remove() {
   # Leave the machine as it was: tunnel down, guard gone, DNS restored.
-  [[ -e /etc/nulifyer-vpn/config ]] && /usr/lib/nulifyer-vpn/control shutdown 2>/dev/null || true
+  # Nothing may start the policy again first (taking the tunnel down is
+  # itself a network event), so the units stop before the shutdown. pacman
+  # runs this in a network namespace of its own, so the shutdown itself
+  # runs as a unit, in the system's.
   systemctl disable --now nulifyer-vpn-policy.path nulifyer-vpn-guard.service >/dev/null 2>&1 || true
-  systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
+  systemctl stop nulifyer-vpn-check.timer nulifyer-vpn-check.service nulifyer-vpn-policy.service >/dev/null 2>&1 || true
+  systemctl start nulifyer-vpn-shutdown.service >/dev/null 2>&1 || true
+}
+
+post_remove() {
+  # Whatever ran last, no kill switch outlives the package.
+  systemd-run --quiet --wait --collect /usr/bin/bash -c \
+    'nft delete table inet nulifyer_vpn_guard 2>/dev/null; while ip -4 rule del priority 20054 protocol 242 2>/dev/null; do :; done; rm -rf /run/nulifyer-vpn' \
+    >/dev/null 2>&1 || true
 }

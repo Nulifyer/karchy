@@ -33,6 +33,8 @@ flock -x 9
 kind=${1:-event}
 [[ -e $NV_PENDING ]] && kind=event
 rm -f "$NV_PENDING"
+# Stopped for package removal: leave everything as the shutdown left it.
+[[ ! -e $NV_RUN/stopped ]] || exit 0
 now=$(date +%s)
 mode=$(nv_read_mode)
 

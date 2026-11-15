@@ -154,7 +154,7 @@ def main():
     subprocess.run(["nmcli", "connection", "modify", config["VPN_CONNECTION"], "connection.autoconnect", "no"], check=True)
     subprocess.run(["systemctl", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "enable", "--now", *UNITS], check=True)
-    subprocess.run(["/usr/lib/nulifyer-vpn/control", "refresh"], check=True)
+    subprocess.run(["/usr/lib/nulifyer-vpn/control", "start"], check=True)
     integration = subprocess.run(
         ["bash", "-c", "source /usr/lib/nulifyer-vpn/common.sh; nv_load_config; echo $NV_INTEGRATION"],
         text=True, capture_output=True).stdout.strip()
