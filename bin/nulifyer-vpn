@@ -1,13 +1,61 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# nulifyer-vpn: the WireGuard VPN's command.
+#
+#   nulifyer-vpn status [--json]       the published state (anyone)
+#   nulifyer-vpn mode [off|auto|on]    show or set the mode
+#   nulifyer-vpn portal-pause          let a captive portal's sign-in through
+#                                      for at most 5 minutes; protection comes
+#                                      back by itself once the network is online
+#   nulifyer-vpn reconnect             restart the tunnel, keeping the mode
+#   nulifyer-vpn setup [config-file]   check and install the configuration
+#                                      (asks for an administrator's password)
+#
+# mode, portal-pause and reconnect run the root helper through pkexec; the
+# package's polkit rule allows exactly those for local members of wheel
+# without a password. on, off and auto are short for mode on, off and auto.
 set -euo pipefail
 
+readonly LIB=/usr/lib/nulifyer-vpn
+readonly STATUS=/run/nulifyer-vpn/status
+
+usage() {
+  sed -n 's/^#   \(nulifyer-vpn .*\)/  \1/p' "$0" | sed 's/  \{2,\}.*//' >&2
+  exit 2
+}
+
+root() {
+  if (( EUID == 0 )); then exec "$LIB/control" "$@"; fi
+  exec pkexec "$LIB/control" "$@"
+}
+
 command=${1:-status}
-case "$command" in
-  on|off|auto|toggle|reconnect|mode|status|verify)
-    exec pkexec /usr/local/libexec/nulifyer-vpn-control "$command"
+case $command in
+  status)
+    if [[ ${2:-} == --json ]]; then
+      cat "$STATUS" 2>/dev/null || { printf 'nulifyer-vpn is not running.\n' >&2; exit 1; }
+    else
+      jq -r '"\(.state)\(if .reason != "" then " (" + .reason + ")" else "" end), mode \(.mode)\(if .network then ", " + (.network.name // .network.device) else "" end)"' \
+        "$STATUS" 2>/dev/null || { printf 'nulifyer-vpn is not running.\n' >&2; exit 1; }
+    fi
     ;;
-  *)
-    printf 'Usage: nulifyer-vpn {on|off|auto|toggle|reconnect|mode|status|verify}\n' >&2
-    exit 2
+  mode)
+    if [[ -z ${2:-} ]]; then
+      jq -r '.mode' "$STATUS" 2>/dev/null || sed -n '1p' /var/lib/nulifyer-vpn/mode 2>/dev/null || printf 'auto\n'
+      exit 0
+    fi
+    [[ $2 =~ ^(off|auto|on)$ ]] || usage
+    root mode "$2"
     ;;
+  on|off|auto) root mode "$command" ;;
+  portal-pause|reconnect) root "$command" ;;
+  setup)
+    file=${2:-}
+    [[ -n $file ]] || file=${XDG_CONFIG_HOME:-$HOME/.config}/nulifyer-vpn/config
+    [[ -r $file ]] || { printf 'No configuration at %s. Start from /usr/share/nulifyer-vpn/config.example.\n' "$file" >&2; exit 1; }
+    # The file is read here, as you; root gets only its text and checks it.
+    if (( EUID == 0 )); then exec "$LIB/configure" <"$file"; fi
+    exec pkexec "$LIB/configure" <"$file"
+    ;;
+  -h|--help|help) usage ;;
+  *) usage ;;
 esac

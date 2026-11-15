@@ -1,12 +1,15 @@
 [Unit]
-Description=Install the VPN transition kill switch before networking
+Description=Close the VPN kill switch before networking starts
+Documentation=https://github.com/Nulifyer/omarchy-vpn-plugin
 DefaultDependencies=no
 After=local-fs.target
 Before=network-pre.target NetworkManager.service
+Wants=network-pre.target
+ConditionPathExists=/etc/nulifyer-vpn/config
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/libexec/nulifyer-vpn-control boot
+ExecStart=/usr/lib/nulifyer-vpn/control boot
 RemainAfterExit=yes
 
 [Install]

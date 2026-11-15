@@ -1,9 +1,0 @@
-[Unit]
-Description=Evaluate WireGuard health and update the VPN leak guard
-After=NetworkManager.service dnscrypt-proxy.service nulifyer-vpn-guard.service
-Wants=NetworkManager.service dnscrypt-proxy.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/libexec/nulifyer-vpn-monitor
-TimeoutStartSec=45

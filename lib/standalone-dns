@@ -1,7 +1,14 @@
-#!/usr/bin/env bash
+#!/bin/bash
+# Stock Omarchy only (INTEGRATION=standalone): networks that aren't trusted
+# use DNSCrypt-proxy on 127.0.0.1, written into their saved profiles with a
+# snapshot to restore. On karchy, karchy's own DNS helper owns upstream DNS
+# and this is never run.
 set -euo pipefail
+# shellcheck source=lib/common.sh
+source /usr/lib/nulifyer-vpn/common.sh
+nv_require_root
+nv_load_config
 
-readonly CONFIG=/etc/nulifyer-vpn/config
 readonly PROFILE_STATE=/var/lib/nulifyer-vpn/profiles
 readonly PROPERTIES=(
   ipv4.ignore-auto-dns
@@ -14,8 +21,6 @@ readonly PROPERTIES=(
   ipv6.dns-priority
 )
 
-# shellcheck source=/dev/null
-source "$CONFIG"
 install -d -m 0700 "$PROFILE_STATE"
 
 valid_uuid() {

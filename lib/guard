@@ -1,0 +1,174 @@
+#!/bin/bash
+# The kill switch: nulifyer-vpn's own nftables table (inet nulifyer_vpn_guard).
+# It filters only outgoing traffic and never touches ufw's chains.
+#
+# Usage: guard off
+#        guard <closed|ready|portal> [upstream=IF] [gateway=IP] [lan=CIDR,..]
+#                                     [dns=IP,..] [hairpin=IP]
+#
+#   closed   nothing leaves but DHCP, IPv6 neighbour discovery, NTP, the
+#            WireGuard endpoint, encrypted DNS to the configured servers, the
+#            tunnel's health probe and a ping to the router (karchy reads the
+#            router's address to recognise trusted networks)
+#   ready    closed, plus everything through the tunnel
+#   portal   closed, plus web traffic (tcp 80 and 443) and DNS to the
+#            network's own servers on the upstream link: signing in to a
+#            captive portal, for at most the pause the policy grants
+#   lan=     also the local network on the upstream link (trusted networks in
+#            On mode, so the NAS and printers still work)
+#   dns=     also plain DNS to these servers on the upstream link (the
+#            router's, for its local names)
+#   hairpin= a home router whose broken hairpin NAT answers from its own
+#            address: its WireGuard replies get the endpoint's address back
+#            before connection tracking, so ufw sees them as replies
+set -euo pipefail
+# shellcheck source=lib/common.sh
+source /usr/lib/nulifyer-vpn/common.sh
+nv_require_root
+nv_load_config
+
+readonly TABLE=nulifyer_vpn_guard
+readonly BOOTSTRAP_PRIORITY=20054
+readonly BOOTSTRAP_PROTOCOL=242
+
+install -d -m 0755 "$NV_STATE" "$NV_RUN"
+exec 9>"$NV_RUN/guard.lock"
+flock -x 9
+
+mode=${1:-closed}
+shift || true
+upstream='' gateway='' lan='' dns='' hairpin=''
+for arg in "$@"; do
+  case $arg in
+    upstream=*) upstream=${arg#*=} ;;
+    gateway=*) gateway=${arg#*=} ;;
+    lan=*) lan=${arg#*=} ;;
+    dns=*) dns=${arg#*=} ;;
+    hairpin=*) hairpin=${arg#*=} ;;
+    *) printf 'Unknown guard option: %s\n' "$arg" >&2; exit 2 ;;
+  esac
+done
+case $mode in
+  off|closed|ready|portal) ;;
+  *) printf 'Usage: %s {off|closed|ready|portal} [key=value...]\n' "$0" >&2; exit 2 ;;
+esac
+
+# Everything that ends up in the ruleset is checked first.
+[[ -z $upstream || $upstream =~ ^[A-Za-z0-9_.@-]{1,15}$ ]] || { echo "Invalid interface" >&2; exit 2; }
+for address in $gateway $hairpin ${dns//,/ }; do
+  nv_valid_ipv4 "$address" || { echo "Invalid address: $address" >&2; exit 2; }
+done
+for cidr in ${lan//,/ }; do
+  if ! [[ $cidr =~ ^([0-9.]+)/([0-9]{1,2})$ ]] || ! nv_valid_ipv4 "${BASH_REMATCH[1]}" || (( BASH_REMATCH[2] > 32 )); then
+    echo "Invalid network: $cidr" >&2; exit 2
+  fi
+done
+
+# Keep DNS traffic that must reach its servers outside the tunnel off the
+# tunnel's full-tunnel route, so DNS can still bootstrap WireGuard.
+bootstrap_rule() {
+  ip -4 rule "$1" priority "$BOOTSTRAP_PRIORITY" to "$2/32" \
+    ipproto tcp dport "$3" table main protocol "$BOOTSTRAP_PROTOCOL"
+}
+
+sync_bootstrap_routes() {
+  local desired=$1 previous entry existing
+  previous=$(cat "$NV_RUN/bootstrap-routes" 2>/dev/null || true)
+  for entry in $previous; do
+    if ! grep -Fxq "$entry" <<<"$desired"; then
+      while [[ -n $(bootstrap_rule show "${entry%:*}" "${entry##*:}") ]]; do
+        bootstrap_rule del "${entry%:*}" "${entry##*:}"
+      done
+    fi
+  done
+  for entry in $desired; do
+    existing=$(bootstrap_rule show "${entry%:*}" "${entry##*:}")
+    [[ -n $existing ]] || bootstrap_rule add "${entry%:*}" "${entry##*:}"
+  done
+  nv_write_atomic "$NV_RUN/bootstrap-routes" "$desired"
+}
+
+if [[ $mode == off ]]; then
+  if nft list table inet "$TABLE" >/dev/null 2>&1; then nft delete table inet "$TABLE"; fi
+  sync_bootstrap_routes ''
+  nv_write_atomic "$NV_RUN/guard-mode" off
+  rm -f "$NV_RUN/guard-fingerprint"
+  exit 0
+fi
+
+# The encrypted DNS that may leave while the tunnel is down: karchy's DNS over
+# TLS servers, or DNSCrypt-proxy's DNS over HTTPS servers on stock Omarchy.
+encrypted_dns() {
+  if [[ $NV_INTEGRATION == karchy ]]; then
+    /usr/bin/karchy-network-dns status 2>/dev/null |
+      jq -r 'select(.encrypted) | .servers[] | sub("#.*$"; "") | select(test("^[0-9.]+$")) | . + ":853"' 2>/dev/null || true
+  else
+    tr ',' '\n' <<<"$DOH_IPV4" | awk '{ $1 = $1; if (NF) print $0 ":443" }'
+  fi
+}
+
+endpoint=$(wg show "$VPN_INTERFACE" endpoints 2>/dev/null | awk 'NR == 1 { print $2 }' | sed -E 's/:[0-9]+$//' || true)
+if nv_valid_ipv4 "$endpoint"; then
+  nv_write_atomic "$NV_STATE/endpoint-ip" "$endpoint"
+fi
+endpoint=$(sed -n '1p' "$NV_STATE/endpoint-ip" 2>/dev/null || true)
+nv_valid_ipv4 "$endpoint" || endpoint=127.0.0.1
+
+bootstrap=$(encrypted_dns | awk -F: 'NF == 2 && $1 ~ /^[0-9.]+$/ && $2 ~ /^[0-9]+$/')
+sync_bootstrap_routes "$bootstrap"
+
+rules=()
+while IFS=: read -r address port; do
+  [[ -n $address ]] && rules+=("ip daddr $address tcp dport $port accept")
+done <<<"$bootstrap"
+if [[ -n $upstream ]]; then
+  [[ -n $gateway ]] && rules+=("oifname \"$upstream\" ip daddr $gateway icmp type echo-request accept")
+  [[ -n $lan ]] && rules+=("oifname \"$upstream\" ip daddr { $lan } accept")
+  if [[ -n $dns ]]; then
+    rules+=("oifname \"$upstream\" ip daddr { $dns } udp dport 53 accept")
+    rules+=("oifname \"$upstream\" ip daddr { $dns } tcp dport 53 accept")
+  fi
+  [[ $mode == portal ]] && rules+=("oifname \"$upstream\" tcp dport { 80, 443 } accept")
+fi
+[[ $mode == ready ]] && rules+=("oifname \"$VPN_INTERFACE\" accept")
+
+hairpin_chain=''
+if [[ -n $hairpin && -n $upstream && $endpoint != 127.0.0.1 ]]; then
+  hairpin_chain="chain hairpin {
+    type filter hook prerouting priority raw; policy accept;
+    iifname \"$upstream\" ip saddr $hairpin udp sport $VPN_ENDPOINT_PORT udp dport $VPN_CLIENT_PORT ip saddr set $endpoint
+  }"
+fi
+
+ruleset="table inet $TABLE {
+  chain output {
+    type filter hook output priority -50; policy accept;
+    oifname \"lo\" accept
+    udp sport 68 udp dport 67 accept
+    meta nfproto ipv6 udp sport 546 udp dport 547 accept
+    meta nfproto ipv6 icmpv6 type { nd-router-solicit, nd-neighbor-solicit, nd-neighbor-advert } accept
+    udp dport 123 accept
+    ip daddr $endpoint udp dport $VPN_ENDPOINT_PORT accept
+    oifname \"$VPN_INTERFACE\" ip daddr $VPN_DNS icmp type echo-request accept
+    meta mark $NV_PROBE_MARK oifname \"$VPN_INTERFACE\" accept
+$(printf '    %s\n' "${rules[@]}")
+    counter drop
+  }
+  $hairpin_chain
+}"
+
+fingerprint=$(sha256sum <<<"$mode $ruleset" | cut -d' ' -f1)
+if [[ $(sed -n '1p' "$NV_RUN/guard-fingerprint" 2>/dev/null || true) == "$fingerprint" ]] &&
+  nft list table inet "$TABLE" >/dev/null 2>&1; then
+  exit 0
+fi
+
+# One transaction: the old table goes and the new one comes in atomically, so
+# there is never a moment without a guard.
+{
+  if nft list table inet "$TABLE" >/dev/null 2>&1; then printf 'delete table inet %s\n' "$TABLE"; fi
+  printf '%s\n' "$ruleset"
+} | nft -f -
+
+nv_write_atomic "$NV_RUN/guard-mode" "$mode"
+nv_write_atomic "$NV_RUN/guard-fingerprint" "$fingerprint"

@@ -1,0 +1,113 @@
+#!/bin/bash
+# Root side of the nulifyer-vpn command.
+#
+# Through pkexec (the package's polkit rule lets local, active members of
+# wheel run these without a password):
+#   mode off|auto|on   set the mode and apply it
+#   portal-pause       let a captive portal's sign-in through for at most
+#                      five minutes, or until the network is online
+#   reconnect          restart the tunnel, keeping the mode
+# Root only (the boot unit, NetworkManager's dispatcher, packaging, karchy):
+#   boot               close the guard before networking starts, unless Off
+#   prepare <dev>      a link is about to come up: close the guard unless Off
+#   refresh            ask the policy to look again (karchy's trust changes)
+#   shutdown           package removal: tunnel down, guard off, DNS restored
+set -euo pipefail
+# shellcheck source=lib/common.sh
+source /usr/lib/nulifyer-vpn/common.sh
+nv_require_root
+[[ -r $NV_CONFIG ]] || { printf 'nulifyer-vpn is not set up yet: run nulifyer-vpn setup.\n' >&2; exit 1; }
+nv_load_config
+install -d -m 0755 "$NV_RUN" "$NV_STATE"
+
+readonly PAUSE_SECONDS=300
+
+command=${1:-}
+# What pkexec may run is exactly what the polkit rule allows; anything else
+# is for root's own callers.
+if [[ -n ${PKEXEC_UID:-} ]]; then
+  case "$command ${2:-}" in
+    "mode off"|"mode auto"|"mode on"|"portal-pause "|"reconnect ") ;;
+    *) printf 'Not allowed through pkexec: %s\n' "$*" >&2; exit 2 ;;
+  esac
+  (( $# <= 2 )) || { printf 'Too many arguments.\n' >&2; exit 2; }
+fi
+
+# Apply now and wait for the result, so the command can report it.
+apply() {
+  nv_trigger
+  systemctl start nulifyer-vpn-policy.service 2>/dev/null || true
+}
+
+show() {
+  jq -r '"\(.state)\(if .reason != "" then " (" + .reason + ")" else "" end)"' "$NV_STATUS" 2>/dev/null || true
+}
+
+case $command in
+  mode)
+    mode=${2:-}
+    [[ $mode =~ ^(off|auto|on)$ ]] || { printf 'Usage: nulifyer-vpn mode off|auto|on\n' >&2; exit 2; }
+    exec 8>"$NV_RUN/control.lock"
+    flock -x 8
+    nv_write_atomic "$NV_MODE_FILE" "$mode"
+    # A new choice starts a new attempt and ends any sign-in pause.
+    rm -f "$NV_RUN/connecting-since" "$NV_RUN/last-retry" "$NV_RUN/check-failures" "$NV_RUN/pause" "$NV_RUN/pause-checked"
+    apply
+    show
+    ;;
+  portal-pause)
+    [[ $(nv_read_mode) != off ]] || { printf 'The VPN is off; nothing blocks the sign-in.\n'; exit 0; }
+    upstream=$(nv_upstream)
+    [[ -n $upstream ]] || { printf 'Not connected to a network.\n' >&2; exit 1; }
+    exec 8>"$NV_RUN/control.lock"
+    flock -x 8
+    printf '%s %s\n' "$(( $(date +%s) + PAUSE_SECONDS ))" "$upstream" >"$NV_RUN/pause"
+    rm -f "$NV_RUN/pause-checked"
+    apply
+    show
+    ;;
+  reconnect)
+    [[ $(nv_read_mode) != off ]] || { printf 'The VPN is off. Choose Auto or On first.\n' >&2; exit 1; }
+    rm -f "$NV_RUN/connecting-since" "$NV_RUN/last-retry" "$NV_RUN/check-failures"
+    : >"$NV_RUN/restart"
+    apply
+    show
+    ;;
+  boot)
+    mode=$(nv_read_mode)
+    rm -f "$NV_RUN/pause" "$NV_RUN/restart"
+    if [[ $mode == off ]]; then
+      "$NV_LIB/guard" off
+    else
+      "$NV_LIB/guard" closed
+    fi
+    nv_trigger
+    ;;
+  prepare)
+    # Before a link comes up: an open guard (Off, or standing by) closes
+    # unless the mode is Off, so a new network is never used unprotected. The
+    # policy opens it again once the network is known to be trusted.
+    [[ $(nv_read_mode) != off ]] || exit 0
+    guard=$(sed -n '1p' "$NV_RUN/guard-mode" 2>/dev/null || true)
+    if [[ $guard == off || -z $guard ]]; then
+      "$NV_LIB/guard" closed
+    fi
+    ;;
+  refresh)
+    nv_trigger
+    ;;
+  shutdown)
+    systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
+    if nv_vpn_active; then nmcli --wait 10 connection down "$VPN_CONNECTION" >/dev/null 2>&1 || true; fi
+    "$NV_LIB/guard" off
+    [[ $NV_INTEGRATION != standalone ]] || "$NV_LIB/standalone-dns" --restore-all || true
+    rm -f "$NV_STATUS" "$NV_PENDING"
+    ;;
+  status)
+    cat "$NV_STATUS" 2>/dev/null || printf '{"version":1,"mode":"%s","state":"off","reason":"not-running"}\n' "$(nv_read_mode)"
+    ;;
+  *)
+    printf 'Usage: %s {mode off|auto|on | portal-pause | reconnect | boot | prepare | refresh | shutdown | status}\n' "$0" >&2
+    exit 2
+    ;;
+esac
