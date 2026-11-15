@@ -61,7 +61,7 @@ local shell_shortcuts = nil
 local function shell_shortcut_registered(name)
   if not shell_shortcuts then
     shell_shortcuts = {}
-    local file = io.open(paths.omarchy_path .. "/default/omarchy/shortcuts", "r")
+    local file = io.open(paths.karchy_path .. "/default/karchy/shortcuts", "r")
     if file then
       for line in file:lines() do
         local kind, target = line:match("^(%a+)%s+(%S+)%s*$")
@@ -81,7 +81,7 @@ end
 local function shell_dispatcher(kind, target, command)
   local name = kind .. "." .. target
   if shell_shortcut_registered(name) then
-    return hl.dsp.global("omarchy:" .. name)
+    return hl.dsp.global("karchy:" .. name)
   end
 
   return command
@@ -92,20 +92,20 @@ local function command_from(value, description)
     return value
   end
 
-  if value.omarchy then
-    return "omarchy-launch-" .. value.omarchy
+  if value.karchy then
+    return "karchy-launch-" .. value.karchy
   elseif value.menu then
-    return shell_dispatcher("menu", value.menu, "omarchy-menu toggle " .. shell_quote(value.menu))
+    return shell_dispatcher("menu", value.menu, "karchy-menu toggle " .. shell_quote(value.menu))
   elseif value.panel then
-    return shell_dispatcher("panel", value.panel, "omarchy-shell shell toggle " .. shell_quote(value.panel))
+    return shell_dispatcher("panel", value.panel, "karchy-shell shell toggle " .. shell_quote(value.panel))
   elseif value.audio then
-    return shell_dispatcher("audio", value.audio, "omarchy-audio-output-volume " .. shell_quote(value.audio))
+    return shell_dispatcher("audio", value.audio, "karchy-audio-output-volume " .. shell_quote(value.audio))
   elseif value.brightness then
     local step = value.brightness == "raise" and "+5%" or "5%-"
-    return shell_dispatcher("brightness", value.brightness, "omarchy-brightness-display " .. step)
+    return shell_dispatcher("brightness", value.brightness, "karchy-brightness-display " .. step)
   elseif value.ipc then
     local target, method = value.ipc:match("^([^.]+)%.(.+)$")
-    return shell_dispatcher("ipc", value.ipc, "omarchy-shell " .. shell_quote(target) .. " " .. shell_quote(method))
+    return shell_dispatcher("ipc", value.ipc, "karchy-shell " .. shell_quote(target) .. " " .. shell_quote(method))
   elseif value.focus and value.launch then
     return o.launch_sole(value.focus, value.launch)
   elseif value.launch then
@@ -118,9 +118,9 @@ local function command_from(value, description)
     end
   elseif value.tui then
     if value.focus then
-      return "omarchy-launch-or-focus-tui " .. shell_quote(value.tui)
+      return "karchy-launch-or-focus-tui " .. shell_quote(value.tui)
     else
-      return "omarchy-launch-tui " .. shell_quote(value.tui)
+      return "karchy-launch-tui " .. shell_quote(value.tui)
     end
   end
 
@@ -128,11 +128,11 @@ local function command_from(value, description)
 end
 
 function o.preinstalled_bindings_enabled()
-  if _G.omarchy_preinstalled_bindings ~= nil then
-    return _G.omarchy_preinstalled_bindings == true
+  if _G.karchy_preinstalled_bindings ~= nil then
+    return _G.karchy_preinstalled_bindings == true
   end
 
-  return not file_exists((os.getenv("HOME") or "") .. "/.local/state/omarchy/preinstalls-removed")
+  return not file_exists((os.getenv("HOME") or "") .. "/.local/state/karchy/preinstalls-removed")
 end
 
 function o.bind(keys, description, dispatcher, options)
@@ -174,13 +174,13 @@ function o.launch_terminal()
   local function launch()
     local window = hl.get_active_window()
     if window and window.pid then
-      hl.exec_cmd("omarchy-launch-terminal --pid=" .. window.pid)
+      hl.exec_cmd("karchy-launch-terminal --pid=" .. window.pid)
     else
-      hl.exec_cmd("omarchy-launch-terminal")
+      hl.exec_cmd("karchy-launch-terminal")
     end
   end
 
-  o.bind_commands[launch] = "omarchy-launch-terminal"
+  o.bind_commands[launch] = "karchy-launch-terminal"
   return launch
 end
 
@@ -195,19 +195,19 @@ function o.launch_on_start(command)
 end
 
 function o.launch_webapp(url)
-  return "omarchy-launch-webapp " .. shell_quote(url)
+  return "karchy-launch-webapp " .. shell_quote(url)
 end
 
 function o.launch_webapp_sole(name, url)
-  return "omarchy-launch-or-focus-webapp " .. shell_quote(name) .. " " .. shell_quote(url)
+  return "karchy-launch-or-focus-webapp " .. shell_quote(name) .. " " .. shell_quote(url)
 end
 
 function o.launch_sole(match, command)
-  return "omarchy-launch-or-focus " .. shell_quote(match) .. " " .. shell_quote(o.launch(command))
+  return "karchy-launch-or-focus " .. shell_quote(match) .. " " .. shell_quote(o.launch(command))
 end
 
 function o.bind_toggle(keys, description, toggle, options)
-  o.bind(keys, description, "omarchy-toggle-" .. toggle, options)
+  o.bind(keys, description, "karchy-toggle-" .. toggle, options)
 end
 
 -- Bind one action to a key's press and another to its release, as for
@@ -267,8 +267,10 @@ function o.bind_hold(keys, press_description, press, release_description, releas
   o.bind(keys, release_description, on_release, release_options)
 end
 
-function o.notify(message)
-  return "omarchy-notification-send -u low " .. shell_quote(message)
+-- icon: an optional name from default/karchy/icons.json, shown on the toast.
+function o.notify(message, icon)
+  local glyph = icon and ("-g " .. shell_quote(icon) .. " ") or ""
+  return "karchy-notification-send -u low " .. glyph .. shell_quote(message)
 end
 
 -- What makes apps float on their own account, so a floating workspace can
@@ -322,7 +324,7 @@ function o.window(match, rules)
   end
 end
 
--- Opt a window in to Omarchy's standard active/inactive transparency. The tag
+-- Opt a window in to Karchy's standard active/inactive transparency. The tag
 -- lets Appearance > Windows > Window Opacity turn these windows opaque or glassy.
 function o.transparent_window(match, opacity)
   o.window(match, { opacity = opacity or "0.985 0.96", tag = "+transparent-window" })

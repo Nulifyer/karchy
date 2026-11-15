@@ -1,0 +1,17 @@
+# Alacritty. Colors follow the theme through the import below; karchy reloads
+# open windows on a theme switch.
+[general]
+import = ["~/.local/state/karchy/current/theme/alacritty.toml"]
+
+[font]
+# The font follows fontconfig's "monospace", which Settings › Appearance sets.
+normal = { family = "monospace" }
+size = 10
+
+# karchy's universal clipboard keys (Super+C/V) send Ctrl+Insert and
+# Shift+Insert, so these use the clipboard, not the primary selection.
+[keyboard]
+bindings = [
+  { key = "Insert", mods = "Shift", action = "Paste" },
+  { key = "Insert", mods = "Control", action = "Copy" },
+]

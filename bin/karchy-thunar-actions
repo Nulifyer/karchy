@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+# karchy:summary=Merge karchy's Thunar right-click actions into ~/.config/Thunar/uca.xml
+# karchy:hidden=true
+"""Merge karchy's Thunar actions (D-36) into the user's uca.xml.
+
+Actions whose unique-id starts with "karchy-" are replaced by the current set
+from $KARCHY_PATH/default/thunar/uca.xml; every other action is kept as it is.
+Without a uca.xml yet, Thunar's own defaults are the starting point. Thunar's
+stock "Open Terminal Here" (it relies on Xfce's terminal helper) is dropped;
+karchy's opens the default terminal. Runs at each login; writes only when something changed.
+"""
+
+import os
+import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+KARCHY_PATH = Path(os.environ.get("KARCHY_PATH") or "/usr/share/karchy")
+SOURCE = KARCHY_PATH / "default/thunar/uca.xml"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "Thunar/uca.xml"
+THUNAR_DEFAULT = Path("/etc/xdg/Thunar/uca.xml")
+STOCK_TERMINAL = "exo-open --working-directory %f --launch TerminalEmulator"
+
+
+def unique_id(action):
+    return (action.findtext("unique-id") or "").strip()
+
+
+def main():
+    ours = ET.parse(SOURCE).getroot().findall("action")
+    if CONFIG.is_file():
+        tree = ET.parse(CONFIG)
+        before = ET.tostring(tree.getroot())
+    else:
+        tree = ET.parse(THUNAR_DEFAULT) if THUNAR_DEFAULT.is_file() else ET.ElementTree(ET.Element("actions"))
+        before = None
+
+    root = tree.getroot()
+    for action in list(root):
+        # Thunar copies its stock "Open Terminal Here" into new configs; it
+        # needs Xfce's terminal helper, and karchy's own replaces it.
+        stock = (action.findtext("command") or "").strip() == STOCK_TERMINAL
+        if stock or unique_id(action).startswith("karchy-"):
+            root.remove(action)
+    root.extend(ours)
+
+    ET.indent(tree, space="  ")
+    if before is not None and ET.tostring(root) == before:
+        return
+    CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    tmp = CONFIG.with_suffix(".xml.karchy-new")
+    tree.write(tmp, encoding="UTF-8", xml_declaration=True)
+    os.replace(tmp, CONFIG)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ET.ParseError) as error:
+        sys.exit(f"karchy-thunar-actions: {error}")

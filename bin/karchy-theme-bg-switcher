@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# karchy:summary=Open the Karchy background switcher
+# karchy:group=theme
+# karchy:name=bg-switcher
+# karchy:aliases=karchy background
+
+theme_name=$(cat "$HOME/.local/state/karchy/current/theme.name" 2>/dev/null)
+current_background=$(readlink -f "$HOME/.local/state/karchy/current/background" 2>/dev/null)
+
+karchy-menu-images \
+  --selected "$current_background" \
+  "$HOME/.local/state/karchy/current/theme/backgrounds" \
+  "$HOME/.config/karchy/backgrounds/$theme_name"

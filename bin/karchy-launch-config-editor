@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# karchy:summary=Open a config file in the user's editor and surface a toast
+# karchy:args=<path>
+# karchy:examples=karchy launch config-editor ~/.config/hypr/hyprland.lua
+
+path="${1-}"
+
+if [[ -z $path ]]; then
+  echo "Usage: karchy-launch-config-editor <path>" >&2
+  exit 1
+fi
+
+karchy-notification-send -g config -u low "$(karchy-i18n config.editing)" "$path"
+exec karchy-launch-editor "$path"

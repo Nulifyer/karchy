@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# karchy:summary=Secure Boot status, and re-enrolling keys a firmware update cleared (D-31)
+# karchy:args=check | enroll
+# karchy:hidden=true
+
+# The installer sets up Secure Boot when the firmware is in Setup Mode: sbctl
+# keys enrolled with Microsoft's, Limine signed with its config hash enrolled
+# (limine's hooks re-enroll and re-sign after every change).
+#
+# check   at login: if the firmware is back in Setup Mode (a firmware update or
+#         reset cleared the keys), offer to enroll karchy's keys again; if
+#         Secure Boot is off otherwise, say how to get back to Setup Mode.
+# enroll  enroll karchy's keys with Microsoft's (asks for your password; the
+#         installer runs it too). Firmware resets often clear only the
+#         platform key, and the kernel marks the key variables that remain
+#         immutable, so that flag is lifted first.
+
+set -euo pipefail
+
+EFIVARS=/sys/firmware/efi/efivars
+SETUP_MODE=$EFIVARS/SetupMode-8be4df61-93ca-11d2-aa0d-00e098032b8c
+
+as_root() {
+  if ((EUID == 0)); then "$@"; else sudo "$@"; fi
+}
+
+in_setup_mode() {
+  [[ -r $SETUP_MODE && $(od -An -t u1 -j4 -N1 "$SETUP_MODE" | tr -d ' ') == "1" ]]
+}
+
+secure_boot_on() {
+  local var=$EFIVARS/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c
+  [[ -r $var && $(od -An -t u1 -j4 -N1 "$var" | tr -d ' ') == "1" ]]
+}
+
+case "${1:-}" in
+  check)
+    grep -qx 'KARCHY_SECUREBOOT=yes' /etc/karchy/install.conf 2>/dev/null || exit 0
+    if in_setup_mode; then
+      karchy-notifications-wait || exit 0
+      karchy-notification-send -g security.secureboot -t 0 "Secure Boot keys were cleared" \
+        "A firmware update or reset removed karchy's keys, so Secure Boot is off. Enroll them again?" \
+        --action "Enroll keys" karchy-launch-floating-terminal-with-presentation karchy-secureboot enroll
+    elif ! secure_boot_on; then
+      # Turned off by hand, or the firmware restored its factory keys and
+      # Secure Boot had to be turned off to boot karchy at all. Enrolling
+      # needs Setup Mode, which only the firmware settings can enter.
+      karchy-notifications-wait || exit 0
+      karchy-notification-send -g security.secureboot -t 0 "Secure Boot is off" \
+        "To turn it back on with karchy's keys, clear the Secure Boot keys in the firmware settings (Setup Mode); at the next login karchy offers to enroll them."
+    fi
+    ;;
+  enroll)
+    in_setup_mode || { echo "The firmware is not in Setup Mode, so keys can't be enrolled. Clear the Secure Boot keys in the firmware settings first." >&2; exit 1; }
+    for var in "$EFIVARS"/{PK,KEK,db,dbx}-*; do
+      [[ -e $var ]] && as_root chattr -i "$var"
+    done
+    as_root sbctl enroll-keys --microsoft
+    echo "Done. If Secure Boot is still off, turn it on in the firmware settings."
+    ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-secureboot /p' "$0" >&2; exit 1 ;;
+esac

@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Map Omarchy names to karchy names (D-47).
+
+Usage:
+  tools/rebrand apply [--dry-run]   Rename paths and contents in this repository
+  tools/rebrand text < file         Print stdin with the content mapping applied
+  tools/rebrand path <path>         Print a path with the path mapping applied
+
+The same mapping turns an upstream Omarchy file into its karchy form, so
+tools/upstream-review can diff upstream changes against karchy's copies.
+Names that belong to real Omarchy packages, repositories and URLs are kept.
+"""
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+# Kept verbatim: real packages, their files, the [omarchy] repository, URLs.
+PROTECT = [
+    re.compile(r"(?:https?|git)(?::|@)[^\s\"'`<>)\]]*omarchy[^\s\"'`<>)\]]*", re.I),
+    re.compile(r"git@[^\s\"'`]*omarchy[^\s\"'`]*", re.I),
+    re.compile(r"\[omarchy\]"),
+    re.compile(r"pkgs\.omarchy\.org"),
+    re.compile(r"\bomarchy-keyring\b"),
+    re.compile(r"\bomarchy-pkgs\b"),
+    re.compile(r"\bomarchy-speedtest\b"),
+    re.compile(r"/usr/lib/omarchy/speedtest"),
+    re.compile(r"/usr/lib/omarchy-hyprland-titlebars"),
+    re.compile(r"\bomarchy-hyprland-titlebars\b"),
+    re.compile(r"/usr/share/omarchy-platform\b"),
+    re.compile(r"(?:basecamp|omacom)/omarchy\b"),
+]
+
+# Applied in order, after protected spans are set aside.
+REPLACE = [
+    (re.compile(r"/usr/bin/omarchy-"), "/usr/bin/karchy-"),
+    (re.compile(r"/usr/share/omarchy\b"), "/usr/share/karchy"),
+    (re.compile(r"OMARCHY"), "KARCHY"),
+    (re.compile(r"Omarchy"), "Karchy"),
+    (re.compile(r"omarchy"), "karchy"),
+]
+
+SKIP_DIRS = {".git", "vendor", "docs", ".agents"}
+SKIP_FILES = {"tools/rebrand", "tools/upstream-review", "LICENSE"}
+
+
+def map_text(text):
+    kept = []
+
+    def hold(match):
+        kept.append(match.group(0))
+        return f"\x00{len(kept) - 1}\x00"
+
+    for pattern in PROTECT:
+        text = pattern.sub(hold, text)
+    for pattern, replacement in REPLACE:
+        text = pattern.sub(replacement, text)
+    return re.sub(r"\x00(\d+)\x00", lambda m: kept[int(m.group(1))], text)
+
+
+def map_path(path):
+    if path == "system/pacman/repo-omarchy.conf":
+        return path
+    return re.sub(r"omarchy", "karchy", re.sub(r"Omarchy", "Karchy", path))
+
+
+def tracked_files():
+    out = subprocess.run(["git", "-C", str(REPO), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                         capture_output=True, check=True).stdout
+    return [p for p in out.decode().split("\0") if p]
+
+
+def skipped(rel):
+    return rel.split("/")[0] in SKIP_DIRS or rel in SKIP_FILES
+
+
+def apply(dry_run):
+    changed, renamed = 0, []
+    for rel in tracked_files():
+        if skipped(rel):
+            continue
+        full = REPO / rel
+        if full.is_symlink() or not full.is_file():
+            continue
+        data = full.read_bytes()
+        if b"\0" not in data:
+            try:
+                text = data.decode("utf-8")
+            except UnicodeDecodeError:
+                text = None
+            if text is not None:
+                new = map_text(text)
+                if new != text:
+                    changed += 1
+                    if not dry_run:
+                        full.write_text(new, encoding="utf-8")
+        target = map_path(rel)
+        if target != rel:
+            renamed.append((rel, target))
+    for rel, target in renamed:
+        if (REPO / target).exists():
+            sys.exit(f"rebrand: {target} already exists; resolve it before renaming {rel}")
+    if not dry_run:
+        for rel, target in renamed:
+            dest = REPO / target
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            (REPO / rel).rename(dest)
+        for rel, _ in renamed:
+            parent = (REPO / rel).parent
+            while parent != REPO and parent.is_dir() and not any(parent.iterdir()):
+                parent.rmdir()
+                parent = parent.parent
+    print(f"rebrand: {changed} files with content changes, {len(renamed)} paths renamed"
+          + (" (dry run)" if dry_run else ""))
+    return renamed
+
+
+def main(argv):
+    if len(argv) >= 2 and argv[1] == "apply":
+        apply("--dry-run" in argv[2:])
+    elif len(argv) == 2 and argv[1] == "text":
+        sys.stdout.write(map_text(sys.stdin.read()))
+    elif len(argv) == 3 and argv[1] == "path":
+        print(map_path(argv[2]))
+    else:
+        print(__doc__.strip())
+        sys.exit(0 if len(argv) > 1 and argv[1] in ("-h", "--help") else 1)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

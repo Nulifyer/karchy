@@ -1,8 +1,8 @@
 [Metadata]
-Name=Omarchy
+Name=Karchy
 Version=1
-Author=Omarchy
-Description=Generated from the current Omarchy theme
+Author=Karchy
+Description=Generated from the current Karchy theme
 ScaleWithDPI=True
 
 [InputPanel]

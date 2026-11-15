@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# karchy:summary=Launch the default editor selected via Karchy defaults.
+# karchy:args=[--inline] <path>
+
+default_editor="$HOME/.local/state/karchy/defaults/editor"
+
+if [[ ${1:-} == "--inline" ]]; then
+  inline=true
+  shift
+else
+  inline=false
+fi
+
+if [[ -f $default_editor ]]; then
+  read -r editor <"$default_editor"
+fi
+
+# Without a choice, VS Code (karchy's base editor), then micro.
+editor=${editor:-code}
+
+# sublime-text-4 ships `subl` on PATH, not `sublime_text`.
+[[ $editor == sublime_text ]] && editor=subl
+
+karchy-cmd-present "$editor" || editor="micro"
+
+case "${editor##*/}" in
+nvim | vim | nano | micro | hx | helix | fresh)
+  if [[ $inline == "true" ]]; then
+    exec "$editor" -- "$@"
+  else
+    exec karchy-launch-tui "$editor" -- "$@"
+  fi
+  ;;
+*)
+  exec setsid uwsm-app -- "$editor" -- "$@"
+  ;;
+esac

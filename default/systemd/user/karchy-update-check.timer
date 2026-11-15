@@ -1,0 +1,11 @@
+# karchy (D-61): ten minutes after login, then every six hours.
+[Unit]
+Description=Check for karchy and system updates regularly
+
+[Timer]
+OnStartupSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

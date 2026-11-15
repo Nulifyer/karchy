@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# karchy:summary=Returns true when clamshell mode is active
+# karchy:hidden=true
+
+# Clamshell = lid closed while driving one or more external monitors.
+karchy-hw-laptop-closed && karchy-hw-external-monitors

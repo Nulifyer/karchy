@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# karchy:summary=Cycle to the next media source and transfer playback when the current source is playing
+# karchy:args=[next|previous]
+# karchy:examples=karchy audio source switch | karchy-audio-source-switch previous
+
+direction="${1:-next}"
+
+case "$direction" in
+  next)
+    karchy-shell media sourceSwitch
+    ;;
+  previous)
+    karchy-shell media sourceSwitchPrevious
+    ;;
+  *)
+    echo "Usage: karchy-audio-source-switch [next|previous]" >&2
+    exit 1
+    ;;
+esac

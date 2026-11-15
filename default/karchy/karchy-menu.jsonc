@@ -1,0 +1,87 @@
+{
+  // karchy menu (D-18, docs/menu.md). karchy's own file at the path the
+  // Omarchy shell reads; not vendored. Entries are adapted from Omarchy
+  // v4.5.0's default/karchy/karchy-menu.jsonc; the format is described there
+  // and in docs/menu.md of the Omarchy repository.
+
+  // Root
+  "apps": {"iconName":"menu.apps","label":"Apps","aliases":["app","applications"],"provider":"apps"},
+  "packages": {"iconName":"menu.packages","label":"Packages","aliases":["install","remove"]},
+  "appearance": {"iconName":"menu.appearance","label":"Appearance","aliases":["style"]},
+  "settings": {"iconName":"settings","label":"Settings","aliases":["displays","monitors","preferences"],"action":"karchy-settings"},
+  "record": {"iconName":"record","label":"Record Screen","aliases":["screenrecord","screen-record","recording","capture"]},
+  "setup": {"iconName":"menu.setup","label":"Setup"},
+  "update": {"iconName":"update","label":"Update","aliases":["restart","refresh"]},
+  "about": {"iconName":"info","label":"About","action":"karchy-launch-about"},
+  "system": {"iconName":"system.power","label":"System","aliases":["power-menu"]},
+
+  // System
+  "system.lock": {"iconName":"system.lock","label":"Lock","action":"karchy-system-lock"},
+  "system.suspend": {"iconName":"system.suspend","label":"Suspend","when":"! karchy-toggle-enabled suspend-off && ! karchy-sleep-disabled","action":"systemctl suspend"},
+  "system.hibernate": {"iconName":"system.hibernate","label":"Hibernate","when":"karchy-hibernation-available && ! karchy-sleep-disabled","action":"systemctl hibernate"},
+  "system.logout": {"iconName":"system.logout","label":"Logout","action":"karchy-system logout"},
+  "system.reboot": {"iconName":"system.reboot","label":"Reboot","action":"karchy-system reboot"},
+  "system.shutdown": {"iconName":"system.power","label":"Shutdown","action":"karchy-system shutdown"},
+
+  // Record Screen (user 2026-11-14): pick the audio, then a region, window or
+  // monitor. Alt+Print records without audio; the bar's record icon stops it.
+  "record.stop": {"iconName":"media.stop","label":"Stop Recording","when":"karchy-capture-screenrecording --status","action":"karchy-capture-screenrecording --stop-recording"},
+  "record.silent": {"iconName":"record","label":"Without Audio","action":"karchy-capture-screenrecording"},
+  "record.desktop": {"iconName":"audio.speaker","label":"With Desktop Audio","action":"karchy-capture-screenrecording --with-desktop-audio"},
+  "record.microphone": {"iconName":"audio.mic","label":"With Desktop and Microphone Audio","action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio"},
+  "record.webcam": {"iconName":"audio.camera","label":"With Audio and Webcam","when":"[[ -n $(karchy-capture-webcam-list) ]]","action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio --with-webcam"},
+
+  // Packages (D-18: install, AUR, remove, web apps)
+  "packages.install": {"iconName":"brand.arch","label":"Install Package","action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-install"},
+  "packages.aur": {"iconName":"brand.arch","label":"Install AUR Package","action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-aur-install"},
+  "packages.remove": {"iconName":"brand.arch","label":"Remove Package","action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-remove"},
+  "packages.webapp": {"iconName":"webapp","label":"Install Web App","action":"karchy-launch-floating-terminal-with-presentation karchy-webapp-install"},
+  "packages.webapp-remove": {"iconName":"webapp.remove","label":"Remove Web App","when":"grep -qE '^Exec=.*(karchy-launch-webapp|karchy-webapp-handler)' $HOME/.local/share/applications/*.desktop","action":"karchy-webapp-remove"},
+
+  // Appearance
+  "appearance.theme": {"iconName":"look.theme","label":"Theme","aliases":["theme","themes"],"action":"karchy-shell shell summon karchy.image-picker '{\"source\":\"themes\"}'"},
+  "appearance.background": {"iconName":"look.background","label":"Background","aliases":["background","wallpaper"],"action":"background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\""},
+  "appearance.font": {"iconName":"look.font","label":"Font","provider":"fonts"},
+  "appearance.workspace-layout": {"iconName":"look.layout","label":"Workspace Layout","title":"Default Workspace Layout"},
+  "appearance.workspace-layout.dwindle": {"iconName":"look.layout.tiling","label":"Tiling","checked":"[[ $(karchy-hyprland-workspace-layout-default) == \"dwindle\" ]]","action":"karchy-hyprland-workspace-layout-default dwindle"},
+  "appearance.workspace-layout.floating": {"iconName":"look.layout.floating","label":"Floating","checked":"[[ $(karchy-hyprland-workspace-layout-default) == \"floating\" ]]","action":"karchy-hyprland-workspace-layout-default floating"},
+
+  // Setup
+  "setup.plugin": {"iconName":"plugin","label":"Plugins","aliases":["plugin","plugins"]},
+  "setup.plugin.enable": {"iconName":"plugin.enable","label":"Enable Plugin","action":"karchy-menu-plugin enable"},
+  "setup.plugin.disable": {"iconName":"plugin.disable","label":"Disable Plugin","action":"karchy-menu-plugin disable"},
+  "setup.plugin.add": {"iconName":"plugin.add","label":"Add Plugin","action":"karchy-launch-floating-terminal-with-presentation 'karchy-plugin-add'"},
+  "setup.plugin.clone": {"iconName":"copy","label":"Clone Plugin","action":"karchy-menu-plugin clone"},
+  "setup.plugin.remove": {"iconName":"plugin.remove","label":"Remove Plugin","when":"compgen -G \"$HOME/.config/karchy/plugins/*/manifest.json\"","action":"karchy-menu-plugin remove"},
+  "setup.security": {"iconName":"security","label":"Security"},
+  "setup.security.fingerprint": {"iconName":"security.fingerprint","label":"Fingerprint","when":"karchy-hw-fingerprint","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-fingerprint"},
+  "setup.security.fido2": {"iconName":"security.fido2","label":"Fido2","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-fido2"},
+  "setup.security.sshd": {"iconName":"security.ssh","label":"SSHD","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-sshd"},
+  "setup.security.ssh-agent": {"iconName":"security.ssh","label":"SSH Agent","when":"! systemctl --user -q is-enabled gcr-ssh-agent.socket","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-ssh-agent"},
+  "setup.security.remove": {"iconName":"ui.delete","label":"Remove","title":"Remove"},
+  "setup.security.remove.fingerprint": {"iconName":"security.fingerprint","label":"Fingerprint","when":"karchy-pkg-present fprintd","action":"karchy-launch-floating-terminal-with-presentation karchy-remove-security-fingerprint"},
+  "setup.security.remove.fido2": {"iconName":"security.fido2","label":"Fido2","when":"karchy-pkg-present pam-u2f","action":"karchy-launch-floating-terminal-with-presentation karchy-remove-security-fido2"},
+  "setup.security.remove.sshd": {"iconName":"security.ssh","label":"SSHD","when":"systemctl is-enabled --quiet sshd","action":"karchy-launch-floating-terminal-with-presentation karchy-remove-security-sshd"},
+  "setup.config": {"iconName":"config","label":"Config"},
+  "setup.config.git": {"iconName":"config.git","label":"Git","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-git"},
+  "setup.config.hyprland": {"iconName":"brand.hyprland","label":"Hyprland","action":"karchy-launch-config-editor \"$HOME/.config/hypr/hyprland.lua\""},
+  "setup.keybindings": {"iconName":"input.keyboard","label":"Keybindings","when":"[[ -f ~/.config/hypr/bindings.lua ]]","action":"karchy-launch-config-editor \"$HOME/.config/hypr/bindings.lua\""},
+  "setup.input": {"iconName":"input.mouse","label":"Input","when":"[[ -f ~/.config/hypr/input.lua ]]","action":"karchy-launch-config-editor \"$HOME/.config/hypr/input.lua\""},
+
+  // Update
+  "update.process": {"iconName":"restart.process","label":"Process","title":"Restart"},
+  "update.process.shell": {"iconName":"restart.shell","label":"Shell","action":"karchy-restart-shell"},
+  "update.process.hyprland": {"iconName":"brand.hyprland","label":"Hyprland","action":"hyprctl reload"},
+  "update.hardware": {"iconName":"hardware","label":"Hardware","title":"Restart"},
+  "update.hardware.audio": {"iconName":"audio.speaker","label":"Audio","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-audio"},
+  "update.hardware.wifi": {"iconName":"net.wifi.restart","label":"Wi-Fi","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-wifi"},
+  "update.hardware.bluetooth": {"iconName":"bluetooth","label":"Bluetooth","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-bluetooth"},
+  "update.hardware.trackpad": {"iconName":"input.trackpad","label":"Trackpad","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-trackpad"},
+  "update.password": {"iconName":"security.password","label":"Password"},
+  "update.password.drive": {"iconName":"disk","label":"Drive Encryption","action":"karchy-launch-floating-terminal-with-presentation karchy-drive-password"},
+  "update.password.user": {"iconName":"account.user","label":"User","action":"karchy-launch-floating-terminal-with-presentation passwd"},
+  "update.timezone": {"iconName":"timezone","label":"Timezone","action":"karchy-menu-timezone"},
+  "update.time": {"iconName":"time","label":"Time","action":"karchy-launch-floating-terminal-with-presentation karchy-update-time"},
+  "update.firmware": {"iconName":"firmware","label":"Firmware","action":"karchy-launch-floating-terminal-with-presentation karchy-update-firmware"},
+
+}

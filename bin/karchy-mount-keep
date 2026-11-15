@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# karchy:summary=Keep a network share mounted at /mnt, or remove a kept one (D-24)
+# karchy:args=<folder on a gvfs SMB share> | --remove <kept mount folder>
+# karchy:hidden=true
+
+# Thunar's "Keep This Mount" and "Remove Kept Mount" run this in a floating
+# terminal. Keeping a share writes:
+#   /etc/karchy/smb/<server>-<share>.cred   username and password, root only
+#   an fstab line tagged "# karchy-kept-mount" that automounts the share at
+#   /mnt/<share> on first use (nofail, _netdev, idle timeout), so boot never
+#   waits for a NAS that is away.
+# Each system change goes through sudo; this script itself never runs as root.
+
+set -euo pipefail
+
+FSTAB=/etc/fstab
+CRED_DIR=/etc/karchy/smb
+MARKER="# karchy-kept-mount"
+
+die() {
+  echo "$*" >&2
+  read -r -p "Press Enter to close." _ || true
+  exit 1
+}
+
+# fstab fields escape spaces and tabs as octal.
+fstab_escape() {
+  local value=${1// /\\040}
+  printf '%s' "${value//$'\t'/\\011}"
+}
+
+fstab_unescape() {
+  local value=${1//\\040/ }
+  printf '%s' "${value//\\011/$'\t'}"
+}
+
+keep() {
+  local path="$1" mount_dir server share user password cred target unit
+  # /run/user/<uid>/gvfs/smb-share:server=nas.local,share=media,user=bob/...
+  mount_dir=$(sed -n 's#^\(/run/user/[0-9]\+/gvfs/smb-share:[^/]*\).*#\1#p' <<<"$path")
+  [[ -n $mount_dir ]] || die "Keep This Mount works on folders of a network share opened in Thunar (smb://…). This folder is not one."
+  server=$(sed -n 's/.*[:,]server=\([^,]*\).*/\1/p' <<<"$mount_dir")
+  share=$(sed -n 's/.*[:,]share=\([^,]*\).*/\1/p' <<<"$mount_dir")
+  user=$(sed -n 's/.*[:,]user=\([^,]*\).*/\1/p' <<<"$mount_dir")
+  [[ -n $server && -n $share ]] || die "Could not read the server and share from $mount_dir"
+  # gvfs percent-encodes names. The server controls the share's name, and it
+  # becomes a folder under /mnt and part of the mount options, so only plain
+  # names pass: no separators, commas, quotes or control characters.
+  share=$(printf '%b' "${share//%/\\x}")
+  [[ $server =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || die "The server name '$server' has characters karchy won't put in /etc/fstab."
+  if [[ $share == "." || $share == ".." || $share =~ [/,=\\\"\'] || $share =~ [[:cntrl:]] ]]; then
+    die "The share name '$share' has characters karchy won't put in /etc/fstab."
+  fi
+
+  target="/mnt/$share"
+  if grep -qF " $(fstab_escape "$target") " "$FSTAB"; then
+    die "$target is already in /etc/fstab."
+  fi
+  [[ ! -e $target ]] || [[ -z $(ls -A "$target" 2>/dev/null) ]] || target="/mnt/$server-$share"
+
+  echo "Keep //$server/$share mounted at $target"
+  echo "It mounts when first opened and never delays startup when the server is away."
+  echo
+  user=$(gum input --prompt "Username: " --value "${user:-$USER}")
+  password=$(gum input --password --prompt "Password: ")
+  echo
+
+  # A readable file name with no characters fstab would need to escape, plus
+  # a hash of the exact share, so two shares never share a credentials file.
+  cred="$CRED_DIR/$(tr -c 'A-Za-z0-9._-' '_' <<<"$server-$share" | sed 's/_$//')-$(printf '%s' "//$server/$share" | sha256sum | cut -c1-8).cred"
+  printf 'username=%s\npassword=%s\n' "$user" "$password" |
+    sudo install -D -m 600 -o root -g root /dev/stdin "$cred"
+  sudo mkdir -p "$target"
+  printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s 0 0 %s\n' \
+    "$(fstab_escape "//$server/$share")" "$(fstab_escape "$target")" "$(fstab_escape "$cred")" \
+    "$(id -u)" "$(id -g)" "$MARKER" | sudo tee -a "$FSTAB" >/dev/null
+  sudo systemctl daemon-reload
+  unit=$(systemd-escape --path --suffix=automount "$target")
+  sudo systemctl start "$unit"
+
+  if ls "$target" >/dev/null 2>&1; then
+    karchy-notification-send -g share "Share kept" "//$server/$share is at $target"
+    echo "Done: //$server/$share is at $target."
+  else
+    echo "The fstab entry is in place, but the share did not mount just now (wrong password, or the server is away)."
+    echo "It will try again when $target is opened. Remove it with Thunar's Remove Kept Mount."
+    read -r -p "Press Enter to close." _ || true
+  fi
+}
+
+remove() {
+  local path="$1" target line unit cred
+  target=$(realpath -m "$path")
+  while [[ $target != "/" ]]; do
+    line=$(grep -F "$MARKER" "$FSTAB" | awk -v t="$(fstab_escape "$target")" '$2 == t' || true)
+    [[ -z $line ]] || break
+    target=$(dirname "$target")
+  done
+  [[ -n $line ]] || die "$path is not inside a mount kept by karchy."
+
+  cred=$(fstab_unescape "$(sed -n 's/.*credentials=\([^,]*\).*/\1/p' <<<"$line")")
+  echo "Remove the kept mount at $target"
+  gum confirm "Remove it? Files on the server are not touched." || exit 0
+
+  unit=$(systemd-escape --path --suffix=automount "$target")
+  sudo systemctl stop "$unit" "${unit%.automount}.mount" 2>/dev/null || true
+  sudo awk -v t="$(fstab_escape "$target")" -v m="$MARKER" '!(index($0, m) && $2 == t)' "$FSTAB" |
+    sudo tee "$FSTAB.karchy-new" >/dev/null
+  sudo mv "$FSTAB.karchy-new" "$FSTAB"
+  [[ -z $cred ]] || sudo rm -f "$cred"
+  sudo systemctl daemon-reload
+  sudo rmdir "$target" 2>/dev/null || true
+  karchy-notification-send -g share "Kept mount removed" "$target"
+  echo "Removed."
+}
+
+case "${1:-}" in
+  --remove) remove "${2:?Usage: karchy-mount-keep --remove <folder>}" ;;
+  "") die "Usage: karchy-mount-keep <folder> | --remove <folder>" ;;
+  *) keep "$1" ;;
+esac

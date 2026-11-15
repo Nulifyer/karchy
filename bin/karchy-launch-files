@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# karchy:summary=Open the file manager at a path or the home folder
+
+# Open the default file manager (Thunar, D-37) at a path or the home folder.
+
+handler=$(xdg-mime query default inode/directory 2>/dev/null)
+exec setsid uwsm-app -- "${handler:-thunar.desktop}" "${1:-$HOME}"

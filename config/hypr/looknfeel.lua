@@ -1,0 +1,2 @@
+-- Look and feel overrides. Defaults: default/hypr/looknfeel.lua.
+-- hl.config({ general = { gaps_in = 5, gaps_out = 10 } })

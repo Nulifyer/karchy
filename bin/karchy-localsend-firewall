@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# karchy:summary=Open LocalSend's port only while a trusted network is connected (D-33)
+# karchy:args=[status]
+# karchy:hidden=true
+
+# Run as root by NetworkManager's dispatcher on every connection change, by
+# karchy-trusted-networks after the list changes, and once at boot before
+# NetworkManager starts (karchy-localsend-firewall.service), which closes the
+# port everywhere. Whether a connection is trusted comes from
+# `karchy-trusted-networks status --json`: the profile and its router must
+# both match what was trusted (D-68).
+
+set -euo pipefail
+
+PORT=53317
+COMMENT=karchy-localsend
+# What this script opened last, for Settings (`status`): one device per line.
+STATE=/run/karchy/localsend-open
+
+# For anyone (Settings › Network › Sharing and firewall): whether ufw is on
+# and refuses incoming connections, and where LocalSend's port is open now.
+# ufw's own rule list needs root; karchy opens only this port, and records
+# where.
+if [[ ${1:-} == "status" ]]; then
+  enabled=$(sed -n 's/^ENABLED=//p' /etc/ufw/ufw.conf 2>/dev/null | head -n 1)
+  policy=$(sed -n 's/^DEFAULT_INPUT_POLICY="\{0,1\}\([A-Z]*\)"\{0,1\}$/\1/p' /etc/default/ufw 2>/dev/null | head -n 1)
+  jq -n --arg active "$(systemctl is-active ufw.service 2>/dev/null || true)" --arg enabled "$enabled" \
+    --arg policy "$policy" --arg open "$(cat "$STATE" 2>/dev/null || true)" \
+    --arg localsend "$(command -v localsend 2>/dev/null || true)" --argjson port "$PORT" '{
+      firewall: ($active == "active" and $enabled == "yes"),
+      incoming: ($policy | ascii_downcase),
+      localsend_installed: ($localsend != ""),
+      port: $port,
+      open_on: ($open | split("\n") | map(select(length > 0)))
+    }'
+  exit 0
+fi
+
+(( EUID == 0 )) || { echo "karchy-localsend-firewall: run as root" >&2; exit 1; }
+
+# The port opens only on the interfaces of trusted connections, never on a
+# VPN, tether or second network that is up at the same time.
+# Before NetworkManager runs (at boot) nothing is connected, so nothing is
+# trusted; asking nmcli then could only wait on a daemon that isn't there.
+wanted=()
+if systemctl is-active --quiet NetworkManager.service; then
+  while IFS= read -r device; do
+    [[ $device =~ ^[A-Za-z0-9._@-]+$ ]] && wanted+=("$device")
+  done < <(/usr/bin/karchy-trusted-networks status --json 2>/dev/null |
+    jq -r '.active[] | select(.trusted) | .device' 2>/dev/null)
+fi
+
+# Rules this script added earlier: "53317 on wlan0 ... # karchy-localsend",
+# plus the (v6) twin; "53317 ... # karchy-localsend" with no interface is the
+# old all-interfaces rule.
+status=$(ufw status)
+mapfile -t present < <(sed -n "s/^$PORT\( (v6)\)\? on \([^ ]*\) .*# $COMMENT\$/\2/p" <<<"$status" | sort -u)
+if grep -qE "^$PORT(/[a-z]+)?( \(v6\))? +ALLOW.*# $COMMENT\$" <<<"$status"; then
+  ufw delete allow "$PORT" >/dev/null || true
+fi
+
+for device in "${present[@]}"; do
+  [[ " ${wanted[*]} " == *" $device "* ]] || ufw delete allow in on "$device" to any port "$PORT" >/dev/null
+done
+for device in "${wanted[@]}"; do
+  [[ " ${present[*]} " == *" $device "* ]] || ufw allow in on "$device" to any port "$PORT" comment "$COMMENT" >/dev/null
+done
+
+mkdir -p "${STATE%/*}"
+printf '%s\n' "${wanted[@]}" | grep . >"$STATE.tmp" || true
+mv "$STATE.tmp" "$STATE"

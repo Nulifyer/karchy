@@ -1,0 +1,110 @@
+#!/bin/bash
+
+# karchy:summary=VPN profiles and the VPN package's options for Settings › Network
+# karchy:group=network
+# karchy:args=status [--json] | import <file.conf> | switch <uuid> on|off | home-lan yes|no
+# karchy:examples=karchy network vpn import ~/Downloads/wg0.conf
+# karchy:hidden=true
+
+# NetworkManager holds the VPN profiles (WireGuard, and VPN plugins such as
+# OpenVPN); nmcli changes them without a password for local members of wheel.
+#   import      adds a WireGuard .conf as a profile that doesn't start by
+#               itself (the VPN package, or the switch in Settings, starts it)
+#   switch      connects or disconnects a profile (without the VPN package)
+#   home-lan    the VPN package's "Allow local devices on trusted networks"
+#               (HOME_LAN): its configuration is handed to `nulifyer-vpn
+#               setup`, which checks it as root and asks for a password
+# With the VPN package (nulifyer-vpn) installed, its mode and status live in
+# /run/nulifyer-vpn/status and `nulifyer-vpn mode`; Settings reads those itself.
+
+set -euo pipefail
+
+CONFIG=/etc/nulifyer-vpn/config
+UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+
+refuse() { echo "$*" >&2; exit 2; }
+
+config_value() {
+  [[ -r $CONFIG ]] || return 0
+  sed -n "s/^$1=//p" "$CONFIG" | head -n 1 | sed "s/^'\(.*\)'$/\1/"
+}
+
+status() {
+  local rows="" uuid type device name autoconnect
+  declare -A active=()
+  while IFS=: read -r uuid device; do
+    [[ -n $uuid && -n $device ]] && active[$uuid]=$device
+  done < <(nmcli -t -e no -f UUID,DEVICE connection show --active 2>/dev/null)
+  while IFS=: read -r uuid type autoconnect name; do
+    [[ $type == "wireguard" || $type == "vpn" ]] || continue
+    rows+=$(jq -cn --arg uuid "$uuid" --arg type "$type" --arg name "$name" --arg device "${active[$uuid]:-}" \
+      --arg auto "$autoconnect" \
+      '{uuid: $uuid, name: $name, type: $type, active: ($device != ""), device: $device, autoconnect: ($auto == "yes")}')$'\n'
+  done < <(nmcli -t -e no -f UUID,TYPE,AUTOCONNECT,NAME connection show 2>/dev/null)
+  jq -s --arg package "$([[ -x /usr/lib/nulifyer-vpn/control ]] && echo yes)" \
+    --arg configured "$([[ -r $CONFIG ]] && echo yes)" --arg homeLan "$(config_value HOME_LAN)" \
+    --arg connection "$(config_value VPN_CONNECTION)" --arg timeout "$(config_value CONNECT_TIMEOUT)" '{
+      package: ($package == "yes"), configured: ($configured == "yes"),
+      home_lan: ($homeLan != "no"), connection: $connection,
+      connect_timeout: ($timeout | tonumber? // 30),
+      profiles: sort_by(.name | ascii_downcase)
+    }' <<<"$rows"
+}
+
+# A WireGuard configuration as a NetworkManager profile. NetworkManager names
+# the profile and its interface after the file, and an interface name is at
+# most 15 letters, digits and _=+.-, so the file is imported under such a name.
+import_conf() {
+  local file=${1:-} base dir out uuid
+  [[ -f $file && -r $file ]] || refuse "Can't read that file."
+  (( $(stat -c %s "$file") <= 65536 )) || refuse "This file isn't a WireGuard configuration. Choose a .conf file exported by your VPN provider."
+  if ! grep -qiE '^[[:space:]]*\[Interface\]' "$file" || ! grep -qiE '^[[:space:]]*PrivateKey[[:space:]]*=' "$file" ||
+    ! grep -qiE '^[[:space:]]*\[Peer\]' "$file"; then
+    refuse "This file isn't a WireGuard configuration. Choose a .conf file exported by your VPN provider."
+  fi
+  base=${file##*/}
+  base=${base%.conf}
+  base=${base//[^A-Za-z0-9_=+.-]/-}
+  base=${base:0:15}
+  [[ -n $base && $base != "." && $base != ".." ]] || base=wg0
+  dir=$(mktemp -d)
+  trap 'rm -rf "$dir"' EXIT
+  install -m 600 "$file" "$dir/$base.conf"
+  if ! out=$(nmcli connection import type wireguard file "$dir/$base.conf" 2>&1); then
+    refuse "NetworkManager couldn't import it: ${out#Error: }"
+  fi
+  uuid=$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' <<<"$out" | head -n 1)
+  [[ -n $uuid ]] || refuse "NetworkManager didn't say which profile it made: $out"
+  # Imported profiles connect at once and on every boot; this one waits to
+  # be switched on (or for the VPN package to start it).
+  nmcli connection down uuid "$uuid" >/dev/null 2>&1 || true
+  nmcli connection modify uuid "$uuid" connection.autoconnect no
+  jq -cn --arg uuid "$uuid" --arg name "$base" '{uuid: $uuid, name: $name}'
+}
+
+home_lan() {
+  local value=${1:-} tmp
+  [[ $value =~ ^(yes|no)$ ]] || refuse "Allow local devices is yes or no."
+  command -v nulifyer-vpn >/dev/null || refuse "The VPN package (nulifyer-vpn) isn't installed."
+  [[ -r $CONFIG ]] || refuse "The VPN isn't set up yet: run nulifyer-vpn setup."
+  tmp=$(mktemp)
+  trap 'rm -f "$tmp"' EXIT
+  grep -v '^HOME_LAN=' "$CONFIG" >"$tmp" || true
+  printf 'HOME_LAN=%s\n' "$value" >>"$tmp"
+  nulifyer-vpn setup "$tmp" >/dev/null
+}
+
+case "${1:-}" in
+  status) status ;;
+  import) import_conf "${2:-}" ;;
+  switch)
+    [[ ${2:-} =~ $UUID_RE ]] || refuse "Not a connection UUID: ${2:-}"
+    case ${3:-} in
+      on) nmcli connection up uuid "$2" >/dev/null ;;
+      off) nmcli connection down uuid "$2" >/dev/null ;;
+      *) refuse "switch is on or off." ;;
+    esac
+    ;;
+  home-lan) home_lan "${2:-}" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-network-vpn /p' "$0" >&2; exit 1 ;;
+esac

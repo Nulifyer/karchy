@@ -1,0 +1,2 @@
+-- Keyboard, mouse and touchpad overrides. Defaults: default/hypr/input.lua.
+-- hl.config({ input = { kb_layout = "us", repeat_rate = 40, repeat_delay = 300 } })

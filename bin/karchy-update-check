@@ -1,0 +1,80 @@
+#!/bin/bash
+
+# karchy:summary=Check for updates: karchy releases and system packages (D-61)
+# karchy:args=[--quiet]
+# karchy:hidden=true
+
+# Run by karchy-update-check.timer, and after updates and channel changes.
+# Nothing is installed and no root is needed:
+#   - checkupdates syncs a copy of pacman's databases in a temporary folder
+#   - paru -Qua lists AUR updates
+#   - the channel's "release" file names the newest karchy release
+# The result goes to ~/.local/state/karchy/updates.json for the bar's updates
+# indicator. A new karchy release is announced once, with an Update button
+# (--quiet skips the announcement). When a repository can't be reached the
+# previous result stays.
+
+set -euo pipefail
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy"
+state="$state_dir/updates.json"
+quiet=false
+[[ ${1:-} == "--quiet" ]] && quiet=true
+mkdir -p "$state_dir"
+
+release_field() {
+  sed -n "s/^$1=//p" "$2" 2>/dev/null | head -n 1
+}
+
+# 0: updates listed; 2: none; anything else: couldn't check.
+rc=0
+updates=$(checkupdates 2>/dev/null) || rc=$?
+if ((rc != 0 && rc != 2)); then
+  echo "karchy-update-check: couldn't reach the package repositories; keeping the last result" >&2
+  exit 1
+fi
+
+aur=$(paru -Qua 2>/dev/null | wc -l || true)
+mapfile -t karchy_packages < <(pacman -Slq karchy 2>/dev/null)
+karchy_updates=0
+if [[ -n $updates ]]; then
+  karchy_updates=$(awk '{ print $1 }' <<<"$updates" | grep -cxF -f <(printf '%s\n' "${karchy_packages[@]:-}") || true)
+fi
+
+channel=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
+server=$(sed -n 's/^Server *= *//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
+installed=$(release_field VERSION /usr/share/karchy/release)
+available=""
+if [[ -n $server ]] && remote=$(curl -fsSL --max-time 15 "$server/release" 2>/dev/null); then
+  latest=$(sed -n 's/^VERSION=//p' <<<"$remote" | head -n 1)
+  if [[ -n $latest && -n $installed && $(vercmp "$latest" "$installed") -gt 0 ]]; then
+    available=$latest
+  fi
+fi
+
+previous_notified=$(jq -r '.notified // ""' "$state" 2>/dev/null || true)
+notified=$previous_notified
+tmp=$(mktemp "$state.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+
+if [[ -n $available && $available != "$previous_notified" && $quiet == "false" ]]; then
+  karchy-notification-send -g update -t 0 "karchy $available is available" \
+    "${channel:-stable} channel. Update installs it with your other updates." \
+    --action "Update now" karchy-launch-floating-terminal-with-presentation karchy-update || true
+  notified=$available
+fi
+
+jq -n \
+  --arg checked "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --argjson packages "$(grep -c . <<<"$updates" || true)" \
+  --argjson aur "${aur:-0}" \
+  --argjson karchy "${karchy_updates:-0}" \
+  --arg channel "$channel" \
+  --arg installed "$installed" \
+  --arg available "$available" \
+  --arg notified "$notified" \
+  '{checked: $checked, packages: $packages, aur: $aur, karchy: $karchy, channel: $channel,
+    release: {installed: $installed, available: $available}, notified: $notified}' >"$tmp"
+mv "$tmp" "$state"
+trap - EXIT
+jq -c 'del(.notified)' "$state"

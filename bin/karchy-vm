@@ -1,0 +1,676 @@
+#!/bin/bash
+
+# karchy:summary=Create and run QEMU/KVM virtual machines (D-63)
+# karchy:args=list [--json] | create <name> [--os linux|windows] [--iso FILE] [--disk 64G] [--ram 4G] [--cpus N] [--tpm] [--secureboot] | start <name> [--iso FILE] | stop <name> [--timeout SEC] | kill <name> | open <name> | status <name> [--json] | set <name> <key> <value> | delete <name> [--yes] | snapshot create|list|restore|delete <name> [snapshot] [--json] | log <name> | screenshot <name> <file.png> | choose-iso [title] [folder] | manage [name]
+# karchy:examples=karchy vm create alpine --iso ~/Downloads/alpine.iso | karchy vm start alpine | karchy vm open alpine | karchy vm stop alpine
+
+# A VM is a folder in ~/VMs/<name>/: vm.conf (key=value), disk.qcow2, the UEFI
+# variables (vars.fd) and the TPM state (tpm/). It runs QEMU/KVM as the user,
+# headless, inside a transient systemd user unit karchy-vm-<name>.service, so
+# it keeps running when the shell restarts and its output goes to the journal.
+# SPICE and QMP listen on unix sockets in $XDG_RUNTIME_DIR/karchy-vm/<name>/;
+# `open` shows the display with spicy. No libvirt.
+
+set -euo pipefail
+
+VM_ROOT=${KARCHY_VM_ROOT:-$HOME/VMs}
+RUN_ROOT=${XDG_RUNTIME_DIR:-/run/user/$UID}/karchy-vm
+OVMF_DIR=/usr/share/edk2/x64
+SELF=$(readlink -f "${BASH_SOURCE[0]}")
+NAME_RE='^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$'
+CONF_KEYS=(os ram cpus disk_bus nic net uefi secureboot tpm iso display gl audio)
+
+die() {
+  echo "karchy-vm: $*" >&2
+  exit 1
+}
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-vm /p' "$SELF" | sed 's/ | /\n  karchy-vm /g' >&2
+  exit 1
+}
+
+need() {
+  local cmd
+  for cmd in "$@"; do
+    command -v "$cmd" >/dev/null || die "$cmd is missing; add Virtual machines in Settings › Optional features"
+  done
+}
+
+vm_dir() { echo "$VM_ROOT/$1"; }
+run_dir() { echo "$RUN_ROOT/$1"; }
+unit() { echo "karchy-vm-$1.service"; }
+
+check_name() {
+  [[ $1 =~ $NAME_RE ]] || die "'$1' is not a valid name: use letters, digits, '.', '_' and '-' (up to 40)"
+}
+
+require_vm() {
+  check_name "$1"
+  [[ -f "$(vm_dir "$1")/vm.conf" ]] || die "no VM '$1' (karchy vm list shows them)"
+}
+
+# vm.conf is read as data, never sourced.
+declare -A CONF
+load_conf() {
+  local key value
+  load_conf_defaults linux
+  while IFS='=' read -r key value; do
+    [[ $key =~ ^[a-z_]+$ ]] || continue
+    CONF[$key]=$value
+  done <"$(vm_dir "$1")/vm.conf"
+}
+
+save_conf() {
+  local file key
+  file="$(vm_dir "$1")/vm.conf"
+  {
+    echo "# karchy VM settings; edit with: karchy vm set $1 <key> <value>"
+    for key in "${CONF_KEYS[@]}"; do
+      echo "$key=${CONF[$key]}"
+    done
+  } >"$file.new"
+  mv "$file.new" "$file"
+}
+
+# running | starting | stopping | stopped
+vm_state() {
+  case $(systemctl --user show -p ActiveState --value "$(unit "$1")" 2>/dev/null) in
+    active) echo running ;;
+    activating) echo starting ;;
+    deactivating) echo stopping ;;
+    *) echo stopped ;;
+  esac
+}
+
+is_running() {
+  [[ $(vm_state "$1") != stopped ]]
+}
+
+require_stopped() {
+  is_running "$1" && die "'$1' is running; stop it first (karchy vm stop $1)"
+  return 0
+}
+
+require_running() {
+  is_running "$1" || die "'$1' is not running (karchy vm start $1)"
+}
+
+notify_shell() {
+  command -v karchy-shell >/dev/null && karchy-shell -q karchy.vms refresh >/dev/null 2>&1 || true
+}
+
+# Sizes like 4G, 512M or plain MiB, as QEMU's -m takes them.
+valid_ram() { [[ $1 =~ ^[1-9][0-9]*[MG]?$ ]]; }
+valid_size() { [[ $1 =~ ^[1-9][0-9]*[KMGT]?$ ]]; }
+valid_bool() { [[ $1 == yes || $1 == no ]]; }
+
+# Virtual size from the qcow2 header (bytes 24-31, big-endian): no qemu-img
+# call, so listing stays cheap while the panel polls.
+disk_virtual_size() {
+  local hex
+  [[ -r $1 ]] || { echo 0; return; }
+  hex=$(od -An -tx1 -j24 -N8 "$1" | tr -d ' \n')
+  [[ -n $hex ]] && echo $((16#$hex)) || echo 0
+}
+
+disk_used() {
+  [[ -e $1 ]] || { echo 0; return; }
+  echo $(($(stat -c %b "$1") * 512))
+}
+
+# One JSON object per VM: its settings, state and, while it runs, the QEMU
+# process's CPU time and resident memory (the panel turns CPU time into a %).
+vm_json() {
+  local name=$1 dir state pid=0 cpu=0 rss=0 stat_line fields
+  dir=$(vm_dir "$name")
+  load_conf "$name"
+  state=$(vm_state "$name")
+  if [[ $state != stopped ]]; then
+    pid=$(systemctl --user show -p MainPID --value "$(unit "$name")" 2>/dev/null || echo 0)
+    if ((pid > 0)) && [[ -r /proc/$pid/stat ]]; then
+      stat_line=$(</proc/"$pid"/stat)
+      # Fields after "(comm) ": utime and stime are the 12th and 13th.
+      read -r -a fields <<<"${stat_line##*) }"
+      cpu=$(awk -v u="${fields[11]:-0}" -v s="${fields[12]:-0}" -v t="$(getconf CLK_TCK)" 'BEGIN { printf "%.2f", (u + s) / t }')
+      read -r _ rss _ </proc/"$pid"/statm
+      rss=$((rss * $(getconf PAGESIZE)))
+    fi
+  fi
+  jq -cn \
+    --arg name "$name" --arg state "$state" --argjson pid "${pid:-0}" \
+    --argjson cpu_seconds "$cpu" --argjson mem_used "$rss" \
+    --argjson disk_size "$(disk_virtual_size "$dir/disk.qcow2")" \
+    --argjson disk_used "$(disk_used "$dir/disk.qcow2")" \
+    --arg os "${CONF[os]}" --arg ram "${CONF[ram]}" --argjson cpus "${CONF[cpus]:-1}" \
+    --arg disk_bus "${CONF[disk_bus]}" --arg nic "${CONF[nic]}" --arg net "${CONF[net]}" \
+    --arg uefi "${CONF[uefi]}" --arg secureboot "${CONF[secureboot]}" --arg tpm "${CONF[tpm]}" \
+    --arg iso "${CONF[iso]}" --arg display "${CONF[display]}" --arg gl "${CONF[gl]}" --arg audio "${CONF[audio]}" \
+    --arg path "$dir" \
+    '{name: $name, state: $state, pid: $pid, cpu_seconds: $cpu_seconds, mem_used: $mem_used,
+      disk_size: $disk_size, disk_used: $disk_used, os: $os, ram: $ram, cpus: $cpus,
+      disk_bus: $disk_bus, nic: $nic, net: $net, uefi: $uefi, secureboot: $secureboot, tpm: $tpm,
+      iso: $iso, display: $display, gl: $gl, audio: $audio, path: $path}'
+}
+
+all_names() {
+  local conf
+  for conf in "$VM_ROOT"/*/vm.conf; do
+    [[ -f $conf ]] || continue
+    conf=${conf%/vm.conf}
+    echo "${conf##*/}"
+  done
+}
+
+human() {
+  numfmt --to=iec-i --suffix=B "${1:-0}" 2>/dev/null || echo "$1"
+}
+
+cmd_list() {
+  local json=false name names=()
+  [[ ${1:-} == --json ]] && json=true
+  mapfile -t names < <(all_names)
+  if [[ $json == true ]]; then
+    for name in "${names[@]}"; do vm_json "$name"; done | jq -cs '.'
+    return
+  fi
+  if ((${#names[@]} == 0)); then
+    echo "No VMs yet. Create one with: karchy vm create <name> --iso <file>"
+    return
+  fi
+  printf '%-20s %-9s %-7s %5s %-8s %-17s %s\n' NAME STATE OS CPUS RAM DISK PID
+  for name in "${names[@]}"; do
+    vm_json "$name" | jq -r '[.name, .state, .os, (.cpus|tostring), .ram, .disk_used, .disk_size, (if .pid > 0 then (.pid|tostring) else "-" end)] | @tsv'
+  done | while IFS=$'\t' read -r n s o c r du ds p; do
+    printf '%-20s %-9s %-7s %5s %-8s %-17s %s\n' "$n" "$s" "$o" "$c" "$r" "$(human "$du")/$(human "$ds")" "$p"
+  done
+}
+
+cmd_status() {
+  local name=${1:-} json=false
+  [[ -n $name ]] || usage
+  [[ ${2:-} == --json ]] && json=true
+  require_vm "$name"
+  if [[ $json == true ]]; then
+    vm_json "$name"
+  else
+    vm_json "$name" | jq -r 'to_entries[] | "\(.key): \(.value)"'
+  fi
+}
+
+cmd_create() {
+  local name=${1:-} os=linux iso="" disk=64G ram="" cpus="" tpm="" secureboot="" dir fs
+  [[ -n $name && $name != -* ]] || usage
+  shift
+  while (($#)); do
+    case $1 in
+      --os) os=${2:-}; shift ;;
+      --iso) iso=${2:-}; shift ;;
+      --disk) disk=${2:-}; shift ;;
+      --ram) ram=${2:-}; shift ;;
+      --cpus) cpus=${2:-}; shift ;;
+      --tpm) tpm=yes ;;
+      --secureboot) secureboot=yes ;;
+      *) die "unknown option: $1" ;;
+    esac
+    shift
+  done
+  need qemu-img
+  check_name "$name"
+  dir=$(vm_dir "$name")
+  [[ ! -e $dir ]] || die "'$name' already exists ($dir)"
+  [[ $os == linux || $os == windows ]] || die "--os is linux or windows"
+  valid_size "$disk" || die "--disk takes a size such as 64G"
+  if [[ -n $iso ]]; then
+    [[ -f $iso ]] || die "no such ISO: $iso"
+    iso=$(readlink -f "$iso")
+  fi
+
+  load_conf_defaults "$os"
+  [[ -n $ram ]] && CONF[ram]=$ram
+  [[ -n $cpus ]] && CONF[cpus]=$cpus
+  [[ -n $tpm ]] && CONF[tpm]=yes
+  [[ -n $secureboot ]] && CONF[secureboot]=yes
+  CONF[iso]=$iso
+  valid_ram "${CONF[ram]}" || die "--ram takes a size such as 4G"
+  [[ ${CONF[cpus]} =~ ^[1-9][0-9]*$ ]] || die "--cpus takes a number"
+  if [[ ${CONF[secureboot]} == yes ]]; then
+    [[ -r $OVMF_DIR/OVMF_CODE.secboot.4m.fd ]] || die "Secure Boot firmware is missing (edk2-ovmf)"
+  fi
+
+  # Disk images rewrite in place; copy-on-write on btrfs fragments them, so the
+  # VMs folder is marked no-CoW before any image exists (new files inherit it).
+  if [[ ! -d $VM_ROOT ]]; then
+    mkdir -p "$VM_ROOT"
+    fs=$(stat -f -c %T "$VM_ROOT")
+    [[ $fs == btrfs ]] && chattr +C "$VM_ROOT" 2>/dev/null || true
+  fi
+  mkdir -p "$dir"
+  qemu-img create -q -f qcow2 "$dir/disk.qcow2" "$disk"
+  if [[ ${CONF[uefi]} == yes ]]; then
+    [[ -r $OVMF_DIR/OVMF_VARS.4m.fd ]] || { rm -rf "$dir"; die "UEFI firmware is missing (edk2-ovmf)"; }
+    cp "$OVMF_DIR/OVMF_VARS.4m.fd" "$dir/vars.fd"
+  fi
+  [[ ${CONF[tpm]} == yes ]] && mkdir -p "$dir/tpm"
+  save_conf "$name"
+  echo "Created '$name' in $dir ($os, ${CONF[cpus]} CPUs, ${CONF[ram]} RAM, $disk disk)."
+  [[ -n $iso ]] && echo "It boots from ${iso##*/} until the disk has a system. Start it with: karchy vm start $name"
+  notify_shell
+}
+
+# Profiles: Linux gets virtio everything. Windows has no virtio drivers until
+# virtio-win is added, so it gets SATA and e1000e, QXL graphics, and the TPM
+# and Secure Boot firmware Windows 11 checks for.
+load_conf_defaults() {
+  CONF=([os]=linux [ram]=4G [cpus]=2 [disk_bus]=virtio [nic]=virtio [net]=user [uefi]=yes
+    [secureboot]=no [tpm]=no [iso]="" [display]=virtio [gl]=no [audio]=spice)
+  if [[ $1 == windows ]]; then
+    CONF[os]=windows CONF[ram]=8G CONF[cpus]=4 CONF[disk_bus]=sata CONF[nic]=e1000e
+    CONF[secureboot]=yes CONF[tpm]=yes CONF[display]=qxl
+  fi
+  local cores
+  cores=$(nproc)
+  ((CONF[cpus] > cores)) && CONF[cpus]=$cores
+  return 0
+}
+
+cmd_set() {
+  local name=${1:-} key=${2:-} value=${3-}
+  [[ -n $name && -n $key && $# -ge 3 ]] || usage
+  require_vm "$name"
+  require_stopped "$name"
+  load_conf "$name"
+  case $key in
+    ram) valid_ram "$value" || die "ram takes a size such as 4G" ;;
+    cpus) [[ $value =~ ^[1-9][0-9]*$ ]] || die "cpus takes a number" ;;
+    os) [[ $value == linux || $value == windows ]] || die "os is linux or windows" ;;
+    disk_bus) [[ $value == virtio || $value == sata ]] || die "disk_bus is virtio or sata" ;;
+    nic) [[ $value == virtio || $value == e1000e ]] || die "nic is virtio or e1000e" ;;
+    net) [[ $value == user || $value == none ]] || die "net is user or none" ;;
+    display) [[ $value == virtio || $value == qxl || $value == std ]] || die "display is virtio, qxl or std" ;;
+    audio) [[ $value == spice || $value == pipewire || $value == none ]] || die "audio is spice, pipewire or none" ;;
+    uefi | tpm | gl) valid_bool "$value" || die "$key is yes or no" ;;
+    secureboot)
+      valid_bool "$value" || die "secureboot is yes or no"
+      [[ $value == no || ${CONF[uefi]} == yes ]] || die "Secure Boot needs uefi=yes"
+      ;;
+    iso)
+      if [[ -n $value && $value != none ]]; then
+        [[ -f $value ]] || die "no such ISO: $value"
+        value=$(readlink -f "$value")
+      else
+        value=""
+      fi
+      ;;
+    disk_size)
+      valid_size "$value" || die "disk_size takes a size such as 128G"
+      need qemu-img
+      qemu-img resize -q "$(vm_dir "$name")/disk.qcow2" "$value" || die "could not resize (images only grow here)"
+      echo "Resized the disk of '$name' to $value; grow the partition inside the guest to use it."
+      notify_shell
+      return
+      ;;
+    *) die "unknown key '$key' (${CONF_KEYS[*]} disk_size)" ;;
+  esac
+  CONF[$key]=$value
+  if [[ $key == uefi && $value == no ]]; then
+    CONF[secureboot]=no
+  fi
+  if [[ $key == tpm && $value == yes ]]; then
+    mkdir -p "$(vm_dir "$name")/tpm"
+  fi
+  save_conf "$name"
+  echo "$name: $key=$value"
+  notify_shell
+}
+
+# The unit's main process: start swtpm when the VM has a TPM, then become QEMU.
+# Called by `start` through systemd-run, never by hand. QEMU's options are
+# comma-separated within one word, which SC2054 mistakes for array syntax.
+# shellcheck disable=SC2054
+cmd_run() {
+  local name=$1 iso_once=${2:-} dir run code q=() iso boot_iso
+  require_vm "$name"
+  load_conf "$name"
+  dir=$(vm_dir "$name")
+  run=$(run_dir "$name")
+  mkdir -p "$run"
+  rm -f "$run"/*.sock
+
+  q=(qemu-system-x86_64 -name "$name,process=karchy-vm-$name" -nodefaults -no-user-config
+    -accel kvm -smp "${CONF[cpus]}" -m "${CONF[ram]}" -display none
+    -qmp "unix:$run/qmp.sock,server=on,wait=off")
+
+  if [[ ${CONF[os]} == windows ]]; then
+    q+=(-cpu host,hv_relaxed,hv_vapic,hv_spinlocks=0x1fff,hv_time,hv_vpindex,hv_synic,hv_stimer,hv_frequencies
+      -rtc base=localtime,driftfix=slew -global ICH9-LPC.disable_s3=1)
+  else
+    q+=(-cpu host)
+  fi
+
+  if [[ ${CONF[uefi]} == yes ]]; then
+    [[ -f $dir/vars.fd ]] || cp "$OVMF_DIR/OVMF_VARS.4m.fd" "$dir/vars.fd"
+    if [[ ${CONF[secureboot]} == yes ]]; then
+      code=$OVMF_DIR/OVMF_CODE.secboot.4m.fd
+      q+=(-machine q35,smm=on -global driver=cfi.pflash01,property=secure,value=on)
+    else
+      code=$OVMF_DIR/OVMF_CODE.4m.fd
+      q+=(-machine q35)
+    fi
+    q+=(-drive "if=pflash,format=raw,unit=0,readonly=on,file=$code"
+      -drive "if=pflash,format=raw,unit=1,file=$dir/vars.fd")
+  else
+    q+=(-machine q35)
+  fi
+
+  # The disk boots first; an empty disk falls through to the ISO. An ISO given
+  # for one boot goes first instead.
+  q+=(-drive "file=$dir/disk.qcow2,if=none,id=disk0,format=qcow2,discard=unmap,detect-zeroes=unmap")
+  if [[ ${CONF[disk_bus]} == sata ]]; then
+    q+=(-device ide-hd,drive=disk0,bus=ide.0,bootindex=1)
+  else
+    q+=(-device virtio-blk-pci,drive=disk0,bootindex=1)
+  fi
+  iso=${iso_once:-${CONF[iso]}}
+  boot_iso=2
+  [[ -n $iso_once ]] && boot_iso=0
+  if [[ -n $iso ]]; then
+    [[ -r $iso ]] || die "the ISO is missing: $iso"
+    q+=(-drive "file=$iso,if=none,id=cd0,media=cdrom,readonly=on"
+      -device "ide-cd,drive=cd0,bus=ide.2,bootindex=$boot_iso")
+  fi
+
+  if [[ ${CONF[net]} == user ]]; then
+    q+=(-netdev user,id=net0)
+    if [[ ${CONF[nic]} == e1000e ]]; then
+      q+=(-device e1000e,netdev=net0)
+    else
+      q+=(-device virtio-net-pci,netdev=net0)
+    fi
+  fi
+
+  local spice="unix=on,addr=$run/spice.sock,disable-ticketing=on"
+  case ${CONF[display]} in
+    qxl) q+=(-device qxl-vga) ;;
+    std) q+=(-device VGA) ;;
+    *)
+      if [[ ${CONF[gl]} == yes ]]; then
+        q+=(-device virtio-vga-gl)
+        spice+=",gl=on"
+      else
+        q+=(-device virtio-vga)
+      fi
+      ;;
+  esac
+  q+=(-spice "$spice"
+    -device virtio-serial-pci
+    -chardev spicevmc,id=vdagent,name=vdagent
+    -device virtserialport,chardev=vdagent,name=com.redhat.spice.0
+    -chardev "socket,id=qga0,path=$run/qga.sock,server=on,wait=off"
+    -device virtserialport,chardev=qga0,name=org.qemu.guest_agent.0
+    -device qemu-xhci,id=xhci -device usb-tablet
+    -chardev spicevmc,id=usbredir1,name=usbredir -device usb-redir,chardev=usbredir1
+    -chardev spicevmc,id=usbredir2,name=usbredir -device usb-redir,chardev=usbredir2
+    -device virtio-rng-pci -device virtio-balloon-pci)
+
+  case ${CONF[audio]} in
+    spice) q+=(-audiodev spice,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0) ;;
+    pipewire) q+=(-audiodev pipewire,id=snd0 -device ich9-intel-hda -device hda-duplex,audiodev=snd0) ;;
+  esac
+
+  if [[ ${CONF[tpm]} == yes ]]; then
+    command -v swtpm >/dev/null || die "the VM has a TPM but swtpm is missing"
+    mkdir -p "$dir/tpm"
+    swtpm socket --tpm2 --tpmstate "dir=$dir/tpm" --ctrl "type=unixio,path=$run/swtpm.sock" --terminate &
+    local tries=0
+    until [[ -S $run/swtpm.sock ]]; do
+      ((tries++ < 50)) || die "swtpm did not start"
+      sleep 0.1
+    done
+    q+=(-chardev "socket,id=chrtpm,path=$run/swtpm.sock" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-crb,tpmdev=tpm0)
+  fi
+
+  echo "Starting: ${q[*]}"
+  exec "${q[@]}"
+}
+
+# ExecStopPost of the unit: tidy the sockets and tell the shell.
+cmd_stopped() {
+  local name=$1
+  check_name "$name"
+  rm -rf "${RUN_ROOT:?}/$name"
+  notify_shell
+}
+
+cmd_start() {
+  local name=${1:-} iso="" tries=0 state since
+  [[ -n $name ]] || usage
+  shift
+  while (($#)); do
+    case $1 in
+      --iso) iso=${2:-}; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+    shift
+  done
+  require_vm "$name"
+  need qemu-system-x86_64
+  [[ -w /dev/kvm ]] || die "/dev/kvm is not usable; check that virtualization is on in the firmware settings"
+  is_running "$name" && die "'$name' is already running"
+  if [[ -n $iso ]]; then
+    [[ -f $iso ]] || die "no such ISO: $iso"
+    iso=$(readlink -f "$iso")
+  fi
+  # A failed run leaves its unit behind; clear it so the name is free again.
+  systemctl --user reset-failed "$(unit "$name")" 2>/dev/null || true
+  since=$(date +%s)
+  systemd-run --user --quiet --collect --unit="$(unit "$name")" \
+    --description="karchy VM $name" \
+    --setenv=PATH="$PATH" --setenv=KARCHY_PATH="${KARCHY_PATH:-}" \
+    --setenv=KARCHY_VM_ROOT="$VM_ROOT" \
+    -p ExecStopPost="$SELF __stopped $name" \
+    -p TimeoutStopSec=15 \
+    "$SELF" __run "$name" ${iso:+"$iso"}
+  # QEMU opens its QMP socket once the machine is built; until then a bad
+  # setting (a missing ISO, too much memory) can still fail the unit.
+  until [[ -S $(run_dir "$name")/qmp.sock ]]; do
+    state=$(vm_state "$name")
+    if [[ $state == stopped ]] || ((tries++ > 100)); then
+      echo "karchy-vm: '$name' did not start:" >&2
+      journalctl --user -u "$(unit "$name")" --since "@$since" -o cat --no-pager 2>/dev/null |
+        grep -v -e '^Starting: ' -e '^Started karchy VM' -e '^Stopp' -e 'Consumed .* CPU time' >&2 || true
+      exit 1
+    fi
+    sleep 0.1
+  done
+  echo "Started '$name'. Show it with: karchy vm open $name"
+  notify_shell
+}
+
+# Send one QMP command; print the reply line.
+qmp() {
+  local sock reply
+  sock="$(run_dir "$1")/qmp.sock"
+  [[ -S $sock ]] || die "no QMP socket for '$1'"
+  # The first reply answers qmp_capabilities, the second the command.
+  reply=$(printf '%s\n%s\n' '{"execute":"qmp_capabilities"}' "$2" |
+    socat -t 1 - "UNIX-CONNECT:$sock" | grep -E '"(return|error)"' | sed -n 2p || true)
+  [[ -n $reply ]] || die "QEMU did not answer on QMP"
+  [[ $reply == *'"error"'* ]] && die "QEMU: $reply"
+  echo "$reply"
+}
+
+cmd_stop() {
+  local name=${1:-} timeout=90 waited=0
+  [[ -n $name ]] || usage
+  shift
+  while (($#)); do
+    case $1 in
+      --timeout) timeout=${2:-}; shift ;;
+      *) die "unknown option: $1" ;;
+    esac
+    shift
+  done
+  [[ $timeout =~ ^[0-9]+$ ]] || die "--timeout takes seconds"
+  require_vm "$name"
+  require_running "$name"
+  need socat
+  qmp "$name" '{"execute":"system_powerdown"}' >/dev/null
+  echo "Asked '$name' to shut down; waiting up to ${timeout}s."
+  while is_running "$name"; do
+    if ((waited >= timeout * 2)); then
+      local msg="'$name' is still running after ${timeout}s; the guest may be ignoring the power button. Force it off with: karchy vm kill $name"
+      echo "karchy-vm: $msg" >&2
+      [[ -t 1 ]] || karchy-notification-send -g vms "$name is still running" "It ignored the shutdown request. Force stop it from the VMs panel." 2>/dev/null || true
+      exit 1
+    fi
+    sleep 0.5
+    waited=$((waited + 1))
+  done
+  echo "'$name' is off."
+}
+
+cmd_kill() {
+  local name=${1:-}
+  [[ -n $name ]] || usage
+  require_vm "$name"
+  require_running "$name"
+  # SIGTERM to QEMU and swtpm: QEMU stops at once, like pulling the plug, but
+  # flushes its disk writes first.
+  systemctl --user stop "$(unit "$name")"
+  echo "'$name' was forced off."
+}
+
+cmd_open() {
+  local name=${1:-} sock
+  [[ -n $name ]] || usage
+  require_vm "$name"
+  require_running "$name"
+  need spicy
+  sock="$(run_dir "$name")/spice.sock"
+  [[ -S $sock ]] || die "no display socket for '$name'"
+  if command -v uwsm-app >/dev/null; then
+    setsid -f uwsm-app -- spicy --uri="spice+unix://$sock" --title="$name" >/dev/null 2>&1
+  else
+    setsid -f spicy --uri="spice+unix://$sock" --title="$name" >/dev/null 2>&1
+  fi
+}
+
+cmd_delete() {
+  local name=${1:-} yes=false answer dir
+  [[ -n $name ]] || usage
+  [[ ${2:-} == --yes || ${2:-} == -y ]] && yes=true
+  require_vm "$name"
+  require_stopped "$name"
+  dir=$(vm_dir "$name")
+  if [[ $yes != true ]]; then
+    [[ -t 0 ]] || die "pass --yes to delete '$name' without a prompt"
+    read -rp "Delete '$name' and its disk ($dir)? This cannot be undone. [y/N] " answer
+    [[ $answer == [yY]* ]] || { echo "Nothing was deleted."; exit 1; }
+  fi
+  rm -rf -- "$dir"
+  echo "Deleted '$name'."
+  notify_shell
+}
+
+# Disk snapshots are internal qcow2 snapshots; the UEFI variables and TPM
+# state are copied beside them so a restore brings back all three.
+cmd_snapshot() {
+  local action=${1:-} name=${2:-} snap=${3:-} dir json=false
+  [[ -n $action && -n $name ]] || usage
+  require_vm "$name"
+  need qemu-img
+  dir=$(vm_dir "$name")
+  case $action in
+    list)
+      [[ $snap == --json ]] && json=true
+      if [[ $json == true ]]; then
+        qemu-img info -U --output=json "$dir/disk.qcow2" |
+          jq -c '[(.snapshots // [])[] | {name, date: ."date-sec", size: ."vm-state-size"}]'
+      else
+        qemu-img snapshot -U -l "$dir/disk.qcow2"
+      fi
+      return
+      ;;
+    create | restore | delete) ;;
+    *) usage ;;
+  esac
+  [[ -n $snap ]] || usage
+  check_name "$snap"
+  require_stopped "$name"
+  case $action in
+    create)
+      qemu-img snapshot -c "$snap" "$dir/disk.qcow2"
+      mkdir -p "$dir/snapshots"
+      [[ -f $dir/vars.fd ]] && cp "$dir/vars.fd" "$dir/snapshots/$snap.vars.fd"
+      if [[ -d $dir/tpm ]]; then
+        rm -rf "$dir/snapshots/$snap.tpm"
+        cp -a "$dir/tpm" "$dir/snapshots/$snap.tpm"
+      fi
+      echo "Saved snapshot '$snap' of '$name'."
+      ;;
+    restore)
+      qemu-img snapshot -a "$snap" "$dir/disk.qcow2"
+      [[ -f $dir/snapshots/$snap.vars.fd ]] && cp "$dir/snapshots/$snap.vars.fd" "$dir/vars.fd"
+      if [[ -d $dir/snapshots/$snap.tpm ]]; then
+        rm -rf "$dir/tpm"
+        cp -a "$dir/snapshots/$snap.tpm" "$dir/tpm"
+      fi
+      echo "Restored '$name' to snapshot '$snap'."
+      ;;
+    delete)
+      qemu-img snapshot -d "$snap" "$dir/disk.qcow2"
+      rm -rf "$dir/snapshots/$snap.vars.fd" "$dir/snapshots/$snap.tpm"
+      echo "Deleted snapshot '$snap' of '$name'."
+      ;;
+  esac
+  notify_shell
+}
+
+cmd_log() {
+  local name=${1:-}
+  [[ -n $name ]] || usage
+  check_name "$name"
+  journalctl --user -u "$(unit "$name")" --no-pager -n 100 -o short
+}
+
+cmd_screenshot() {
+  local name=${1:-} file=${2:-}
+  [[ -n $name && -n $file ]] || usage
+  require_vm "$name"
+  require_running "$name"
+  need socat
+  file=$(readlink -f "$file")
+  qmp "$name" "$(jq -cn --arg f "$file" '{execute: "screendump", arguments: {filename: $f, format: "png"}}')" >/dev/null
+  echo "$file"
+}
+
+# Ask the desktop portal's file chooser for an ISO and print its path (exit 1
+# when cancelled), through karchy-file-choose (out of the shell's process).
+cmd_choose_iso() {
+  local title=${1:-Choose an ISO} folder=${2:-$HOME/Downloads}
+  [[ -d $folder ]] || folder=$HOME
+  karchy-file-choose --title "$title" --folder "$folder" --filter "Disk images|*.iso *.ISO *.img"
+}
+
+case ${1:-} in
+  list) shift; cmd_list "$@" ;;
+  create) shift; cmd_create "$@" ;;
+  start) shift; cmd_start "$@" ;;
+  stop) shift; cmd_stop "$@" ;;
+  kill) shift; cmd_kill "$@" ;;
+  open) shift; cmd_open "$@" ;;
+  status) shift; cmd_status "$@" ;;
+  set) shift; cmd_set "$@" ;;
+  delete) shift; cmd_delete "$@" ;;
+  snapshot) shift; cmd_snapshot "$@" ;;
+  log) shift; cmd_log "$@" ;;
+  screenshot) shift; cmd_screenshot "$@" ;;
+  choose-iso) shift; cmd_choose_iso "$@" ;;
+  # The window, at one VM's page when a name is given.
+  manage) karchy-shell shell summon karchy.vms "$(jq -cn --arg vm "${2:-}" 'if $vm == "" then {} else {vm: $vm} end')" >/dev/null ;;
+  __run) shift; cmd_run "$@" ;;
+  __stopped) shift; cmd_stopped "$@" ;;
+  "") cmd_list ;;
+  *) usage ;;
+esac

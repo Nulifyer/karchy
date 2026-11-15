@@ -1,0 +1,34 @@
+# nulifyer (D-22): the user's gruvbox material dark, from the dotfiles
+# colors.json "gruvbox" palette. Darker background than Omarchy's gruvbox and
+# a yellow accent instead of its teal.
+mode = "dark"
+
+accent = "#d8a657"
+selection = "#3c3836"
+muted = "#746a62"
+
+background = "#202020"
+dark_background = "#1b1b1b"
+darker_background = "#161616"
+lighter_background = "#2a2827"
+
+foreground = "#ddc7a1"
+dark_foreground = "#7c6f64"
+light_foreground = "#bdae93"
+bright_foreground = "#ebdbb2"
+
+red = "#ea6962"
+yellow = "#d8a657"
+orange = "#e78a4e"
+green = "#a9b665"
+cyan = "#89b482"
+blue = "#7daea3"
+magenta = "#d3869b"
+brown = "#70432e"
+
+bright_red = "#ea6962"
+bright_yellow = "#d8a657"
+bright_green = "#a9b665"
+bright_cyan = "#89b482"
+bright_blue = "#7daea3"
+bright_magenta = "#d3869b"

@@ -1,4 +1,4 @@
-# Omarchy shell surfaces. Colors derive from colors.toml; sizes and the
+# Karchy shell surfaces. Colors derive from colors.toml; sizes and the
 # typographic scale come from the keys below. Themes can ship
 # themes/<name>/shell.toml to replace this generated file.
 
@@ -15,6 +15,10 @@ active           = "{{ red }}"
 scale-with-font  = true
 size-horizontal  = 26
 size-vertical    = 28
+# A floating bar's gap to the screen edges and its corner rounding, in px.
+# Unset, they follow the windows: half of Hyprland's gaps_out, and its rounding.
+# float-margin   = 5
+# float-radius   = 0
 
 [hyprland]
 # Shared Hyprland-derived border tokens. Surface sections reference these so
@@ -37,21 +41,24 @@ normal-border       = "{{ foreground }}"
 normal-border-width = 1
 normal-border-alpha = 0.4
 
-# Hover-cursor: mouse hover and the panel keyboard cursor.
+# Hover-cursor: mouse hover, and the fill under the keyboard cursor.
 hover-cursor-color        = "{{ foreground }}"
-hover-cursor-fill-alpha   = 0.08
+hover-cursor-fill-alpha   = 0.12
 hover-cursor-border       = "{{ foreground }}"
 hover-cursor-border-width = 1
-hover-cursor-border-alpha = 0.25
+hover-cursor-border-alpha = 0.4
 
-# Focus: Qt activeFocus. Mirror the hover-cursor values by default so
-# mouse hover, keyboard cursor, and tab focus all read as the same state
-# — themes that want focus to stand out override these four lines.
+# Focus: where the keyboard is (Qt activeFocus, and the keyboard cursor of
+# the panels and the menu). focus-color and focus-fill-alpha tint the
+# control like hover; focus-border is the focus ring drawn over it. "focus"
+# is the theme's accent, kept at 3:1 against the background and the
+# selected fill; focus-border-width defaults to 2px at text size 12 and
+# grows with it.
 focus-color        = "{{ foreground }}"
-focus-fill-alpha   = 0.08
-focus-border       = "{{ foreground }}"
-focus-border-width = 1
-focus-border-alpha = 0.25
+focus-fill-alpha   = 0.12
+focus-border       = "focus"
+focus-border-alpha = 1.0
+# focus-border-width = 2
 
 # Selected: persistent chosen/current state.
 selected-color        = "{{ foreground }}"
@@ -63,6 +70,15 @@ selected-border-alpha = 1.0
 # Momentary fills.
 pressed-fill-alpha   = 0.22
 selection-fill-alpha = 0.35
+
+[status]
+# Error, warning and success. Left unset, each comes from the theme's red,
+# yellow and green (or the nearest palette color of the right hue), kept at
+# 4.5:1 on the background. Set one to pin it; the contrast floor still
+# applies.
+# error   = "#ea6962"
+# warning = "#d8a657"
+# success = "#a9b665"
 
 [spacing]
 # `scale` multiplies shared margins, gaps, padding, controls, and panel
@@ -195,9 +211,9 @@ selected-border-alpha     = 0.25
 background       = "{{ background }}"
 background-alpha = 1.0
 text             = "{{ foreground }}"
-text-error       = "{{ red }}"
+text-error       = "error"
 border           = "hyprland.active-border"
-border-error     = "{{ red }}"
+border-error     = "error"
 border-alpha     = 1.0
 scrim            = "{{ background }}"
 scrim-alpha      = 0.5
@@ -214,10 +230,10 @@ background       = "{{ background }}"
 background-alpha = 0.8
 text             = "{{ foreground }}"
 placeholder      = "{{ mix foreground background 34% }}"
-text-error       = "{{ red }}"
+text-error       = "error"
 border           = "hyprland.active-border"
 border-active    = "hyprland.active-border"
-border-error     = "{{ red }}"
+border-error     = "error"
 border-alpha     = 1.0
 # selection is the text-selection tint inside the input field.
 selection        = "{{ accent }}"

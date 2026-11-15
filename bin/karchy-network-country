@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# karchy:summary=Show or set the Wi-Fi country (regulatory domain) (Settings › Network)
+# karchy:group=network
+# karchy:args=status [--json] | set <XX|auto>
+# karchy:examples=karchy network country status | karchy network country set DE
+# karchy:hidden=true
+
+# The Wi-Fi country decides which channels and transmit power the radio may
+# use; without one the kernel stays in the world domain, where 6 GHz is off.
+# karchy sets it from the timezone (/usr/lib/karchy/wifi-regdomain, from
+# karchy-settings). A country in /etc/karchy/wifi-country (COUNTRY=XX)
+# overrides the timezone; `set` writes or removes that file and applies it at
+# once. Run by a user, `set` asks for a password through polkit
+# (org.karchy.network-country) and runs itself again as root by its /usr/bin
+# path. `status` is for anyone.
+
+set -euo pipefail
+
+OVERRIDE=/etc/karchy/wifi-country
+APPLY=/usr/lib/karchy/wifi-regdomain
+COUNTRIES=/usr/share/zoneinfo/iso3166.tab
+
+# The country in force: iw's first "country XX:" line (the global domain).
+effective() {
+  iw reg get 2>/dev/null | sed -n 's/^country \([A-Z0-9]\{2\}\):.*/\1/p' | head -n 1
+}
+
+override() {
+  [[ -r $OVERRIDE ]] && sed -n 's/^COUNTRY=\([A-Z]\{2\}\)$/\1/p' "$OVERRIDE" | head -n 1
+  return 0
+}
+
+# The country the timezone points to, as wifi-regdomain finds it.
+from_timezone() {
+  local zone
+  zone=$(timedatectl show -P Timezone 2>/dev/null || true)
+  [[ -n $zone ]] || return 0
+  awk -F'\t' -v z="$zone" '!/^#/ && $3 == z { print $1; exit }' /usr/share/zoneinfo/zone.tab 2>/dev/null
+}
+
+name_of() {
+  awk -F'\t' -v c="$1" '!/^#/ && $1 == c { print $2; exit }' "$COUNTRIES" 2>/dev/null
+}
+
+status() {
+  local now set tz
+  now=$(effective) set=$(override) tz=$(from_timezone)
+  if [[ ${1:-} == "--json" ]]; then
+    jq -n --arg now "$now" --arg nowName "$(name_of "$now")" --arg set "$set" \
+      --arg tz "$tz" --arg tzName "$(name_of "$tz")" --rawfile countries "$COUNTRIES" '{
+        effective: (if $now == "" or $now == "00" then null else {code: $now, name: $nowName} end),
+        override: (if $set == "" then null else $set end),
+        timezone: (if $tz == "" then null else {code: $tz, name: $tzName} end),
+        countries: ($countries | split("\n") | map(select(length > 0 and (startswith("#") | not)) | split("\t") | {code: .[0], name: .[1]}))
+      }'
+  else
+    echo "${now:-00}${set:+ (set to $set)}"
+  fi
+}
+
+set_country() {
+  local code=${1:-}
+  if [[ $code != "auto" ]]; then
+    code=${code^^}
+    [[ $code =~ ^[A-Z]{2}$ && -n $(name_of "$code") ]] || { echo "$1 isn't a country code (like DE or US)." >&2; exit 2; }
+  fi
+  if (( EUID != 0 )); then
+    pkexec /usr/bin/karchy-network-country set "$code" >/dev/null
+    status --json
+    return
+  fi
+  if [[ $code == "auto" ]]; then
+    rm -f "$OVERRIDE"
+    # Back to the world domain first, so a country set before doesn't stay
+    # when the timezone has none.
+    iw reg set 00 2>/dev/null || true
+  else
+    install -d -m 755 "${OVERRIDE%/*}"
+    printf 'COUNTRY=%s\n' "$code" >"$OVERRIDE.tmp"
+    chmod 644 "$OVERRIDE.tmp"
+    mv "$OVERRIDE.tmp" "$OVERRIDE"
+  fi
+  if [[ -x $APPLY ]]; then
+    "$APPLY"
+  elif [[ $code != "auto" ]]; then
+    iw reg set "$code"
+  fi
+}
+
+case "${1:-}" in
+  status) status "${2:-}" ;;
+  set) set_country "${2:-}" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-network-country /p' "$0" >&2; exit 1 ;;
+esac

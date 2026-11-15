@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Show what Omarchy changed upstream in the files karchy took (D-46).
+
+karchy owns its copies; nothing syncs. This lists upstream changes since the
+version karchy took (vendor/upstream.tsv), so fixes can be borrowed by hand.
+
+Usage:
+  tools/upstream-review [--to REF] [--log]     Files changed upstream, with commit counts
+                                               (--log lists each file's commits)
+  tools/upstream-review diff <karchy-path>     The upstream change, renamed to karchy's
+                                               names, ready to compare with karchy's copy
+  tools/upstream-review merge <karchy-path>    Three-way merge the upstream change into
+                                               karchy's copy (conflict markers where both
+                                               changed); review with git diff
+
+Options:
+  --upstream DIR   An Omarchy clone (default: $KARCHY_UPSTREAM, else
+                   ~/Projects/Omarchy/reference/omarchy). Run `git fetch` there first.
+  --to REF         Compare up to REF (default: origin/HEAD, Omarchy's main branch)
+"""
+
+import os
+import subprocess
+import sys
+import tempfile
+from importlib.machinery import SourceFileLoader
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+TSV = REPO / "vendor" / "upstream.tsv"
+rebrand = SourceFileLoader("rebrand", str(REPO / "tools" / "rebrand")).load_module()
+
+
+def die(message):
+    print(f"upstream-review: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def read_map():
+    base, rows = None, {}
+    for line in TSV.read_text().splitlines():
+        if line.startswith("#"):
+            if base is None and "(" in line and ")" in line:
+                base = line[line.index("(") + 1 : line.index(")")]
+            continue
+        if line.strip():
+            karchy_path, upstream_path, _blob = line.split("\t")
+            rows[karchy_path] = upstream_path
+    if not base:
+        die(f"no base commit in the header of {TSV}")
+    return base, rows
+
+
+def git(upstream, *args, check=True):
+    result = subprocess.run(["git", "-C", str(upstream), *args], capture_output=True, text=True)
+    if check and result.returncode != 0:
+        die(f"git {' '.join(args)}: {result.stderr.strip()}")
+    return result
+
+
+def show(upstream, ref, path):
+    """A file's bytes at ref, or None if it doesn't exist there."""
+    result = subprocess.run(["git", "-C", str(upstream), "show", f"{ref}:{path}"], capture_output=True)
+    return result.stdout if result.returncode == 0 else None
+
+
+def text_of(data, karchy_path):
+    if data is None:
+        return ""
+    if b"\0" in data:
+        die(f"{karchy_path} is a binary file; compare it by hand")
+    return data.decode("utf-8", errors="replace")
+
+
+def changed(upstream, base, to, rows):
+    """karchy path -> (status, upstream path now) for files upstream changed."""
+    by_upstream = {u: k for k, u in rows.items()}
+    # The whole tree, so a renamed file's new path is visible to -M.
+    out = git(upstream, "diff", "--name-status", "-M", base, to).stdout
+    result = {}
+    for line in out.splitlines():
+        parts = line.split("\t")
+        status, old = parts[0], parts[1]
+        new = parts[2] if len(parts) > 2 else old
+        if old in by_upstream:
+            result[by_upstream[old]] = (status[0], new)
+    return result
+
+
+def cmd_list(upstream, base, to, rows, show_log):
+    found = changed(upstream, base, to, rows)
+    if not found:
+        print(f"No upstream changes to karchy's files between {base[:9]} and {to}.")
+        return
+    labels = {"M": "changed", "D": "deleted", "R": "renamed"}
+    for karchy_path in sorted(found):
+        status, new = found[karchy_path]
+        commits = git(upstream, "log", "--oneline", "--follow", f"{base}..{to}", "--", new).stdout.splitlines()
+        where = f" -> {new}" if status == "R" else ""
+        print(f"{labels.get(status, status):8} {len(commits):3} commit(s)  {karchy_path}{where}")
+        if show_log:
+            for commit in commits:
+                print(f"           {commit}")
+    print(f"\n{len(found)} of {len(rows)} files changed upstream between {base[:9]} and {to}.")
+
+
+def versions(upstream, base, to, rows, karchy_path):
+    if karchy_path not in rows:
+        die(f"{karchy_path} is not a file karchy took from Omarchy (see {TSV.name})")
+    status, new = changed(upstream, base, to, rows).get(karchy_path, ("", rows[karchy_path]))
+    if not status:
+        die(f"{karchy_path}: no upstream change between {base[:9]} and {to}")
+    old_text = text_of(show(upstream, base, rows[karchy_path]), karchy_path)
+    new_text = text_of(show(upstream, to, new), karchy_path) if status != "D" else ""
+    return status, rebrand.map_text(old_text), rebrand.map_text(new_text)
+
+
+def cmd_diff(upstream, base, to, rows, karchy_path):
+    _status, old, new = versions(upstream, base, to, rows, karchy_path)
+    with tempfile.TemporaryDirectory() as tmp:
+        a, b = Path(tmp, "a"), Path(tmp, "b")
+        a.write_text(old)
+        b.write_text(new)
+        diff = subprocess.run(
+            ["diff", "-u", "--label", f"upstream {base[:9]} {karchy_path}",
+             "--label", f"upstream {to} {karchy_path}", str(a), str(b)],
+            capture_output=True, text=True,
+        ).stdout
+    sys.stdout.write(diff)
+
+
+def cmd_merge(upstream, base, to, rows, karchy_path):
+    target = REPO / karchy_path
+    if not target.is_file():
+        die(f"{karchy_path} no longer exists in karchy")
+    status, old, new = versions(upstream, base, to, rows, karchy_path)
+    if status == "D":
+        die(f"{karchy_path}: Omarchy deleted this file; decide by hand whether karchy keeps it")
+    with tempfile.TemporaryDirectory() as tmp:
+        a, b = Path(tmp, "base"), Path(tmp, "upstream")
+        a.write_text(old)
+        b.write_text(new)
+        result = subprocess.run(
+            ["git", "merge-file", "-L", "karchy", "-L", f"upstream {base[:9]}", "-L", f"upstream {to}",
+             str(target), str(a), str(b)],
+            capture_output=True, text=True,
+        )
+    if result.returncode < 0 or result.returncode > 127:
+        die(f"merge failed: {result.stderr.strip()}")
+    if result.returncode:
+        print(f"{karchy_path}: merged with {result.returncode} conflict(s); resolve the markers, then review with git diff")
+    else:
+        print(f"{karchy_path}: merged cleanly; review with git diff")
+
+
+def main(argv):
+    upstream = Path(os.environ.get("KARCHY_UPSTREAM", Path.home() / "Projects/Omarchy/reference/omarchy"))
+    to, show_log, args = "origin/HEAD", False, []
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in ("-h", "--help"):
+            print(__doc__.strip())
+            return
+        if arg in ("--upstream", "--to"):
+            if i + 1 >= len(argv):
+                die(f"{arg} needs a value")
+            if arg == "--upstream":
+                upstream = Path(argv[i + 1])
+            else:
+                to = argv[i + 1]
+            i += 2
+            continue
+        if arg == "--log":
+            show_log = True
+        else:
+            args.append(arg)
+        i += 1
+
+    if not (upstream / ".git").exists():
+        die(f"no Omarchy clone at {upstream} (set --upstream or KARCHY_UPSTREAM)")
+    base, rows = read_map()
+    if git(upstream, "cat-file", "-e", f"{base}^{{commit}}", check=False).returncode:
+        die(f"{upstream} doesn't have the base commit {base[:9]}; run git fetch there")
+    git(upstream, "rev-parse", "--verify", "--quiet", f"{to}^{{commit}}")
+
+    if not args:
+        cmd_list(upstream, base, to, rows, show_log)
+    elif args[0] in ("diff", "merge") and len(args) == 2:
+        (cmd_diff if args[0] == "diff" else cmd_merge)(upstream, base, to, rows, args[1])
+    else:
+        die("unknown arguments; see --help")
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

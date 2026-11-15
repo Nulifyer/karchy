@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# karchy:summary=Run a file action from Thunar's right-click menu (copy path, checksum, wallpaper)
+# karchy:args=copy-path <file>... | checksum <file> | wallpaper <image>
+# karchy:hidden=true
+
+set -euo pipefail
+
+action="${1:-}"
+shift || true
+(($# > 0)) || { echo "Usage: karchy-file-action copy-path|checksum|wallpaper <file>..." >&2; exit 1; }
+
+case "$action" in
+  copy-path)
+    printf '%s\n' "$@" | head -c -1 | wl-copy
+    if (($# == 1)); then
+      karchy-notification-send -g copy "Path copied" "$1"
+    else
+      karchy-notification-send -g copy "$# paths copied"
+    fi
+    ;;
+  checksum)
+    sum=$(sha256sum -- "$1" | cut -d' ' -f1)
+    printf '%s' "$sum" | wl-copy
+    karchy-notification-send -g file.hash "SHA-256 copied" "${1##*/}: $sum"
+    ;;
+  wallpaper)
+    karchy-theme-bg-set "$1"
+    ;;
+  *)
+    echo "Unknown action: $action" >&2
+    exit 1
+    ;;
+esac

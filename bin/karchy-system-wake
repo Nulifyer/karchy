@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# karchy:summary=Wake displays and restore brightness after idle
+# karchy:group=system
+# karchy:name=wake
+# karchy:examples=karchy system wake
+
+karchy-brightness-display on
+karchy-brightness-keyboard restore
+karchy-hyprland-monitor-clamshell >/dev/null 2>&1 || true

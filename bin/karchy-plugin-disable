@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# karchy:summary=Disable a shell plugin
+# karchy:group=plugin
+# karchy:args=<id>
+
+set -euo pipefail
+
+fail() {
+  echo "karchy-plugin-disable: $*" >&2
+  exit 1
+}
+
+if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+  echo "Usage: karchy plugin disable <id>"
+  exit 0
+fi
+
+id="${1:-}"
+[[ -n $id ]] || fail "plugin id is required"
+
+result=$(karchy-shell shell setPluginEnabled "$id" false)
+[[ $result == "ok" ]] ||
+  fail "plugin '$id' is not known; run: karchy-shell shell rescanPlugins"
+
+echo "Disabled $id"

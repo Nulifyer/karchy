@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# karchy:summary=Add or remove printing and scanning (Settings › Optional features, D-38)
+# karchy:args=status | install | remove
+# karchy:hidden=true
+
+# install: CUPS with a hardened cups-browsed (its own user, sandboxed, queues
+# only for driverless network printers), system-config-printer to add others,
+# and SANE with sane-airscan and Document Scanner. Settings runs install and
+# remove in a floating terminal, so pacman's progress and sudo's password
+# prompt are visible. The config files root installs always come from the
+# packaged copy, never a dev checkout (D-50).
+
+set -euo pipefail
+
+PACKAGES=(cups cups-browsed cups-filters system-config-printer sane sane-airscan simple-scan)
+SOURCE=/usr/share/karchy/default/features/printing
+
+status() {
+  if pacman -Q cups cups-browsed sane-airscan >/dev/null 2>&1; then
+    echo installed
+  else
+    echo available
+  fi
+}
+
+install_feature() {
+  echo "Adding printers & scanners: ${PACKAGES[*]}"
+  sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+  sudo install -Dm644 "$SOURCE/sysusers.conf" /etc/sysusers.d/karchy-cups-browsed.conf
+  sudo systemd-sysusers /etc/sysusers.d/karchy-cups-browsed.conf
+  sudo install -Dm644 "$SOURCE/cups-browsed.conf" /etc/cups/cups-browsed.conf
+  sudo install -Dm644 "$SOURCE/cups-files.conf" /etc/cups/cups-files.conf
+  sudo install -Dm644 "$SOURCE/cups-browsed-service.conf" /etc/systemd/system/cups-browsed.service.d/10-karchy.conf
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now cups.socket cups-browsed.service
+  karchy-notification-send -g printer "Printers & scanners added" "Add a printer with Print Settings; scan with Document Scanner."
+  echo "Done."
+}
+
+remove_feature() {
+  echo "Removing printers & scanners."
+  local installed=()
+  mapfile -t installed < <(pacman -Qq "${PACKAGES[@]}" 2>/dev/null)
+  # Check first that pacman can remove them all (another package, such as a
+  # printer driver, may need cups), so a refusal leaves printing as it was.
+  if ((${#installed[@]} > 0)) && ! pacman -Rs --print "${installed[@]}" >/dev/null 2>&1; then
+    echo "Another installed package needs part of printing:"
+    pacman -Rs --print "${installed[@]}" 2>&1 | grep -i "required by\|breaks dependency" || true
+    echo "Remove that package first, then try again. Nothing was changed."
+    exit 1
+  fi
+  sudo systemctl disable --now cups-browsed.service cups.socket cups.service 2>/dev/null || true
+  sudo rm -f /etc/systemd/system/cups-browsed.service.d/10-karchy.conf /etc/sysusers.d/karchy-cups-browsed.conf
+  sudo rmdir /etc/systemd/system/cups-browsed.service.d 2>/dev/null || true
+  sudo systemctl daemon-reload
+  ((${#installed[@]} == 0)) || sudo pacman -Rns --noconfirm "${installed[@]}"
+  karchy-notification-send -g printer "Printers & scanners removed"
+  echo "Done."
+}
+
+case "${1:-}" in
+  status) status ;;
+  install) install_feature ;;
+  remove) remove_feature ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-feature-printing /p' "$0" >&2; exit 1 ;;
+esac

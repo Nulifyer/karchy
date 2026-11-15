@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# karchy:summary=Open the karchy Settings window
+# karchy:args=[displays|input|network|appearance|apps|features|about] [item]
+# karchy:examples=karchy settings | karchy settings displays | karchy settings network Home-5G
+
+# The item opens the section at one thing in it: for network, a saved network
+# (its name, SSID or UUID), a device (wlan0) or a part of the page (dns, vpn).
+section="${1:-displays}"
+[[ $section =~ ^[a-z-]+$ ]] || { echo "Usage: karchy-settings [section] [item]" >&2; exit 1; }
+karchy-shell shell summon karchy.settings "$(jq -cn --arg section "$section" --arg item "${2:-}" \
+  '{section: $section} + (if $item == "" then {} else {item: $item} end)')" >/dev/null

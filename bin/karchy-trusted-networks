@@ -1,0 +1,272 @@
+#!/bin/bash
+
+# karchy:summary=List and mark trusted networks (Settings › Network, D-33, D-68)
+# karchy:args=status [--json] | set <connection-uuid> <true|false>
+# karchy:hidden=true
+
+# The one list of trusted networks. On a trusted network LocalSend's port is
+# open and the network's own DNS is used; elsewhere the port is closed and
+# karchy's DNS applies (karchy-network-dns). The VPN reads the same answer.
+#
+# Trust is bound to the network, not to the NetworkManager profile: one
+# "Wired connection 1" profile is used for every Ethernet jack, and an open
+# Wi-Fi profile joins any access point with that name. Trusting records the
+# profile's UUID together with the router's hardware (MAC) address and, for
+# Wi-Fi, the network name and security, and a connection counts as trusted
+# only while all of them match.
+#
+# The list is root-owned (/etc/karchy/trusted-networks) and this command is
+# its only writer; changing it asks for a password through polkit.
+# Everyone else asks `karchy-trusted-networks status --json`, never the file
+# (the contract is in docs/architecture.md, "Networking ownership").
+#
+# File format 2, one network per line, tab-separated:
+#   uuid  router-mac  ssid-hex  security  name
+# ssid-hex is the Wi-Fi name as hex bytes and security what the access point
+# offers ("WPA2", "WPA2+WPA3", "open"); both are "-" for Ethernet. The name is
+# a reminder for people reading the file. A line holding only a UUID is from
+# format 1 (before D-68): that network shows as needing to be trusted again.
+
+set -euo pipefail
+
+TRUSTED=/etc/karchy/trusted-networks
+UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+MAC_RE='^([0-9a-f]{2}:){5}[0-9a-f]{2}$'
+
+# Records as "uuid<TAB>mac<TAB>ssid-hex<TAB>security", one per line; a
+# format-1 line becomes "uuid<TAB>legacy<TAB>-<TAB>-".
+records() {
+  [[ -r $TRUSTED ]] || return 0
+  local line uuid mac ssid security _
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ $line =~ ^[[:space:]]*(#|$) ]] && continue
+    if [[ $line =~ ^[[:space:]]*([0-9a-fA-F-]{36})[[:space:]]*(#.*)?$ ]]; then
+      printf '%s\tlegacy\t-\t-\n' "${BASH_REMATCH[1],,}"
+      continue
+    fi
+    IFS=$'\t' read -r uuid mac ssid security _ <<<"$line"
+    [[ $uuid =~ $UUID_RE && $mac =~ $MAC_RE ]] || continue
+    printf '%s\t%s\t%s\t%s\n' "${uuid,,}" "$mac" "${ssid:--}" "${security:--}"
+  done <"$TRUSTED"
+}
+
+hex() {
+  local value=$1
+  [[ -n $value ]] || { printf -- '-'; return; }
+  printf '%s' "$value" | od -An -tx1 -v | tr -d ' \n'
+}
+
+# The router's MAC address on a device, or nothing. Trust hangs on this
+# answer, so a cached entry counts only when the kernel has just confirmed it
+# (REACHABLE) or it is fixed (PERMANENT, NOARP): a STALE entry can be the
+# previous router at the same address. As root (the dispatcher hooks that
+# open LocalSend, pick DNS and stand the VPN down) the entry is dropped and
+# asked for again, so the answer comes from the router on the wire; as a
+# user (Settings, the panel) a ping refreshes it. DHCP doesn't fill the
+# table, so right after a connection comes up there may be nothing yet.
+router_mac() {
+  local device=$1 gateway=$2 target=$2 mac=""
+  [[ $gateway == fe80:* ]] && target="$gateway%$device"
+  lookup() {
+    ip -j neigh show to "$gateway" dev "$device" 2>/dev/null |
+      jq -r '.[0] | select(.lladdr and ((.state // []) | any(. == "REACHABLE" or . == "PERMANENT" or . == "NOARP"))) | .lladdr' 2>/dev/null
+  }
+  if (( EUID == 0 )); then
+    ip neigh del "$gateway" dev "$device" 2>/dev/null || true
+  else
+    mac=$(lookup)
+  fi
+  if [[ -z $mac ]]; then
+    for _ in 1 2 3; do
+      ping -n -c 1 -W 1 -I "$device" "$target" >/dev/null 2>&1 || true
+      mac=$(lookup)
+      [[ -n $mac ]] && break
+    done
+  fi
+  [[ ${mac,,} =~ $MAC_RE ]] && printf '%s' "${mac,,}"
+}
+
+# The network a connected device is on: "mac<TAB>ssid-hex<TAB>security", with
+# mac empty when there is no router or its address can't be read.
+identity() {
+  local device=$1 type=$2 gateway mac="" ssid="-" security="-" line rest
+  gateway=$(nmcli -g IP4.GATEWAY device show "$device" 2>/dev/null || true)
+  [[ -n $gateway ]] || gateway=$(nmcli -g IP6.GATEWAY device show "$device" 2>/dev/null || true)
+  gateway=${gateway//\\/}
+  [[ -n $gateway ]] && mac=$(router_mac "$device" "$gateway")
+
+  if [[ $type == "wifi" ]]; then
+    # SSID last, so colons in it can't shift the fields; nmcli escapes them.
+    line=$(nmcli -t -f IN-USE,SECURITY,SSID device wifi list ifname "$device" --rescan no 2>/dev/null | grep -m1 '^\*:' || true)
+    if [[ -n $line ]]; then
+      rest=${line#*:}
+      security=${rest%%:*}
+      ssid=${rest#*:}
+      ssid=${ssid//\\:/:}
+      ssid=${ssid//\\\\/\\}
+      security=${security// /+}
+      [[ -n $security && $security != "--" ]] || security=open
+      ssid=$(hex "$ssid")
+    else
+      mac=""
+    fi
+  fi
+  printf '%s\t%s\t%s\n' "$mac" "$ssid" "$security"
+}
+
+# Active Wi-Fi and Ethernet connections: "uuid<TAB>device<TAB>type<TAB>name".
+active_connections() {
+  nmcli -t -e no -f UUID,TYPE,DEVICE,NAME connection show --active 2>/dev/null |
+    while IFS=: read -r uuid kind device name; do
+      case $kind in
+        802-11-wireless) kind=wifi ;;
+        802-3-ethernet) kind=ethernet ;;
+        *) continue ;;
+      esac
+      [[ $uuid =~ $UUID_RE && -n $device ]] || continue
+      printf '%s\t%s\t%s\t%s\n' "${uuid,,}" "$device" "$kind" "$name"
+    done
+}
+
+# Why a connection is or isn't trusted right now, from its records and the
+# network it is on.
+verdict() {
+  local uuid=$1 mac=$2 ssid=$3 security=$4 all=$5
+  local mine
+  mine=$(awk -F'\t' -v u="$uuid" '$1 == u' <<<"$all")
+  if [[ -z $mine ]]; then echo "not trusted"; return; fi
+  if ! awk -F'\t' '$2 != "legacy" { found = 1 } END { exit !found }' <<<"$mine"; then
+    echo "needs re-trust"; return
+  fi
+  if [[ -z $mac ]]; then echo "router unknown"; return; fi
+  if awk -F'\t' -v m="$mac" -v s="$ssid" -v c="$security" \
+    '$2 == m && $3 == s && $4 == c { found = 1 } END { exit !found }' <<<"$mine"; then
+    echo "trusted"
+  else
+    echo "different router"
+  fi
+}
+
+# The query everything else uses. "active" is the contract: one entry per
+# active Wi-Fi or Ethernet connection. "networks" lists the saved profiles for
+# Settings.
+status() {
+  local all uuid device kind name mac ssid security reason active_tsv=""
+  all=$(records)
+  while IFS=$'\t' read -r uuid device kind name; do
+    [[ -n $uuid ]] || continue
+    IFS=$'\t' read -r mac ssid security < <(identity "$device" "$kind")
+    reason=$(verdict "$uuid" "$mac" "$ssid" "$security" "$all")
+    active_tsv+=$(printf '%s\t%s\t%s\t%s\t%s\t%s' "$uuid" "$device" "$kind" "$reason" "$mac" "$name")$'\n'
+  done < <(active_connections)
+
+  local saved
+  saved=$(nmcli -t -e no -f UUID,TYPE,NAME connection show 2>/dev/null |
+    awk -F: '$2 == "802-11-wireless" || $2 == "802-3-ethernet" {
+      uuid = $1; type = ($2 == "802-11-wireless") ? "wifi" : "ethernet"
+      name = $0; sub(/^[^:]*:[^:]*:/, "", name)
+      print tolower(uuid) "\t" type "\t" name
+    }')
+
+  jq -n \
+    --arg active "$active_tsv" \
+    --arg saved "$saved" \
+    --arg records "$all" '
+    def rows($s; $keys): $s | split("\n") | map(select(length > 0) | split("\t") as $r
+      | [$keys | to_entries[] | {(.value): ($r[.key] // "")}] | add);
+    rows($active; ["uuid", "device", "type", "reason", "router_mac", "name"])
+      | map(. + {trusted: (.reason == "trusted")}
+             | if .router_mac == "" then .router_mac = null else . end) as $active
+    | rows($records; ["uuid", "mac"]) as $records
+    | rows($saved; ["uuid", "type", "name"])
+      | map(. as $n
+          | ($records | map(select(.uuid == $n.uuid))) as $mine
+          | ($active | map(select(.uuid == $n.uuid)) | first) as $live
+          | $n + {
+              active: ($live != null),
+              saved_trust: (($mine | length) > 0),
+              routers: ($mine | map(select(.mac != "legacy")) | length),
+              trusted: (if $live then $live.trusted else (($mine | map(select(.mac != "legacy")) | length) > 0) end),
+              reason: (if $live then $live.reason
+                       elif ($mine | length) == 0 then "not trusted"
+                       elif ($mine | map(select(.mac != "legacy")) | length) == 0 then "needs re-trust"
+                       else "trusted" end)
+            })
+      | sort_by([(.active | not), (.name | ascii_downcase)]) as $networks
+    | {version: 2, active: $active, networks: $networks}'
+}
+
+write_records() {
+  # $1: records ("uuid<TAB>mac<TAB>ssid<TAB>security"), one per line.
+  local tmp uuid mac ssid security name
+  mkdir -p "$(dirname "$TRUSTED")"
+  tmp=$(mktemp "$TRUSTED.XXXXXX")
+  {
+    echo "# karchy trusted networks, format 2 (D-68). Written by karchy-trusted-networks;"
+    echo "# other programs ask \`karchy-trusted-networks status --json\` instead of reading this."
+    echo "# uuid<TAB>router-mac<TAB>ssid-hex<TAB>security<TAB>name"
+    while IFS=$'\t' read -r uuid mac ssid security; do
+      [[ -n $uuid ]] || continue
+      name=$(nmcli -g connection.id connection show "$uuid" 2>/dev/null || true)
+      name=${name//[$'\t\n']/ }
+      if [[ $mac == "legacy" ]]; then
+        printf '%s  # %s(trusted before routers were recorded)\n' "$uuid" "${name:+$name }"
+      else
+        printf '%s\t%s\t%s\t%s\t%s\n' "$uuid" "$mac" "$ssid" "$security" "$name"
+      fi
+    done <<<"$1"
+  } >"$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$TRUSTED"
+}
+
+set_trusted() {
+  local uuid="${1,,}" value="$2" all keep device kind mac ssid security
+  [[ $uuid =~ $UUID_RE ]] || { echo "Not a connection UUID: $uuid" >&2; exit 1; }
+  [[ $value == "true" || $value == "false" ]] || { echo "Value must be true or false" >&2; exit 1; }
+
+  if (( EUID != 0 )); then
+    # Root-owned list: elevate through polkit (the shell's password prompt).
+    pkexec /usr/bin/karchy-trusted-networks set "$uuid" "$value" >/dev/null
+    status
+    return
+  fi
+
+  all=$(records)
+  keep=$(awk -F'\t' -v u="$uuid" '$1 != u' <<<"$all")
+
+  if [[ $value == "true" ]]; then
+    # The router is only known while connected, so only a connected network
+    # can be trusted.
+    IFS=$'\t' read -r _ device kind _ < <(active_connections | awk -F'\t' -v u="$uuid" '$1 == u' | head -n 1) || true
+    if [[ -z ${device:-} ]]; then
+      echo "Connect to this network first: karchy records its router to recognize it." >&2
+      exit 3
+    fi
+    IFS=$'\t' read -r mac ssid security < <(identity "$device" "$kind")
+    if [[ -z $mac ]]; then
+      echo "Couldn't read this network's router address, so it can't be told apart from other networks." >&2
+      exit 4
+    fi
+    # This router joins the ones already trusted for the profile (home and
+    # office on one Ethernet profile); a format-1 line for it goes.
+    keep=$(printf '%s\n' "$keep"
+      awk -F'\t' -v u="$uuid" -v m="$mac" -v s="$ssid" -v c="$security" \
+        '$1 == u && $2 != "legacy" && !($2 == m && $3 == s && $4 == c)' <<<"$all"
+      printf '%s\t%s\t%s\t%s\n' "$uuid" "$mac" "$ssid" "$security")
+  fi
+
+  write_records "$keep"
+  # Everything that follows trust re-checks now rather than at the next
+  # connection change.
+  /usr/bin/karchy-localsend-firewall || true
+  [[ ! -x /usr/bin/karchy-network-dns ]] || /usr/bin/karchy-network-dns apply || true
+  # The VPN package (nulifyer-vpn) asks this command too; tell it to ask again.
+  [[ ! -x /usr/lib/nulifyer-vpn/control ]] || /usr/lib/nulifyer-vpn/control refresh || true
+}
+
+case "${1:-}" in
+  status) status ;;
+  set) set_trusted "${2:-}" "${3:-}" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-trusted-networks /p' "$0" >&2; exit 1 ;;
+esac

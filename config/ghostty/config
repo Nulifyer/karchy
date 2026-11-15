@@ -1,0 +1,15 @@
+# Ghostty. Colors follow the theme through the include below; karchy reloads
+# open windows on a theme switch.
+config-file = ?"~/.local/state/karchy/current/theme/ghostty.conf"
+
+# The font follows fontconfig's "monospace", which Settings › Appearance sets.
+font-family = "monospace"
+font-size = 10
+
+# karchy's universal clipboard keys (Super+C/V) send Ctrl+Insert and
+# Shift+Insert, so these use the clipboard, not the primary selection.
+keybind = shift+insert=paste_from_clipboard
+keybind = control+insert=copy_to_clipboard
+
+# No "Reloaded the configuration" toast on every theme switch.
+app-notifications = no-config-reload

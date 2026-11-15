@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# karchy:summary=Offer the generated Karchy color scheme to Neovim
+# karchy:hidden=true
+
+# Neovim finds `:colorscheme karchy` in the colors folder of its site
+# directory, which is on the default runtimepath, so the user's own nvim
+# config is never touched (D-23). The link points into the current theme, so
+# it is made once and follows every switch after that.
+
+karchy-cmd-present nvim || exit 0
+
+CURRENT_THEME_PATH="$HOME/.local/state/karchy/current/theme"
+NEOVIM_SOURCE_PATH="$CURRENT_THEME_PATH/neovim-colors.lua"
+NEOVIM_COLORS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/nvim/site/colors"
+NEOVIM_COLORS_LINK="$NEOVIM_COLORS_DIR/karchy.lua"
+
+[[ -f $NEOVIM_SOURCE_PATH ]] || exit 0
+
+# A karchy.lua that is a real file is the user's own; leave it alone.
+if [[ ! -e $NEOVIM_COLORS_LINK || -L $NEOVIM_COLORS_LINK ]]; then
+  mkdir -p "$NEOVIM_COLORS_DIR"
+  ln -nsf "$NEOVIM_SOURCE_PATH" "$NEOVIM_COLORS_LINK"
+fi
+
+# Every Neovim listens on $XDG_RUNTIME_DIR/nvim.<pid>.<n>. Reload the scheme in
+# the ones that show it, so they switch with the terminal around them; others
+# keep the scheme their user chose.
+[[ -n $XDG_RUNTIME_DIR ]] || exit 0
+
+shopt -s nullglob
+for server in "$XDG_RUNTIME_DIR"/nvim.*.*; do
+  [[ -S $server ]] || continue
+  timeout 2 nvim --server "$server" --remote-expr \
+    'execute("if get(g:, \"colors_name\", \"\") ==# \"karchy\" | colorscheme karchy | endif")' \
+    >/dev/null 2>&1 &
+done
+wait
+exit 0

@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# karchy:summary=Rank Arch mirrors and swap in the result only if it checks out (D-29)
+# karchy:hidden=true
+
+# Run weekly as root by karchy-mirrors.timer. rate-mirrors ranks HTTPS mirrors
+# that are fully synced and at most 6 h behind; the result replaces
+# /etc/pacman.d/mirrorlist only when at least 5 of its mirrors, checked live,
+# serve the core database and synced within those 6 h. The old list is kept as mirrorlist.karchy-backup and stays in
+# place on any failure. Arch's GeoDNS mirror is always the last entry. Holds the
+# karchy update lock, so ranking never runs during an update.
+
+set -euo pipefail
+
+MIRRORLIST=/etc/pacman.d/mirrorlist
+# shellcheck disable=SC2016  # $repo and $arch are pacman's, written literally
+GEO_MIRROR='https://geo.mirror.pkgbuild.com/$repo/os/$arch'
+MIN_GOOD=5
+MAX_DELAY=21600
+
+log() {
+  echo "karchy-mirrors-rank: $*"
+}
+
+(( EUID == 0 )) || { log "run as root"; exit 1; }
+
+exec {lock}>/run/lock/karchy-update
+if ! flock -n "$lock"; then
+  log "an update is running; trying again next time"
+  exit 0
+fi
+
+if ! curl -fsS --max-time 10 -o /dev/null https://geo.mirror.pkgbuild.com/; then
+  log "offline; keeping the current mirror list"
+  exit 0
+fi
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+if ! rate-mirrors --allow-root --protocol https --disable-comments-in-file --save "$work/ranked" \
+  arch --completion 1 --max-delay "$MAX_DELAY" >"$work/rate-mirrors.log" 2>&1; then
+  log "rate-mirrors failed; keeping the current mirror list"
+  tail -n 5 "$work/rate-mirrors.log" >&2
+  exit 1
+fi
+
+# Check every ranked mirror live, in parallel: it must serve core.db and have
+# synced within MAX_DELAY, by the lastsync stamp each Arch mirror publishes at
+# its root. (A database's own Last-Modified is when Arch generated it, so after
+# a fresh database most good mirrors would fail a "newest copy" test.) The good
+# ones keep their rank order.
+mapfile -t servers < <(sed -n 's/^Server *= *//p' "$work/ranked" | grep '^https://')
+check() {
+  local server=$1 base=${1%%\$repo*} db synced
+  db=${server//\$repo/core}
+  db=${db//\$arch/x86_64}/core.db
+  curl -fsSI --max-time 8 -o /dev/null "$db" 2>/dev/null || return 0
+  synced=$(curl -fsS --max-time 8 "${base}lastsync" 2>/dev/null | tr -dc '0-9')
+  [[ -n $synced ]] && printf '%s\t%s\n' "$synced" "$server"
+}
+export -f check
+# shellcheck disable=SC2016  # $1 is expanded by the inner bash
+printf '%s\n' "${servers[@]}" | xargs -P 16 -I{} bash -c 'check "$1"' _ {} >"$work/stamps" || true
+now=$(date +%s)
+declare -A fresh=()
+while IFS=$'\t' read -r synced server; do
+  if (( now - synced <= MAX_DELAY )); then fresh[$server]=1; fi
+done <"$work/stamps"
+good=()
+for server in "${servers[@]}"; do
+  if [[ -n ${fresh[$server]:-} ]]; then good+=("$server"); fi
+done
+
+if (( ${#good[@]} < MIN_GOOD )); then
+  log "only ${#good[@]} of ${#servers[@]} ranked mirrors pass the live check (need $MIN_GOOD); keeping the current mirror list"
+  exit 1
+fi
+
+{
+  echo "# Ranked by karchy-mirrors-rank on $(date -u +%Y-%m-%dT%H:%MZ) (D-29)."
+  echo "# The previous list is in mirrorlist.karchy-backup."
+  for server in "${good[@]}"; do
+    echo "Server = $server"
+  done
+  echo "Server = $GEO_MIRROR"
+} >"$work/mirrorlist"
+
+# Atomic swap: write beside the real file, then rename over it.
+cp -p "$MIRRORLIST" "$MIRRORLIST.karchy-backup"
+install -m 644 "$work/mirrorlist" "$MIRRORLIST.karchy-new"
+mv "$MIRRORLIST.karchy-new" "$MIRRORLIST"
+log "mirror list updated: ${#good[@]} ranked mirrors, then the GeoDNS mirror"

@@ -1,6 +1,7 @@
 {
   "Activity": "Activity",
   "Agent": "Agent",
+  "Airplane mode": "Airplane mode",
   "Apps": "Apps",
   "Audio": "Audio",
   "Background switcher": "Background switcher",
@@ -105,7 +106,7 @@
   "Next window in group": "Next window in group",
   "Next workspace": "Next workspace",
   "Obsidian": "Obsidian",
-  "Omarchy menu": "Omarchy menu",
+  "Karchy menu": "Karchy menu",
   "Omawrite": "Omawrite",
   "Open notification history": "Open notification history",
   "Passwords": "Passwords",

@@ -1,0 +1,11 @@
+#!/bin/bash
+
+# karchy:summary=Wait until the shell's notification server is up (login checks)
+# karchy:args=[seconds]
+# karchy:hidden=true
+
+# Login checks start alongside the shell and would otherwise send their
+# notification before anything listens for it. Waits for the bus name to
+# appear, up to the given seconds (default 30); fails if it never does.
+
+exec gdbus wait --session --timeout "${1:-30}" org.freedesktop.Notifications

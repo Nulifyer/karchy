@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# karchy:summary=Ask the desktop portal's file chooser for a file and print its path
+# karchy:args=[--title <text>] [--folder <dir>] [--filter "<name>|<pattern> <pattern>..."]...
+# karchy:examples=karchy-file-choose --title "Choose an ISO" --filter "Disk images|*.iso *.img"
+# karchy:hidden=true
+
+# For the shell's windows (VMs, Settings): the shell's own Qt file dialog
+# would be GTK inside Quickshell, which never lists the folder, so the choice
+# goes through xdg-desktop-portal, out of the shell's process. Exits 1 when
+# the person cancels. An "All files" filter always comes last.
+
+set -euo pipefail
+
+title="Choose a file" folder=$HOME filters=()
+while (($#)); do
+  case $1 in
+    --title) title=${2:-$title}; shift 2 ;;
+    --folder) folder=${2:-$folder}; shift 2 ;;
+    --filter) filters+=("${2:-}"); shift 2 ;;
+    *) echo "Unknown option: $1" >&2; exit 2 ;;
+  esac
+done
+[[ -d $folder ]] || folder=$HOME
+
+python3 - "$title" "$folder" "${filters[@]}" <<'PY'
+import os, sys
+from gi.repository import Gio, GLib
+
+title, folder, specs = sys.argv[1], sys.argv[2], sys.argv[3:]
+bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+token = "karchy_choose_%d" % os.getpid()
+sender = bus.get_unique_name()[1:].replace(".", "_")
+request = "/org/freedesktop/portal/desktop/request/%s/%s" % (sender, token)
+loop = GLib.MainLoop()
+chosen = []
+
+def on_response(_conn, _sender, _path, _iface, _signal, params):
+    code, results = params.unpack()
+    if code == 0:
+        chosen.extend(results.get("uris", []))
+    loop.quit()
+
+filters = []
+for spec in specs:
+    name, _, patterns = spec.partition("|")
+    filters.append((name, [(0, p) for p in patterns.split()]))
+filters.append(("All files", [(0, "*")]))
+
+bus.signal_subscribe("org.freedesktop.portal.Desktop", "org.freedesktop.portal.Request", "Response",
+                     request, None, Gio.DBusSignalFlags.NONE, on_response)
+options = {
+    "handle_token": GLib.Variant("s", token),
+    "modal": GLib.Variant("b", True),
+    "filters": GLib.Variant("a(sa(us))", filters),
+    "current_folder": GLib.Variant("ay", folder.encode() + b"\0"),
+}
+bus.call_sync("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+              "org.freedesktop.portal.FileChooser", "OpenFile",
+              GLib.Variant("(ssa{sv})", ("", title, options)), GLib.VariantType("(o)"),
+              Gio.DBusCallFlags.NONE, -1, None)
+loop.run()
+if not chosen:
+    sys.exit(1)
+print(Gio.File.new_for_uri(chosen[0]).get_path())
+PY

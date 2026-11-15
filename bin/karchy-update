@@ -1,0 +1,317 @@
+#!/bin/bash
+
+# karchy:summary=Preview and install all updates: karchy, system packages and AUR, with one password
+# karchy:args=[-y]
+
+# karchy is delivered as pacman packages (D-51, D-61). An update:
+#   1. checks without root (a copy of pacman's databases, paru for AUR, the
+#      channel's release file) and shows what will change: the karchy release,
+#      each package with old -> new version, the download size, and whether a
+#      restart will be needed
+#   2. asks once, then asks for the password once and keeps it for the whole
+#      run (-y skips the question)
+#   3. keyrings first, so new signing keys are known before the packages
+#      signed with them
+#   4. system packages (pacman -Syu; snap-pac takes snapshots before and after,
+#      and karchy-settings' hooks pause Hyprland's auto-reload meanwhile)
+#   5. AUR packages (paru)
+#   6. config files left as .pacnew, then karchy migrations and a desktop
+#      reload; at the end, the release notes and a restart offer when the
+#      kernel or other boot-time parts changed
+# Colors are the terminal's 16 ANSI colors, which follow the current theme,
+# and NO_COLOR turns them off. Holds /run/lock/karchy-update so mirror ranking
+# never runs alongside (D-29). In dev mode (/etc/karchy.conf) the checkout is
+# yours: pull it yourself.
+
+set -euo pipefail
+
+assume_yes=false
+[[ ${1:-} == "-y" ]] && assume_yes=true
+
+state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy"
+migrations_dir="$KARCHY_PATH/migrations"
+mkdir -p "$state_dir"
+
+# ---------------------------------------------------------------- output style
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+  bold=$'\e[1m' dim=$'\e[2m' green=$'\e[32m' yellow=$'\e[33m' red=$'\e[31m' blue=$'\e[34m' reset=$'\e[0m'
+else
+  bold="" dim="" green="" yellow="" red="" blue="" reset=""
+fi
+step_total=6
+step() { printf '\n%s[%s/%s]%s %s%s%s\n' "$blue$bold" "$1" "$step_total" "$reset" "$bold" "$2" "$reset"; }
+note() { printf '      %s%s%s\n' "$dim" "$*" "$reset"; }
+good() { printf '      %s✓%s %s\n' "$green" "$reset" "$*"; }
+warn() { printf '      %s!%s %s\n' "$yellow" "$reset" "$*"; }
+fail() { printf '\n%s✗ %s%s\n' "$red$bold" "$*" "$reset" >&2; }
+
+trap 'fail "The update stopped with an error. Read the output above, fix the cause, and run karchy update again. Snapshots from before the update are in the boot menu."' ERR
+
+# ---------------------------------------------------------------------- lock
+# /run/lock/karchy-update is created world-writable at boot (tmpfiles.d) and
+# shared with the weekly mirror ranking; the state-dir lock is a fallback.
+{ exec {lock_fd}>"/run/lock/karchy-update"; } 2>/dev/null || exec {lock_fd}>"$state_dir/update.lock"
+flock -n "$lock_fd" || {
+  fail "Another update is running."
+  exit 1
+}
+
+release_version() {
+  sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null | head -n 1
+}
+before=$(release_version)
+channel=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
+server=$(sed -n 's/^Server *= *//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
+
+printf '%skarchy update%s  %s%s, %s channel%s\n' "$bold" "$reset" "$dim" "${before:-unknown}" "${channel:-unknown}" "$reset"
+
+# ------------------------------------------------------------ 1. check, no root
+step 1 "Checking for updates"
+db="${TMPDIR:-/tmp}/karchy-update-db-$UID"
+rc=0
+repo_updates=$(CHECKUPDATES_DB="$db" checkupdates 2>/dev/null) || rc=$?
+if ((rc != 0 && rc != 2)); then
+  fail "Couldn't reach the package repositories. Check the network and try again."
+  exit 1
+fi
+aur_updates=$(paru -Qua 2>/dev/null || true)
+
+latest=""
+if [[ -n $server ]] && remote=$(curl -fsSL --max-time 15 "$server/release" 2>/dev/null); then
+  latest=$(sed -n 's/^VERSION=//p' <<<"$remote" | head -n 1)
+  [[ -n $before && -n $latest && $(vercmp "$latest" "$before") -gt 0 ]] || latest=""
+fi
+
+if [[ -z $repo_updates && -z $aur_updates ]]; then
+  good "Everything is up to date."
+  karchy-update-check --quiet >/dev/null 2>&1 || true
+  exit 0
+fi
+
+# Exactly what pacman will do, read from the same database copy (no root
+# needed): upgrades, packages that replace others, and new dependencies,
+# which checkupdates alone doesn't list. name<TAB>new version<TAB>size.
+plan=""
+size=""
+if [[ -n $repo_updates ]]; then
+  plan=$(pacman -Sup --dbpath "$db" --logfile /dev/null --print-format '%n	%v	%s' 2>/dev/null || true)
+  bytes=$(awk -F'\t' '{ s += $3 } END { print s + 0 }' <<<"$plan")
+  size=$(numfmt --to=iec --suffix=B "${bytes:-0}" 2>/dev/null || true)
+fi
+
+mapfile -t karchy_names < <(pacman -Slq karchy 2>/dev/null)
+is_karchy() { printf '%s\n' "${karchy_names[@]:-}" | grep -qxF "$1"; }
+
+# Apps are packages that own a launcher entry you'd see (a .desktop file not
+# hidden, and not on karchy's launcher hide list); everything else is a system
+# component. The names come from the entries themselves, so nothing here needs
+# a list of apps to maintain.
+declare -A app_name=()
+hides="$KARCHY_PATH/default/karchy/launcher.hides"
+while IFS= read -r line; do
+  file=${line%% is owned by *}
+  owner=${line##* is owned by }
+  owner=${owner%% *}
+  [[ -n ${app_name[$owner]:-} ]] && continue
+  grep -qiE '^(NoDisplay|Hidden)=true' "$file" && continue
+  id=$(basename "$file" .desktop)
+  [[ -f $hides ]] && grep -qxF "$id" "$hides" && continue
+  name=$(sed -n 's/^Name=//p' "$file" | head -n 1)
+  [[ -n $name ]] && app_name[$owner]=$name
+done < <(pacman -Qo /usr/share/applications/*.desktop 2>/dev/null)
+
+# Updates that only take effect after a restart, with the names people know.
+restart_pattern='^(linux|linux-[a-z0-9-]+|nvidia.*|lib32-nvidia.*|mesa|lib32-mesa|systemd|glibc|linux-firmware.*|amd-ucode|intel-ucode|hyprland)$'
+friendly() {
+  case "$1" in
+    linux | linux-*-headers | linux-[a-z]*) [[ $1 == linux-firmware* ]] && echo "Device firmware" || echo "Linux kernel" ;;
+    nvidia* | lib32-nvidia*) echo "NVIDIA driver" ;;
+    mesa | lib32-mesa) echo "Graphics drivers (Mesa)" ;;
+    amd-ucode | intel-ucode) echo "CPU microcode" ;;
+    systemd) echo "systemd" ;;
+    glibc) echo "C library (glibc)" ;;
+    hyprland) echo "Hyprland" ;;
+    *) echo "$1" ;;
+  esac
+}
+needs_restart=false
+apps=()
+system=0
+declare -A notable=()
+# Every planned change: name, new version, old version (or empty when new).
+changes=$(
+  if [[ -n $plan ]]; then
+    while IFS=$'\t' read -r name new _; do
+      printf '%s\t%s\t%s\n' "$name" "$new" "$(pacman -Q "$name" 2>/dev/null | cut -d' ' -f2)"
+    done <<<"$plan"
+  fi
+  if [[ -n $aur_updates ]]; then
+    while read -r name old _ new; do printf '%s\t%s\t%s\n' "$name" "$new" "$old"; done <<<"$aur_updates"
+  fi
+)
+while IFS=$'\t' read -r name new old; do
+  [[ -n $name ]] || continue
+  is_karchy "$name" && continue
+  if [[ $name =~ $restart_pattern ]]; then
+    needs_restart=true
+    notable[$(friendly "$name")]=1
+  fi
+  if [[ -n ${app_name[$name]:-} ]]; then
+    apps+=("${app_name[$name]}	${old:-new}	$new")
+  else
+    system=$((system + 1))
+  fi
+done <<<"$changes"
+
+show_summary() {
+  if [[ -n $latest ]]; then
+    printf '\n      %skarchy %s → %s%s\n' "$bold" "$before" "$latest" "$reset"
+  elif awk -F'\t' '{ print $1 }' <<<"$changes" | grep -qxF karchy; then
+    printf '\n      %skarchy%s updates\n' "$bold" "$reset"
+  fi
+  if ((${#apps[@]} > 0)); then
+    printf '\n      %sApps%s\n' "$bold" "$reset"
+    printf '%s\n' "${apps[@]}" | sort -f | while IFS=$'\t' read -r name old new; do
+      printf '        %-28s %s%s%s → %s\n' "$name" "$dim" "$old" "$reset" "$new"
+    done
+  fi
+  if ((system > 0)); then
+    local line="${system} system component(s)"
+    if ((${#notable[@]} > 0)); then
+      line+=", including $(printf '%s\n' "${!notable[@]}" | sort | paste -sd, - | sed 's/,/, /g')"
+    fi
+    printf '\n      %sSystem%s  %s\n' "$bold" "$reset" "$line"
+  fi
+  [[ -n $size ]] && printf '\n      %s%s to download%s\n' "$dim" "$size" "$reset"
+  if [[ $needs_restart == "true" ]]; then
+    printf '      %s↻ A restart finishes this update.%s\n' "$yellow" "$reset"
+  fi
+}
+
+# Every package, for anyone who wants to see them all.
+show_details() {
+  printf '\n      %sEvery package%s\n' "$bold" "$reset"
+  while IFS=$'\t' read -r name new old; do
+    [[ -n $name ]] || continue
+    marker=" "
+    is_karchy "$name" && marker="${blue}k${reset}"
+    [[ $name =~ $restart_pattern ]] && marker="${yellow}↻${reset}"
+    printf '      %s %-28s %s%s%s → %s\n' "$marker" "$name" "$dim" "${old:-new}" "$reset" "$new"
+  done <<<"$changes"
+  printf '\n      %sk%s karchy   %s↻%s needs a restart\n' "$blue" "$reset" "$yellow" "$reset"
+}
+
+show_summary
+
+# --------------------------------------------------- 2. approve, password once
+if [[ $assume_yes != "true" ]]; then
+  source karchy-restart-gum 2>/dev/null || true
+  while :; do
+    echo
+    choice=$(gum choose --header "Install these updates? Keep the computer plugged in; don't turn it off." \
+      "Update" "Show details" "Not now") || choice="Not now"
+    case "$choice" in
+      Update) break ;;
+      "Show details") show_details ;;
+      *) note "Nothing was changed."; exit 0 ;;
+    esac
+  done
+fi
+
+if ! sudo -v; then
+  note "Nothing was changed."
+  exit 1
+fi
+# Keep the password for the rest of the run (pacman, paru, hooks).
+( while sleep 50; do kill -0 $$ 2>/dev/null || exit 0; sudo -n -v 2>/dev/null || exit 0; done ) &
+keepalive=$!
+trap 'kill "$keepalive" 2>/dev/null || true' EXIT
+
+# ----------------------------------------------------------------- 3. keyrings
+step 2 "Signing keys"
+mapfile -t keyrings < <(awk '{ print $1 }' <<<"$repo_updates" | grep -E '^(archlinux|cachyos|omarchy|karchy)-keyring$' || true)
+if ((${#keyrings[@]} > 0)); then
+  sudo pacman -Sy --needed --noconfirm "${keyrings[@]}"
+  good "Updated ${keyrings[*]}"
+else
+  good "Already current"
+fi
+
+# ---------------------------------------------------------- 4. system packages
+step 3 "System packages"
+if [[ -n $repo_updates ]]; then
+  note "snapper takes a snapshot before and after; both appear in the boot menu"
+  sudo pacman -Syu --noconfirm
+  good "System packages updated"
+else
+  good "Nothing to update"
+fi
+
+# ------------------------------------------------------------- 5. AUR packages
+step 4 "AUR packages"
+if [[ -n $aur_updates ]]; then
+  paru -Sua --noconfirm --skipreview
+  good "AUR packages updated"
+else
+  good "Nothing to update"
+fi
+
+# ----------------------------------------------------- 6. config files, desktop
+step 5 "Config files"
+# Config files that an update could not replace because they were changed
+# here: pacman leaves the new version beside them as .pacnew (or keeps the old
+# one as .pacsave). Merging them is a person's call, so say so.
+mapfile -t pacnew < <(pacdiff --output 2>/dev/null)
+if ((${#pacnew[@]} > 0)); then
+  warn "${#pacnew[@]} updated config file(s) wait beside your changed ones:"
+  printf '        %s\n' "${pacnew[@]}"
+  note "Merge them with: sudo DIFFPROG='code --wait --diff' pacdiff"
+  karchy-notification-send -g config "Config files to review" \
+    "${#pacnew[@]} updated config file(s) are waiting beside your changed ones. Run: sudo pacdiff" || true
+else
+  good "No config files to review"
+fi
+
+step 6 "Desktop"
+if [[ -d $migrations_dir ]]; then
+  mkdir -p "$state_dir/migrations"
+  for migration in "$migrations_dir"/*.sh; do
+    [[ -f $migration ]] || continue
+    name=$(basename "$migration")
+    [[ -f $state_dir/migrations/$name ]] && continue
+    note "migration $name"
+    bash "$migration"
+    touch "$state_dir/migrations/$name"
+  done
+fi
+if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
+  karchy-reload-desktop
+  good "Desktop reloaded"
+else
+  good "Done (no desktop session to reload)"
+fi
+kill "$keepalive" 2>/dev/null || true
+karchy-update-check --quiet >/dev/null 2>&1 || true
+
+# ------------------------------------------------------------------- summary
+after=$(release_version)
+echo
+printf '%s✓ Update complete%s\n' "$green$bold" "$reset"
+if [[ -n $after && $after != "$before" ]]; then
+  printf '  karchy %s → %s\n' "$before" "$after"
+  # Releases and release candidates have notes; nightly and dev builds don't.
+  if [[ $after =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
+    tag="v${after%%rc*}"
+    [[ $after == *rc* ]] && tag+="-rc.${after##*rc}"
+    printf '  %sRelease notes: https://github.com/Nulifyer/karchy/releases/tag/%s%s\n' "$dim" "$tag" "$reset"
+  fi
+fi
+# The running kernel's modules are gone once its package was replaced.
+if [[ ! -d /usr/lib/modules/$(uname -r) ]] || [[ $needs_restart == "true" ]]; then
+  echo
+  if [[ $assume_yes != "true" ]] && gum confirm --affirmative "Restart now" --negative "Later" "Restart to finish the update?"; then
+    systemctl reboot
+  else
+    warn "Restart when convenient to finish the update."
+  fi
+fi

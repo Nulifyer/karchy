@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# karchy:summary=Reload Hyprland and restart the shell after karchy's files changed
+# karchy:hidden=true
+
+# Used by karchy update and karchy channel. The shell restart is handed to
+# Hyprland rather than run here: these commands often run in a terminal that
+# the shell itself opened (Settings, the updates indicator, a notification),
+# and stopping the shell would hang up that terminal and with it a restart
+# still in progress, leaving no shell at all.
+
+[[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]] || exit 0
+hyprctl reload >/dev/null
+hyprctl dispatch 'hl.dsp.exec_cmd("karchy-restart-shell")' >/dev/null

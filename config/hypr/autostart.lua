@@ -1,0 +1,2 @@
+-- Extra apps to start with the session.
+-- o.launch_on_start("my-app")

@@ -1,0 +1,13 @@
+#!/bin/bash
+# karchy:summary=Show the karchy release and channel, the installed karchy packages, or the dev checkout's commit
+
+if [[ -d $KARCHY_PATH/.git ]]; then
+  git -C "$KARCHY_PATH" log -1 --format="karchy dev checkout $KARCHY_PATH: %h (%cs) %s"
+  exit 0
+fi
+
+version=$(sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null)
+channel=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
+echo "karchy ${version:-unknown} (${channel:-unknown} channel)"
+pacman -Q karchy karchy-settings karchy-themes karchy-desktop karchy-laptop karchy-nvidia \
+  karchy-vm karchy-hyprland-titlebars 2>/dev/null

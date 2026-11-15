@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# karchy:summary=Show or change the karchy release channel: stable, rc or nightly (D-61)
+# karchy:args=[status | set <stable|rc|nightly>]
+# karchy:examples=karchy channel | karchy channel set rc
+
+# karchy's own packages come from the [karchy] repository of one channel:
+#   stable   releases (3.0.0)
+#   rc       release candidates and releases (3.1.0-rc.1, 3.0.0)
+#   nightly  builds of main, newest first (3.0.0.r12.gabc1234)
+# /etc/pacman.d/karchy-server names the channel's repository; everything else
+# (Arch, CachyOS, AUR) updates through pacman and paru as always.
+#
+# Changing channel points [karchy] at the new repository and installs that
+# channel's version of every karchy package, also when it is older (moving
+# from nightly back to stable), then reloads the desktop.
+
+set -Eeuo pipefail
+
+SERVER_FILE=/etc/pacman.d/karchy-server
+CHANNELS="stable rc nightly"
+
+current_channel() {
+  sed -n 's/^# channel=//p' "$SERVER_FILE" 2>/dev/null | head -n 1
+}
+
+release_field() {
+  sed -n "s/^$1=//p" /usr/share/karchy/release 2>/dev/null
+}
+
+status() {
+  local channel version
+  channel=$(current_channel)
+  version=$(release_field VERSION)
+  echo "channel: ${channel:-unknown}"
+  echo "release: ${version:-unknown} ($(release_field COMMIT))"
+}
+
+# Root: point [karchy] at CHANNEL and sync karchy's packages to it.
+apply() {
+  local channel=$1 base tmp
+  ((EUID == 0)) || exit 1
+  [[ " $CHANNELS " == *" $channel "* ]] || exit 1
+  base=$(sed -n 's|^Server *= *\(.*\)/repo-[a-z]*$|\1|p' "$SERVER_FILE" | head -n 1)
+  [[ -n $base ]] || { echo "karchy-channel: can't read the repository address from $SERVER_FILE" >&2; exit 1; }
+
+  exec {lock}>/run/lock/karchy-update
+  flock -n "$lock" || { echo "karchy-channel: an update is running; try again when it's done" >&2; exit 1; }
+
+  local previous tmp
+  previous=$(cat "$SERVER_FILE")
+  # If anything below fails, point back at the channel this machine's
+  # packages came from, so nothing is left half-switched.
+  restore() {
+    printf '%s\n' "$previous" >"$SERVER_FILE"
+    pacman -Syy >/dev/null 2>&1 || true
+    echo "karchy-channel: the switch to $channel failed; still on the previous channel" >&2
+  }
+  trap restore ERR
+
+  tmp=$(mktemp "$SERVER_FILE.XXXXXX")
+  printf '# karchy release channel (D-61). Change it with: karchy channel set <stable|rc|nightly>\n# channel=%s\nServer = %s/repo-%s\n' \
+    "$channel" "$base" "$channel" >"$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$SERVER_FILE"
+
+  # Forced: pacman keeps a database copy that is newer than the server's, and
+  # another channel's database can be older than the one already here.
+  pacman -Syy
+  # Every installed karchy package at the version this channel has, older or
+  # newer, as part of a full upgrade (never a partial one). A package the
+  # channel doesn't have stays as it is.
+  local -a sync=()
+  local name repo_version installed_version
+  while read -r _ name repo_version _; do
+    installed_version=$(pacman -Q "$name" 2>/dev/null | cut -d' ' -f2) || continue
+    if [[ -n $installed_version && $installed_version != "$repo_version" ]]; then
+      sync+=("karchy/$name")
+    fi
+  done < <(pacman -Sl karchy)
+  pacman -Su --noconfirm "${sync[@]}"
+  trap - ERR
+}
+
+case "${1:-status}" in
+  status) status ;;
+  set)
+    channel=${2:-}
+    [[ " $CHANNELS " == *" $channel "* ]] || { echo "Usage: karchy-channel set <stable|rc|nightly>" >&2; exit 1; }
+    if [[ $(current_channel) == "$channel" ]]; then
+      echo "Already on the $channel channel; making sure karchy's packages match it."
+    else
+      echo "Moving karchy to the $channel channel."
+    fi
+    # The packaged copy, never a dev checkout: this part runs as root (D-50).
+    sudo /usr/bin/karchy-channel apply "$channel"
+    karchy-reload-desktop
+    karchy-update-check --quiet >/dev/null 2>&1 || true
+    status
+    ;;
+  apply) apply "${2:-}" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-channel /p' "$0" >&2; exit 1 ;;
+esac

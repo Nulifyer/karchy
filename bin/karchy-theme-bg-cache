@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# karchy:summary=Cache background switcher thumbnails for the current theme
+
+theme_name=$(cat "$HOME/.local/state/karchy/current/theme.name" 2>/dev/null)
+
+karchy-menu-images \
+  --cache-only \
+  "$HOME/.local/state/karchy/current/theme/backgrounds" \
+  "$HOME/.config/karchy/backgrounds/$theme_name"

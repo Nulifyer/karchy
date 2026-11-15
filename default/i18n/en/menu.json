@@ -56,8 +56,8 @@
   "learn.keybindings": {
     "label": "Keybindings"
   },
-  "learn.omarchy": {
-    "label": "Omarchy"
+  "learn.karchy": {
+    "label": "Karchy"
   },
   "learn.hyprland": {
     "label": "Hyprland"
@@ -809,9 +809,6 @@
   "install.service.slack": {
     "label": "Slack"
   },
-  "install.service.tailscale": {
-    "label": "Tailscale"
-  },
   "install.service.nordvpn": {
     "label": "NordVPN"
   },
@@ -1073,9 +1070,6 @@
   "remove.service.dropbox": {
     "label": "Dropbox"
   },
-  "remove.service.tailscale": {
-    "label": "Tailscale"
-  },
   "remove.service.microsoft": {
     "label": "Microsoft"
   },
@@ -1131,7 +1125,7 @@
     "label": "Xbox Cloud Gaming"
   },
   "remove.gaming.xbox-controllers": {
-    "label": "Xbox Controllers (󰂯)"
+    "label": "Xbox Controllers (Bluetooth)"
   },
   "remove.gaming.battlenet": {
     "label": "Battle.net"
@@ -1208,8 +1202,8 @@
   "remove.development.elixir.phoenix": {
     "label": "Phoenix"
   },
-  "update.omarchy": {
-    "label": "Omarchy"
+  "update.karchy": {
+    "label": "Karchy"
   },
   "update.channel": {
     "label": "Channel"

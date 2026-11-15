@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# karchy:summary=Print which NVIDIA driver this computer's GPUs need: open, 580xx or unsupported.
+
+# Prints one word and exits 0 when there is an NVIDIA GPU, exits 1 when there
+# is none:
+#   open         Turing or newer (device ID >= 0x1e00): the open kernel
+#                modules, which need GSP firmware (karchy-nvidia)
+#   580xx        Maxwell, Pascal or Volta (0x1340 <= ID < 0x1e00): the 580
+#                legacy branch, NVIDIA's last for these cards (karchy-nvidia-580xx)
+#   unsupported  Kepler and older (ID < 0x1340): no current NVIDIA driver;
+#                nouveau drives the card
+#
+# Sources for the boundaries: NVIDIA 580.95.05 README, "Supported NVIDIA GPU
+# Products" (lowest ID 1340, GeForce 830M; Kepler only in the 470 legacy table),
+# and CachyOS chwd 1.25.0's /var/lib/chwd/ids lists (nvidia-580.ids spans
+# 1340-1df6, nvidia-470.ids tops out at 12ba). Device IDs >= 0x1e00 are all
+# Turing or newer, the generations with GSP firmware.
+#
+# Several NVIDIA GPUs: the newest generation wins, since one driver serves
+# them all and the newer card is the one worth driving. Only display-class
+# functions count (VGA, 3D, other display), so a card's audio and USB
+# functions and a hybrid laptop's iGPU are ignored.
+#
+# Read the cached sysfs IDs rather than lspci, which reads PCI config space and
+# resumes runtime-suspended GPUs.
+pci_devices_path="${KARCHY_PCI_DEVICES_PATH:-/sys/bus/pci/devices}"
+
+shopt -s nullglob
+
+# 0: none found, 1: unsupported, 2: 580xx, 3: open.
+best=0
+
+for device in "$pci_devices_path"/*; do
+  [[ $(< "$device/vendor") == "0x10de" ]] || continue
+  [[ $(< "$device/class") == 0x03* ]] || continue
+  device_id=$(< "$device/device")
+  if (( device_id >= 0x1e00 )); then
+    tier=3
+  elif (( device_id >= 0x1340 )); then
+    tier=2
+  else
+    tier=1
+  fi
+  (( tier > best )) && best=$tier
+done
+
+case $best in
+  3) echo open ;;
+  2) echo 580xx ;;
+  1) echo unsupported ;;
+  *) exit 1 ;;
+esac

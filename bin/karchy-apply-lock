@@ -1,0 +1,57 @@
+#!/bin/bash
+
+# karchy:summary=Turn lock screen fingerprint unlock on or off to match enrollment
+# karchy:requires-sudo=true
+# karchy:hidden=true
+
+set -e
+
+# Install and upgrade callers can start this helper as root. Ignore their PATH
+# so optional commands never fall through to a user-writable directory.
+if (( EUID == 0 )); then
+  export PATH=/usr/bin:/usr/local/bin:/usr/bin:/bin
+fi
+
+target_user=${KARCHY_INSTALL_USER:-${SUDO_USER:-}}
+if [[ -z $target_user && -n ${PKEXEC_UID:-} ]]; then
+  target_user=$(getent passwd "$PKEXEC_UID" | cut -d: -f1)
+fi
+target_user=${target_user:-$USER}
+
+as_root() {
+  if (( EUID == 0 )); then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+# The password PAM file, the fprintd resume hook and its stop timeout ship in
+# karchy-settings. Only the fingerprint PAM file depends on enrollment.
+
+# Keep the privileged probe pinned to /usr/bin; failure is not empty enrollment.
+if [[ -x /usr/bin/fprintd-list ]]; then
+  fingerprint_status=$(/usr/bin/fprintd-list "$target_user" 2>&1 || true)
+else
+  fingerprint_status="no"
+fi
+
+if grep -qE '^[[:space:]]*-[[:space:]]*#[0-9]+:' <<< "$fingerprint_status"; then
+  echo "Configuring lock screen fingerprint authentication..."
+  as_root tee /etc/pam.d/karchy-lock-fingerprint >/dev/null <<'EOF'
+#%PAM-1.0
+auth       required                    pam_fprintd.so
+account    include                     system-local-login
+EOF
+elif [[ $fingerprint_status == "no" ]] || grep -qi 'has no fingers enrolled' <<< "$fingerprint_status"; then
+  as_root rm -f /etc/pam.d/karchy-lock-fingerprint
+else
+  echo "Could not check fingerprint enrollment; keeping the existing configuration." >&2
+fi
+
+# karchy-shell can't reach a running shell during chroot install. The echo
+# is just confirmation, so swallow the failure rather than letting it become
+# the script's exit code.
+if karchy-shell lock status >/dev/null 2>&1; then
+  echo "Lock screen authentication configured."
+fi

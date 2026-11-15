@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "idle": {
+    "screensaver": 150,
+    "lock": 300,
+    "suspend": 900,
+    "suspendOnAC": false
+  },
+  "bar": {
+    "position": "top",
+    "background": "opaque",
+    "style": "auto",
+    "layout": {
+      "left": [
+        {
+          "id": "karchy.menu"
+        },
+        {
+          "id": "karchy.workspaces"
+        }
+      ],
+      "centerBegin": [
+        {
+          "id": "karchy.indicators",
+          "items": [
+            "Updates",
+            "ScreenRecording",
+            "Reminder",
+            "Minimized"
+          ]
+        }
+      ],
+      "center": [
+        {
+          "id": "karchy.clock",
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "verticalFormat": "HH\n—\nmm"
+        }
+      ],
+      "centerEnd": [
+        {
+          "id": "karchy.media"
+        }
+      ],
+      "right": [
+        {
+          "id": "karchy.vms"
+        },
+        {
+          "id": "karchy.containers"
+        },
+        {
+          "id": "karchy.tray"
+        },
+        {
+          "id": "karchy.bluetooth"
+        },
+        {
+          "id": "karchy.network"
+        },
+        {
+          "id": "karchy.audio"
+        },
+        {
+          "id": "karchy.microphone"
+        },
+        {
+          "id": "karchy.monitor"
+        },
+        {
+          "id": "karchy.power"
+        }
+      ]
+    }
+  },
+  "plugins": []
+}
