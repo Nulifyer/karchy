@@ -1,0 +1,88 @@
+#!/bin/bash
+# Check karchy-hw-nvidia-generation (and the GSP helpers built on it) against
+# fake sysfs PCI trees. Run it from anywhere: tools/nvidia-generation-check
+
+set -uo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+failures=0
+
+# fake_tree NAME VENDOR:DEVICE:CLASS... builds a sysfs-like PCI device tree.
+fake_tree() {
+  local name=$1 spec vendor device class n=0
+  shift
+  mkdir -p "$work/$name"
+  for spec in "$@"; do
+    IFS=: read -r vendor device class <<<"$spec"
+    mkdir -p "$work/$name/0000:0$n:00.0"
+    echo "0x$vendor" >"$work/$name/0000:0$n:00.0/vendor"
+    echo "0x$device" >"$work/$name/0000:0$n:00.0/device"
+    echo "0x$class" >"$work/$name/0000:0$n:00.0/class"
+    n=$((n + 1))
+  done
+}
+
+# expect NAME GENERATION GSP WITHOUT_GSP: GENERATION is the expected output
+# ("" for exit 1); GSP and WITHOUT_GSP are the helpers' expected exit codes.
+expect() {
+  local name=$1 want=$2 want_gsp=$3 want_without=$4 got status gsp without
+  got=$(KARCHY_PCI_DEVICES_PATH="$work/$name" "$root/bin/karchy-hw-nvidia-generation")
+  status=$?
+  KARCHY_PCI_DEVICES_PATH="$work/$name" "$root/bin/karchy-hw-nvidia-gsp"
+  gsp=$?
+  KARCHY_PCI_DEVICES_PATH="$work/$name" "$root/bin/karchy-hw-nvidia-without-gsp"
+  without=$?
+  if [[ -z $want ]]; then
+    [[ $status == 1 && -z $got ]] || { echo "FAIL $name: want exit 1, got '$got' (exit $status)"; failures=$((failures + 1)); return; }
+  else
+    [[ $status == 0 && $got == "$want" ]] || { echo "FAIL $name: want '$want', got '$got' (exit $status)"; failures=$((failures + 1)); return; }
+  fi
+  if [[ $gsp != "$want_gsp" || $without != "$want_without" ]]; then
+    echo "FAIL $name: gsp exit $gsp (want $want_gsp), without-gsp exit $without (want $want_without)"
+    failures=$((failures + 1))
+    return
+  fi
+  echo "ok   $name: ${want:-none}"
+}
+
+# Device IDs: RTX 5080 GB203 (2c02), TITAN RTX TU102 (1e02, the first
+# Turing), Titan V GV100 (1d81), GTX 1080 GP104 (1b80), Quadro M5000 GM204
+# (13f0, the Proxmox test card), GeForce 830M GM108 (1340, the first ID in
+# the 580 README), Titan Z/GTX 780 Ti Kepler GK110 (100a), GT 1030 GP108
+# (1d01). Intel iGPU 8086:46a6; NVIDIA HDMI audio class 0x040300.
+fake_tree none          8086:46a6:030000
+fake_tree blackwell     10de:2c02:030000 10de:22e8:040300
+fake_tree turing        10de:1e02:030000
+fake_tree volta         10de:1d81:030200
+fake_tree pascal        10de:1b80:030000 10de:10f0:040300
+fake_tree maxwell-m5000 10de:13f0:030000 10de:0fbb:040300
+fake_tree maxwell-first 10de:1340:030200
+fake_tree kepler        10de:100a:030000
+fake_tree two-pascal-turing 10de:1b80:030000 10de:1e02:030000
+fake_tree two-kepler-maxwell 10de:100a:030000 10de:13f0:030000
+fake_tree hybrid-pascal 8086:46a6:030000 10de:1d01:030200
+fake_tree hybrid-kepler 8086:46a6:030000 10de:100a:030200
+fake_tree audio-only    10de:22e8:040300
+
+expect none ""                       1 1
+expect audio-only ""                 1 1
+expect blackwell open                0 1
+expect turing open                   0 1
+expect volta 580xx                   1 0
+expect pascal 580xx                  1 0
+expect maxwell-m5000 580xx           1 0
+expect maxwell-first 580xx           1 0
+expect kepler unsupported            1 1
+expect two-pascal-turing open        0 1
+expect two-kepler-maxwell 580xx      1 0
+expect hybrid-pascal 580xx           1 0
+expect hybrid-kepler unsupported     1 1
+
+if ((failures)); then
+  echo "$failures failed"
+  exit 1
+fi
+echo "all passed"

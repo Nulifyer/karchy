@@ -1,28 +1,82 @@
 #!/bin/bash
 
-# Create, boot and snapshot QEMU/KVM test VMs for karchy.
+# Create, boot and snapshot karchy test VMs. Each VM is a libvirt domain named
+# karchy-<vm> on qemu:///system, so virt-manager shows it like any other VM.
 #
 # Usage: tools/vm <command> [options]
 #
 #   fetch                       Download the current Arch ISO and verify it
-#   new [--secureboot] [--size 40G] [--force]
-#                               Create a VM disk and UEFI variables
-#   run [--iso] [--headless] [--tpm]
-#                               Boot the VM (--iso attaches the Arch ISO)
+#   new [--secureboot] [--tpm] [--size 40G] [--force]
+#                               Create a VM disk and UEFI variables and define it
+#   run [--iso] [--headless]    Boot the VM and open its console in virt-manager
+#                               (--iso boots the Arch ISO this once; --headless
+#                               opens no window). Starting it in virt-manager
+#                               boots the disk.
 #   screenshot [file.png]       Save the running VM's screen
 #   type [--no-enter] <text>    Type text into the VM (US layout), then Enter
+#   key <combo>...              Press QEMU key combos in turn (meta_l-ret, alt-f4)
+#   click <x> <y> [right]       Click at a screenshot pixel position
+#   drag <x1> <y1> <x2> <y2>    Drag from one screenshot pixel to another
+#   exec <command>              Run a shell command in the guest as root, through
+#                               the QEMU guest agent (karchy-vm installs it), and
+#                               print its output; `exec --user` runs it as the
+#                               desktop user inside the Hyprland session
+#   define                      Rewrite the VM's libvirt definition from tools/vm's
+#                               template (replaces changes made in virt-manager)
 #   snap <name>                 Snapshot the (stopped) VM disk
 #   restore <name>              Return the (stopped) VM disk to a snapshot
 #   snapshots                   List snapshots
-#   stop                        Power the running VM off
-#   status                      Show VM files and whether it is running
-#   destroy                     Delete the VM (asks first)
+#   stop [--force]              Shut the VM down (--force: pull the plug)
+#   status                      Show VM files and state
+#   destroy                     Delete the VM and its libvirt definition (asks first)
+#   repo [dir]                  Serve karchy's channel repositories to guests at
+#                               http://10.0.2.2:8090/repo-<channel> (default dir:
+#                               out, where packaging/build writes repo-<channel>)
 #
 # Every command takes --name <vm> (default: default). VM files live in
 # ${KARCHY_VM_DIR:-$XDG_STATE_HOME/karchy-vm}/<vm>; the ISO cache is shared.
 # The repository (or $KARCHY_VM_SHARE) is shared read-only into the guest as
 # 9p tag "karchy":
-#   mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /mnt/karchy
+#   mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /root/karchy
+# Guests use QEMU's user network, where 10.0.2.2 is the host's loopback, so
+# `repo` needs no firewall change. KARCHY_VM_GL=1 turns on 3D (virgl);
+# KARCHY_VM_CPUS and KARCHY_VM_MEMORY (GiB) size the VM.
+#
+# Proxmox VE: --pve <ssh-target> (or KARCHY_VM_PVE=<ssh-target>) runs the
+# commands on a Proxmox host instead, for 3D tests on the host's real GPU
+# (VirGL). The VM is the Proxmox VM named karchy-<vm>; `ssh <ssh-target>` must
+# log in as root with a key. There:
+#   fetch                       Download the current Arch ISO into the host's
+#                               `local` ISO storage; sha256 and signature checked
+#   new [--vmid N] [--size 48G] [--tpm]
+#                               Create the VM, tagged temp: q35, OVMF without
+#                               keys, host CPU, KARCHY_VM_CPUS (8) cores,
+#                               KARCHY_VM_MEMORY (8) GiB, virtio-scsi disk on
+#                               local-zfs (/dev/sda), virtio net on vmbr0, VirGL
+#                               (vga virtio-gl), USB tablet, guest agent
+#   run [--iso]                 Start it; --iso puts the newest Arch ISO in the
+#                               CD drive and boots it, a run without empties the
+#                               drive. Watch it in the Proxmox web UI's console.
+#   screenshot, type, key, click, drag, exec, stop, status, snap, restore,
+#   snapshots                   As above: keys and pointer through the VM's
+#                               QMP socket, screenshots through its VNC socket
+#                               (needs gvnccapture), exec through the guest agent
+#   ssh [command]               Log in to the guest as root, through the host,
+#                               with a throwaway key (karchy-vm/pve/). The guest
+#                               agent installs the key, starts sshd and, until
+#                               the guest reboots, lets the host past its ufw.
+#   push                        Copy the checkout (tracked and untracked, not
+#                               ignored files) to /root/karchy in the guest
+#   repo [dir]                  Serve dir (default out) on this machine's
+#                               loopback and open an SSH reverse tunnel into the
+#                               guest, which reads it at http://127.0.0.1:8090
+#                               (no firewall change here). Runs until Ctrl+C or
+#                               the guest reboots; run it again after a reboot.
+# Install on Proxmox (docs/installing.md):
+#   tools/vm --pve root@host --name test new; ... run --iso
+#   ... ssh 'echo ok' (once the ISO has booted), then push, then in one
+#   terminal: ... repo; in another:
+#   ... ssh /root/karchy/install/karchy-install --config /root/karchy/tests/pve-install.conf
 
 set -euo pipefail
 
@@ -35,6 +89,15 @@ ISO_MIRROR=${KARCHY_ISO_MIRROR:-https://geo.mirror.pkgbuild.com/iso/latest}
 ISO_NAME="archlinux-x86_64.iso"
 OVMF_DIR=/usr/share/edk2/x64
 ARCH_KEYRING=/usr/share/pacman/keyrings/archlinux.gpg
+LIBVIRT_URI=${KARCHY_VM_URI:-qemu:///system}
+# The Proxmox backend: the host's SSH target, and the VM's ID once found.
+PVE_HOST=${KARCHY_VM_PVE:-}
+PVE_VMID=""
+PVE_ISO_STORAGE=local
+PVE_GUEST_KEY="$VM_ROOT/pve/guest_ed25519"
+PVE_GUEST_SSH=()
+REPO_PORT=8090
+REPO_SERVER_PID=""
 
 VM_NAME="default"
 COMMAND=""
@@ -64,14 +127,24 @@ vm_dir() {
   echo "$VM_ROOT/$VM_NAME"
 }
 
-qmp_socket() {
-  echo "$(vm_dir)/qmp.sock"
+domain() {
+  echo "karchy-$VM_NAME"
+}
+
+virsh_() {
+  virsh -q -c "$LIBVIRT_URI" "$@"
+}
+
+domain_defined() {
+  virsh_ dominfo "$(domain)" >/dev/null 2>&1
 }
 
 vm_running() {
-  local pidfile
-  pidfile="$(vm_dir)/qemu.pid"
-  [[ -f $pidfile ]] && kill -0 "$(<"$pidfile")" 2>/dev/null
+  if [[ -n $PVE_HOST ]]; then
+    [[ $(pve_ssh qm status "$PVE_VMID") == "status: running" ]]
+  else
+    [[ $(virsh_ domstate "$(domain)" 2>/dev/null) == "running" ]]
+  fi
 }
 
 require_stopped() {
@@ -84,12 +157,126 @@ require_vm() {
   [[ -f "$(vm_dir)/disk.qcow2" ]] || die "no VM '$VM_NAME'; create it with: tools/vm new --name $VM_NAME"
 }
 
-qmp() {
-  # Send one QMP command and print the reply line for it.
-  local command="$1"
-  need socat
-  printf '%s\n%s\n' '{"execute":"qmp_capabilities"}' "$command" |
-    socat -t 5 - "UNIX-CONNECT:$(qmp_socket)" | tail -n 1
+conf_value() {
+  sed -n "s/^$1=//p" "$(vm_dir)/vm.conf"
+}
+
+# Run a QEMU monitor command through libvirt.
+hmp() {
+  virsh_ qemu-monitor-command --hmp "$(domain)" "$1" >/dev/null
+}
+
+# libvirt runs QEMU as libvirt-qemu. Where "other" permissions don't already
+# let it in, give it the least it needs under $HOME, as virt-manager offers to
+# for home-dir images: traverse (x) on each directory, and read on a shared
+# directory. A named ACL entry replaces "other" for that user, so add one only
+# where it is missing access.
+grant_qemu_access() {
+  need setfacl
+  local leaf_mode="$1" path mode
+  shift
+  for path in "$@"; do
+    mode=$leaf_mode
+    while [[ $path == "$HOME"/* ]]; do
+      if ! other_allows "$path" "$mode"; then
+        setfacl -m "u:libvirt-qemu:$mode" "$path"
+      fi
+      path=$(dirname "$path")
+      mode=x
+    done
+  done
+}
+
+# Whether a path's "other" permission bits include every letter in MODE.
+other_allows() {
+  local bits mode="$2" i
+  bits=$(stat -c %A "$1")
+  bits=${bits:7:3}
+  for ((i = 0; i < ${#mode}; i++)); do
+    [[ $bits == *"${mode:i:1}"* ]] || return 1
+  done
+}
+
+xml_escape() {
+  local text="$1"
+  text=${text//&/&amp;}
+  text=${text//</&lt;}
+  text=${text//>/&gt;}
+  text=${text//\'/&apos;}
+  printf '%s' "$text"
+}
+
+# Write the libvirt domain from vm.conf and define it: at `new`, and at the
+# first run of a VM folder made before tools/vm used libvirt.
+define_domain() {
+  local dir code secure=no uuid_xml="" tpm_xml="" gl_xml="" accel_xml=""
+  dir=$(vm_dir)
+  # Redefining keeps the domain's identity (and its place in virt-manager).
+  if domain_defined; then
+    uuid_xml="<uuid>$(virsh_ domuuid "$(domain)")</uuid>"
+  fi
+  code=$(conf_value code)
+  [[ $(conf_value secureboot) == "true" ]] && secure=yes
+  [[ $(conf_value tpm) == "true" ]] && tpm_xml="<tpm model='tpm-crb'><backend type='emulator' version='2.0'/></tpm>"
+  if [[ ${KARCHY_VM_GL:-0} == "1" ]]; then
+    accel_xml="<acceleration accel3d='yes'/>"
+    # The render node is named so libvirt puts it in QEMU's private /dev.
+    gl_xml="<listen type='none'/><gl enable='yes' rendernode='/dev/dri/renderD128'/>"
+  fi
+
+  grant_qemu_access x "$dir" "$ISO_DIR"
+  grant_qemu_access rx "$SHARE_ROOT"
+
+  cat >"$dir/domain.xml" <<XML
+<domain type='kvm'>
+  <name>$(domain)</name>
+  $uuid_xml
+  <title>karchy test VM ($VM_NAME)</title>
+  <description>Made by karchy tools/vm; files in $(xml_escape "$dir")</description>
+  <memory unit='GiB'>${KARCHY_VM_MEMORY:-4}</memory>
+  <vcpu>${KARCHY_VM_CPUS:-4}</vcpu>
+  <os>
+    <type arch='x86_64' machine='q35'>hvm</type>
+    <loader readonly='yes' secure='$secure' type='pflash' format='raw'>$(xml_escape "$code")</loader>
+    <nvram format='raw'>$(xml_escape "$dir/OVMF_VARS.4m.fd")</nvram>
+    <bootmenu enable='yes'/>
+  </os>
+  <features><acpi/><apic/><smm state='on'/><vmport state='off'/></features>
+  <cpu mode='host-passthrough'/>
+  <clock offset='utc'/>
+  <devices>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2' discard='unmap'/>
+      <source file='$(xml_escape "$dir/disk.qcow2")'/>
+      <target dev='vda' bus='virtio'/>
+      <boot order='2'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <target dev='sda' bus='sata'/>
+      <readonly/>
+      <boot order='1'/>
+    </disk>
+    <filesystem type='mount' accessmode='squash'>
+      <source dir='$(xml_escape "$SHARE_ROOT")'/>
+      <target dir='karchy'/>
+      <readonly/>
+    </filesystem>
+    <interface type='user'>
+      <model type='virtio'/>
+    </interface>
+    <input type='tablet' bus='usb'/>
+    <graphics type='spice'>$gl_xml</graphics>
+    <video><model type='virtio' heads='1'>$accel_xml</model></video>
+    <sound model='ich9'/>
+    <audio id='1' type='spice'/>
+    <channel type='spicevmc'><target type='virtio' name='com.redhat.spice.0'/></channel>
+    <channel type='unix'><target type='virtio' name='org.qemu.guest_agent.0'/></channel>
+    $tpm_xml
+  </devices>
+</domain>
+XML
+  virsh_ define "$dir/domain.xml" >/dev/null
 }
 
 cmd_fetch() {
@@ -133,10 +320,11 @@ isoinfo_version() {
 }
 
 cmd_new() {
-  local secureboot=false size="40G" force=false
+  local secureboot=false tpm=false size="40G" force=false
   while (($#)); do
     case "$1" in
       --secureboot) secureboot=true ;;
+      --tpm) tpm=true ;;
       --size)
         size="${2:-}"
         shift
@@ -147,7 +335,7 @@ cmd_new() {
     shift
   done
 
-  need qemu-img
+  need qemu-img virsh
   local dir
   dir=$(vm_dir)
   if [[ -e "$dir/disk.qcow2" ]]; then
@@ -169,93 +357,120 @@ cmd_new() {
   qemu-img create -q -f qcow2 "$dir/disk.qcow2" "$size"
   # Blank variables: no keys enrolled, so Secure Boot firmware starts in Setup Mode.
   cp "$OVMF_DIR/OVMF_VARS.4m.fd" "$dir/OVMF_VARS.4m.fd"
-  printf 'code=%s\nsecureboot=%s\nsize=%s\n' "$code" "$secureboot" "$size" >"$dir/vm.conf"
-  info "created VM '$VM_NAME' ($size, secureboot=$secureboot) in $dir"
-}
-
-conf_value() {
-  local key="$1"
-  sed -n "s/^$key=//p" "$(vm_dir)/vm.conf"
+  printf 'code=%s\nsecureboot=%s\ntpm=%s\nsize=%s\n' "$code" "$secureboot" "$tpm" "$size" >"$dir/vm.conf"
+  define_domain
+  info "created VM '$VM_NAME' ($size, secureboot=$secureboot, tpm=$tpm) as $(domain)"
 }
 
 cmd_run() {
-  local with_iso=false headless=false tpm=false
+  local with_iso=false headless=false
   while (($#)); do
     case "$1" in
       --iso) with_iso=true ;;
       --headless) headless=true ;;
-      --tpm) tpm=true ;;
+      --tpm) die "run: --tpm is now chosen at creation: tools/vm new --tpm" ;;
       *) die "run: unknown option $1" ;;
     esac
     shift
   done
 
-  need qemu-system-x86_64
+  need virsh
   require_vm
   require_stopped
-  [[ -r /dev/kvm ]] || die "/dev/kvm is not available"
-
-  local dir
-  dir=$(vm_dir)
-  local code
-  code=$(conf_value code)
-
-  local -a qemu=(
-    qemu-system-x86_64
-    -name "karchy-$VM_NAME"
-    -enable-kvm
-    -machine "q35,smm=on"
-    -global "driver=cfi.pflash01,property=secure,value=on"
-    -cpu host
-    -smp "${KARCHY_VM_CPUS:-4}"
-    -m "${KARCHY_VM_MEMORY:-8G}"
-    -drive "if=pflash,format=raw,unit=0,readonly=on,file=$code"
-    -drive "if=pflash,format=raw,unit=1,file=$dir/OVMF_VARS.4m.fd"
-    -drive "if=virtio,format=qcow2,file=$dir/disk.qcow2,discard=unmap"
-    -nic "user,model=virtio-net-pci,hostfwd=tcp:127.0.0.1:${KARCHY_VM_SSH_PORT:-2222}-:22"
-    -device qemu-xhci
-    -device usb-tablet
-    -audiodev "pipewire,id=snd"
-    -device ich9-intel-hda
-    -device "hda-output,audiodev=snd"
-    -virtfs "local,path=$SHARE_ROOT,mount_tag=karchy,security_model=none,readonly=on"
-    -qmp "unix:$(qmp_socket),server=on,wait=off"
-    -pidfile "$dir/qemu.pid"
-  )
-
-  if [[ $headless == "true" ]]; then
-    qemu+=(-device virtio-vga -display none)
+  [[ $with_iso == "false" || -r "$ISO_DIR/$ISO_NAME" ]] || die "no ISO; run: tools/vm fetch"
+  # Define it once; after that the domain is yours to change in virt-manager
+  # (memory, extra disks…), and a run never rewrites it.
+  if domain_defined; then
+    grant_qemu_access x "$(vm_dir)" "$ISO_DIR"
+    grant_qemu_access rx "$SHARE_ROOT"
   else
-    qemu+=(-device virtio-vga-gl -display "${KARCHY_VM_DISPLAY:-gtk},gl=on")
+    define_domain
   fi
 
+  # The CD drive boots first and is saved empty, so a start from anywhere,
+  # virt-manager included, boots the disk. --iso loads the ISO for this boot
+  # only: it goes into the saved settings for the start, then straight back
+  # out, while the running VM keeps it until it powers off.
+  info "booting $(domain) (iso=$with_iso)"
   if [[ $with_iso == "true" ]]; then
-    [[ -r "$ISO_DIR/$ISO_NAME" ]] || die "no ISO; run: tools/vm fetch"
-    qemu+=(-drive "media=cdrom,readonly=on,file=$ISO_DIR/$ISO_NAME" -boot "order=d,menu=on")
+    virsh_ change-media "$(domain)" sda "$ISO_DIR/$ISO_NAME" --update --config >/dev/null
+    virsh_ start "$(domain)" >/dev/null
+    virsh_ change-media "$(domain)" sda --eject --config >/dev/null
+  else
+    virsh_ start "$(domain)" >/dev/null
   fi
-
-  if [[ $tpm == "true" ]]; then
-    need swtpm
-    mkdir -p "$dir/tpm"
-    swtpm socket --tpm2 --tpmstate "dir=$dir/tpm" --ctrl "type=unixio,path=$dir/tpm/swtpm.sock" \
-      --daemon --terminate
-    qemu+=(-chardev "socket,id=chrtpm,path=$dir/tpm/swtpm.sock" -tpmdev "emulator,id=tpm0,chardev=chrtpm" -device "tpm-tis,tpmdev=tpm0")
+  if [[ $headless == "true" ]]; then
+    info "running without a window; open it in virt-manager or: tools/vm screenshot --name $VM_NAME"
+  else
+    need virt-manager
+    virt-manager --connect "$LIBVIRT_URI" --show-domain-console "$(domain)" >/dev/null 2>&1 &
+    disown
+    info "running; console opened in virt-manager"
   fi
-
-  rm -f "$(qmp_socket)"
-  info "booting VM '$VM_NAME' (iso=$with_iso, headless=$headless, tpm=$tpm)"
-  "${qemu[@]}" -daemonize
-  info "running; screenshot with: tools/vm screenshot --name $VM_NAME"
 }
 
 cmd_screenshot() {
   vm_running || die "VM '$VM_NAME' is not running"
+  need magick
   local out="${1:-$(vm_dir)/screenshot-$(date +%Y%m%d-%H%M%S).png}"
   out=$(realpath -m "$out")
-  local reply
-  reply=$(qmp "{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"$out\",\"format\":\"png\"}}")
-  [[ $reply == *'"return"'* ]] || die "screendump failed: $reply"
+  mkdir -p "$(dirname "$out")"
+  local raw
+  raw=$(mktemp --suffix=.ppm)
+  if ! grab_screen "$raw"; then
+    rm -f "$raw"
+    die "screenshot failed"
+  fi
+  magick "$raw" "$out"
+  rm -f "$raw"
   info "saved $out"
+}
+
+# Write the VM's screen to an image file (PPM from libvirt, PNG from Proxmox;
+# ImageMagick reads either whatever the name says).
+grab_screen() {
+  if [[ -n $PVE_HOST ]]; then
+    pve_grab_screen "$1"
+  else
+    virsh_ screenshot "$(domain)" "$1" >/dev/null
+  fi
+}
+
+# Print the screen's width and height in pixels.
+screen_size() {
+  need magick
+  local raw size
+  raw=$(mktemp --suffix=.ppm)
+  grab_screen "$raw" || { rm -f "$raw"; die "could not read the screen"; }
+  size=$(magick identify -format '%w %h' "$raw")
+  rm -f "$raw"
+  echo "$size"
+}
+
+# Press QEMU key combos in turn, each held HOLD ms, PAUSE seconds apart.
+send_keys() {
+  local hold="$1" pause="$2" combo
+  shift 2
+  if [[ -n $PVE_HOST ]]; then
+    local -a lines=() parts
+    local part keys
+    for combo in "$@"; do
+      IFS=- read -ra parts <<<"$combo"
+      keys=""
+      for part in "${parts[@]}"; do
+        keys+="${keys:+,}{\"type\":\"qcode\",\"data\":\"$part\"}"
+      done
+      lines+=("{\"execute\":\"send-key\",\"arguments\":{\"keys\":[$keys],\"hold-time\":$hold}}")
+    done
+    # One connection for all the keys, paced as one virsh call per key is.
+    [[ $pause == "0" ]] && pause=0.04
+    printf '%s\n' "${lines[@]}" | pve_ssh_in "$(pve_qmp_client "$pause")"
+  else
+    for combo in "$@"; do
+      hmp "sendkey $combo $hold"
+      [[ $pause == "0" ]] || sleep "$pause"
+    done
+  fi
 }
 
 key_for_char() {
@@ -312,7 +527,6 @@ cmd_type() {
     shift
   done
   vm_running || die "VM '$VM_NAME' is not running"
-  need socat
 
   local -a keys=()
   local i key
@@ -324,43 +538,162 @@ cmd_type() {
     keys+=("ret")
   fi
 
-  local line
-  coproc QMP_CONN { socat - "UNIX-CONNECT:$(qmp_socket)"; }
-  read -r -u "${QMP_CONN[0]}" line # greeting
-  qmp_send '{"execute":"qmp_capabilities"}'
-  # QEMU acknowledges sendkey at once, but the emulated keyboard's buffer is
-  # small, so pace the keys or some are dropped.
-  for key in "${keys[@]}"; do
-    qmp_send "{\"execute\":\"human-monitor-command\",\"arguments\":{\"command-line\":\"sendkey $key 10\"}}"
-    sleep 0.03
-  done
-  local write_fd=${QMP_CONN[1]}
-  exec {write_fd}>&-
-  wait "$QMP_CONN_PID" 2>/dev/null || true
+  # QEMU acknowledges a key at once, but the emulated keyboard's buffer is
+  # small; send_keys paces them so none are dropped.
+  send_keys 10 0 "${keys[@]}"
 }
 
-# Send one command on the open QMP connection and wait for its reply,
-# skipping asynchronous event lines.
-qmp_send() {
-  local line
-  printf '%s\n' "$1" >&"${QMP_CONN[1]}"
-  while read -r -t 10 -u "${QMP_CONN[0]}" line; do
-    [[ $line == *'"return"'* ]] && return 0
-    [[ $line == *'"error"'* ]] && die "QMP error: $line"
-  done
-  die "no reply from QEMU"
-}
-
-cmd_stop() {
+cmd_key() {
+  (($#)) || die "key: name at least one combo, such as meta_l-ret"
   vm_running || die "VM '$VM_NAME' is not running"
-  qmp '{"execute":"quit"}' >/dev/null 2>&1 || true
-  local tries=0
-  while vm_running && ((tries < 50)); do
-    sleep 0.1
-    tries=$((tries + 1))
+  local combo
+  for combo in "$@"; do
+    [[ $combo =~ ^[a-z0-9_-]+$ ]] || die "key: not a QEMU key combo: $combo"
   done
-  vm_running && die "VM '$VM_NAME' did not stop"
-  info "stopped VM '$VM_NAME'"
+  send_keys 100 0.2 "$@"
+}
+
+# The USB tablet takes absolute positions from 0 to 32767 on each axis, so a
+# pixel from a screenshot is scaled by the current screen size. HMP's
+# mouse_move is relative only, so this uses QMP's input-send-event.
+cmd_click() {
+  local x="${1:-}" y="${2:-}" button=left size width height ax ay
+  [[ $x =~ ^[0-9]+$ && $y =~ ^[0-9]+$ ]] || die "click: give x and y in pixels"
+  [[ ${3:-} == "right" ]] && button=right
+  vm_running || die "VM '$VM_NAME' is not running"
+  size=$(screen_size)
+  read -r width height <<<"$size"
+  # Arrive with a short move, as a real pointer does: the shell ignores clicks
+  # on items the pointer has not moved over (Ui/PointerMoveGate.qml).
+  local step
+  for step in 6 0; do
+    ax=$(((x - step) * 32767 / width))
+    ay=$(((y - step) * 32767 / height))
+    qmp_input "[{\"type\":\"abs\",\"data\":{\"axis\":\"x\",\"value\":$ax}},{\"type\":\"abs\",\"data\":{\"axis\":\"y\",\"value\":$ay}}]"
+    sleep 0.08
+  done
+  qmp_input "[{\"type\":\"btn\",\"data\":{\"down\":true,\"button\":\"$button\"}}]"
+  sleep 0.05
+  qmp_input "[{\"type\":\"btn\",\"data\":{\"down\":false,\"button\":\"$button\"}}]"
+}
+
+# Press at one screenshot pixel, move in steps, release at another: region
+# selectors (slurp) and anything else that needs a real drag.
+cmd_drag() {
+  local x1="${1:-}" y1="${2:-}" x2="${3:-}" y2="${4:-}" size width height i x y
+  [[ $x1 =~ ^[0-9]+$ && $y1 =~ ^[0-9]+$ && $x2 =~ ^[0-9]+$ && $y2 =~ ^[0-9]+$ ]] || die "drag: give x1 y1 x2 y2 in pixels"
+  vm_running || die "VM '$VM_NAME' is not running"
+  size=$(screen_size)
+  read -r width height <<<"$size"
+  move() {
+    qmp_input "[{\"type\":\"abs\",\"data\":{\"axis\":\"x\",\"value\":$(($1 * 32767 / width))}},{\"type\":\"abs\",\"data\":{\"axis\":\"y\",\"value\":$(($2 * 32767 / height))}}]"
+  }
+  move $((x1 - 6)) $((y1 - 6)); sleep 0.08
+  move "$x1" "$y1"; sleep 0.08
+  qmp_input '[{"type":"btn","data":{"down":true,"button":"left"}}]'
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    x=$((x1 + (x2 - x1) * i / 10))
+    y=$((y1 + (y2 - y1) * i / 10))
+    move "$x" "$y"
+    sleep 0.04
+  done
+  qmp_input '[{"type":"btn","data":{"down":false,"button":"left"}}]'
+}
+
+qmp_input() {
+  local request="{\"execute\":\"input-send-event\",\"arguments\":{\"events\":$1}}"
+  if [[ -n $PVE_HOST ]]; then
+    printf '%s\n' "$request" | pve_ssh_in "$(pve_qmp_client 0)"
+  else
+    virsh_ qemu-monitor-command "$(domain)" "$request" >/dev/null
+  fi
+}
+
+cmd_exec() {
+  local as_user=false
+  [[ ${1:-} == "--user" ]] && { as_user=true; shift; }
+  (($#)) || die "exec: give a command"
+  vm_running || die "VM '$VM_NAME' is not running"
+  local command="$*"
+  if [[ $as_user == "true" ]]; then
+    # Run with the session's own environment, copied from the running shell
+    # (Hyprland started it), so apps see what they would when launched from
+    # the desktop: WAYLAND_DISPLAY, DISPLAY, ELECTRON_OZONE_PLATFORM_HINT…
+    command="pid=\$(pgrep -o -x quickshell || pgrep -o -x Hyprland)
+user=\$(ps -o user= -p \$pid)
+mapfile -d '' vars < /proc/\$pid/environ
+runuser -u \"\$user\" -- env -i \"\${vars[@]}\" bash -c $(printf '%q' "$command")"
+  fi
+  guest_exec "$command"
+}
+
+# Run a bash command in the guest as root through the QEMU guest agent; print
+# its output and return its exit status.
+guest_exec() {
+  local reply
+  if [[ -n $PVE_HOST ]]; then
+    # The command goes in on stdin, so it needs no quoting for the host's shell;
+    # it then runs with stdin closed, as through libvirt.
+    # shellcheck disable=SC2016 # expanded in the guest
+    local wrapper='command=$(cat); exec /bin/bash -c "$command" </dev/null'
+    reply=$(printf '%s' "$1" | pve_ssh_in "qm guest exec $PVE_VMID --pass-stdin 1 -- /bin/bash -c $(printf '%q' "$wrapper")" 2> >(grep -v '^timeout reached' >&2)) ||
+      die "exec: the guest agent did not answer (is qemu-guest-agent running?)"
+    # qm waits 30 s; a longer command leaves only its pid.
+    local pid
+    pid=$(jq -r 'if .exited == 1 then empty else .pid end' <<<"$reply")
+    while [[ -n $pid ]]; do
+      sleep 0.5
+      reply=$(pve_ssh qm guest exec-status "$PVE_VMID" "$pid")
+      [[ $(jq -r '.exited' <<<"$reply") == "1" ]] && break
+    done
+    jq -j '."out-data" // empty' <<<"$reply"
+    jq -j '."err-data" // empty' <<<"$reply" >&2
+    return "$(jq -r '.exitcode // 1' <<<"$reply")"
+  fi
+  local request pid
+  request=$(jq -cn --arg c "$1" '{execute: "guest-exec", arguments: {path: "/bin/bash", arg: ["-c", $c], "capture-output": true}}')
+  pid=$(virsh_ qemu-agent-command "$(domain)" "$request" | jq -r '.return.pid') ||
+    die "exec: the guest agent did not answer (is qemu-guest-agent installed?)"
+  while true; do
+    reply=$(virsh_ qemu-agent-command "$(domain)" "{\"execute\":\"guest-exec-status\",\"arguments\":{\"pid\":$pid}}")
+    [[ $(jq -r '.return.exited' <<<"$reply") == "true" ]] && break
+    sleep 0.2
+  done
+  jq -r '.return["out-data"] // empty' <<<"$reply" | base64 -d
+  jq -r '.return["err-data"] // empty' <<<"$reply" | base64 -d >&2
+  return "$(jq -r '.return.exitcode // 1' <<<"$reply")"
+}
+
+# A clean shutdown, so the guest's recent writes reach its disk (btrfs commits
+# every 30 s). --force, or a guest that hasn't stopped after 60 s, is pulled
+# off like a power cord.
+cmd_stop() {
+  local force=false
+  [[ ${1:-} == "--force" ]] && force=true
+  vm_running || die "VM '$VM_NAME' is not running"
+  if [[ $force == "false" ]]; then
+    if [[ -n $PVE_HOST ]]; then
+      # Through the guest agent when it answers, else ACPI.
+      pve_ssh qm shutdown "$PVE_VMID" --timeout 60 >/dev/null 2>&1 || true
+    else
+      virsh_ shutdown "$(domain)" --mode agent,acpi >/dev/null 2>&1 || true
+    fi
+    local waited=0
+    while vm_running && ((waited < 60)); do
+      sleep 1
+      waited=$((waited + 1))
+    done
+  fi
+  if vm_running; then
+    if [[ -n $PVE_HOST ]]; then
+      pve_ssh qm stop "$PVE_VMID" >/dev/null
+    else
+      virsh_ destroy "$(domain)" >/dev/null
+    fi
+    info "powered off VM '$VM_NAME'"
+  else
+    info "shut down VM '$VM_NAME'"
+  fi
 }
 
 cmd_snap() {
@@ -393,18 +726,18 @@ cmd_snapshots() {
 cmd_status() {
   local dir
   dir=$(vm_dir)
-  echo "vm:       $VM_NAME"
+  echo "vm:       $VM_NAME ($(domain) on $LIBVIRT_URI)"
   echo "dir:      $dir"
   if [[ -f "$dir/vm.conf" ]]; then
     echo "firmware: $(conf_value code)"
     echo "size:     $(conf_value size)"
   else
-    echo "state:    not created"
+    echo "files:    not created"
   fi
-  if vm_running; then
-    echo "running:  yes (pid $(<"$dir/qemu.pid"))"
+  if domain_defined; then
+    echo "state:    $(virsh_ domstate "$(domain)")"
   else
-    echo "running:  no"
+    echo "state:    not defined in libvirt (defined on the next run)"
   fi
   if [[ -r "$ISO_DIR/$ISO_NAME" ]]; then
     echo "iso:      $ISO_DIR/$ISO_NAME"
@@ -420,8 +753,339 @@ cmd_destroy() {
   [[ -d $dir ]] || die "no VM '$VM_NAME'"
   read -r -p "Delete VM '$VM_NAME' at $dir? Type the VM name to confirm: " answer
   [[ $answer == "$VM_NAME" ]] || die "not confirmed"
+  if domain_defined; then
+    virsh_ undefine "$(domain)" --keep-nvram >/dev/null
+  fi
   rm -rf "$dir"
   info "deleted VM '$VM_NAME'"
+}
+
+# Serve a package repository on the host's loopback; QEMU's user network shows
+# it to the guest as 10.0.2.2. Runs until interrupted.
+cmd_repo() {
+  local dir="${1:-$REPO_ROOT/out}"
+  compgen -G "$dir/repo-*/karchy.db" >/dev/null || die "no karchy repositories in $dir/repo-* (run packaging/build)"
+  echo "Serving $dir at http://10.0.2.2:8090 for guests (Ctrl+C stops)"
+  exec python3 -m http.server --bind 127.0.0.1 --directory "$dir" 8090
+}
+
+# ---- Proxmox VE backend (--pve) ----
+
+# Run a command on the Proxmox host. One SSH connection is kept open for a
+# minute and shared, so the many short calls (a click is four) stay quick.
+# pve_ssh leaves stdin alone (a caller's piped input stays for its own use);
+# pve_ssh_in passes stdin to the remote command.
+pve_ssh() {
+  pve_ssh_in "$@" </dev/null
+}
+
+pve_ssh_in() {
+  mkdir -p "$VM_ROOT"
+  ssh -o BatchMode=yes -o ControlMaster=auto -o ControlPersist=60 \
+    -o "ControlPath=$VM_ROOT/.pve-ssh-%C" "$PVE_HOST" "$@"
+}
+
+# Capture the screen through the VM's VNC socket, as Proxmox's console does.
+# QMP screendump can't: once the guest's virtio-gpu shows a VirGL scanout,
+# QEMU has no 2D surface to dump ("no surface"); the VNC server gets frames
+# read back from the GPU. The socket is forwarded to a loopback port over the
+# shared SSH connection, and a one-off password (expiring in a minute) is set
+# for it; Proxmox sets its own for each console it opens.
+pve_grab_screen() {
+  need gvnccapture script
+  local password port forward png status=0
+  password=$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 8)
+  printf '%s\n' "{\"execute\":\"set_password\",\"arguments\":{\"protocol\":\"vnc\",\"password\":\"$password\"}}" \
+    '{"execute":"expire_password","arguments":{"protocol":"vnc","time":"+60"}}' |
+    pve_ssh_in "$(pve_qmp_client 0)"
+  port=$((15000 + PVE_VMID % 10000))
+  forward="127.0.0.1:$port:/var/run/qemu-server/$PVE_VMID.vnc"
+  pve_ssh -O forward -L "$forward" 2>/dev/null
+  png=$(mktemp --suffix=.png)
+  # gvnccapture reads the password from a terminal only.
+  (sleep 0.5; echo "$password") |
+    script -q -e -c "gvnccapture -q 127.0.0.1:$((port - 5900)) $png" /dev/null >/dev/null || status=$?
+  pve_ssh -O cancel -L "$forward" 2>/dev/null || true
+  if [[ $status != 0 || ! -s $png ]]; then
+    rm -f "$png"
+    return 1
+  fi
+  mv -f "$png" "$1"
+}
+
+# A QMP client for the host, which has python3 but no tools for this: it sends
+# each JSON command read on stdin to the VM's QMP socket, waits for its reply,
+# and pauses $1 seconds; an error reply fails it. Proxmox connects to the same
+# socket for its own calls; QEMU serves one client at a time, so the others wait.
+pve_qmp_client() {
+  local code='
+import json, socket, sys, time
+sock = socket.socket(socket.AF_UNIX)
+sock.connect(sys.argv[1])
+stream = sock.makefile("rw")
+def send(command):
+    stream.write(command.strip() + "\n")
+    stream.flush()
+    while True:
+        line = stream.readline()
+        if not line:
+            sys.exit("qmp: connection closed")
+        reply = json.loads(line)
+        if "error" in reply:
+            sys.exit("qmp: " + reply["error"]["desc"])
+        if "return" in reply:
+            return
+stream.readline()
+send("{\"execute\": \"qmp_capabilities\"}")
+for command in sys.stdin:
+    if command.strip():
+        send(command)
+        time.sleep(float(sys.argv[2]))
+'
+  printf 'python3 -c %q /var/run/qemu-server/%s.qmp %s' "$code" "$PVE_VMID" "$1"
+}
+
+# Find the Proxmox VM named karchy-<vm>.
+pve_find_vm() {
+  PVE_VMID=$(pve_ssh qm list | awk -v name="$(domain)" '$2 == name { print $1 }')
+  [[ -n $PVE_VMID ]] || die "no Proxmox VM named $(domain) on $PVE_HOST; create it with: tools/vm --pve $PVE_HOST --name $VM_NAME new"
+  [[ $PVE_VMID =~ ^[0-9]+$ ]] || die "more than one Proxmox VM is named $(domain); rename the others"
+}
+
+pve_iso_dir() {
+  local path
+  path=$(pve_ssh pvesm path "$PVE_ISO_STORAGE:iso/x.iso")
+  echo "${path%/*}"
+}
+
+# Download the current ISO on the host, check it against the mirror's sha256
+# sum and its signature against the Arch keyring this machine trusts (sent
+# along for gpgv), and only then give it its name. Other ISOs are left alone.
+pve_cmd_fetch() {
+  need curl gpg
+  [[ -r $ARCH_KEYRING ]] || die "missing $ARCH_KEYRING (install archlinux-keyring)"
+  local sha name dir work
+  read -r sha name < <(curl -fsSL --retry 3 "$ISO_MIRROR/sha256sums.txt" |
+    awk '$2 ~ /^archlinux-[0-9.]+-x86_64\.iso$/ { print $1, $2; exit }') ||
+    die "could not read $ISO_MIRROR/sha256sums.txt"
+  [[ -n ${name:-} ]] || die "the mirror's sha256sums.txt names no dated ISO"
+  dir=$(pve_iso_dir)
+  work=$(pve_ssh mktemp -d)
+  # gpgv reads binary keyrings only; the Arch keyring file is armored.
+  gpg --dearmor <"$ARCH_KEYRING" | pve_ssh_in "cat >$work/archlinux.gpg"
+  curl -fsSL --retry 3 "$ISO_MIRROR/$name.sig" | pve_ssh_in "cat >$work/iso.sig"
+  info "fetching $name into $PVE_ISO_STORAGE on $PVE_HOST ($dir)"
+  pve_ssh_in bash -s <<EOF
+set -euo pipefail
+trap 'rm -rf $work' EXIT
+cd $(printf '%q' "$dir")
+file=$name
+if [[ ! -e \$file ]]; then
+  file=$name.part
+  curl -fL --retry 3 --no-progress-meter -o "\$file" $(printf '%q' "$ISO_MIRROR/$name")
+fi
+echo "$sha  \$file" | sha256sum -c --quiet || { echo "vm: checksum mismatch for $name" >&2; rm -f $name.part; exit 1; }
+gpgv --keyring $work/archlinux.gpg $work/iso.sig "\$file" 2>&1 | grep -E 'Good signature|using' || { echo "vm: bad signature for $name" >&2; rm -f $name.part; exit 1; }
+[[ \$file == $name ]] || mv "\$file" $name
+EOF
+  info "verified $PVE_ISO_STORAGE:iso/$name"
+}
+
+pve_cmd_new() {
+  local vmid="" size=48 tpm=false
+  while (($#)); do
+    case "$1" in
+      --vmid)
+        vmid="${2:-}"
+        shift
+        ;;
+      --size)
+        size="${2:-}"
+        size=${size%G}
+        shift
+        ;;
+      --tpm) tpm=true ;;
+      *) die "new: unknown option $1" ;;
+    esac
+    shift
+  done
+  [[ $size =~ ^[0-9]+$ ]] || die "new: --size takes whole GiB, such as 48G"
+  if pve_ssh qm list | awk -v name="$(domain)" '$2 == name { found = 1 } END { exit !found }'; then
+    die "a Proxmox VM named $(domain) already exists"
+  fi
+  [[ -n $vmid ]] || vmid=$(pve_ssh pvesh get /cluster/nextid)
+  [[ $vmid =~ ^[0-9]+$ ]] || die "new: --vmid takes a number"
+
+  # Blank UEFI variables (no keys enrolled): Secure Boot firmware in Setup Mode.
+  # The temp tag files it with the host's other throwaway VMs.
+  # shellcheck disable=SC2054 # Proxmox's own comma-separated values
+  local -a opts=(
+    --name "$(domain)" --tags temp
+    --description "karchy test VM ($VM_NAME), made by karchy tools/vm"
+    --ostype l26 --machine q35 --bios ovmf
+    --efidisk0 local-zfs:1,efitype=4m,pre-enrolled-keys=0
+    --cpu host --sockets 1 --cores "${KARCHY_VM_CPUS:-8}"
+    --memory $((${KARCHY_VM_MEMORY:-8} * 1024)) --balloon 0
+    --scsihw virtio-scsi-single --scsi0 "local-zfs:$size,discard=on,iothread=1,ssd=1"
+    --ide2 none,media=cdrom --boot order=scsi0
+    --net0 virtio,bridge=vmbr0
+    --vga virtio-gl --tablet 1 --agent enabled=1
+  )
+  # shellcheck disable=SC2054
+  [[ $tpm == "true" ]] && opts+=(--tpmstate0 local-zfs:1,version=v2.0)
+  pve_ssh "qm create $vmid $(printf '%q ' "${opts[@]}")"
+  info "created Proxmox VM $vmid $(domain) (${size}G) on $PVE_HOST"
+}
+
+pve_cmd_run() {
+  local with_iso=false volid="none"
+  while (($#)); do
+    case "$1" in
+      --iso) with_iso=true ;;
+      --headless) ;;
+      *) die "run: unknown option $1" ;;
+    esac
+    shift
+  done
+  require_stopped
+  local boot="order=scsi0"
+  if [[ $with_iso == "true" ]]; then
+    volid=$(pve_ssh pvesm list "$PVE_ISO_STORAGE" --content iso |
+      awk '$1 ~ /\/archlinux-[0-9.]+-x86_64\.iso$/ { print $1 }' | sort -V | tail -n 1)
+    [[ -n $volid ]] || die "no Arch ISO in $PVE_ISO_STORAGE; run: tools/vm --pve $PVE_HOST fetch"
+    boot="order=ide2;scsi0"
+  fi
+  pve_ssh "qm set $PVE_VMID --ide2 $(printf '%q' "$volid,media=cdrom") --boot $(printf '%q' "$boot")" >/dev/null
+  pve_ssh qm start "$PVE_VMID"
+  info "booting Proxmox VM $PVE_VMID $(domain) (iso=${volid#*/}); console: https://${PVE_HOST#*@}:8006 › $PVE_VMID › Console"
+}
+
+pve_cmd_status() {
+  echo "vm:       $VM_NAME (Proxmox VM $PVE_VMID $(domain) on $PVE_HOST)"
+  echo "state:    $(pve_ssh qm status "$PVE_VMID" | sed 's/^status: //')"
+  pve_ssh qm config "$PVE_VMID" |
+    awk -F': ' '$1 ~ /^(cores|memory|vga|scsi0|ide2|net0|boot|tags)$/ { printf "%-9s %s\n", $1 ":", $2 }'
+}
+
+pve_cmd_snap() {
+  local action="$1" name="${2:-}"
+  if [[ $action != "list" ]]; then
+    [[ -n $name ]] || die "$action: name required"
+    require_stopped
+  fi
+  case "$action" in
+    snap) pve_ssh qm snapshot "$PVE_VMID" "$(printf '%q' "$name")" && info "snapshot '$name' saved" ;;
+    restore) pve_ssh qm rollback "$PVE_VMID" "$(printf '%q' "$name")" && info "restored snapshot '$name'" ;;
+    list) pve_ssh qm listsnapshot "$PVE_VMID" ;;
+  esac
+}
+
+# Make the guest reachable over SSH from this machine, through the host: the
+# guest agent installs a throwaway key for root and starts sshd. The installed
+# system's ufw denies incoming connections, so a runtime rule (gone at reboot)
+# lets the host in. Sets PVE_GUEST_SSH to the ssh options and target.
+pve_guest_prepare() {
+  vm_running || die "VM '$VM_NAME' is not running"
+  if [[ ! -f $PVE_GUEST_KEY ]]; then
+    mkdir -p "$(dirname "$PVE_GUEST_KEY")"
+    ssh-keygen -q -t ed25519 -N "" -C "karchy-vm-guest" -f "$PVE_GUEST_KEY"
+  fi
+  local mac interfaces ip host_ip pub
+  mac=$(pve_ssh qm config "$PVE_VMID" | sed -n 's/^net0: virtio=\([0-9A-Fa-f:]*\).*/\1/p')
+  interfaces=$(pve_ssh qm guest cmd "$PVE_VMID" network-get-interfaces 2>/dev/null) ||
+    die "the guest agent did not answer (still booting?)"
+  ip=$(jq -r --arg mac "${mac,,}" '.[] | select((."hardware-address" // "" | ascii_downcase) == $mac)
+    | ."ip-addresses"[]? | select(."ip-address-type" == "ipv4") | ."ip-address"' <<<"$interfaces" | head -n 1)
+  [[ -n $ip ]] || die "the guest has no IPv4 address on net0 yet"
+  host_ip=$(pve_ssh ip -4 -o route get "$ip" | sed -n 's/.* src \([0-9.]*\).*/\1/p')
+  pub=$(cat "$PVE_GUEST_KEY.pub")
+  guest_exec "install -d -m 700 /root/.ssh
+grep -qxF $(printf '%q' "$pub") /root/.ssh/authorized_keys 2>/dev/null || echo $(printf '%q' "$pub") >>/root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
+systemctl start sshd
+if command -v iptables >/dev/null && ! iptables -C INPUT -p tcp -s $host_ip --dport 22 -j ACCEPT 2>/dev/null; then
+  iptables -I INPUT 1 -p tcp -s $host_ip --dport 22 -j ACCEPT
+fi" >/dev/null || die "could not set up SSH in the guest"
+  # The ISO and the installed system have different host keys; neither is
+  # worth remembering.
+  PVE_GUEST_SSH=(-i "$PVE_GUEST_KEY" -o IdentitiesOnly=yes -o BatchMode=yes
+    -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR
+    -J "$PVE_HOST" "root@$ip")
+}
+
+pve_cmd_ssh() {
+  pve_guest_prepare
+  exec ssh "${PVE_GUEST_SSH[@]}" "$@"
+}
+
+# The working tree as packaging/build packages it: tracked and untracked files
+# that aren't ignored, uncommitted changes included.
+pve_cmd_push() {
+  pve_guest_prepare
+  git -C "$SHARE_ROOT" rev-parse --git-dir >/dev/null 2>&1 || die "push: $SHARE_ROOT is not a git checkout"
+  info "copying $SHARE_ROOT to /root/karchy in the guest"
+  # The live ISO's writable layer is 256 MiB, too little for the checkout and
+  # the installer's downloads; it is RAM, so let it grow.
+  local remote="if mountpoint -q /run/archiso/cowspace; then mount -o remount,size=75% /run/archiso/cowspace; fi
+rm -rf /root/karchy && mkdir /root/karchy && tar -xzf - -C /root/karchy"
+  # shellcheck disable=SC2029 # $remote is meant to expand here
+  (
+    cd "$SHARE_ROOT"
+    git ls-files -z -co --exclude-standard | while IFS= read -r -d '' file; do
+      if [[ -e $file || -L $file ]]; then printf '%s\0' "$file"; fi
+    done | tar --null -T - -czf -
+  ) | ssh "${PVE_GUEST_SSH[@]}" "$remote"
+  info "copied"
+}
+
+# Serve the repositories on this machine's loopback (or use a server already
+# there, such as `tools/vm repo`) and forward the guest's 127.0.0.1:8090 to it
+# over SSH. Nothing listens on this machine's network.
+pve_cmd_repo() {
+  local dir="${1:-$REPO_ROOT/out}"
+  compgen -G "$dir/repo-*/karchy.db" >/dev/null || die "no karchy repositories in $dir/repo-* (run packaging/build)"
+  pve_guest_prepare
+  if (: <"/dev/tcp/127.0.0.1/$REPO_PORT") 2>/dev/null; then
+    info "using the server already on 127.0.0.1:$REPO_PORT"
+  else
+    python3 -m http.server --bind 127.0.0.1 --directory "$dir" "$REPO_PORT" >/dev/null 2>&1 &
+    REPO_SERVER_PID=$!
+    trap '[[ -z $REPO_SERVER_PID ]] || kill "$REPO_SERVER_PID" 2>/dev/null' EXIT
+  fi
+  echo "Serving $dir to the guest at http://127.0.0.1:$REPO_PORT (Ctrl+C stops)"
+  ssh "${PVE_GUEST_SSH[@]}" -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 \
+    -R "$REPO_PORT:127.0.0.1:$REPO_PORT" || true
+  info "tunnel closed"
+}
+
+pve_main() {
+  need ssh jq
+  case "$COMMAND" in
+    fetch | new | "") ;;
+    *) pve_find_vm ;;
+  esac
+  case "$COMMAND" in
+    fetch) pve_cmd_fetch ;;
+    new) pve_cmd_new "${ARGS[@]}" ;;
+    run) pve_cmd_run "${ARGS[@]}" ;;
+    status) pve_cmd_status ;;
+    snap) pve_cmd_snap snap "${ARGS[@]}" ;;
+    restore) pve_cmd_snap restore "${ARGS[@]}" ;;
+    snapshots) pve_cmd_snap list ;;
+    ssh) pve_cmd_ssh "${ARGS[@]}" ;;
+    push) pve_cmd_push ;;
+    repo) pve_cmd_repo "${ARGS[@]}" ;;
+    screenshot) cmd_screenshot "${ARGS[@]}" ;;
+    type) cmd_type "${ARGS[@]}" ;;
+    key) cmd_key "${ARGS[@]}" ;;
+    click) cmd_click "${ARGS[@]}" ;;
+    drag) cmd_drag "${ARGS[@]}" ;;
+    exec) cmd_exec "${ARGS[@]}" ;;
+    stop) cmd_stop "${ARGS[@]}" ;;
+    define | destroy) die "$COMMAND: not on Proxmox; change or delete the VM in the Proxmox web UI" ;;
+    "") usage ;;
+    *) die "unknown command: $COMMAND (see tools/vm --help)" ;;
+  esac
 }
 
 while (($#)); do
@@ -429,6 +1093,11 @@ while (($#)); do
     --name)
       VM_NAME="${2:-}"
       [[ $VM_NAME =~ ^[A-Za-z0-9_-]+$ ]] || die "--name must be letters, digits, - or _"
+      shift
+      ;;
+    --pve)
+      PVE_HOST="${2:-}"
+      [[ -n $PVE_HOST ]] || die "--pve needs the Proxmox host's SSH target, such as root@pve"
       shift
       ;;
     -h | --help)
@@ -446,18 +1115,35 @@ while (($#)); do
   shift
 done
 
+if [[ -n $PVE_HOST ]]; then
+  pve_main
+  exit
+fi
+
 case "$COMMAND" in
   fetch) cmd_fetch "${ARGS[@]}" ;;
   new) cmd_new "${ARGS[@]}" ;;
   run) cmd_run "${ARGS[@]}" ;;
   screenshot) cmd_screenshot "${ARGS[@]}" ;;
   type) cmd_type "${ARGS[@]}" ;;
+  key) cmd_key "${ARGS[@]}" ;;
+  click) cmd_click "${ARGS[@]}" ;;
+  drag) cmd_drag "${ARGS[@]}" ;;
+  exec) cmd_exec "${ARGS[@]}" ;;
   snap) cmd_snap "${ARGS[@]}" ;;
   restore) cmd_restore "${ARGS[@]}" ;;
   snapshots) cmd_snapshots ;;
-  stop) cmd_stop ;;
+  stop) cmd_stop "${ARGS[@]}" ;;
   status) cmd_status ;;
   destroy) cmd_destroy ;;
+  repo) cmd_repo "${ARGS[@]}" ;;
+  define)
+    require_vm
+    require_stopped
+    define_domain
+    info "redefined $(domain) from tools/vm's template"
+    ;;
+  ssh | push) die "$COMMAND: only on Proxmox (--pve); libvirt guests share the checkout over 9p" ;;
   "") usage ;;
   *) die "unknown command: $COMMAND (see tools/vm --help)" ;;
 esac

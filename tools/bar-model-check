@@ -1,0 +1,87 @@
+#!/usr/bin/env node
+
+// Checks the bar model's pure functions that decide what the bar does from
+// Hyprland's state. Run it from anywhere: tools/bar-model-check
+
+"use strict"
+
+const assert = require("node:assert/strict")
+const path = require("node:path")
+const BarModel = require(path.join(__dirname, "..", "shell", "plugins", "bar", "BarModel.js"))
+
+const checks = []
+function check(name, fn) {
+  checks.push([name, fn])
+}
+
+function window(workspace, fullscreen, extra) {
+  return {
+    workspace: workspace,
+    lastIpcObject: Object.assign({ fullscreen: fullscreen, mapped: true, hidden: false }, extra || {})
+  }
+}
+
+const ws1 = { id: 1, name: "1" }
+const ws2 = { id: 2, name: "2" }
+const minimized = { id: -98, name: "special:minimized" }
+const qconsole = { id: -97, name: "special:qconsole" }
+
+check("style: missing or unknown is auto", () => {
+  assert.equal(BarModel.normalizeStyle(undefined), "auto")
+  assert.equal(BarModel.normalizeStyle("sideways"), "auto")
+  assert.equal(BarModel.normalizeStyle(" docked "), "docked")
+  assert.equal(BarModel.normalizeStyle("floating"), "floating")
+})
+
+check("auto floats on an empty or tiled workspace", () => {
+  assert.equal(BarModel.dockedOn([], [ws1], { style: "auto" }), false)
+  assert.equal(BarModel.dockedOn([window(ws1, 0), window(ws1, 0)], [ws1], {}), false)
+})
+
+check("auto docks while a window on the shown workspace is maximized", () => {
+  assert.equal(BarModel.dockedOn([window(ws1, 0), window(ws1, 1)], [ws1], {}), true)
+})
+
+check("a maximized window on another workspace does not dock", () => {
+  assert.equal(BarModel.dockedOn([window(ws2, 1)], [ws1], {}), false)
+})
+
+check("a real fullscreen window does not dock", () => {
+  assert.equal(BarModel.dockedOn([window(ws1, 2)], [ws1], {}), false)
+})
+
+check("the hidden minimized workspace does not count", () => {
+  assert.equal(BarModel.dockedOn([window(minimized, 1)], [ws1], {}), false)
+})
+
+check("an open special workspace counts, matched by name", () => {
+  const shown = [ws1, { name: "special:qconsole" }]
+  assert.equal(BarModel.dockedOn([window(qconsole, 1)], shown, {}), true)
+  assert.equal(BarModel.dockedOn([window(minimized, 1)], shown, {}), false)
+})
+
+check("unmapped or hidden windows do not count", () => {
+  assert.equal(BarModel.dockedOn([window(ws1, 1, { mapped: false })], [ws1], {}), false)
+  assert.equal(BarModel.dockedOn([window(ws1, 1, { hidden: true })], [ws1], {}), false)
+})
+
+check("floating and docked styles skip the rules", () => {
+  assert.equal(BarModel.dockedOn([window(ws1, 1)], [ws1], { style: "floating" }), false)
+  assert.equal(BarModel.dockedOn([], [ws1], { style: "docked" }), true)
+})
+
+check("a notched bar always docks", () => {
+  assert.equal(BarModel.dockedOn([], [ws1], { style: "floating", notched: true }), true)
+})
+
+let failed = 0
+for (const [name, fn] of checks) {
+  try {
+    fn()
+  } catch (error) {
+    failed++
+    process.stderr.write(`FAIL ${name}\n  ${error.message.split("\n").join("\n  ")}\n`)
+  }
+}
+process.stdout.write(`${checks.length - failed}/${checks.length} bar model checks passed\n`)
+process.exit(failed ? 1 : 0)
