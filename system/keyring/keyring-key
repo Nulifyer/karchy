@@ -1,0 +1,31 @@
+#!/bin/bash
+# karchy (D-57): the login keyring's key for one user, made once.
+#
+# greetd's automatic login never runs PAM authentication, so there is no
+# password to unlock a keyring with. Instead each user gets a random key in
+# systemd's credential store (root only, on the encrypted disk). user@.service
+# imports it as oo7.keyring-encryption-password, which oo7's daemon uses to
+# open the login keyring at every login.
+#
+# The installer makes the first user's key right after creating the account,
+# so every snapshot of the system holds it: a new key would leave the existing
+# keyring unopenable, so a key exists before any keyring does.
+#
+# Usage: keyring-key <uid>   (run by the installer and karchy-keyring-key@<uid>.service)
+
+set -euo pipefail
+
+uid=${1:-}
+[[ $uid =~ ^[0-9]+$ ]] || exit 1
+((uid >= 1000)) || exit 0
+
+store=/etc/credstore
+key=$store/karchy.keyring.$uid
+[[ -s $key ]] && exit 0
+
+install -d -m 0700 "$store"
+umask 077
+tmp=$(mktemp "$store/.karchy.keyring.XXXXXX")
+trap 'rm -f "$tmp"' EXIT
+head -c 32 /dev/urandom | base64 -w0 >"$tmp"
+mv "$tmp" "$key"

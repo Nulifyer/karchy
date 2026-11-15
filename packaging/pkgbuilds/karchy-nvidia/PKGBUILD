@@ -1,0 +1,21 @@
+# karchy-nvidia: NVIDIA drivers for both karchy kernels (detected tier). The
+# modules come prebuilt from [cachyos], which is why it is listed first (D-45).
+
+pkgname=karchy-nvidia
+pkgver=0
+pkgrel=1
+pkgdesc="karchy NVIDIA support: open kernel modules, userspace, VA-API and early KMS"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('linux-cachyos-nvidia-open' 'linux-cachyos-lts-nvidia-open' 'nvidia-utils' 'libva-nvidia-driver')
+backup=('etc/mkinitcpio.conf.d/karchy-nvidia.conf')
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  # Installed with the kernel modules, so the initramfs rebuild that their
+  # install triggers already includes it.
+  install -Dm644 "$srcdir/karchy/system/nvidia/mkinitcpio.conf" \
+    "$pkgdir/etc/mkinitcpio.conf.d/karchy-nvidia.conf"
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Rank Arch mirrors (karchy, D-29)
+Documentation=man:rate-mirrors(1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/karchy-mirrors-rank
+Nice=19
+IOSchedulingClass=idle

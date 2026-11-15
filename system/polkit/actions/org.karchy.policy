@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  What karchy's root helpers ask a password for, in words people use. pkexec
+  picks the action whose exec.path is the program it runs, so the password
+  prompt says "Change which networks are trusted" instead of the command line.
+  Each helper is called by its packaged /usr/bin path (D-50, D-55); pkexec
+  resolves that symlink, so exec.path names the file in /usr/share/karchy/bin.
+-->
+<policyconfig>
+  <vendor>karchy</vendor>
+  <vendor_url>https://github.com/Nulifyer/karchy</vendor_url>
+
+  <action id="org.karchy.trusted-networks">
+    <description>Change which networks are trusted</description>
+    <message>Change which networks are trusted. On a trusted network LocalSend can receive files from nearby devices and the network's own DNS is used.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/karchy/bin/karchy-trusted-networks</annotate>
+  </action>
+
+  <action id="org.karchy.network-dns">
+    <description>Change the DNS servers</description>
+    <message>Change which DNS servers this computer uses on networks that aren't trusted, and whether DNS is encrypted.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/karchy/bin/karchy-network-dns</annotate>
+  </action>
+
+  <action id="org.karchy.network-country">
+    <description>Change the Wi-Fi country</description>
+    <message>Change the Wi-Fi country. It decides which channels and transmit power Wi-Fi may use, as the law of that country allows.</message>
+    <icon_name>network-wireless</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/karchy/bin/karchy-network-country</annotate>
+  </action>
+
+  <action id="org.karchy.browser-theme">
+    <description>Give web browsers the theme's color</description>
+    <message>Give Chromium-based browsers the theme's color. Browsers only read it from a system policy.</message>
+    <icon_name>preferences-desktop-theme</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/share/karchy/bin/karchy-theme-set-browser-policy</annotate>
+  </action>
+</policyconfig>

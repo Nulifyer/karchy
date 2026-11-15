@@ -1,5 +1,5 @@
-# Packages pacstrapped by the installer. CPU microcode and NVIDIA packages are
-# added when detected (install/base.sh). Desktop packages come later, from setup.
+# Packages pacstrapped by the installer. CPU microcode is added when detected
+# (install/base.sh). Desktop packages come later, from setup.
 
 # System
 base
@@ -27,6 +27,10 @@ snap-pac
 networkmanager
 iptables-nft
 
+# karchy's system defaults: sudo policy, mkinitcpio drop-in, snapper template
+# and /etc/skel, which must be in place before the user is created (D-54)
+karchy-settings
+
 # Repository keys and mirrors
 cachyos-keyring
 cachyos-mirrorlist
@@ -35,6 +39,5 @@ omarchy-keyring
 # Shell and tools
 fish
 git
-# Terminal editor: micro or nano is still open (DECISIONS.md); both for now.
+# Terminal editor (D-58): micro, themed from the current theme.
 micro
-nano

@@ -1,0 +1,17 @@
+[Unit]
+Description=Close LocalSend's port until a trusted network connects (karchy, D-33)
+# The rule karchy adds is saved by ufw, and NetworkManager doesn't take
+# connections down at shutdown, so a rule from the last trusted network would
+# otherwise stay open after a reboot until the first connection change. With
+# NetworkManager not yet running nothing is trusted, so this removes them all.
+After=ufw.service
+Before=NetworkManager.service
+ConditionPathExists=/usr/bin/karchy-localsend-firewall
+ConditionPathExists=/usr/bin/ufw
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/karchy-localsend-firewall
+
+[Install]
+WantedBy=multi-user.target

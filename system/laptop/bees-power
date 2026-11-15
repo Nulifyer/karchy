@@ -1,0 +1,17 @@
+#!/bin/bash
+# karchy-laptop (D-39): start or stop every enabled bees instance, for the
+# charger udev rule. Instances are named by filesystem UUID (/etc/bees/*.conf).
+
+set -uo pipefail
+
+action="${1:-}"
+[[ $action == "start" || $action == "stop" ]] || exit 1
+
+for conf in /etc/bees/*.conf; do
+  [[ -f $conf ]] || continue
+  uuid=$(sed -n 's/^UUID=//p' "$conf" | head -n 1)
+  [[ $uuid =~ ^[0-9a-fA-F-]+$ ]] || continue
+  systemctl --quiet is-enabled "beesd@$uuid.service" || continue
+  systemctl --no-block "$action" "beesd@$uuid.service"
+done
+exit 0

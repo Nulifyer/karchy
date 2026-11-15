@@ -1,0 +1,49 @@
+# karchy-desktop: the full karchy desktop, as installed by the installer.
+# Everything karchy's own code needs is in karchy's depends; this adds the
+# session, services, fonts and apps karchy ships with (docs/components.md).
+
+pkgname=karchy-desktop
+pkgver=0
+pkgrel=1
+pkgdesc="karchy desktop: karchy plus its session, services, fonts and apps"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=(
+  'karchy' 'karchy-settings' 'karchy-themes'
+  # Session
+  'greetd' 'hyprland-guiutils' 'xdg-user-dirs'
+  # Audio
+  'pipewire-alsa' 'pipewire-jack' 'alsa-utils'
+  # Hardware
+  'bluez'
+  # Network, firewall and local names (D-15, D-28)
+  'ufw' 'avahi' 'nss-mdns'
+  # Fonts and themes (D-22)
+  'ttf-jetbrains-mono-nerd' 'noto-fonts' 'noto-fonts-cjk' 'noto-fonts-emoji'
+  # Papirus: app icons, with folders recolored to each theme's accent by
+  # karchy-theme-set-gnome
+  'gnome-themes-extra' 'adw-gtk-theme' 'papirus-icon-theme'
+  # Files and mounts (D-24, D-36, D-40)
+  'thunar' 'thunar-archive-plugin' 'thunar-volman' 'tumbler' 'ffmpegthumbnailer'
+  'gvfs' 'gvfs-mtp' 'gvfs-smb' 'cifs-utils' 'xarchiver' '7zip' 'udiskie' 'gnome-disk-utility'
+  # Apps (D-34)
+  'foot' 'brave-origin-bin' 'visual-studio-code-bin' 'localsend' 'omacalc' 'imv' 'mpv'
+  # Screen sharing: the portal's picker with previews, themed (Omarchy's)
+  'hyprland-preview-share-picker'
+  # Titlebars with minimize, maximize and close on floating workspaces (D-60)
+  'karchy-hyprland-titlebars'
+  # Login keyring: the Secret Service for passwords and sign-ins (D-57)
+  'oo7' 'libsecret'
+  # Task manager: performance, apps and services, as Windows' (Ctrl+Shift+Esc)
+  'mission-center'
+  # Its per-app network column (limited capabilities: 95-karchy-nethogs.hook)
+  'nethogs'
+  # Command-line basics scripts and installers expect
+  'openssh' 'rsync' 'unzip'
+  # System health and updates (D-28, D-29)
+  'pacman-contrib' 'paru' 'rate-mirrors' 'smartmontools' 'fwupd'
+  # Battery state for the shell's battery warnings, power panel and idle
+  # suspend; harmless without a battery
+  'upower'
+)

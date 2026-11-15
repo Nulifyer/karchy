@@ -1,0 +1,6 @@
+// Karchy's own XKB option. libxkbcommon reads /etc/xkb before the system
+// rules, which supply everything else.
+! include %S/evdev
+
+! option = symbols
+  karchy:shift_caps_compose = +karchy(shift_caps_compose)

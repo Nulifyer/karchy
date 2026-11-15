@@ -1,0 +1,57 @@
+# karchy: the desktop itself (D-52). Commands, the Quickshell shell, the
+# Hyprland layer, the theme engine and the menu. Everything lives in
+# /usr/share/karchy (KARCHY_PATH); /usr/bin holds symlinks to its commands, so
+# code that calls "$KARCHY_PATH/bin/..." works for the package and for a dev
+# checkout alike (D-55).
+
+pkgname=karchy
+pkgver=0
+pkgrel=1
+pkgdesc="karchy desktop: Quickshell shell, Hyprland layer and commands"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+# What karchy's own commands and shell run. Apps and services the desktop ships
+# with are in karchy-desktop.
+depends=(
+  'bash' 'python' 'jq' 'gum' 'socat' 'fzf' 'curl' 'git' 'inotify-tools' 'libnotify'
+  'hyprland' 'uwsm' 'xdg-desktop-portal-hyprland' 'xdg-desktop-portal-gtk' 'xdg-terminal-exec' 'xdg-utils'
+  'quickshell' 'qt6-svg' 'qt6-imageformats' 'qt6-multimedia' 'qt6-multimedia-ffmpeg' 'qt6-wayland'
+  'wl-clipboard' 'wtype' 'imagemagick' 'grim' 'slurp' 'hyprpicker'
+  'omasnap' 'tesseract-data-eng' 'gpu-screen-recorder' 'ffmpeg' 'v4l-utils' 'mesa-utils' 'python-gobject'
+  'pipewire' 'pipewire-pulse' 'wireplumber' 'brightnessctl' 'ddcutil' 'bluez-utils' 'networkmanager' 'iw'
+  'fastfetch' 'btop' 'qrencode' 'ttfx' 'omarchy-speedtest'
+  'karchy-settings' 'karchy-themes'
+  # The shell's icons: Material Design from the Nerd Font symbols, kept apart
+  # from the text font so `karchy font set` doesn't change them
+  'ttf-nerd-fonts-symbols-mono'
+)
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/karchy"
+  local share="$pkgdir/usr/share/karchy"
+
+  install -d "$pkgdir/usr/bin" "$share/bin"
+  # Which karchy release this is (D-61): packaging/build passes it in.
+  # No channel here: the same release goes to stable and rc, and the channel a
+  # machine follows is /etc/pacman.d/karchy-server.
+  printf 'VERSION=%s\nCOMMIT=%s\n' "${KARCHY_RELEASE_VERSION:-$pkgver}" \
+    "${KARCHY_RELEASE_COMMIT:-unknown}" >"$share/release"
+  install -m755 bin/* "$share/bin/"
+  local cmd
+  for cmd in bin/*; do
+    ln -s "../share/karchy/bin/${cmd#bin/}" "$pkgdir/usr/bin/${cmd#bin/}"
+  done
+  cp -a shell karchy logo.txt "$share/"
+  cp -a default "$share/"
+  install -d "$share/install"
+  cp -a install/helpers install/provisioning "$share/install/"
+  [[ ! -d migrations ]] || cp -a migrations "$share/"
+  # Pause Hyprland's config auto-reload while karchy's files are replaced.
+  install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" system/pacman/hooks/*.hook
+  # The password prompt's words for the root helpers above.
+  install -Dm644 -t "$pkgdir/usr/share/polkit-1/actions" system/polkit/actions/org.karchy.policy
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

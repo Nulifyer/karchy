@@ -1,0 +1,9 @@
+#!/bin/sh
+# karchy (D-68): karchy's DNS on Wi-Fi and Ethernet that aren't trusted, the
+# network's own DNS on trusted ones; see karchy-network-dns. Not on "reapply":
+# applying DNS is itself a reapply.
+[ -x /usr/bin/karchy-network-dns ] || exit 0
+case "$2" in
+  up|dhcp4-change|dhcp6-change|connectivity-change) exec /usr/bin/karchy-network-dns apply ;;
+  down) exec /usr/bin/karchy-network-dns forget "$1" ;;
+esac

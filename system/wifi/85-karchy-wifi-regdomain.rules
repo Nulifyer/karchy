@@ -1,0 +1,2 @@
+# Set the Wi-Fi regulatory domain when a Wi-Fi device appears (karchy-settings).
+SUBSYSTEM=="ieee80211", ACTION=="add", TAG+="systemd", ENV{SYSTEMD_WANTS}+="karchy-wifi-regdomain.service"

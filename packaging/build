@@ -1,0 +1,284 @@
+#!/usr/bin/env python3
+"""Build karchy's packages into a channel's pacman repository (D-51, D-53, D-61).
+
+Usage:
+  packaging/build [--channel CH] [--version V] [--ref REF] [--repo DIR] [--native] [--sign KEY] [PKG...]
+
+  --channel CH  stable, rc, nightly or dev (default dev: local builds for VMs)
+  --version V   the release version, in pacman's form (default: from git, below)
+  --ref REF     package this git commit; without it, the working tree is packaged,
+                including uncommitted and untracked (not ignored) files
+  --repo DIR    repository directory (default: out/repo-CH)
+  --native      also build the native (non-"any") packages, such as the
+                titlebars plugin; needs an Arch environment with their makedepends
+  --sign KEY    sign each new package and the database with this gpg key (CI)
+  PKG           build only these packages (default: every packaging/pkgbuilds/*)
+
+Versions (D-61) come from git tags, converted to pacman's ordering:
+  v3.0.0             -> 3.0.0             stable releases
+  v3.1.0-rc.1        -> 3.1.0rc1          release candidates (older than 3.1.0)
+  12 commits after   -> 3.0.0.r12.gabc1234  nightly builds from main (newer than
+  the last tag                              3.0.0, older than any 3.0.1 or 3.1.0)
+  no tag yet         -> 0.0.0.r12.gabc1234
+dev builds add .l<unix time>, so rebuilding the same commit gives a newer
+version (a build from a commit with fewer commits since the tag still sorts
+lower; the build refuses that, as it refuses any older version).
+
+Every package is rebuilt and compared with the repository's copy by a hash of
+its contents (files, modes, link targets, and .PKGINFO without version, date,
+size and packager). Only a package whose hash changed takes the new version,
+so an update downloads only what changed. The `karchy` package always changes:
+it carries /usr/share/karchy/release (version, channel, commit).
+
+A package can name a file it needs ("# karchy:requires=<path>", relative to
+the repository); without that file it is skipped, as karchy-keyring is until
+the signing key's public half is in packaging/keyring.
+
+Native packages, and packages built from another repository's releases
+(nulifyer-vpn), compute their own version: a "# karchy:version-cmd=" line in
+the PKGBUILD, run with bash from the repository root. They are rebuilt only
+when that version is new, and their source is whatever their PKGBUILD names
+(a git tag) rather than karchy-src.tar.gz. A version command that prints
+nothing means there is no release to build yet, and the package is skipped.
+
+Hashes live next to the database in karchy.versions, so the repository is the
+only state: CI downloads a channel's repository, builds, signs and uploads it.
+"""
+
+import argparse
+import hashlib
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
+from pathlib import Path
+
+PACKAGING = Path(__file__).resolve().parent
+ROOT = PACKAGING.parent
+REPO_NAME = "karchy"
+CHANNELS = ("stable", "rc", "nightly", "dev")
+PKGINFO_VOLATILE = ("pkgver", "builddate", "size", "packager")
+
+
+def run(cmd, **kw):
+    return subprocess.run(cmd, check=True, **kw)
+
+
+def git(*args):
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
+
+
+def release_version(ref):
+    """The pacman version for REF (or HEAD) from `git describe`."""
+    target = ref or "HEAD"
+    described = git("describe", "--tags", "--long", "--match", "v[0-9]*", target)
+    if described.returncode == 0:
+        tag, count, ghash = re.match(r"^v(.+)-(\d+)-(g[0-9a-f]+)$", described.stdout.strip()).groups()
+    else:
+        tag = "0.0.0"
+        count = git("rev-list", "--count", target).stdout.strip() or "0"
+        ghash = "g" + git("rev-parse", "--short=7", target).stdout.strip()
+    m = re.match(r"^(\d+\.\d+\.\d+)(?:-rc\.(\d+))?$", tag)
+    if not m:
+        sys.exit(f"build: tag v{tag} is not vX.Y.Z or vX.Y.Z-rc.N")
+    base = m.group(1) + (f"rc{m.group(2)}" if m.group(2) else "")
+    return base if count == "0" else f"{base}.r{count}.{ghash}"
+
+
+def stage_source(src, ref, dest):
+    """Write karchy-src.tar.gz: the tree to package, under karchy/."""
+    if ref:
+        with open(dest, "wb") as out:
+            run(["git", "-C", src, "archive", "--format=tar.gz", "--prefix=karchy/", ref], stdout=out)
+        return
+    listing = run(["git", "-C", src, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                  capture_output=True).stdout.decode().split("\0")
+    with tarfile.open(dest, "w:gz") as tar:
+        for rel in sorted(p for p in listing if p):
+            path = Path(src, rel)
+            if path.is_symlink() or path.exists():  # skip deletions not yet staged
+                tar.add(path, arcname=f"karchy/{rel}", recursive=False)
+
+
+def content_hash(pkgfile):
+    h = hashlib.sha256()
+    with tarfile.open(pkgfile, "r:zst") as tar:
+        members = sorted(tar.getmembers(), key=lambda m: m.name)
+        for m in members:
+            if m.name in (".BUILDINFO", ".MTREE"):
+                continue
+            data = tar.extractfile(m).read() if m.isfile() else b""
+            if m.name == ".PKGINFO":
+                lines = [l for l in data.decode().splitlines()
+                         if l.split(" = ")[0] not in PKGINFO_VOLATILE]
+                data = "\n".join(lines).encode()
+            h.update(f"{m.name}\0{m.type}\0{m.mode:o}\0{m.linkname}\0".encode())
+            h.update(hashlib.sha256(data).digest())
+    return h.hexdigest()
+
+
+def read_versions(path):
+    versions = {}
+    if path.exists():
+        for line in path.read_text().splitlines():
+            name, version, digest = line.split("\t")
+            versions[name] = (version, digest)
+    return versions
+
+
+def write_versions(path, versions):
+    path.write_text("".join(f"{n}\t{v}\t{d}\n" for n, (v, d) in sorted(versions.items())))
+
+
+def pkgbuild_text(pkg):
+    return (PACKAGING / "pkgbuilds" / pkg / "PKGBUILD").read_text()
+
+
+def older(version, than):
+    return int(run(["vercmp", version, than], capture_output=True, text=True).stdout.strip()) < 0
+
+
+def missing_requirement(pkg):
+    for rel in re.findall(r"^# karchy:requires=(.+)$", pkgbuild_text(pkg), re.M):
+        if not (ROOT / rel.strip()).exists():
+            return rel.strip()
+    return None
+
+
+def is_native(pkg):
+    return not re.search(r"^arch=\(\s*'any'\s*\)", pkgbuild_text(pkg), re.M)
+
+
+def own_version(pkg):
+    """The version a package computes itself, or None (it takes karchy's)."""
+    m = re.search(r"^# karchy:version-cmd=(.+)$", pkgbuild_text(pkg), re.M)
+    if not m:
+        if is_native(pkg):
+            sys.exit(f"build: native package {pkg} has no '# karchy:version-cmd=' line")
+        return None
+    version = run(["bash", "-c", m.group(1)], capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    if not version and not is_native(pkg):
+        return ""  # nothing released to build yet
+    if not re.fullmatch(r"[0-9A-Za-z._]+", version):
+        sys.exit(f"build: {pkg}'s version command gave {version!r}")
+    return version
+
+
+def build(pkg, version, source, conf, workdir, env, native):
+    """Build pkgbuilds/PKG at VERSION in WORKDIR; return the package file."""
+    build_dir = workdir / pkg
+    shutil.rmtree(build_dir, ignore_errors=True)
+    build_dir.mkdir(parents=True)
+    text = pkgbuild_text(pkg)
+    lines = [f"pkgver={version}" if l.startswith("pkgver=") else l for l in text.splitlines()]
+    (build_dir / "PKGBUILD").write_text("\n".join(lines) + "\n")
+    for extra in (PACKAGING / "pkgbuilds" / pkg).iterdir():
+        if extra.name != "PKGBUILD":
+            shutil.copy(extra, build_dir / extra.name)
+    if "karchy-src.tar.gz" in text:
+        os.symlink(source, build_dir / "karchy-src.tar.gz")
+    deps = ["--syncdeps"] if native else ["--nodeps"]
+    run(["makepkg", "--config", conf, *deps, "--clean", "--cleanbuild", "--force", "--noconfirm"],
+        cwd=build_dir, stdout=subprocess.DEVNULL, env=env)
+    found = list(build_dir.glob(f"{pkg}-{version}-*.pkg.tar.zst"))
+    if len(found) != 1:
+        sys.exit(f"build: expected one package file for {pkg}, found {found}")
+    return found[0]
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--channel", default="dev", choices=CHANNELS)
+    ap.add_argument("--version")
+    ap.add_argument("--ref")
+    ap.add_argument("--repo")
+    ap.add_argument("--native", action="store_true")
+    ap.add_argument("--sign", metavar="KEY")
+    ap.add_argument("packages", nargs="*")
+    args = ap.parse_args()
+
+    version = args.version or release_version(args.ref)
+    if args.channel == "dev" and not args.version:
+        version += f".l{int(time.time())}"
+    if not re.fullmatch(r"[0-9A-Za-z._]+", version):
+        sys.exit(f"build: {version!r} is not a valid pacman version")
+    commit = git("rev-parse", "--short=12", args.ref or "HEAD").stdout.strip() or "unknown"
+
+    repo = Path(args.repo or ROOT / "out" / f"repo-{args.channel}").resolve()
+    repo.mkdir(parents=True, exist_ok=True)
+    state_file = repo / f"{REPO_NAME}.versions"
+    versions = read_versions(state_file)
+    packages = args.packages or sorted(p.name for p in (PACKAGING / "pkgbuilds").iterdir() if p.is_dir())
+
+    env = dict(os.environ, KARCHY_RELEASE_VERSION=version, KARCHY_RELEASE_CHANNEL=args.channel,
+               KARCHY_RELEASE_COMMIT=commit)
+    print(f"build: karchy {version} ({args.channel}, {commit}) into {repo}")
+
+    with tempfile.TemporaryDirectory(prefix="karchy-build-") as tmp:
+        workdir = Path(tmp)
+        source = workdir / "karchy-src.tar.gz"
+        stage_source(str(ROOT), args.ref, source)
+        conf = workdir / "makepkg.conf"
+        conf.write_text("source /etc/makepkg.conf\n"
+                        "OPTIONS=(!strip docs !libtool !staticlibs emptydirs zipman purge !debug !lto !autodeps)\n"
+                        "PKGEXT='.pkg.tar.zst'\n"
+                        "PACKAGER='karchy-pkgs <karchy-pkgs@users.noreply.github.com>'\n")
+
+        changed = []
+        for pkg in packages:
+            previous, old_hash = versions.get(pkg, (None, None))
+            missing = missing_requirement(pkg)
+            if missing:
+                print(f"{pkg}: skipped, {missing} doesn't exist yet")
+                continue
+            if is_native(pkg) and not args.native:
+                print(f"{pkg}: native, skipped (build with --native in an Arch environment)")
+                continue
+            pkg_version = own_version(pkg)
+            if pkg_version == "":
+                print(f"{pkg}: skipped, no release pinned yet")
+                continue
+            if pkg_version:
+                if pkg_version == previous:
+                    print(f"{pkg}: unchanged ({previous})")
+                    continue
+                pkgfile = build(pkg, pkg_version, source, conf, workdir, env, native=is_native(pkg))
+                digest = content_hash(pkgfile)
+            else:
+                pkg_version = version
+                pkgfile = build(pkg, pkg_version, source, conf, workdir, env, native=False)
+                digest = content_hash(pkgfile)
+                if digest == old_hash:
+                    print(f"{pkg}: unchanged ({previous})")
+                    continue
+                if pkg_version == previous:
+                    sys.exit(f"build: {pkg} changed but its version {pkg_version} is already published; "
+                             "clients would never see it. Commit the change (or pass a newer --version).")
+                if previous and older(pkg_version, previous):
+                    sys.exit(f"build: {pkg} {pkg_version} is older than the published {previous}; "
+                             "clients would never install it.")
+            print(f"{pkg}: {previous or 'new'} -> {pkg_version}")
+            shutil.copy(pkgfile, repo / pkgfile.name)
+            if args.sign:
+                run(["gpg", "--batch", "--yes", "--detach-sign", "--no-armor", "--local-user", args.sign,
+                     "--output", str(repo / (pkgfile.name + ".sig")), str(repo / pkgfile.name)])
+            changed.append(repo / pkgfile.name)
+            versions[pkg] = (pkg_version, digest)
+
+    if changed:
+        sign = ["--sign", "--key", args.sign] if args.sign else []
+        run(["repo-add", "--quiet", "--remove", *sign, str(repo / f"{REPO_NAME}.db.tar.gz"), *map(str, changed)])
+        write_versions(state_file, versions)
+    # A full build is a release of the channel; a partial one (native packages
+    # only, say) leaves the channel's release as it was.
+    if not args.packages:
+        (repo / "release").write_text(f"VERSION={version}\nCHANNEL={args.channel}\nCOMMIT={commit}\n")
+    print(f"build: {len(changed)} package(s) updated in {repo}")
+
+
+if __name__ == "__main__":
+    main()

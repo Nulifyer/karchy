@@ -71,6 +71,16 @@ form_run() {
 
   KARCHY_TIMEZONE=$(timedatectl list-timezones | gum filter --header "Timezone") || exit 1
 
+  KARCHY_CHANNEL=$(gum choose --header "Release channel for karchy's own updates (Settings can change it later)" \
+    --selected stable stable rc nightly) || exit 1
+
+  KARCHY_SECUREBOOT=no
+  if firmware_setup_mode; then
+    if gum confirm --default=true "Set up Secure Boot? The firmware is in Setup Mode, so karchy can enroll its own keys (with Microsoft's, for GPU firmware and dual boot)."; then
+      KARCHY_SECUREBOOT=yes
+    fi
+  fi
+
   KARCHY_BEES=no
   if gum confirm --default=false "Enable bees background deduplication? (optional, can use some CPU and RAM)"; then
     KARCHY_BEES=yes
@@ -90,6 +100,17 @@ form_load() {
   done
   KARCHY_KEYMAP=${KARCHY_KEYMAP:-us}
   KARCHY_BEES=${KARCHY_BEES:-no}
+  # dev: a local packaging/build, for VM tests only.
+  KARCHY_CHANNEL=${KARCHY_CHANNEL:-stable}
+  [[ $KARCHY_CHANNEL =~ ^(stable|rc|nightly|dev)$ ]] || die "KARCHY_CHANNEL must be stable, rc or nightly"
+  # auto: set up Secure Boot when the firmware is in Setup Mode.
+  KARCHY_SECUREBOOT=${KARCHY_SECUREBOOT:-auto}
+  if [[ $KARCHY_SECUREBOOT == "auto" ]]; then
+    KARCHY_SECUREBOOT=no
+    firmware_setup_mode && KARCHY_SECUREBOOT=yes
+  elif [[ $KARCHY_SECUREBOOT == "yes" ]] && ! firmware_setup_mode; then
+    die "KARCHY_SECUREBOOT=yes, but the firmware is not in Setup Mode: clear its Secure Boot keys first, or use auto"
+  fi
   KARCHY_FULL_NAME=${KARCHY_FULL_NAME:-}
   KARCHY_EMAIL=${KARCHY_EMAIL:-}
 }

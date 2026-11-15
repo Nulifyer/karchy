@@ -1,0 +1,7 @@
+# karchy (D-33 components): foot in server mode; footclient opens instantly.
+# karchy-foot*.desktop are foot entries that tell xdg-terminal-exec how to pass
+# --app-id, --title and the working directory (system/applications).
+karchy-footclient.desktop
+karchy-foot.desktop
+footclient.desktop
+foot.desktop

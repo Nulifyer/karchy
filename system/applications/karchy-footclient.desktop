@@ -1,0 +1,18 @@
+[Desktop Entry]
+# foot's own desktop file doesn't tell xdg-terminal-exec how to pass an app id,
+# title or directory, so karchy windows that rely on their app id (floating
+# TUIs, launch-or-focus) lost it. This copy declares them; karchy's
+# xdg-terminals.list prefers it. Hidden so menus still show foot's own entry.
+Type=Application
+Name=Foot Client
+Comment=Fast, lightweight Wayland terminal
+Exec=footclient
+Icon=foot
+Terminal=false
+Categories=System;TerminalEmulator;
+NoDisplay=true
+X-TerminalArgExec=--
+X-TerminalArgAppId=--app-id
+X-TerminalArgTitle=--title
+X-TerminalArgDir=--working-directory
+X-TerminalArgHold=--hold

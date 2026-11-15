@@ -1,0 +1,124 @@
+# karchy-settings: system defaults and the user's starting configs (D-52).
+# The installer pacstraps it with the base system, before the first user is
+# created, so /etc/skel and the mkinitcpio drop-in are in place in time.
+
+pkgname=karchy-settings
+pkgver=0
+pkgrel=1
+pkgdesc="karchy system defaults, starter configs, lock-screen PAM and session units"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb')
+backup=(
+  'etc/sudoers.d/karchy'
+  'etc/sudoers.d/karchy-theme-browser'
+  'etc/mkinitcpio.conf.d/karchy.conf'
+  'etc/mkinitcpio.conf.d/karchy-thunderbolt.conf'
+  'etc/mpv/mpv.conf'
+  'etc/gnupg/dirmngr.conf'
+  'etc/makepkg.conf.d/karchy.conf'
+  'etc/systemd/system/tmp.mount.d/karchy.conf'
+  'etc/systemd/oomd.conf.d/10-karchy.conf'
+  'etc/xdg/uwsm/env'
+  'etc/profile.d/karchy.sh'
+  'etc/fish/conf.d/karchy.fish'
+  'etc/xdg/xdg-terminals.list'
+  'etc/xdg/mimeapps.list'
+  'etc/pam.d/karchy-lock-password'
+)
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/karchy/system"
+  install -dm750 "$pkgdir/etc/sudoers.d"
+  install -m440 sudoers.d/karchy sudoers.d/karchy-theme-browser "$pkgdir/etc/sudoers.d/"
+  install -Dm755 limine/95-karchy-limine-fallback "$pkgdir/etc/boot/hooks/post.d/95-karchy-limine-fallback"
+  install -Dm644 makepkg.conf.d/karchy.conf "$pkgdir/etc/makepkg.conf.d/karchy.conf"
+  # Hooks that must be in place before the desktop packages arrive (karchy-settings
+  # is pacstrapped with the base system), such as limiting nethogs.
+  install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" pacman/settings-hooks/*.hook
+  install -Dm644 mkinitcpio.conf.d/karchy.conf "$pkgdir/etc/mkinitcpio.conf.d/karchy.conf"
+  install -Dm644 mkinitcpio.conf.d/karchy-thunderbolt.conf "$pkgdir/etc/mkinitcpio.conf.d/karchy-thunderbolt.conf"
+  install -Dm644 snapper/root "$pkgdir/etc/snapper/config-templates/karchy"
+  install -Dm644 systemd/tmp.mount.d/karchy.conf "$pkgdir/etc/systemd/system/tmp.mount.d/karchy.conf"
+  install -Dm644 systemd/oomd.conf.d/10-karchy.conf "$pkgdir/etc/systemd/oomd.conf.d/10-karchy.conf"
+  install -Dm644 systemd/fprintd.service.d/10-stop-timeout.conf \
+    "$pkgdir/usr/lib/systemd/system/fprintd.service.d/10-stop-timeout.conf"
+  # LocalSend's port follows the trusted-network list (D-33).
+  install -Dm755 NetworkManager/dispatcher.d/90-karchy-localsend \
+    "$pkgdir/usr/lib/NetworkManager/dispatcher.d/90-karchy-localsend"
+  # ...and is closed at boot until a trusted network connects; the installer
+  # enables the unit.
+  install -Dm644 systemd/system/karchy-localsend-firewall.service \
+    "$pkgdir/usr/lib/systemd/system/karchy-localsend-firewall.service"
+  # karchy's DNS on networks that aren't trusted, the network's own on trusted
+  # ones (D-68; karchy-network-dns is in karchy).
+  install -Dm755 NetworkManager/dispatcher.d/95-karchy-dns \
+    "$pkgdir/usr/lib/NetworkManager/dispatcher.d/95-karchy-dns"
+  # Network tuning: Wi-Fi power save off, ARP, MTU probing, BBR + fq, and
+  # avahi as the only .local responder. In /usr/lib, so files in /etc win.
+  install -Dm644 -t "$pkgdir/usr/lib/NetworkManager/conf.d" NetworkManager/conf.d/*.conf
+  install -Dm644 -t "$pkgdir/usr/lib/sysctl.d" sysctl.d/*.conf
+  install -Dm644 -t "$pkgdir/usr/lib/modules-load.d" modules-load.d/*.conf
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/resolved.conf.d" systemd/resolved.conf.d/*.conf
+  # Weekly mirror ranking (D-29) and the lock it shares with karchy update.
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" systemd/system/karchy-mirrors.service systemd/system/karchy-mirrors.timer
+  install -Dm644 tmpfiles.d/karchy.conf "$pkgdir/usr/lib/tmpfiles.d/karchy.conf"
+  # logind: the power key opens karchy's menu; lock before sleep may take 15 s.
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/logind.conf.d" systemd/logind.conf.d/*.conf
+  # System tuning (docs/ownership-audit.md): stop timeouts, open-file and
+  # mount-event limits, per-disk I/O schedulers, logout order, mpv on the GPU,
+  # spare GPG key servers. /usr/lib files lose to same-named files in /etc.
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system.conf.d" systemd/system.conf.d/*.conf
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/user.conf.d" systemd/user.conf.d/*.conf
+  install -Dm644 udev/60-karchy-ioschedulers.rules "$pkgdir/usr/lib/udev/rules.d/60-karchy-ioschedulers.rules"
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/user/wayland-wm@hyprland.desktop.service.d" \
+    "systemd/user/wayland-wm@hyprland.desktop.service.d/10-karchy-keep-shell.conf"
+  install -Dm644 mpv/mpv.conf "$pkgdir/etc/mpv/mpv.conf"
+  install -Dm644 gnupg/dirmngr.conf "$pkgdir/etc/gnupg/dirmngr.conf"
+  install -Dm755 systemd/system-sleep/fprintd-resume "$pkgdir/usr/lib/systemd/system-sleep/fprintd-resume"
+  install -Dm644 uwsm/env "$pkgdir/etc/xdg/uwsm/env"
+  install -Dm644 profile.d/karchy.sh "$pkgdir/etc/profile.d/karchy.sh"
+  install -Dm644 fish/karchy.fish "$pkgdir/etc/fish/conf.d/karchy.fish"
+  # karchy's prompt; a fish_prompt.fish in ~/.config/fish/functions wins.
+  install -Dm644 fish/functions/fish_prompt.fish "$pkgdir/usr/share/fish/vendor_functions.d/fish_prompt.fish"
+  install -Dm644 xdg/xdg-terminals.list "$pkgdir/etc/xdg/xdg-terminals.list"
+  install -Dm644 xdg/mimeapps.list "$pkgdir/etc/xdg/mimeapps.list"
+  # Brave reads its theme color from here; karchy-theme-set-browser writes
+  # color.json only into policy folders that exist.
+  install -d -m 755 "$pkgdir/etc/brave/policies/managed"
+  # foot entries that tell xdg-terminal-exec how to pass --app-id and friends.
+  install -Dm644 -t "$pkgdir/usr/share/applications" applications/karchy-*.desktop
+  install -Dm644 pam.d/karchy-lock-password "$pkgdir/etc/pam.d/karchy-lock-password"
+  # Font defaults: monospace is JetBrainsMono Nerd Font; karchy-font-set's user
+  # file loads later and wins.
+  install -Dm644 fontconfig/50-karchy.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-karchy.conf"
+  install -d "$pkgdir/etc/fonts/conf.d"
+  ln -s ../../../usr/share/fontconfig/conf.avail/50-karchy.conf "$pkgdir/etc/fonts/conf.d/50-karchy.conf"
+  # karchy's XKB option (Shift + Caps Lock is Compose), read before the system rules.
+  install -Dm644 xkb/rules/evdev "$pkgdir/etc/xkb/rules/evdev"
+  install -Dm644 xkb/symbols/karchy "$pkgdir/etc/xkb/symbols/karchy"
+  # The login keyring's key, imported by each user manager (D-57).
+  # Wi-Fi regulatory domain from the timezone (ported from CachyOS): set when
+  # a Wi-Fi device appears; karchy-menu-timezone reruns it.
+  install -Dm755 wifi/wifi-regdomain "$pkgdir/usr/lib/karchy/wifi-regdomain"
+  install -Dm644 wifi/85-karchy-wifi-regdomain.rules "$pkgdir/usr/lib/udev/rules.d/85-karchy-wifi-regdomain.rules"
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" wifi/karchy-wifi-regdomain.service
+
+  install -Dm755 keyring/keyring-key "$pkgdir/usr/lib/karchy/keyring-key"
+  install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"
+  install -Dm644 systemd/system/user@.service.d/karchy-keyring.conf \
+    "$pkgdir/usr/lib/systemd/system/user@.service.d/karchy-keyring.conf"
+
+  cd "$srcdir/karchy"
+  # User units and drop-ins; the installer enables the units per machine.
+  install -d "$pkgdir/usr/lib/systemd/user"
+  cp -a default/systemd/user/. "$pkgdir/usr/lib/systemd/user/"
+
+  # Starting configs for new users, never touched again after creation (D-07).
+  install -d "$pkgdir/etc/skel/.config/karchy/themes"
+  cp -a config/. "$pkgdir/etc/skel/.config/"
+  install -m644 karchy/shell.json "$pkgdir/etc/skel/.config/karchy/shell.json"
+}

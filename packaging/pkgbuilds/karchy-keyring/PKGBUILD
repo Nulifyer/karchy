@@ -1,0 +1,24 @@
+# karchy-keyring: the public key that signs karchy's packages (D-52, D-61).
+# packaging/keyring holds the public half: karchy.gpg (the exported key),
+# karchy-trusted ("<fingerprint>:4:") and karchy-revoked (fingerprints, may be
+# empty). The private half lives only in CI's secrets. Skipped by
+# packaging/build until karchy.gpg exists.
+# karchy:requires=packaging/keyring/karchy.gpg
+
+pkgname=karchy-keyring
+pkgver=0
+pkgrel=1
+pkgdesc="karchy package signing key"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+install=karchy-keyring.install
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/karchy/packaging/keyring"
+  install -Dm644 -t "$pkgdir/usr/share/pacman/keyrings" karchy.gpg karchy-trusted
+  install -Dm644 /dev/null "$pkgdir/usr/share/pacman/keyrings/karchy-revoked"
+  [[ ! -s karchy-revoked ]] || install -Dm644 karchy-revoked "$pkgdir/usr/share/pacman/keyrings/karchy-revoked"
+}

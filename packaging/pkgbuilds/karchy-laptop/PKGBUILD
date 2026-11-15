@@ -1,0 +1,24 @@
+# karchy-laptop: what a machine with a battery adds (detected tier, D-32):
+# power profiles, suspend-then-hibernate when the lid closes on battery, and
+# bees (when chosen) only on AC power.
+
+pkgname=karchy-laptop
+pkgver=0
+pkgrel=1
+pkgdesc="karchy laptop additions: power profiles and suspend-then-hibernate"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('karchy-desktop' 'power-profiles-daemon')
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/karchy/system/laptop"
+  install -Dm644 sleep.conf "$pkgdir/usr/lib/systemd/sleep.conf.d/karchy-laptop.conf"
+  install -Dm644 logind.conf "$pkgdir/usr/lib/systemd/logind.conf.d/karchy-laptop.conf"
+  # bees (D-39), when chosen at install, runs only on AC power.
+  install -Dm644 bees-ac-only.conf "$pkgdir/usr/lib/systemd/system/beesd@.service.d/karchy-ac-only.conf"
+  install -Dm644 90-karchy-bees-power.rules "$pkgdir/usr/lib/udev/rules.d/90-karchy-bees-power.rules"
+  install -Dm755 bees-power "$pkgdir/usr/lib/karchy/bees-power"
+}

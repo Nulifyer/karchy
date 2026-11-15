@@ -1,0 +1,15 @@
+# karchy: Mission Center's per-app network column uses nethogs, which needs to
+# capture packets. Grant it only that (cap_net_raw, cap_net_admin), not the
+# read-any-file and inspect-any-process powers Mission Center's own setup
+# adds, and let only admin users (wheel) run it. pacman resets both on every
+# nethogs update, so this runs after each one.
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = nethogs
+
+[Action]
+Description = Limiting nethogs to network capture for admin users...
+When = PostTransaction
+Exec = /bin/sh -c 'chown root:wheel /usr/bin/nethogs && chmod 0750 /usr/bin/nethogs && setcap cap_net_admin,cap_net_raw+pe /usr/bin/nethogs'

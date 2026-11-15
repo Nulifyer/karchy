@@ -1,0 +1,10 @@
+# karchy (CachyOS's rules): an I/O scheduler per disk type, so the desktop's
+# small reads keep flowing while an update, copy or build floods the disk with
+# writes. Whole disks only. A file of the same name in /etc/udev/rules.d/
+# replaces this one.
+# Spinning drives: BFQ.
+ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+# SATA SSDs and SD/eMMC: mq-deadline.
+ACTION=="add|change", KERNEL=="sd[a-z]*|mmcblk[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="mq-deadline"
+# NVMe: Kyber.
+ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="kyber"

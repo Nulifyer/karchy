@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = karchy
+
+[Action]
+Description = Reloading Hyprland after karchy update...
+When = PostTransaction
+Depends = karchy
+Exec = /usr/bin/karchy-hyprland-reload-guard resume

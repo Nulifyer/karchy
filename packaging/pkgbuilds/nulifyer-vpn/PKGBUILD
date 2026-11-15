@@ -1,0 +1,48 @@
+# nulifyer-vpn: the VPN's system half (D-68, step 4): policy service, kill
+# switch, sign-in pause and polkit rule, built from a tagged release of its
+# own repository (Nulifyer/omarchy-vpn-plugin), which stays usable on stock
+# Omarchy. Its controls live in karchy's network panel; the contract
+# (status file, commands, trust and DNS) is in docs/architecture.md,
+# "Networking ownership".
+#
+# A release: the plugin repository gets a tag vX.Y.Z; set pkgver to X.Y.Z and
+# _commit to the tag's commit (prepare() checks it, so a moved tag can't
+# change what is built).
+# Testing a branch before a release, from a local checkout:
+#   NULIFYER_VPN_GIT=/path/to/omarchy-vpn-plugin NULIFYER_VPN_REF=karchy-package \
+#     packaging/build nulifyer-vpn
+# The version then comes from that branch (see ./version), not from pkgver.
+
+# karchy:version-cmd=bash packaging/pkgbuilds/nulifyer-vpn/version
+
+pkgname=nulifyer-vpn
+pkgver=2.0.0
+_commit=0000000000000000000000000000000000000000  # placeholder until v2.0.0 is tagged
+pkgrel=1
+pkgdesc="WireGuard VPN policy with a kill switch: Auto on untrusted networks, captive-portal sign-in pause"
+arch=('any')
+url="https://github.com/Nulifyer/omarchy-vpn-plugin"
+license=('MIT')
+depends=('bash' 'networkmanager' 'wireguard-tools' 'nftables' 'iproute2' 'jq' 'polkit' 'python' 'systemd' 'util-linux')
+makedepends=('git' 'make')
+install=nulifyer-vpn.install
+_repo=${NULIFYER_VPN_GIT:-https://github.com/Nulifyer/omarchy-vpn-plugin.git}
+[[ $_repo == /* ]] && _repo=file://$_repo
+_ref=tag=v$pkgver
+[[ -n ${NULIFYER_VPN_REF:-} ]] && _ref=branch=$NULIFYER_VPN_REF
+source=("$pkgname::git+$_repo#$_ref")
+sha256sums=('SKIP')
+
+prepare() {
+  [[ -n ${NULIFYER_VPN_REF:-} ]] && return 0
+  local head
+  head=$(git -C "$srcdir/$pkgname" rev-parse HEAD)
+  if [[ $head != "$_commit" ]]; then
+    echo "v$pkgver is $head, not the pinned $_commit: update _commit after checking the tag." >&2
+    return 1
+  fi
+}
+
+package() {
+  make -C "$srcdir/$pkgname" DESTDIR="$pkgdir" install
+}

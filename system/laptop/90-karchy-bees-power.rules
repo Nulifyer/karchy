@@ -1,0 +1,4 @@
+# karchy-laptop (D-39): stop bees when the charger is unplugged and start it
+# again when it comes back. Does nothing without bees configured.
+SUBSYSTEM=="power_supply", ACTION=="change", ATTR{type}=="Mains", ATTR{online}=="0", RUN+="/usr/lib/karchy/bees-power stop"
+SUBSYSTEM=="power_supply", ACTION=="change", ATTR{type}=="Mains", ATTR{online}=="1", RUN+="/usr/lib/karchy/bees-power start"
