@@ -26,7 +26,7 @@ fi
 
 if [[ -s $AUTHORIZED_KEYS ]]; then
   echo
-  if gum confirm --affirmative "$(karchy-i18n common.yes)" --negative "$(karchy-i18n common.no)" "$(karchy-i18n sshd.removeAuthorizedKeys "$AUTHORIZED_KEYS")"; then
+  if gum confirm --default=false --affirmative "$(karchy-i18n common.yes)" --negative "$(karchy-i18n common.no)" "$(karchy-i18n sshd.removeAuthorizedKeys "$AUTHORIZED_KEYS")"; then
     rm -f "$AUTHORIZED_KEYS"
     echo "Authorized keys removed."
   else

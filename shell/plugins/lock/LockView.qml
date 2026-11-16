@@ -19,6 +19,9 @@ Item {
   property bool loadBackground: true
   property string passwordText: ""
   property bool syncingPasswordText: false
+  property bool showClock: true
+  property bool clockTwelveHour: false
+  property date now: new Date()
 
   readonly property string placeholderText: Commons.I18n.t("lock.enterPassword")
   readonly property int fieldWidth: 381
@@ -92,6 +95,15 @@ Item {
     if (inputEnabled) Qt.callLater(forcePasswordFocus)
   }
 
+  // Ticks on the minute from epoch time, which never repeats when daylight
+  // saving ends (see the bar's WallClock).
+  Timer {
+    id: clockTimer
+    running: root.showClock && root.visible
+    onRunningChanged: if (running) { root.now = new Date(); interval = 60000 - Date.now() % 60000 }
+    onTriggered: { root.now = new Date(); interval = 60000 - Date.now() % 60000; restart() }
+  }
+
   // Measures the masked password at full size; passwordDotScale compares this
   // against the field width to decide how far the dots must shrink to fit.
   TextMetrics {
@@ -137,6 +149,45 @@ Item {
       hoverEnabled: true
       onClicked: { root.wakeRequested(); root.forcePasswordFocus() }
       onPositionChanged: root.wakeRequested()
+    }
+
+    // The time and date above the field (Settings › Appearance › Lock screen),
+    // with a soft shadow so they read over any wallpaper.
+    Column {
+      id: clock
+      objectName: "lockClock"
+      visible: root.showClock
+      anchors.bottom: inputField.top
+      anchors.bottomMargin: Style.spacing.huge * 2
+      anchors.horizontalCenter: inputField.horizontalCenter
+      spacing: Style.spacing.sm
+      layer.enabled: visible
+      layer.effect: MultiEffect {
+        shadowEnabled: true
+        shadowColor: Commons.Color.lock.background
+        shadowBlur: 0.6
+        shadowOpacity: 0.8
+      }
+
+      Text {
+        anchors.horizontalCenter: parent.horizontalCenter
+        textFormat: Text.PlainText
+        text: root.now.toLocaleString(Qt.locale(Commons.I18n.formatLocale), root.clockTwelveHour ? "h:mm AP" : "HH:mm")
+        color: Commons.Color.lock.text
+        font.family: Style.font.family
+        font.pixelSize: Style.font.displayLarge * 3
+        font.weight: Font.Light
+        font.features: { "tnum": 1 }
+      }
+
+      Text {
+        anchors.horizontalCenter: parent.horizontalCenter
+        textFormat: Text.PlainText
+        text: root.now.toLocaleString(Qt.locale(Commons.I18n.formatLocale), "dddd d MMMM")
+        color: Commons.Color.lock.text
+        font.family: Style.font.family
+        font.pixelSize: Style.font.display
+      }
     }
 
     BorderSurface {

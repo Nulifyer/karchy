@@ -37,6 +37,7 @@ Item {
     { id: "displays", label: "Displays", iconName: "display" },
     { id: "input", label: "Input", iconName: "input.keyboard" },
     { id: "network", label: "Network", iconName: "net.network" },
+    { id: "ssh", label: "SSH", iconName: "security.ssh" },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
     { id: "apps", label: "Default apps", iconName: "menu.apps" },
     { id: "about", label: "About", iconName: "info" }
@@ -287,6 +288,7 @@ Item {
             switch (root.section) {
               case "input": return "InputSection.qml"
               case "network": return "NetworkSection.qml"
+              case "ssh": return "SshSection.qml"
               case "appearance": return "AppearanceSection.qml"
               case "apps": return "DefaultAppsSection.qml"
               case "about": return "AboutSection.qml"

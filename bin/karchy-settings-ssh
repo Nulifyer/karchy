@@ -1,0 +1,56 @@
+#!/bin/bash
+
+# karchy:summary=Read the SSH server and agent state and turn the agent on or off (Settings › SSH)
+# karchy:args=status | agent on|off
+# karchy:hidden=true
+
+# Settings opens the server's setup and removal in a terminal, since both ask
+# questions (which key to authorize, whether to delete authorized keys) and
+# need the password: karchy-setup-security-sshd and
+# karchy-remove-security-sshd. The agent is per user and needs neither.
+#
+#   status     JSON: the server (enabled, running, whether passwords are off,
+#              authorized keys, the command to connect with) and the agent
+#              (enabled, and whether this session already uses it)
+#   agent on   karchy-setup-security-ssh-agent
+#   agent off  karchy-remove-security-ssh-agent
+
+set -euo pipefail
+
+is() { "$@" >/dev/null 2>&1 && echo true || echo false; }
+
+case "${1:-}" in
+status)
+  keys=0
+  if [[ -s $HOME/.ssh/authorized_keys ]]; then
+    keys=$(ssh-keygen -lf "$HOME/.ssh/authorized_keys" 2>/dev/null | wc -l) || keys=0
+  fi
+  jq -n \
+    --argjson enabled "$(is systemctl -q is-enabled sshd.service)" \
+    --argjson running "$(is systemctl -q is-active sshd.service)" \
+    --argjson keysOnly "$(is test -s /etc/ssh/sshd_config.d/10-karchy-hardening.conf)" \
+    --argjson keys "$keys" \
+    --arg connect "ssh $USER@$(uname -n)" \
+    --argjson agent "$(is systemctl --user -q is-enabled gcr-ssh-agent.socket)" \
+    --argjson inSession "$([[ ${SSH_AUTH_SOCK:-} == "${XDG_RUNTIME_DIR:-}/gcr/ssh" ]] && echo true || echo false)" \
+    '{server: {enabled: $enabled, running: $running, keysOnly: $keysOnly, keys: $keys, connect: $connect},
+      agent: {enabled: $agent, inSession: $inSession}}'
+  ;;
+agent)
+  case "${2:-}" in
+  on) script=karchy-setup-security-ssh-agent ;;
+  off) script=karchy-remove-security-ssh-agent ;;
+  *) echo "Usage: karchy-settings-ssh agent on|off" >&2; exit 2 ;;
+  esac
+  # systemctl reports the links it made on stderr; only a failure is news.
+  if ! out=$("$script" 2>&1); then
+    printf '%s\n' "$out" >&2
+    exit 1
+  fi
+  "$0" status
+  ;;
+*)
+  echo "Usage: karchy-settings-ssh status | agent on|off" >&2
+  exit 2
+  ;;
+esac

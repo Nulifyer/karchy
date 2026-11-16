@@ -6,8 +6,9 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Settings › Appearance: theme, wallpaper, terminal font and text size, through
-// the same commands the menu and the display panel use.
+// Settings › Appearance: theme, wallpaper, terminal font, text size and bar,
+// through the same commands the menu and the display panel use, and the lock
+// screen clock, saved in shell.json.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -133,6 +134,20 @@ ColumnLayout {
         anchors.verticalCenter: parent.verticalCenter
         subject: "Bar"
         text: "Auto docks the bar while a window is maximized."
+      }
+    }
+
+    SettingsLabel { text: "Lock screen clock" }
+    ToggleSwitch {
+      readonly property var shell: root.settings ? root.settings.shell : null
+      accessibleName: "Show the time and date on the lock screen"
+      checked: !(shell && shell.shellConfig && shell.shellConfig.lock && shell.shellConfig.lock.clock === false)
+      onToggled: {
+        var on = !checked
+        if (shell) shell.mutateShellConfig(function(config) {
+          if (!config.lock || typeof config.lock !== "object") config.lock = {}
+          config.lock.clock = on
+        })
       }
     }
   }

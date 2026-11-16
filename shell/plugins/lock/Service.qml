@@ -72,6 +72,23 @@ Item {
   }
   readonly property bool authenticating: authenticatingPassword || fingerprintAuthenticating
   // A prompt clears the unavailable notice before the attempt finishes.
+  // Settings › Appearance › Lock screen; on unless turned off. The clock uses
+  // 12-hour time when the bar's clock does, so the two never disagree.
+  readonly property var lockConfig: shell && shell.shellConfig && shell.shellConfig.lock
+    ? shell.shellConfig.lock : ({})
+  readonly property bool showClock: lockConfig.clock !== false
+  readonly property bool clockTwelveHour: {
+    var layout = shell && shell.shellConfig && shell.shellConfig.bar ? shell.shellConfig.bar.layout : null
+    if (!layout) return false
+    for (var slot in layout) {
+      var entries = layout[slot]
+      if (!Array.isArray(entries)) continue
+      for (var i = 0; i < entries.length; i++)
+        if (entries[i] && entries[i].id === "karchy.clock")
+          return /(^|[^h])h/.test(String(entries[i].format || "").replace(/'[^']*'/g, ""))
+    }
+    return false
+  }
   readonly property bool fingerprintUnavailable: FingerprintModel.isUnavailable(fingerprintProbeStreak) || (fingerprintConfigured && (!fingerprintAttemptReachedDevice || fingerprintAttemptFastError) && FingerprintModel.isUnavailable(fingerprintUnreachedStreak))
 
   function realScreenCount() {
@@ -513,6 +530,8 @@ Item {
         backgroundVersion: root.backgroundVersion
         fingerprintConfigured: root.fingerprintConfigured || root.fingerprintUnavailable
         fingerprintUnavailable: root.fingerprintUnavailable
+        showClock: root.showClock
+        clockTwelveHour: root.clockTwelveHour
         authenticatingPassword: root.authenticatingPassword
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
@@ -549,6 +568,8 @@ Item {
       backgroundVersion: root.backgroundVersion
       fingerprintConfigured: root.fingerprintConfigured || root.fingerprintUnavailable
       fingerprintUnavailable: root.fingerprintUnavailable
+      showClock: root.showClock
+      clockTwelveHour: root.clockTwelveHour
       authenticatingPassword: false
       failureMessage: ""
       failedAttempts: 0

@@ -496,8 +496,8 @@ Panel {
   // Playful mood-name for a given output volume. Mirrors the brightness
   // panel's brightnessName ladder; bands are wide enough that small
   // tweaks don't rename the room you're in.
-  function outputVolumeName(volume, muted) {
-    return Model.outputVolumeName(volume, muted, Commons.I18n.t)
+  function outputVolumeText(volume, muted) {
+    return Model.outputVolumeText(volume, muted, Commons.I18n.t, Commons.I18n.formatNumber)
   }
 
   function setOutputVolume(v) {
@@ -823,7 +823,7 @@ Panel {
             iconText: root.outputIcon()
             iconColor: root.outputMuted ? Commons.Color.secondaryText(root.panelText, root.panelSurface) : root.panelText
             title: Commons.I18n.t("audio.title")
-            meta: root.outputVolumeName(outputSlider.dragging ? outputSlider.liveValue : root.outputVolume, root.outputMuted)
+            meta: root.outputVolumeText(outputSlider.dragging ? outputSlider.liveValue : root.outputVolume, root.outputMuted)
             fontFamily: root.bar.fontFamily
             trailingControl: Component {
               ToggleSwitch {

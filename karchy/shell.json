@@ -6,6 +6,9 @@
     "suspend": 900,
     "suspendOnAC": false
   },
+  "lock": {
+    "clock": true
+  },
   "bar": {
     "position": "top",
     "background": "opaque",

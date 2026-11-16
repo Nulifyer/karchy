@@ -45,20 +45,15 @@ function rowSnapshot(list) {
   return rows
 }
 
-// tr is an optional translate(key, english) from the QML side (I18n.t);
-// without it the English text stands, which is what the Node tests assert.
-function outputVolumeName(volume, muted, tr) {
+// The hero's status line: the output level, as the slider below shows it.
+// tr is an optional translate(key, english) from the QML side (I18n.t) and
+// num an optional number formatter (I18n.formatNumber); without them the
+// English text stands.
+function outputVolumeText(volume, muted, tr, num) {
   var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  var n = typeof num === "function" ? num : String
   if (muted) return t("audio.level.muted", "Muted")
-  var p = Math.round(volume * 100)
-  if (p === 0) return t("audio.level.silenced", "Silenced")
-  if (p >= 100) return t("audio.level.concertHall", "Concert hall")
-  if (p >= 85) return t("audio.level.partyMode", "Party mode")
-  if (p >= 70) return t("audio.level.crankedUp", "Cranked up")
-  if (p >= 50) return t("audio.level.steadyGroove", "Steady groove")
-  if (p >= 30) return t("audio.level.easyListening", "Easy listening")
-  if (p >= 15) return t("audio.level.murmur", "Murmur")
-  return t("audio.level.whisper", "Whisper")
+  return n(Math.round(volume * 100)) + "%"
 }
 
 function parseSinkAvailability(raw) {
@@ -87,7 +82,7 @@ function nodeProps(node) {
   return node && node.ready && node.properties ? node.properties : {}
 }
 
-// tr as in outputVolumeName; only the fallback for a nameless device is UI copy.
+// tr as in outputVolumeText; only the fallback for a nameless device is UI copy.
 function nodeLabel(node, tr) {
   var t = typeof tr === "function" ? tr : function(key, english) { return english }
   if (!node) return t("audio.unknownDevice", "Unknown")
@@ -280,7 +275,7 @@ if (typeof module !== "undefined") {
     isAudioSource: isAudioSource,
     nodeRow: nodeRow,
     rowSnapshot: rowSnapshot,
-    outputVolumeName: outputVolumeName,
+    outputVolumeText: outputVolumeText,
     parseSinkAvailability: parseSinkAvailability,
     friendlyDeviceLabel: friendlyDeviceLabel,
     nodeProps: nodeProps,
