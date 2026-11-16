@@ -201,6 +201,10 @@ if [[ -n $KEY ]]; then
   authorize_key "$KEY" || exit 1
 elif [[ -n $GITHUB_USER ]]; then
   authorize_keys_from_github "$GITHUB_USER" || exit 1
+elif authorized=$(ssh-keygen -lf "$AUTHORIZED_KEYS" 2>/dev/null) && [[ -n $authorized ]]; then
+  # Keys added earlier (Settings › SSH) are enough; more can be added there.
+  echo "These keys can sign in:"
+  sed 's/^/  /' <<<"$authorized"
 else
   from_github=$(karchy-i18n sshd.keyFromGithub)
   paste_key=$(karchy-i18n sshd.keyPaste)

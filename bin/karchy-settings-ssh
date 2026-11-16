@@ -1,56 +1,220 @@
 #!/bin/bash
 
-# karchy:summary=Read the SSH server and agent state and turn the agent on or off (Settings › SSH)
-# karchy:args=status | agent on|off
+# karchy:summary=Read and change SSH: the server, who can sign in, your own keys and the agent (Settings › SSH)
+# karchy:args=status | authorized add <public key|GitHub user> | authorized remove <fingerprint> | key copy <name.pub> | key new | agent on|off
 # karchy:hidden=true
 
 # Settings opens the server's setup and removal in a terminal, since both ask
-# questions (which key to authorize, whether to delete authorized keys) and
-# need the password: karchy-setup-security-sshd and
-# karchy-remove-security-sshd. The agent is per user and needs neither.
+# questions and need the password: karchy-setup-security-sshd and
+# karchy-remove-security-sshd. Everything here is the user's own and needs
+# neither.
 #
-#   status     JSON: the server (enabled, running, whether passwords are off,
-#              authorized keys, the command to connect with) and the agent
-#              (enabled, and whether this session already uses it)
-#   agent on   karchy-setup-security-ssh-agent
-#   agent off  karchy-remove-security-ssh-agent
+#   status                      JSON: the server (enabled, running, whether
+#                               passwords are off, the command to connect
+#                               with), `authorized` (each key in
+#                               ~/.ssh/authorized_keys), `keys` (each
+#                               ~/.ssh/*.pub) and the agent (enabled, and
+#                               whether this session already uses it)
+#   authorized add <key|user>   a public key line, or a GitHub user whose
+#                               published keys are all added
+#   authorized remove <fp>      every line with that SHA256 fingerprint
+#   key copy <name.pub>         a public key in ~/.ssh onto the clipboard
+#   key new                     a new ed25519 key (asks for a passphrase, so
+#                               run it in a terminal), copied when made
+#   agent on|off                karchy-setup-security-ssh-agent or
+#                               karchy-remove-security-ssh-agent
 
 set -euo pipefail
 
+SSH_DIR="$HOME/.ssh"
+AUTHORIZED_KEYS="$SSH_DIR/authorized_keys"
+
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
 is() { "$@" >/dev/null 2>&1 && echo true || echo false; }
 
-case "${1:-}" in
-status)
-  keys=0
-  if [[ -s $HOME/.ssh/authorized_keys ]]; then
-    keys=$(ssh-keygen -lf "$HOME/.ssh/authorized_keys" 2>/dev/null | wc -l) || keys=0
-  fi
+# One key line (authorized_keys or .pub format) as fingerprint<TAB>type<TAB>
+# comment, or nothing when it isn't a key. ssh-keygen prints
+# "256 SHA256:… comment words (ED25519)", and "no comment" for none.
+describe() {
+  local out rest type comment
+  out=$(ssh-keygen -lf /dev/stdin <<<"$1" 2>/dev/null) || return 1
+  rest=${out#* }
+  type=${rest##*(}
+  type=${type%)}
+  comment=${rest#* }
+  comment=${comment% (*}
+  [[ $comment == "no comment" ]] && comment=""
+  printf '%s\t%s\t%s\n' "${rest%% *}" "$type" "$comment"
+}
+
+authorized_rows() {
+  [[ -f $AUTHORIZED_KEYS ]] || return 0
+  local line
+  while IFS= read -r line || [[ -n $line ]]; do
+    [[ -z ${line//[[:space:]]/} || $line == \#* ]] && continue
+    describe "$line" || true
+  done <"$AUTHORIZED_KEYS"
+}
+
+key_rows() {
+  local pub row
+  for pub in "$SSH_DIR"/*.pub; do
+    [[ -f $pub ]] || continue
+    row=$(describe "$(head -n 1 "$pub")") || continue
+    printf '%s\t%s\t%s\n' "${pub##*/}" "$([[ -f ${pub%.pub} ]] && echo true || echo false)" "$row"
+  done
+}
+
+status() {
   jq -n \
     --argjson enabled "$(is systemctl -q is-enabled sshd.service)" \
     --argjson running "$(is systemctl -q is-active sshd.service)" \
     --argjson keysOnly "$(is test -s /etc/ssh/sshd_config.d/10-karchy-hardening.conf)" \
-    --argjson keys "$keys" \
     --arg connect "ssh $USER@$(uname -n)" \
+    --arg authorized "$(authorized_rows)" \
+    --arg keys "$(key_rows)" \
     --argjson agent "$(is systemctl --user -q is-enabled gcr-ssh-agent.socket)" \
     --argjson inSession "$([[ ${SSH_AUTH_SOCK:-} == "${XDG_RUNTIME_DIR:-}/gcr/ssh" ]] && echo true || echo false)" \
-    '{server: {enabled: $enabled, running: $running, keysOnly: $keysOnly, keys: $keys, connect: $connect},
+    'def rows($text): $text | split("\n") | map(select(length > 0) | split("\t"));
+     {server: {enabled: $enabled, running: $running, keysOnly: $keysOnly, connect: $connect},
+      authorized: [rows($authorized)[] | {fingerprint: .[0], type: .[1], comment: (.[2] // "")}],
+      keys: [rows($keys)[] | {name: .[0], private: (.[1] == "true"), fingerprint: .[2], type: .[3], comment: (.[4] // "")}],
       agent: {enabled: $agent, inSession: $inSession}}'
+}
+
+# Appends the keys in $1 (one per line) that aren't authorized yet; prints how
+# many were added.
+authorize() {
+  local line fp added=0 have
+  mkdir -p "$SSH_DIR"
+  chmod 700 "$SSH_DIR"
+  touch "$AUTHORIZED_KEYS"
+  chmod 600 "$AUTHORIZED_KEYS"
+  have=$(authorized_rows | cut -f1)
+  # A file that doesn't end in a newline would join the new key to its last line.
+  [[ ! -s $AUTHORIZED_KEYS || -z $(tail -c 1 "$AUTHORIZED_KEYS") ]] || echo >>"$AUTHORIZED_KEYS"
+  while IFS= read -r line; do
+    [[ -n $line ]] || continue
+    fp=$(describe "$line" | cut -f1) || continue
+    grep -qxF "$fp" <<<"$have" && continue
+    printf '%s\n' "$line" >>"$AUTHORIZED_KEYS"
+    have+=$'\n'"$fp"
+    added=$((added + 1))
+  done <<<"$1"
+  echo "$added"
+}
+
+authorized_add() {
+  local value="$1" keys added
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  [[ -n $value ]] || fail "Paste a public key, or type a GitHub username."
+  if [[ $value == *BEGIN* || $value == *PRIVATE* ]]; then
+    fail "That's a private key. Paste the public one: the line in the .pub file."
+  elif [[ $value =~ ^(ssh-|ecdsa-|sk-) || $value == *" ssh-"* ]]; then
+    [[ $value != *$'\n'* ]] || fail "Paste one key at a time."
+    describe "$value" >/dev/null || fail "That isn't a valid SSH public key."
+    added=$(authorize "$value")
+    ((added > 0)) || fail "That key can already sign in."
+  elif [[ $value =~ ^[A-Za-z0-9]([A-Za-z0-9-]{0,38})$ ]]; then
+    keys=$(curl -fsSL --max-time 15 "https://github.com/$value.keys" 2>/dev/null) ||
+      fail "Couldn't get $value's keys from GitHub. Check the username and the network."
+    [[ -n $keys ]] || fail "$value has no SSH keys on GitHub."
+    added=$(authorize "$keys")
+    ((added > 0)) || fail "All of $value's GitHub keys can already sign in."
+  else
+    fail "That's neither a public key nor a GitHub username."
+  fi
+  status
+}
+
+authorized_remove() {
+  local target="$1" line fp tmp removed=0
+  [[ $target =~ ^SHA256:[A-Za-z0-9+/]+$ ]] || fail "That isn't a key fingerprint."
+  [[ -f $AUTHORIZED_KEYS ]] || fail "No keys can sign in."
+  tmp=$(mktemp "$SSH_DIR/.authorized_keys.XXXXXX")
+  trap 'rm -f "$tmp"' EXIT
+  while IFS= read -r line || [[ -n $line ]]; do
+    fp=$(describe "$line" | cut -f1) || fp=""
+    if [[ $fp == "$target" ]]; then
+      removed=$((removed + 1))
+    else
+      printf '%s\n' "$line" >>"$tmp"
+    fi
+  done <"$AUTHORIZED_KEYS"
+  ((removed > 0)) || fail "That key can't sign in any more."
+  chmod 600 "$tmp"
+  mv "$tmp" "$AUTHORIZED_KEYS"
+  trap - EXIT
+  status
+}
+
+key_copy() {
+  local name="$1"
+  [[ $name =~ ^[A-Za-z0-9._-]+\.pub$ && -f $SSH_DIR/$name ]] || fail "There's no public key named $name in ~/.ssh."
+  # wl-copy stays behind to serve the clipboard; it must not hold our output open.
+  wl-copy <"$SSH_DIR/$name" >/dev/null 2>&1
+}
+
+# In a terminal: ssh-keygen asks for the passphrase. Ctrl-C closes the window
+# (130); mismatched passphrases are asked again.
+key_new() {
+  local file="$SSH_DIR/id_ed25519" n=2 rc
+  while [[ -e $file || -e $file.pub ]]; do
+    file="$SSH_DIR/id_ed25519_$n"
+    n=$((n + 1))
+  done
+  mkdir -p "$SSH_DIR"
+  chmod 700 "$SSH_DIR"
+  echo "Creating a new SSH key in $file."
+  echo "A passphrase protects the key if someone copies it. Leave it empty for none."
+  echo
+  while :; do
+    ssh-keygen -q -t ed25519 -C "$USER@$(uname -n)" -f "$file" && break
+    rc=$?
+    ((rc < 128)) || exit 130
+    echo "Let's try that again."
+  done
+  wl-copy <"$file.pub" >/dev/null 2>&1 || true
+  echo
+  echo "Your new public key is on the clipboard. Paste it into GitHub, or a server's"
+  echo "authorized keys, to sign in there with it:"
+  echo
+  cat "$file.pub"
+}
+
+case "${1:-}" in
+status) status ;;
+authorized)
+  case "${2:-}" in
+  add) authorized_add "${3:-}" ;;
+  remove) authorized_remove "${3:-}" ;;
+  *) fail "Usage: karchy-settings-ssh authorized add <public key|GitHub user> | remove <fingerprint>" ;;
+  esac
+  ;;
+key)
+  case "${2:-}" in
+  copy) key_copy "${3:-}" ;;
+  new) key_new ;;
+  *) fail "Usage: karchy-settings-ssh key copy <name.pub> | new" ;;
+  esac
   ;;
 agent)
   case "${2:-}" in
   on) script=karchy-setup-security-ssh-agent ;;
   off) script=karchy-remove-security-ssh-agent ;;
-  *) echo "Usage: karchy-settings-ssh agent on|off" >&2; exit 2 ;;
+  *) fail "Usage: karchy-settings-ssh agent on|off" ;;
   esac
   # systemctl reports the links it made on stderr; only a failure is news.
   if ! out=$("$script" 2>&1); then
     printf '%s\n' "$out" >&2
     exit 1
   fi
-  "$0" status
+  status
   ;;
-*)
-  echo "Usage: karchy-settings-ssh status | agent on|off" >&2
-  exit 2
-  ;;
+*) fail "Usage: karchy-settings-ssh status | authorized add|remove | key copy|new | agent on|off" ;;
 esac
