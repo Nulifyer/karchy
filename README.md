@@ -104,6 +104,11 @@ omarchy plugin add https://github.com/Nulifyer/omarchy-vpn-plugin.git --enable
 omarchy bar move nulifyer.vpn --after omarchy.network
 ```
 
+The widget also loads on karchy (`karchy plugin add` with the same URL), for
+a shield in the bar next to the network panel's controls. It takes its colors
+from the shell's theme roles on both. It reads the status file when the file
+changes; while the file is missing it looks for it every 30 seconds.
+
 ## Everyday use
 
 Left-click the shield to open the panel. Right-click to cycle through modes.

@@ -4,6 +4,9 @@ import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+// Colors always come through the namespace: a bare `Color` can resolve to
+// another module's type of that name, which has none of the shell's roles.
+import qs.Commons as Commons
 import qs.Ui
 
 Panel {
@@ -13,7 +16,9 @@ Panel {
 
   property var vpnInfo: emptyInfo("unknown")
   property string lastError: ""
-  property color themeGreen: Color.accent
+  property bool statusPresent: false
+  // The theme's green from colors.toml, for shells without status roles.
+  property color themeGreen: Commons.Color.accent
   property bool cursorActive: false
   property string focusSection: "header"
   property int modeIndex: 1
@@ -22,11 +27,20 @@ Panel {
   readonly property bool connected: vpnInfo.state === "connected"
   readonly property string policyMode: String(vpnInfo.mode || vpnInfo.intent || "off")
   readonly property bool busy: modeProcess.running
-  readonly property color foreground: bar ? bar.foreground : Color.foreground
-  readonly property color urgent: bar ? bar.urgent : Color.urgent
-  readonly property color dim: Qt.darker(foreground, 1.4)
+  // The panel sits on the popups surface, so its text takes that surface's
+  // color. Status, error and secondary text use the shell's derived roles
+  // where it has them (karchy), else the theme's green and red and a darker
+  // text color as before.
+  readonly property bool hasStatusRoles: Commons.Color.status !== undefined
+  readonly property color foreground: Commons.Color.popups.text
+  readonly property color success: hasStatusRoles ? Commons.Color.status.success : themeGreen
+  readonly property color urgent: hasStatusRoles ? Commons.Color.status.error : (bar ? bar.urgent : Commons.Color.urgent)
+  readonly property bool hasTextRoles: typeof Commons.Color.secondaryText === "function"
+  readonly property color dim: hasTextRoles
+    ? Commons.Color.secondaryText(foreground, Commons.Color.popups.background) : Qt.darker(foreground, 1.4)
+  readonly property color labelColor: hasTextRoles ? dim : Util.alpha(foreground, 0.6)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
-  readonly property color iconColor: connected ? themeGreen
+  readonly property color iconColor: connected ? success
     : vpnInfo.state === "failed" || vpnInfo.state === "unknown" ? urgent
     : vpnInfo.state === "off" && policyMode === "off" ? dim
     : foreground
@@ -67,11 +81,14 @@ Panel {
 
   function loadThemeGreen(raw) {
     var match = String(raw || "").match(/^\s*green\s*=\s*["'](#[0-9A-Fa-f]{6})["']/m)
-    themeGreen = match ? match[1] : Color.accent
+    themeGreen = match ? match[1] : Commons.Color.accent
   }
 
+  // The live details come from the package's status helper, which only
+  // makes sense while the status file exists; until then just look again.
   function refresh() {
-    if (!statusProcess.running) statusProcess.running = true
+    if (!statusPresent) statusFile.reload()
+    else if (!statusProcess.running) statusProcess.running = true
   }
 
   function updateStatus(raw) {
@@ -95,6 +112,7 @@ Panel {
 
   function setMode(mode) {
     if (modeProcess.running || ["on", "off", "auto"].indexOf(mode) < 0) return
+    if (!statusPresent) return
     lastError = ""
     modeProcess.command = ["/usr/bin/nulifyer-vpn", "mode", mode]
     modeProcess.running = true
@@ -217,7 +235,6 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  Component.onCompleted: refresh()
   onOpenedChanged: {
     if (opened) {
       cursorActive = false
@@ -240,20 +257,41 @@ Panel {
     }
   }
 
-  // The policy rewrites its status file on every change; the widget reads it
-  // then, instead of on a timer. While the panel is open the live tunnel
-  // details (handshake age) are refreshed below as well.
+  // The policy replaces its status file on every change; the widget reads it
+  // then, instead of on a timer. FileView also sees the file appear and go
+  // away, so nothing runs while the package is missing or stopped. While the
+  // panel is open the live tunnel details (handshake age) are refreshed below.
   FileView {
+    id: statusFile
     path: "/run/nulifyer-vpn/status"
     watchChanges: true
     printErrors: false
-    onFileChanged: { reload(); root.refresh() }
+    onLoaded: { root.statusPresent = true; root.refresh() }
+    onLoadFailed: {
+      root.statusPresent = false
+      // No policy running: no mode is in effect, so none is shown selected.
+      var info = root.emptyInfo("unknown")
+      info.mode = info.intent = "unknown"
+      root.vpnInfo = info
+      root.lastError = "The VPN isn't running, or its package isn't installed. See the README."
+    }
+    onFileChanged: reload()
+  }
+
+  // A watch can't see a file appear while its folder doesn't exist yet, as
+  // when the package is installed after the shell started (tmpfiles creates
+  // /run/nulifyer-vpn then). Until the file shows up, look for it now and
+  // then; one successful load arms the watch.
+  Timer {
+    interval: 30000
+    running: !root.statusPresent
+    repeat: true
+    onTriggered: statusFile.reload()
   }
 
   FileView {
-    // Omarchy's theme, or karchy's when the widget runs there.
-    path: Quickshell.env("HOME") + "/.local/state/" + (Quickshell.env("KARCHY_PATH") ? "karchy" : "omarchy")
-      + "/current/theme/colors.toml"
+    // Only needed where the shell has no status roles (Omarchy).
+    path: root.hasStatusRoles ? "" : Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
     watchChanges: true
     printErrors: false
     onLoaded: root.loadThemeGreen(text())
@@ -316,7 +354,7 @@ Panel {
     bar: root.bar
     text: "\uf132"
     active: root.connected
-    activeColor: root.themeGreen
+    activeColor: root.success
     dimmed: root.policyMode === "off"
     tooltipText: root.tooltipForState()
 
@@ -468,7 +506,7 @@ Panel {
               tooltipText: String(modelData.tooltip)
               fontSize: Style.font.bodySmall
               foreground: root.foreground
-              accent: root.themeGreen
+              accent: root.success
               fontFamily: root.fontFamily
               horizontalPadding: Style.spacing.controlPaddingX
               verticalPadding: Style.spacing.controlPaddingY + Style.space(2)
@@ -553,8 +591,7 @@ Panel {
   }
 
   component InfoLabel: Text {
-    color: root.foreground
-    opacity: 0.6
+    color: root.labelColor
     font.family: root.fontFamily
     font.pixelSize: Style.font.bodySmall
   }
