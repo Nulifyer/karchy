@@ -2,6 +2,34 @@
 # The installer form: collects every answer up front, then the install runs
 # unattended. Sourced by install/karchy-install. Writes KARCHY_* variables.
 
+# Esc or Ctrl-C at a question that asks for an answer ends the installer
+# before anything changes; at a yes/no question Esc means No (gum can't tell
+# them apart), and Ctrl-C ends it. The final "Erase and install" defaults to No.
+form_cancel() {
+  echo "Install cancelled. Nothing was changed; run karchy-install to start again." >&2
+  exit 1
+}
+
+# A yes/no question: 0 yes, 1 no. gum exits 130 on Ctrl-C, which cancels.
+form_yes_no() {
+  local code=0
+  gum confirm "$@" || code=$?
+  ((code == 130)) && form_cancel
+  return "$code"
+}
+
+# Pick one line from stdin with gum filter, again until something matches.
+# Runs in a subshell, so a cancel returns 1 and the caller cancels.
+form_pick() {
+  local header="$1" value="$2" list choice
+  list=$(cat)
+  while true; do
+    choice=$(gum filter --header "$header" --value "$value" <<<"$list") || return 1
+    [[ -n $choice ]] && { printf '%s' "$choice"; return; }
+    echo "Pick one from the list (type to narrow it down)." >&2
+  done
+}
+
 form_require_gum() {
   command -v gum >/dev/null && return
   log "installing gum for the installer form"
@@ -20,21 +48,24 @@ form_disk() {
     awk -v skip="$boot_disk" '$NF == "disk" && $1 != skip { $NF = ""; print }')
   ((${#rows[@]})) || die "no installable disks found"
   local choice
-  choice=$(gum choose --header "Install karchy on which disk? It will be erased." "${rows[@]}") || exit 1
+  choice=$(gum choose --header "Install karchy on which disk? It will be erased." "${rows[@]}") || form_cancel
   KARCHY_DISK=$(awk '{ print $1 }' <<<"$choice")
 
   echo "Current contents of $KARCHY_DISK:"
   lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINTS "$KARCHY_DISK"
   local typed
-  typed=$(gum input --header "Type $KARCHY_DISK to erase it and continue") || exit 1
-  [[ $typed == "$KARCHY_DISK" ]] || die "disk not confirmed"
+  while true; do
+    typed=$(gum input --header "Type $KARCHY_DISK to erase it and continue") || form_cancel
+    [[ $typed == "$KARCHY_DISK" ]] && break
+    echo "That isn't $KARCHY_DISK. Type it exactly, or press Esc to stop."
+  done
 }
 
 form_password() {
   local first second
   while true; do
-    first=$(gum input --password --header "Password (unlocks the disk and logs you in)") || exit 1
-    second=$(gum input --password --header "Confirm password") || exit 1
+    first=$(gum input --password --header "Password (unlocks the disk and logs you in)") || form_cancel
+    second=$(gum input --password --header "Confirm password") || form_cancel
     if [[ -z $first ]]; then
       echo "The password can't be empty."
     elif [[ $first != "$second" ]]; then
@@ -50,41 +81,76 @@ form_run() {
   form_require_gum
   gum style --border rounded --padding "0 2" "karchy installer" "Answer a few questions; the rest is automatic."
 
+  # The layout first: every answer after it, the disk's name and the password
+  # that unlocks the disk at boot, is typed with it.
+  KARCHY_KEYMAP=$(localectl list-keymaps | form_pick "Keyboard layout" "us") || form_cancel
+  loadkeys "$KARCHY_KEYMAP" 2>/dev/null || true
   form_disk
-  KARCHY_KEYMAP=$(localectl list-keymaps | gum filter --value "us" --header "Keyboard layout") || exit 1
 
   while true; do
-    KARCHY_USER=$(gum input --header "Username" --placeholder "lowercase letters, digits, - or _") || exit 1
-    [[ $KARCHY_USER =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && break
-    echo "Use lowercase letters, digits, - or _, starting with a letter."
+    KARCHY_USER=$(gum input --header "Username" --placeholder "lowercase letters, digits, - or _") || form_cancel
+    if ! [[ $KARCHY_USER =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
+      echo "Use lowercase letters, digits, - or _, starting with a letter."
+    elif form_reserved_user "$KARCHY_USER"; then
+      echo "$KARCHY_USER is a name the system uses itself. Pick another."
+    else
+      break
+    fi
   done
 
   form_password
-  KARCHY_FULL_NAME=$(gum input --header "Full name (for git, optional)") || exit 1
-  KARCHY_EMAIL=$(gum input --header "Email (for git, optional)") || exit 1
+  KARCHY_FULL_NAME=$(gum input --header "Full name (for git, optional)") || form_cancel
+  while true; do
+    KARCHY_EMAIL=$(gum input --header "Email (for git, optional)" --value "${KARCHY_EMAIL:-}") || form_cancel
+    [[ -z $KARCHY_EMAIL || $KARCHY_EMAIL =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] && break
+    echo "That doesn't look like an email address (name@example.com). Leave it empty to skip."
+  done
 
   while true; do
-    KARCHY_HOSTNAME=$(gum input --header "Computer name" --value "karchy") || exit 1
+    KARCHY_HOSTNAME=$(gum input --header "Computer name" --value "karchy") || form_cancel
     [[ $KARCHY_HOSTNAME =~ ^[A-Za-z0-9][A-Za-z0-9-]{0,62}$ ]] && break
     echo "Use letters, digits and -."
   done
 
-  KARCHY_TIMEZONE=$(timedatectl list-timezones | gum filter --header "Timezone") || exit 1
+  KARCHY_TIMEZONE=$(timedatectl list-timezones | form_pick "Timezone" "") || form_cancel
 
   KARCHY_CHANNEL=$(gum choose --header "Release channel for karchy's own updates (Settings can change it later)" \
-    --selected stable stable rc nightly) || exit 1
+    --selected stable stable rc nightly) || form_cancel
 
   KARCHY_SECUREBOOT=no
   if firmware_setup_mode; then
-    if gum confirm --default=true "Set up Secure Boot? The firmware is in Setup Mode, so karchy can enroll its own keys (with Microsoft's, for GPU firmware and dual boot)."; then
+    if form_yes_no --default=true "Set up Secure Boot? The firmware is in Setup Mode, so karchy can enroll its own keys (with Microsoft's, for GPU firmware and dual boot)."; then
       KARCHY_SECUREBOOT=yes
     fi
   fi
 
   KARCHY_BEES=no
-  if gum confirm --default=false "Enable bees background deduplication? (optional, can use some CPU and RAM)"; then
+  if form_yes_no --default=false "Enable bees background deduplication? (optional, can use some CPU and RAM)"; then
     KARCHY_BEES=yes
   fi
+}
+
+# Names the installed system creates for itself (root, service users, groups),
+# which useradd would refuse only after the disk is erased. The live system
+# has most of them; the rest come from karchy's packages.
+form_reserved_user() {
+  local name="$1"
+  getent passwd "$name" >/dev/null || getent group "$name" >/dev/null && return 0
+  case "$name" in
+    root | bin | daemon | mail | ftp | http | nobody | dbus | git | avahi | polkitd | greeter | rtkit | \
+      colord | geoclue | usbmux | uuidd | tss | alpm | cups | wheel | adm | sys | users | input | video | \
+      audio | storage | optical | lp | kvm | render | docker | libvirt | systemd-* | nm-openvpn | flatpak) return 0 ;;
+  esac
+  return 1
+}
+
+# The last question, after the summary: nothing is written before it.
+form_confirm() {
+  local size model
+  size=$(lsblk -dno SIZE "$KARCHY_DISK" 2>/dev/null | tr -d ' ')
+  model=$(lsblk -dno MODEL "$KARCHY_DISK" 2>/dev/null | sed 's/[[:space:]]*$//')
+  form_yes_no --default=false --affirmative "Erase and install" --negative "Stop" \
+    "Erase $KARCHY_DISK (${size}${model:+ $model}) and install karchy?" || form_cancel
 }
 
 # Load answers from a file instead of asking (unattended installs and tests).

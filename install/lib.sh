@@ -29,6 +29,7 @@ KARCHY_STEP=""
 on_error() {
   local status=$?
   log "ERROR: step '${KARCHY_STEP:-startup}' failed (exit $status); see $KARCHY_INSTALL_LOG"
+  log "To try again, fix what the log shows, reboot the install media and run karchy-install again. It starts over and erases the disk again."
   exit "$status"
 }
 

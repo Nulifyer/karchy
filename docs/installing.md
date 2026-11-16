@@ -16,6 +16,8 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
 
 ## From the Arch ISO
 
+> Until the `[karchy]` repository is published (see [Known limitations](#known-limitations)), these steps only work against a local build: see [Testing in a VM](#testing-in-a-vm).
+
 1. Boot the Arch ISO in UEFI mode and connect to the network (`iwctl` for Wi-Fi).
 2. Run:
 
@@ -25,8 +27,9 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
    karchy/install/karchy-install
    ```
 
-3. Answer the form: disk (typed confirmation), keyboard, username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; default stable), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees (off by default).
-4. When it says it's done, remove the install media and reboot. At boot, type the password at the disk prompt.
+3. Answer the form: keyboard, disk (typed confirmation), username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; default stable), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees (off by default). The keyboard layout applies as soon as it's picked, so the password is typed in the layout the disk prompt will use. Esc or Ctrl-C at a question that asks for an answer stops the installer with nothing changed; at a yes/no question Esc means No.
+4. Check the summary, then confirm "Erase and install". Nothing is written to the disk before this.
+5. When it says it's done, remove the install media and reboot. At boot, type the password at the disk prompt.
 
 Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
 

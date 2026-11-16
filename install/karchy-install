@@ -71,6 +71,7 @@ else
   form_run
 fi
 summary
+[[ -n $config_file ]] || form_confirm
 
 step "Partition $KARCHY_DISK" disk_partition
 step "Encrypt the root partition" disk_encrypt
