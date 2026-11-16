@@ -114,8 +114,16 @@ form_run() {
 
   KARCHY_TIMEZONE=$(timedatectl list-timezones | form_pick "Timezone" "") || form_cancel
 
-  KARCHY_CHANNEL=$(gum choose --header "Release channel for karchy's own updates (Settings can change it later)" \
-    --selected stable stable rc nightly) || form_cancel
+  # Only channels with a release: before karchy's first release, stable has
+  # none, and installing from it would fail after the disk is erased.
+  local -a channels=()
+  local channel header="Release channel for karchy's own updates (Settings can change it later)"
+  for channel in stable rc nightly; do
+    channel_published "$channel" && channels+=("$channel")
+  done
+  ((${#channels[@]} > 0)) || die "karchy's package repositories at $KARCHY_REPO_SERVER can't be reached; nothing was changed. Check the network and run karchy-install again."
+  ((${#channels[@]} == 3)) || header+=$'\n'"Channels with no release yet aren't listed."
+  KARCHY_CHANNEL=$(gum choose --header "$header" --selected "${channels[0]}" "${channels[@]}") || form_cancel
 
   KARCHY_SECUREBOOT=no
   if firmware_setup_mode; then
@@ -145,6 +153,11 @@ form_reserved_user() {
 }
 
 # The last question, after the summary: nothing is written before it.
+# Whether a release channel has a published repository (its database).
+channel_published() {
+  curl -fsL --max-time 20 -o /dev/null "$KARCHY_REPO_SERVER/repo-$1/karchy.db"
+}
+
 form_confirm() {
   local size model
   size=$(lsblk -dno SIZE "$KARCHY_DISK" 2>/dev/null | tr -d ' ')
@@ -169,6 +182,8 @@ form_load() {
   # dev: a local packaging/build, for VM tests only.
   KARCHY_CHANNEL=${KARCHY_CHANNEL:-stable}
   [[ $KARCHY_CHANNEL =~ ^(stable|rc|nightly|dev)$ ]] || die "KARCHY_CHANNEL must be stable, rc or nightly"
+  channel_published "$KARCHY_CHANNEL" ||
+    die "The $KARCHY_CHANNEL channel has no release at $KARCHY_REPO_SERVER/repo-$KARCHY_CHANNEL (or it can't be reached); nothing was changed. Set KARCHY_CHANNEL to a channel with a release."
   # auto: set up Secure Boot when the firmware is in Setup Mode.
   KARCHY_SECUREBOOT=${KARCHY_SECUREBOOT:-auto}
   if [[ $KARCHY_SECUREBOOT == "auto" ]]; then
