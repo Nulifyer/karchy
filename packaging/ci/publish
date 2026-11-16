@@ -46,10 +46,12 @@ repo="$PWD/out/repo-$channel"
 gpg --batch --import <<<"$KARCHY_SIGNING_KEY"
 
 # The channel's current repository (none on the very first run, or after a
-# first run that failed before uploading).
+# first run that failed before uploading). A pre-release, so GitHub never
+# shows it as the latest release (--latest=false alone doesn't stop that
+# while it is the only full release); its download URLs are the same.
 mkdir -p "$repo"
 if ! gh release view "$release" >/dev/null 2>&1; then
-  gh release create "$release" --title "[karchy] $channel repository" \
+  gh release create "$release" --title "[karchy] $channel repository" --prerelease \
     --notes "pacman repository for the $channel channel. Use it through karchy, not directly." --latest=false
 fi
 if [[ $(gh release view "$release" --json assets --jq '.assets | length') -gt 0 ]]; then
