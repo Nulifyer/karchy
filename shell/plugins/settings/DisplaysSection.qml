@@ -29,6 +29,8 @@ ColumnLayout {
 
   // What undoes the change in flight, asked about once it has applied.
   property var undoArgs: null
+  // Monitors whose color and mirroring settings are shown, by key.
+  property var advancedOpen: ({})
 
   // Resolution, refresh rate, scale and rotation can leave a screen unusable,
   // so each is undone after 15 seconds unless kept. The undo puts back what
@@ -192,6 +194,11 @@ ColumnLayout {
       // The only monitor that is on can't be turned off; the subtitle says so.
       // With one monitor there is nothing to switch, so no switch.
       readonly property bool lastOn: card.monitor.enabled && arrangement.enabled.length === 1
+      // Color depth, color mode and mirroring, shown on request; remembered
+      // per monitor, since the cards are rebuilt after every change.
+      readonly property bool advanced: !!root.advancedOpen[card.monitor.key]
+      readonly property string colorMode: String(root.savedValue(card.monitor, "cm", "auto"))
+      readonly property bool hdr: colorMode === "hdr" || colorMode === "hdredid"
       title: monitor.name
       subtitle: (monitor.key || monitor.description) + (lastOn && root.monitors.length > 1 ? ", the only monitor on" : "")
       trailing: ToggleSwitch {
@@ -276,6 +283,116 @@ ColumnLayout {
             ]
             onChanged: function(value) { root.applyAndAsk(card.monitor, "transform", value, "0") }
           }
+
+          // FreeSync / G-Sync / Adaptive-Sync. Some monitors flicker or go
+          // dark with it, so a change asks to be kept like the others.
+          SettingsLabel { text: "Variable refresh" }
+          Dropdown {
+            Layout.fillWidth: true
+            showLabel: false
+            value: String(root.savedValue(card.monitor, "vrr", 0))
+            options: [
+              { value: "0", label: "Off" },
+              { value: "2", label: "In fullscreen apps and games" },
+              { value: "1", label: "Always" }
+            ]
+            onChanged: function(value) { root.applyAndAsk(card.monitor, "vrr", value, "0") }
+          }
+
+          Button {
+            Layout.columnSpan: root.wide ? 2 : 1
+            focusable: true
+            bordered: true
+            text: card.advanced ? "Hide color and mirroring" : "Color and mirroring…"
+            onClicked: {
+              var open = Object.assign({}, root.advancedOpen)
+              open[card.monitor.key] = !card.advanced
+              root.advancedOpen = open
+            }
+          }
+
+          // 10-bit color: smoother gradients, if the monitor, its cable and the
+          // GPU all take it. A change can blank the screen, so it asks to be kept.
+          SettingsLabel { visible: card.advanced; text: "Color depth"; Layout.alignment: Qt.AlignTop; Layout.topMargin: Style.space(8) }
+          ColumnLayout {
+            visible: card.advanced
+            spacing: Style.spacing.sm
+            ButtonGroup {
+              options: [{ value: "8", label: "8-bit" }, { value: "10", label: "10-bit" }]
+              value: String(root.savedValue(card.monitor, "bitdepth", 8))
+              onChanged: function(value) { root.applyAndAsk(card.monitor, "bitdepth", value, "8") }
+            }
+            InlineMessage {
+              Layout.fillWidth: true
+              kind: "warning"
+              text: String(root.savedValue(card.monitor, "bitdepth", 8)) === "10" && String(card.monitor.format || "").indexOf("2101010") < 0
+                ? "Still 8-bit: this monitor, its cable or the graphics card doesn't take 10-bit here." : ""
+            }
+          }
+
+          SettingsLabel { visible: card.advanced; text: "Color mode"; Layout.alignment: Qt.AlignTop; Layout.topMargin: Style.space(8) }
+          ColumnLayout {
+            visible: card.advanced
+            spacing: Style.spacing.sm
+            Dropdown {
+              Layout.fillWidth: true
+              showLabel: false
+              value: card.colorMode
+              options: [
+                { value: "auto", label: "Automatic" },
+                { value: "srgb", label: "Standard (sRGB)" },
+                { value: "wide", label: "Wide color (BT.2020)" },
+                { value: "edid", label: "The monitor's own colors" },
+                { value: "hdr", label: "HDR" },
+                { value: "hdredid", label: "HDR, with the monitor's brightness range" }
+              ]
+              onChanged: function(value) { root.applyAndAsk(card.monitor, "cm", value, "auto") }
+            }
+            InlineMessage {
+              Layout.fillWidth: true
+              kind: "warning"
+              text: card.hdr && String(card.monitor.colorMode || "").indexOf("hdr") < 0
+                ? "HDR isn't on: this monitor doesn't report HDR support, or the graphics card can't drive it." : ""
+            }
+          }
+
+          // How SDR windows (most apps) look while the screen is in HDR.
+          SettingsLabel { visible: card.advanced && card.hdr; text: "SDR brightness" }
+          Dropdown {
+            visible: card.advanced && card.hdr
+            Layout.fillWidth: true
+            showLabel: false
+            value: String(root.savedValue(card.monitor, "sdrbrightness", 1))
+            options: ["0.8", "1", "1.2", "1.4", "1.6", "1.8", "2"].map(function(v) {
+              return { value: v, label: Math.round(Number(v) * 100) + "%" + (v === "1" ? " (standard)" : "") }
+            })
+            onChanged: function(value) { root.apply(["set", card.monitor.name, "sdrbrightness", value]) }
+          }
+
+          SettingsLabel { visible: card.advanced && card.hdr; text: "SDR saturation" }
+          Dropdown {
+            visible: card.advanced && card.hdr
+            Layout.fillWidth: true
+            showLabel: false
+            value: String(root.savedValue(card.monitor, "sdrsaturation", 1))
+            options: ["0.8", "0.9", "1", "1.1", "1.2", "1.3"].map(function(v) {
+              return { value: v, label: Math.round(Number(v) * 100) + "%" + (v === "1" ? " (standard)" : "") }
+            })
+            onChanged: function(value) { root.apply(["set", card.monitor.name, "sdrsaturation", value]) }
+          }
+
+          // Show another monitor's picture here, as for a projector.
+          SettingsLabel { visible: card.advanced && root.monitors.length > 1; text: "Mirror" }
+          Dropdown {
+            visible: card.advanced && root.monitors.length > 1
+            Layout.fillWidth: true
+            showLabel: false
+            value: String(root.savedValue(card.monitor, "mirror", "none"))
+            options: [{ value: "none", label: "Off: its own picture" }].concat(
+              root.monitors.filter(function(m) { return m.name !== card.monitor.name && m.enabled })
+                .map(function(m) { return { value: m.name, label: "Show " + m.name + "'s picture" } }))
+            onChanged: function(value) { root.applyAndAsk(card.monitor, "mirror", value, "none") }
+          }
         }
 
       Button {
@@ -286,7 +403,7 @@ ColumnLayout {
         // Forgets every choice saved for this monitor, so it asks first.
         onClicked: {
           var name = card.monitor.name
-          if (root.settings) root.settings.ask("Forget what's saved for " + name + "? Its resolution, scale, position and rotation go back to automatic.",
+          if (root.settings) root.settings.ask("Forget what's saved for " + name + "? Its resolution, scale, position, rotation, variable refresh, color and mirroring go back to automatic.",
             "Back to automatic", function() { root.apply(["forget", name]) })
         }
       }

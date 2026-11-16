@@ -17,7 +17,11 @@
 #       monitor: a connector name (DP-1) or a saved key
 #       setting: mode (WxH@Hz or preferred), scale (number or auto),
 #                position (auto, auto-left, auto-right, auto-up, auto-down or XxY),
-#                transform (0-7), enabled (true or false)
+#                transform (0-7), enabled (true or false),
+#                vrr (0 off, 1 always, 2 in fullscreen apps),
+#                bitdepth (8 or 10), cm (color mode: auto, srgb, wide, edid,
+#                hdr or hdredid), sdrbrightness (0.5-3) and sdrsaturation
+#                (0.5-2) for SDR content in HDR, mirror (a connector or none)
 #   forget <monitor>               Drop the saved settings for a monitor
 
 set -euo pipefail
@@ -47,6 +51,8 @@ monitors() {
     description,
     enabled: (.disabled | not),
     width, height, refreshRate, scale, x, y, transform,
+    format: .currentFormat, colorMode: .colorManagementPreset,
+    mirrorOf: (.mirrorOf // "none"),
     modes: [.availableModes[] | sub("Hz$"; "")]
   }]'
 }
@@ -76,7 +82,7 @@ lua_quote() {
 }
 
 write_files() {
-  local config="$1" config_tmp hypr_tmp key line gdk_scale
+  local config="$1" config_tmp hypr_tmp key line gdk_scale vrr
   mkdir -p "$(dirname "$CONFIG_FILE")" "$(dirname "$HYPR_FILE")"
   config_tmp=$(mktemp "$(dirname "$CONFIG_FILE")/.displays.json.XXXXXX")
   hypr_tmp=$(mktemp "$(dirname "$HYPR_FILE")/.displays.lua.XXXXXX")
@@ -96,6 +102,17 @@ write_files() {
         line+=", position = $(lua_quote "$(jq -r --arg k "$key" '.monitors[$k].position // "auto"' <<<"$config")")"
         line+=", scale = $(jq -r --arg k "$key" '.monitors[$k].scale // "auto" | if type == "number" then tostring else "\"auto\"" end' <<<"$config")"
         line+=", transform = $(jq -r --arg k "$key" '.monitors[$k].transform // 0' <<<"$config")"
+        # Variable refresh only when chosen: Hyprland's default (off) otherwise.
+        vrr=$(jq -r --arg k "$key" '.monitors[$k].vrr // empty' <<<"$config")
+        [[ -z $vrr ]] || line+=", vrr = $vrr"
+        # Advanced (Settings › Displays › Advanced): only what was chosen.
+        line+=$(jq -r --arg k "$key" '.monitors[$k] as $m
+          | [ (if $m.bitdepth then ", bitdepth = \($m.bitdepth)" else empty end),
+              (if $m.cm then ", cm = \"\($m.cm)\"" else empty end),
+              (if $m.sdrbrightness then ", sdrbrightness = \($m.sdrbrightness)" else empty end),
+              (if $m.sdrsaturation then ", sdrsaturation = \($m.sdrsaturation)" else empty end),
+              (if ($m.mirror // "none") != "none" then ", mirror = \"\($m.mirror)\"" else empty end) ]
+          | join("")' <<<"$config")
       fi
       echo "$line })"
     done < <(jq -r '.monitors | keys[]' <<<"$config")
@@ -148,6 +165,35 @@ set_value() {
     transform)
       [[ $value =~ ^[0-7]$ ]] || { echo "Transform must be 0-7" >&2; exit 1; }
       config=$(jq -c --arg k "$key" --argjson v "$value" '.monitors[$k].transform = $v' <<<"$config")
+      ;;
+    bitdepth)
+      [[ $value == 8 || $value == 10 ]] || { echo "Color depth must be 8 or 10" >&2; exit 1; }
+      config=$(jq -c --arg k "$key" --argjson v "$value" '.monitors[$k].bitdepth = $v' <<<"$config")
+      ;;
+    cm)
+      [[ $value =~ ^(auto|srgb|wide|edid|hdr|hdredid)$ ]] ||
+        { echo "Color mode must be auto, srgb, wide, edid, hdr or hdredid" >&2; exit 1; }
+      config=$(jq -c --arg k "$key" --arg v "$value" '.monitors[$k].cm = $v' <<<"$config")
+      ;;
+    sdrbrightness | sdrsaturation)
+      local low=0.5 high=3
+      [[ $setting == sdrsaturation ]] && high=2
+      if ! [[ $value =~ ^[0-9]+(\.[0-9]+)?$ ]] || ! awk -v v="$value" -v l="$low" -v h="$high" 'BEGIN { exit !(v >= l && v <= h) }'; then
+        echo "$setting must be a number from $low to $high" >&2
+        exit 1
+      fi
+      config=$(jq -c --arg k "$key" --arg s "$setting" --argjson v "$value" '.monitors[$k][$s] = $v' <<<"$config")
+      ;;
+    mirror)
+      if [[ $value != none ]]; then
+        monitors | jq -e --arg v "$value" --arg k "$key" 'any(.[]; .name == $v and .key != $k)' >/dev/null ||
+          { echo "There's no other monitor named $value to mirror" >&2; exit 1; }
+      fi
+      config=$(jq -c --arg k "$key" --arg v "$value" '.monitors[$k].mirror = $v' <<<"$config")
+      ;;
+    vrr)
+      [[ $value =~ ^[0-2]$ ]] || { echo "Variable refresh must be 0 (off), 1 (always) or 2 (in fullscreen apps)" >&2; exit 1; }
+      config=$(jq -c --arg k "$key" --argjson v "$value" '.monitors[$k].vrr = $v' <<<"$config")
       ;;
     enabled)
       [[ $value == "true" || $value == "false" ]] || usage

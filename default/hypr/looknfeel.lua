@@ -123,9 +123,10 @@ hl.config({
   },
 
   render = {
-    -- Keep HDR displays in SDR when a window goes fullscreen. Auto-switching
-    -- left SDR content looking washed out on the Pro Display XDR.
-    cm_auto_hdr = 0,
+    -- An HDR monitor switches to HDR while a fullscreen app shows HDR
+    -- content, and back after (user 2026-11-16; Hyprland's default). Omarchy
+    -- turned this off for SDR looking washed out on a Pro Display XDR.
+    cm_auto_hdr = 1,
   },
 
   binds = {
