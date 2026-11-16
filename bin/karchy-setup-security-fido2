@@ -40,7 +40,25 @@ EOF
   fi
 }
 
+# A FIDO2 key is a HID device whose report descriptor declares the FIDO usage
+# page (0xF1D0, written 06 d0 f1). Checked before anything is installed, so
+# trying without a key leaves the machine as it was.
+fido2_key_plugged_in() {
+  local descriptor
+  for descriptor in /sys/class/hidraw/hidraw*/device/report_descriptor; do
+    [[ -r $descriptor ]] || continue
+    od -An -v -tx1 "$descriptor" | tr -s ' \n' ' ' | grep -q " 06 d0 f1 " && return 0
+  done
+  return 1
+}
+
 echo -e "\e[32mSetting up FIDO2 device for authentication.\n\e[0m"
+
+if ! fido2_key_plugged_in; then
+  echo -e "\e[31mNo FIDO2 key is plugged in. Plug it in (and unlock it, if it has a PIN pad), then try again.\e[0m"
+  echo "Nothing was changed."
+  exit 1
+fi
 
 # Install required packages
 echo "Installing required packages..."

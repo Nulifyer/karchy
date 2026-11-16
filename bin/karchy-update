@@ -45,7 +45,8 @@ good() { printf '      %s✓%s %s\n' "$green" "$reset" "$*"; }
 warn() { printf '      %s!%s %s\n' "$yellow" "$reset" "$*"; }
 fail() { printf '\n%s✗ %s%s\n' "$red$bold" "$*" "$reset" >&2; }
 
-trap 'fail "The update stopped with an error. Read the output above, fix the cause, and run karchy update again. Snapshots from before the update are in the boot menu."' ERR
+# Names the step that failed, since an early one may print nothing itself.
+trap 'fail "The update stopped: this step failed: $BASH_COMMAND. Fix the cause and run karchy update again. Snapshots from before the update are in the boot menu."' ERR
 
 # ---------------------------------------------------------------------- lock
 # /run/lock/karchy-update is created world-writable at boot (tmpfiles.d) and
@@ -56,12 +57,13 @@ flock -n "$lock_fd" || {
   exit 1
 }
 
+# A missing file (a dev checkout has no release file) reads as unknown.
 release_version() {
-  sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null | head -n 1
+  sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null | head -n 1 || true
 }
 before=$(release_version)
-channel=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
-server=$(sed -n 's/^Server *= *//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1)
+channel=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1 || true)
+server=$(sed -n 's/^Server *= *//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1 || true)
 
 printf '%skarchy update%s  %s%s, %s channel%s\n' "$bold" "$reset" "$dim" "${before:-unknown}" "${channel:-unknown}" "$reset"
 

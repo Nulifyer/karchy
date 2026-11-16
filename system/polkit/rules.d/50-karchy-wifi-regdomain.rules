@@ -1,0 +1,11 @@
+// The session may start karchy-wifi-regdomain.service without a password:
+// karchy-menu-timezone runs it after a timezone change so the Wi-Fi country
+// follows. The unit takes no input; it reads /etc/localtime.
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.freedesktop.systemd1.manage-units" &&
+      action.lookup("unit") == "karchy-wifi-regdomain.service" &&
+      action.lookup("verb") == "start" &&
+      subject.local && subject.active && subject.isInGroup("wheel")) {
+    return polkit.Result.YES;
+  }
+});

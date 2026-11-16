@@ -50,5 +50,11 @@ if [[ $1 == "clone" ]]; then
 elif [[ $1 == "remove" ]]; then
   karchy-launch-floating-terminal-with-presentation "karchy-plugin-remove $(printf '%q' "$id")"
 else
-  "karchy-plugin-$1" "$id"
+  name=$(cut -f1 <<<"$selection")
+  if error=$("karchy-plugin-$1" "$id" 2>&1 >/dev/null); then
+    karchy-notification-send -g plugin "$(karchy-i18n "plugin.${1}d" "${name:-$id}")"
+  else
+    karchy-notification-send -g plugin -u critical "${name:-$id}" "$error"
+    exit 1
+  fi
 fi

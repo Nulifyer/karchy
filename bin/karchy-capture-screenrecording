@@ -14,9 +14,10 @@
 # DMA-BUF modifier import on some configurations, leaving recording unable to
 # start.
 #
-# Env: KARCHY_SCREENRECORD_DEBUG=true appends the recorder's stderr (and the
-# picker target it was launched with) to $XDG_RUNTIME_DIR/karchy-screenrecord.log
-# so users can attach a log when reporting capture failures.
+# The recorder's stderr (and the picker target it was launched with) goes to
+# $XDG_RUNTIME_DIR/karchy-screenrecord.log, started afresh by each recording,
+# so a recording that can't start says why. KARCHY_SCREENRECORD_DEBUG=true
+# keeps adding to it instead.
 #
 # Backend: gpu-screen-recorder. Where it is not installed, or it exits before
 # the recording starts (it knows only NVIDIA, AMD, Intel and Broadcom GPUs, and
@@ -59,7 +60,7 @@ CANCEL_FILE="$RUNTIME_DIR/karchy-screenrecord-cancel"
 # How long a recorder may take to create its file, except through the portal,
 # whose picker waits on the user.
 READY_TIMEOUT_TICKS=75
-LOG_FILE=$([[ ${KARCHY_SCREENRECORD_DEBUG:-false} == "true" ]] && echo "$RUNTIME_DIR/karchy-screenrecord.log" || echo "/dev/null")
+LOG_FILE="$RUNTIME_DIR/karchy-screenrecord.log"
 
 for arg in "$@"; do
   case "$arg" in
@@ -593,6 +594,7 @@ fi
     else
       rm -f "$CANCEL_FILE"
       echo $$ >"$STARTING_FILE"
+      [[ ${KARCHY_SCREENRECORD_DEBUG:-false} == "true" ]] || : >"$LOG_FILE"
       if start_screenrecording; then
         rm -f "$STARTING_FILE"
         # Cancelled while the recording was being saved as started.
@@ -612,8 +614,11 @@ fi
         cleanup_webcam
         # A cancelled start is the user's doing; any other failure must say so.
         if ! start_cancelled; then
+          # The recorder's last words say why; the whole log is a click away.
+          reason=$(grep -v -e '^[[:space:]]*$' -e '^=====' "$LOG_FILE" 2>/dev/null | tail -n 1 | cut -c1-200)
           karchy-notification-send -u critical -g record "Screen recording couldn't start" \
-            "The recorder stopped before recording. Run with KARCHY_SCREENRECORD_DEBUG=true for a log in \$XDG_RUNTIME_DIR/karchy-screenrecord.log." || true
+            "${reason:-The recorder stopped before recording.}" \
+            --action "Show the log" xdg-open "$LOG_FILE" || true
           rm -f "$CANCEL_FILE"
           exit 1
         fi

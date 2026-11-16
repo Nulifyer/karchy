@@ -108,6 +108,8 @@ package() {
   install -Dm755 wifi/wifi-regdomain "$pkgdir/usr/lib/karchy/wifi-regdomain"
   install -Dm644 wifi/85-karchy-wifi-regdomain.rules "$pkgdir/usr/lib/udev/rules.d/85-karchy-wifi-regdomain.rules"
   install -Dm644 -t "$pkgdir/usr/lib/systemd/system" wifi/karchy-wifi-regdomain.service
+  # ...and the timezone menu may restart it without a password.
+  install -Dm644 polkit/rules.d/50-karchy-wifi-regdomain.rules "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-wifi-regdomain.rules"
 
   install -Dm755 keyring/keyring-key "$pkgdir/usr/lib/karchy/keyring-key"
   install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"

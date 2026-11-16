@@ -42,7 +42,7 @@ mkdir -p "$MODES_DIR"
 # A workspace with windows on it keeps the layout it has, so changing the
 # default never rearranges work in progress: it is saved as that workspace's
 # own layout. Every other workspace, empty or not opened yet, takes the new
-# default, including one given a layout of its own with Super + L.
+# default, including one given a layout of its own earlier.
 # Without a list of workspaces nothing can tell busy from empty, so nothing is
 # changed rather than every saved layout taken for an empty workspace's.
 busy_workspace_ids() {
