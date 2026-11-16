@@ -271,9 +271,13 @@ if [[ -n $repo_updates ]]; then
   sudo pacman --color auto -Syu --noconfirm
   good "System packages updated"
   # What packages printed while installing (manual steps, changed defaults)
-  # scrolls past above; repeat it where it can be read.
+  # scrolls past above; repeat it where it can be read. Hooks' output (the
+  # snapshot numbers, initramfs builds) is logged the same way, after a
+  # "running '<name>.hook'" line, and is left out.
   notices=$(tail -n +"$((log_lines + 1))" /var/log/pacman.log 2>/dev/null |
-    sed -n 's/^\[[^]]*\] \[ALPM-SCRIPTLET\] //p' | grep -v '^[[:space:]]*$' | head -n 40 || true)
+    awk '/ \[ALPM\] running .*\.hook/ { hook = 1; next }
+         / \[ALPM\] / { hook = 0; next }
+         !hook && sub(/^\[[^]]*\] \[ALPM-SCRIPTLET\] /, "") && NF' | head -n 40 || true)
   if [[ -n $notices ]]; then
     warn "Notes from the updated packages:"
     sed 's/^/        /' <<<"$notices"
