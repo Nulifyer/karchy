@@ -1,6 +1,6 @@
 # Installing karchy
 
-karchy installs from the stock Arch Linux ISO. The installer erases one disk and sets up:
+karchy installs from the karchy ISO or from the stock Arch Linux ISO; both run the same installer. It erases one disk and sets up:
 
 - a 4 GiB EFI partition
 - LUKS2 encryption
@@ -33,9 +33,44 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
 
 Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
 
+## From the karchy ISO
+
+> The ISO isn't published yet: build it as in [Building the ISO](#building-the-iso). Until the `[karchy]` repository is published, it too installs only against a local build.
+
+The karchy ISO is the Arch Linux ISO (archiso's `releng` profile) with the installer on it, so it doesn't fetch the installer first. It still downloads the packages, from the same repositories: `[karchy]` for the channel picked in the form, Arch's, and `[cachyos]` and `[omarchy]`, which the installer adds as it does on the Arch ISO. karchy's signing key is in the live system's keyring from boot.
+
+1. Write the ISO to a USB stick (`dd if=karchy-….iso of=/dev/sdX bs=4M oflag=sync`) and boot it in UEFI mode.
+2. The installer starts by itself on the first console. It waits for the network: a cable connects by itself; otherwise it offers to retry, to connect to Wi-Fi with `iwctl`, or a shell.
+3. Answer the form and confirm, as above.
+
+Esc or Ctrl-C at a question leaves the installer for a root shell; `karchy-install` starts it again, and Alt+F2 opens another console. `karchy-install --config FILE` works there too. For an install with no form at all, add `karchy.config=<file or http(s) URL>` to the boot entry (`e` in the UEFI menu): the ISO downloads the answer file once the network is up and runs `karchy-install --config` with it. As with any answer file, the disk named in it is erased without asking. When the install is done, the ISO says so and stays at the shell; remove the stick and reboot.
+
+### Building the ISO
+
+`mkarchiso` needs root. `packaging/iso/build` copies `releng`, adds `packaging/iso/` (the autostart, a `karchy-install` command, `gum` for the form, the boot menu names) and the working tree's installer (`install/`, `bin/`, `system/`, `packaging/keyring/`, uncommitted changes included), and writes `out/iso/karchy-<date>-x86_64.iso` with a `.sha256`:
+
+```sh
+sudo packaging/iso/build           # on Arch, with archiso installed
+packaging/iso/build --vm           # without root here: builds in the tools/vm VM "isobuild"
+```
+
+With `--vm`, the build runs in a libvirt VM booted from the stock Arch ISO (`tools/vm fetch` first). The VM's 20 GiB disk (created on the first build) keeps an Arch build root with archiso and a package cache, so a rebuild downloads only updates. The ISO comes back to `out/iso/` over HTTP on this machine's loopback (the guest sends it to `10.0.2.2:8091`), so no firewall change is needed. Delete the VM with `tools/vm --name isobuild destroy` when you no longer build ISOs.
+
+To try an ISO in a VM, boot it with `KARCHY_VM_ISO`, and hand it the VM test answers through the repository server:
+
+```sh
+packaging/build
+cp tests/vm-install.conf out/
+tools/vm repo                      # leave running
+tools/vm new --name isotest
+KARCHY_VM_ISO=out/iso/karchy-….iso tools/vm run --name isotest --iso
+# at the boot menu: e, End, then add  karchy.config=http://10.0.2.2:8090/vm-install.conf  and Enter
+# when it says karchy is installed: tools/vm stop --name isotest, then run it without --iso
+```
+
 ## Unattended installs
 
-`karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL`, `KARCHY_BEES`, `KARCHY_CHANNEL` (`stable`, `rc`, `nightly`; `dev` for VM tests), `KARCHY_SECUREBOOT` (`auto`, the default, sets it up when the firmware is in Setup Mode; or `yes`/`no`), and `KARCHY_REPO_SERVER` and `KARCHY_REPO_SIGLEVEL` for another `[karchy]` repository. `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
+`karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL`, `KARCHY_BEES`, `KARCHY_CHANNEL` (`stable`, `rc`, `nightly`; `dev` for VM tests), `KARCHY_SECUREBOOT` (`auto`, the default, sets it up when the firmware is in Setup Mode; or `yes`/`no`), `KARCHY_REPO_SERVER` and `KARCHY_REPO_SIGLEVEL` for another `[karchy]` repository, `KARCHY_CACHYOS_LEVEL` (`generic` skips CachyOS's CPU-tuned repositories; otherwise the installer picks `v3`, `v4` or `znver4` from the CPU, as CachyOS's own installer does), and `KARCHY_KEYRING_KEY_FILE` (a key saved with `karchy keyring-key export`, so a home folder restored from a backup opens its keyring; D-57). `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
 
 ## Testing in a VM
 

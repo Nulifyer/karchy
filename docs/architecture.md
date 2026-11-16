@@ -38,9 +38,11 @@ The PKGBUILDs live in `packaging/pkgbuilds/`, next to the code they package, so 
 | `karchy-settings` | `/etc` defaults, user and system unit drop-ins, lock-screen PAM, `/etc/skel` starter configs | `system/ config/ default/systemd/user karchy/shell.json` |
 | `karchy-themes` | `/usr/share/karchy/themes` | `themes/` |
 | `karchy-desktop` | meta: the packages above plus the session, services, fonts and apps | — |
-| `karchy-laptop` | meta: power-profiles-daemon | — |
+| `karchy-laptop` | meta: power-profiles-daemon, bolt (USB4 docks), sof-firmware; lid and sleep drop-ins | `system/laptop` |
 | `karchy-nvidia` | meta: NVIDIA modules for both kernels, utils, VA-API | — |
 | `karchy-nvidia-580xx` | meta: the same for Maxwell, Pascal and Volta, with NVIDIA's 580xx driver; provides and conflicts with `karchy-nvidia` | — |
+| `karchy-containers` | optional (Quick install): Podman's user socket enabled for all, DOCKER_HOST, compose and docker-notice settings | `packaging/pkgbuilds/karchy-containers` |
+| `karchy-printing` | optional (Quick install): cups-browsed user and sandbox drop-in, ipp-usb | `packaging/pkgbuilds/karchy-printing` |
 
 `karchy-keyring` is planned, with signing (D-52). Each plugin will be its own package.
 
@@ -241,6 +243,8 @@ The **form** is a gum TUI in Omarchy's style (D-08), run from the stock Arch ISO
 8. Limine + limine-entry-tool + limine-snapper-sync, with `rd.luks.name=` on the kernel command line.
 
 That's about 300 lines of bash, with each step logged and safe to retry.
+
+Optional features get a package only when they put files in `/etc` or `/usr` (D-67); their `bin/karchy-feature-*` command installs it and does the per-user and service steps. CachyOS's CPU-tuned repositories (`cachyos-v3`, `-v4` or `-znver4`, with their core and extra) go before its generic one when the CPU supports them, picked like CachyOS's installer (`ld.so --help` for the x86-64 level, AMD family 0x19 with AVX-512 or 0x1a for Zen 4/5); `Architecture` lists the levels so the Arch ISO's pacman accepts them (D-79).
 
 The base pacstrap includes `karchy-settings`, so the sudo policy, the mkinitcpio drop-in, the snapper template and `/etc/skel` exist before the user is created and the initramfs is built. The `[karchy]` repository is configured on the live system and in the target, after `[cachyos]`, Arch's and `[omarchy]` (D-45, D-51).
 

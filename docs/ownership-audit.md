@@ -95,7 +95,7 @@ The audit above covered the files karchy vendored. Omarchy also ships an `etc/` 
 | `sudoers.d/karchy-theme-browser` | Every theme switch asked for a password to recolor the browser |
 | `fontconfig/50-karchy.conf` (simplified from `default/fontconfig/conf.avail/50-omarchy.conf`) | Without it the system monospace font was Noto Sans Mono while the terminal used JetBrainsMono, and `karchy-font-set` assumes a package default under it. Kept: monospace, system-UI aliases, emoji fallback. Dropped: CJK and Arabic language rules and the Liberation fonts (English only, D-49) |
 
-The rest are tuning choices. **Not decided yet**, except the network rows: those were **decided 2026-11-14** (networking plan, step 1) and ship in karchy-settings under `/usr/lib`, so a file in `/etc` wins. Recommendations or decisions in the last column.
+The rest are tuning choices, all decided (the remaining skips accepted by the user 2026-11-16). The network rows were **decided 2026-11-14** (networking plan, step 1) and ship in karchy-settings under `/usr/lib`, so a file in `/etc` wins. Recommendations or decisions in the last column.
 
 | File | What it does | What you lose without it | Recommendation |
 |---|---|---|---|
@@ -112,7 +112,7 @@ The rest are tuning choices. **Not decided yet**, except the network rows: those
 | `gnupg/dirmngr.conf` | Several keyservers, short timeouts | Key fetches (gpg, pacman-key) fail when one keyserver is down | Done 2026-11-14 (`/etc/gnupg/dirmngr.conf`) |
 | `mkinitcpio.conf.d/thunderbolt_module.conf` | Thunderbolt in the initramfs | A dock keyboard may not type at the disk password prompt | Done 2026-11-14 |
 | `systemd/user/wayland-wm@hyprland.desktop.service.d/10-keep-shell.conf` | Stops Hyprland before its shell at logout | The wallpaper vanishes a moment early during logout | Done 2026-11-14 |
-| `modprobe.d/*-usb-autosuspend.conf` | USB autosuspend off everywhere | Some USB devices drop out when idle | Skip: costs laptop battery; add per device if one misbehaves |
+| `modprobe.d/*-usb-autosuspend.conf` | USB autosuspend off everywhere | Some USB devices drop out when idle | **Decided 2026-11-16: kept** as the udev rule `/usr/lib/udev/rules.d/90-karchy-usb-autosuspend.rules` (usbcore is built into the kernel, so a modprobe option wouldn't apply) (costs a little laptop battery) |
 | `NetworkManager/conf.d/*-connectivity.conf` | Captive-portal check against `ping.omacom.io` (Basecamp's server) over HTTP | Hotel/airport sign-in pages may not open automatically with Arch's default check | **Decided: skipped.** Detection stays on Arch's default check; the panel's "Sign in to network" opens `http://neverssl.com` (Arch's host is HSTS-preloaded, so a portal can't intercept it) |
 | `sudoers.d/*-tzupdate` | Set the timezone from the menu without a password | One password prompt when changing timezone | Skip |
 | `sudoers.d/*-locale-generate` | Generate a new language's locale without a password | — (English only, D-49) | Skip |
