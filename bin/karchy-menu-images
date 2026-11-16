@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # karchy:summary=Open a generic image selector menu
-# karchy:args=[--selected <image>] [--print-name] [--show-labels] [--filterable] [--lazy-thumbnails] [--preload] [--prepare-only] [--cache-only] [--print-rows] <image-dir>...
+# karchy:args=[--selected <image>] [--print-name] [--show-labels] [--filterable] [--lazy-thumbnails] [--preload] [--prepare-only] [--cache-only] [--print-rows] [--order <file>] <image-dir>...
+
+# --order names a file listing image names without their extension, one per
+# line: those come first, in that order, and the rest follow by name.
 
 selected_image=""
+order_file=""
 print_name=false
 show_labels=false
 filterable=false
@@ -15,7 +19,7 @@ print_rows=false
 image_dirs=()
 
 usage() {
-  echo "Usage: karchy-menu-images [--selected <image>] [--print-name] [--show-labels] [--filterable] [--lazy-thumbnails] [--preload] [--prepare-only] [--cache-only] [--print-rows] <image-dir>..."
+  echo "Usage: karchy-menu-images [--selected <image>] [--print-name] [--show-labels] [--filterable] [--lazy-thumbnails] [--preload] [--prepare-only] [--cache-only] [--print-rows] [--order <file>] <image-dir>..."
 }
 
 while (( $# > 0 )); do
@@ -60,6 +64,15 @@ while (( $# > 0 )); do
     --print-rows)
       print_rows=true
       shift
+      ;;
+    --order)
+      if (( $# < 2 )); then
+        usage >&2
+        exit 1
+      fi
+
+      order_file="$2"
+      shift 2
       ;;
     --help|-h)
       usage
@@ -119,6 +132,10 @@ rows_signature_file="$cache_dir/$cache_key.signature"
 rows_fast_signature_file="$cache_dir/$cache_key.fast-signature"
 rows_signature="v4"$'\n'
 rows_fast_signature="v4"$'\n'
+if [[ -n $order_file ]]; then
+  rows_signature+="order:$(cat "$order_file" 2>/dev/null)"$'\n'
+  rows_fast_signature+="order:$(cat "$order_file" 2>/dev/null)"$'\n'
+fi
 rows_cacheable=true
 rows_cache_hit=false
 image_files=()
@@ -147,6 +164,16 @@ else
         -print0 2>/dev/null | sort -z)
     fi
   done
+
+  # Listed names first, in the order given; the rest keep their name order.
+  if [[ -n $order_file && -r $order_file ]] && ((${#image_files[@]} > 0)); then
+    mapfile -t image_files < <(
+      printf '%s\n' "${image_files[@]}" | awk -v order="$order_file" '
+        BEGIN { while ((getline name < order) > 0) if (!(name in rank)) rank[name] = ++n }
+        { base = $0; sub(/.*\//, "", base); sub(/\.[^.]*$/, "", base)
+          printf "%08d\t%s\n", (base in rank) ? rank[base] : 99999999, $0 }' |
+        sort -s -t $'\t' -k1,1n | cut -f2-)
+  fi
 fi
 
 is_video_path() {
