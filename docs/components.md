@@ -20,7 +20,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Firewall | ufw deny incoming (+ rules for Podman as needed) | [O] |
 | Network | NetworkManager + wpa_supplicant + systemd-resolved; portals detected with Arch's own check, and "Sign in to network" opens `http://neverssl.com` in a floating window. Tuning in karchy-settings (`/usr/lib`, so files in `/etc` win): Wi-Fi power save off, ARP only for the interface's own address, TCP MTU probing, BBR + fq; avahi is the only `.local` responder (resolved's LLMNR and mDNS off). Work or school Wi-Fi (802.1X) checks the server's certificate against the system CAs and a domain taken from the identity; skipping the check is an explicit choice behind a warning. Trusted networks (D-68): one list, bound to the router's hardware address (and, for Wi-Fi, the name and security), so the same profile behind another router isn't trusted; Settings › Network says "Trusted, but a different router: not trusted now". DNS: on networks that aren't trusted, the live connection uses Quad9 over TLS (`/etc/karchy/dns` changes the provider); trusted networks keep the router's DNS; saved networks are never rewritten, and a VPN's own DNS wins while it is up. The network panel (D-66, D-68) says the real state in its status line (no rotating phrases), shows one attention row only when something needs the person (networking off, airplane mode, the hardware switch, a sign-in page, a failed VPN, DNS blocked) with the action that resolves it, the VPN row, ping, loss, IP and gateway, the band, known and other networks, and "Network settings…", which opens Settings › Network at the connection. Airplane mode (`karchy-airplane`, the airplane key): every radio off with rfkill, kept across reboots by systemd-rfkill, with an on-screen message and the `net.airplane` bar icon | [O] + [New] |
 | Bluetooth | bluez + shell panel | [O] |
-| Printing + scanning | Optional feature (Settings › Printers & scanners), D-38 | [O] + [New] |
+| Printing + scanning | Optional feature (Quick install › System features), D-38 | [O] + [New] |
 | Audio | PipeWire + WirePlumber | [O+C] |
 | Laptop power | power-profiles-daemon (Arch) with amd-pstate; suspend on idle; suspend-then-hibernate after 2 h | [New] |
 | Mirrors | rate-mirrors weekly with safety checks (D-29) | [C] tool, [New] safety |
@@ -49,7 +49,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 
 Kept:
 - **Core:** host, IPC, plugin registry and CLI, bar engine, `omarchy` router, Commons and Ui, `shell.json`.
-- **Services:** notifications (with the hover ✕), OSD, polkit, lock, idle, clipboard history, reminders, theme/background picker, speed tests, and the battery service (only on machines with a battery).
+- **Services:** notifications (with the hover ✕), OSD, polkit, lock (with the time and date above the password field [New]; turn it off in Settings › Appearance › Lock screen, or `lock.clock: false` in `~/.config/karchy/shell.json`), idle, clipboard history, reminders, theme/background picker, speed tests, and the battery service (only on machines with a battery).
 - **Menu:** the engine, used as the launcher (app search). The tree is in `menu.md`.
 - **Floating bar** [New]: floats inset from the screen edge and docks on a monitor while a window there is maximized; `bar.style` auto, floating or docked (`karchy bar style`, Settings › Appearance). See `architecture.md`, "The bar: floating and docked".
 - **Bar modules:** workspaces, clock, tray, audio, microphone, network, Bluetooth, display brightness, power, media, the indicators for kept features, and running VMs and containers (each shown only while something runs; D-63).
@@ -79,23 +79,28 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 
 ## Apps in the base install
 
+Every app below shows in Quick install as installed (D-71). Most can be removed there like any other app: the installer installs them as the user's own packages (`karchy-desktop`'s optdepends), not as dependencies. foot, Thunar and Xarchiver can't be removed, because karchy itself uses them; Quick install says why.
+
 | Role | App | Source |
 |---|---|---|
 | Terminal | foot (server mode + footclient) | [O] |
-| Browser | Brave Origin (`brave-origin-bin`, `[omarchy]`); PDFs open in the browser; video is decoded on the graphics card (VA-API flags in `brave-origin-flags.conf`, NVIDIA through `nvidia-vaapi-driver`) | [O] |
-| File manager | Thunar + gvfs, gvfs-smb, gvfs-mtp, tumbler; right-click actions per D-36 | [New] |
+| Browser | Brave Origin (`brave-origin-bin`, `[cachyos]`); removing it leaves links to another installed browser; PDFs open in the browser; video is decoded on the graphics card (VA-API flags in `brave-origin-flags.conf`, NVIDIA through `nvidia-vaapi-driver`) | [O] |
+| File manager | Thunar + gvfs, gvfs-smb, gvfs-mtp, tumbler; right-click actions per D-36 and D-76; Send To › LocalSend; Create Document offers Text File and Markdown Document; Desktop is home (no desktop icons) | [New] |
 | Default apps | Settings › Default apps, writing `mimeapps.list` (D-37) | [New] |
 | Editor | VS Code (`visual-studio-code-bin`, `[omarchy]`) with the user's own settings | [O] |
 | Terminal editor | micro or nano, still open | |
 | Images | imv | [O] |
 | Media | mpv with hardware decoding config | [O] |
-| Task manager | btop | [O] |
+| Task manager | Mission Center (Ctrl+Shift+Esc); btop in a terminal | [New] + [O] |
 | About | fastfetch | [O] |
 | Screenshots | Omasnap (screenshot + annotation, `[omarchy]`), plus screen recording | [O] |
 | Calculator | omacalc (`[omarchy]`) | [O] |
+| Notepad | Omawrite (`[omarchy]`); Markdown files open in it, plain text in VS Code | [O] |
 | Disk utility | GNOME Disks | [O] |
-| File sharing | LocalSend (`[omarchy]`), port open only on trusted networks (router included, D-68); closed at boot until one connects | [O] + [New] |
-| Settings | karchy Settings window (shell plugin, D-27, D-56): Displays, Input, Network, Appearance, Default apps, Optional features, About; more sections (Power, Printers) follow in phase 2. Network, on one scroll: Status (a card per active connection: addresses, gateway, DNS in use and whether it is encrypted, link, MAC), Saved networks (each opens in place: trusted network, connect automatically, metered, Wi-Fi band, private Wi-Fi address, IPv4 settings checked before saving, share, forget with Cancel focused; "Join hidden network…"), DNS (Automatic, Quad9, Cloudflare or custom servers; encrypted DNS; use on trusted networks too; encrypted only; each connection's state in words), VPN (the VPN package's mode, state and local devices on trusted networks, or plain VPN profiles with switches; importing a WireGuard file), Sharing and firewall (read-only), Advanced (Wi-Fi country, connectivity check) | [New] |
+| Disk usage | Disktree (`disktree-bin`, `[omarchy]`): treemap, mark and trash; Open in Disktree on folders in Thunar (D-74) | [O] + [New] |
+| File sharing | LocalSend (`localsend-bin`, `[omarchy]`), port open only on trusted networks (router included, D-68); closed at boot until one connects | [O] + [New] |
+| Settings | karchy Settings window (shell plugin, D-27, D-56): Displays, Input, Network, SSH (server and agent switches, D-78), Appearance, Default apps, About; more sections (Power, Printers) follow in phase 2. Network, on one scroll: Status (a card per active connection: addresses, gateway, DNS in use and whether it is encrypted, link, MAC), Saved networks (each opens in place: trusted network, connect automatically, metered, Wi-Fi band, private Wi-Fi address, IPv4 settings checked before saving, share, forget with Cancel focused; "Join hidden network…"), DNS (Automatic, Quad9, Cloudflare or custom servers; encrypted DNS; use on trusted networks too; encrypted only; each connection's state in words), VPN (the VPN package's mode, state and local devices on trusted networks, or plain VPN profiles with switches; importing a WireGuard file), Sharing and firewall (read-only), Advanced (Wi-Fi country, connectivity check) | [New] |
+| Quick install | A window of its own (shell plugin `karchy.quick-install`, D-70): about 520 common apps from Arch's repositories, `[cachyos]`, `[omarchy]` and well-kept AUR packages, plus karchy's optional features, in categories with counts (All and Installed first), searched like fzf across every category; each row installs, opens or (once open in place, showing what it installs, from where, its size and its setup) removes the app, in a floating terminal. `karchy quick-install [search]`, Packages › Quick install | [New] |
 | Web apps | Omarchy web-app mechanism, with fixed icons | [O] + [New] |
 | Shell | fish, native config from the dotfiles user layer | [New] |
 | Plugins | omarchy-vpn-plugin, omarchy-project-picker (Ctrl+Alt+P) | [New] |
@@ -104,7 +109,7 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 
 - **USB:** udisks2 + udiskie automount with a notification [O].
 - **Internal data disks:** fstab at `/mnt/<label>`, with `nofail` and `x-gvfs-show`, owned by the user, NTFS via `ntfs3`. The installer sets up existing ones; a notification offers new ones [New]. Built: `karchy-disk-fstab`, `karchy-disks-check`, `karchy-disk-keep`.
-- **NAS:** browse via gvfs-smb. The Thunar action "Keep this mount" writes an fstab systemd automount (`nofail,_netdev,x-systemd.idle-timeout`) with root-only credentials; "Remove kept mount" undoes it [New]. Built: `karchy-mount-keep`.
+- **NAS:** browse via gvfs-smb. The menu's Setup › Network Shares › Keep a Share Mounted writes an fstab systemd automount (`nofail,_netdev,x-systemd.idle-timeout`) with root-only credentials; Remove a Kept Share undoes it (D-76) [New]. Built: `karchy-mount-keep`.
 
 ## Install tiers (D-28)
 
@@ -114,11 +119,11 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 - `fstrim.timer`, monthly btrfs scrub, `smartd` disk-health warnings
 - `paccache` cleanup, `.pacnew` alerts (`pacdiff`)
 - the rate-mirrors timer
-- a default-apps list: links → Brave Origin, PDF → Brave Origin, images → imv, video and audio → mpv, folders → Thunar
+- a default-apps list: links → Brave Origin, PDF → Brave Origin, images → imv, video and audio → mpv, folders → Thunar, Markdown → Omawrite, plain text → VS Code
 - Thunar archive actions (`thunar-archive-plugin` + xarchiver + `7zip`) and the karchy right-click actions (D-36, D-40)
 - `avahi` + `nss-mdns`
-- LocalSend, GNOME Disks, omacalc, Omasnap
-- `xdg-user-dirs`, `man-db`
+- LocalSend, GNOME Disks, Disktree, omacalc, Omawrite, Omasnap; Omarchy's theme path `~/.local/state/omarchy/current` links to karchy's, so the `[omarchy]` apps follow the theme (D-72)
+- `xdg-user-dirs` (the home folders, Projects included), with Downloads, Projects, Pictures and Videos bookmarked in the file manager's sidebar at the first login (D-75); `man-db`
 - `openssh`, `rsync`, `unzip`
 - a check that the desktop draws on the graphics card: Settings › About shows what draws it (`karchy-hw-renderer`, through EGL like every Wayland app), and a login notification warns when it falls back to the processor (llvmpipe), with the likely cause and the fix; its actions are Open Settings and Don't show again, and About can turn the warning back on
 - the Wi-Fi regulatory domain, set from the timezone when a Wi-Fi device appears (each boot) and when the timezone is changed from the menu (`iw`, `wireless-regdb`; ported from CachyOS). Without it the kernel stays in the world domain, with no 6 GHz. A `COUNTRY=XX` line in `/etc/karchy/wifi-country` overrides it; Settings › Network › Advanced sets or clears it (`karchy-network-country`).
@@ -138,7 +143,7 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 
 **Installer choice:** bees dedup, off by default (D-39).
 
-**Optional (Settings › Optional features):**
+**Optional (Quick install › System features, D-70):**
 - Printers & scanners: CUPS + hardened cups-browsed, `sane`, `sane-airscan`, `simple-scan`, plus group setup (D-38).
 - Containers: rootless Podman (`podman`, `crun`, `netavark`, `aardvark-dns`, `passt`), `podman-docker` for the `docker` command, `docker-compose` against the user's Podman socket (`DOCKER_HOST` via `/etc/environment.d`), and `nvidia-container-toolkit` with karchy-nvidia; the Containers panel and window (D-63).
 - Virtual machines: `qemu-desktop`, `edk2-ovmf`, `swtpm`, `spice-gtk`; `karchy vm`, VMs in `~/VMs` (no copy-on-write), no libvirt; the VMs panel and window (D-63).
