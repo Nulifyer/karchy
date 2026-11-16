@@ -65,3 +65,32 @@ Dev mode in a test VM (D-55), to try shell and command changes without rebuildin
   - The Settings window: a hand edit overrides a GUI value.
   - A mirror-ranking failure, simulated, keeps the old list.
   - The LocalSend port is open on a trusted network and closed on an untrusted one.
+
+## On the real machines (from the docs audit, D-79)
+
+Things a VM can't show. Write down what happened for each.
+
+Both machines:
+- Boot a snapshot from the Limine menu: the desktop comes up (writable overlay), then reboot normally.
+- `vainfo` and brave://gpu show hardware video decode.
+- A data disk: mounted at boot; the 3.6 TB disk comes up without "timed out waiting for device" (`journalctl -b`).
+- Firmware: Update Firmware lists devices; with Secure Boot on, a BIOS update applies (the signed `fwupdx64.efi.signed` is used).
+- Secure Boot recovery, before relying on it: what turning Secure Boot off in the firmware does to booting, written down.
+
+Desktop (RTX 5080, Ryzen 7 3700X):
+- `pacman -Q linux-cachyos` comes from `cachyos-v3`.
+- Both monitors at their full refresh rate; HDMI color and refresh look right; VRR and 10-bit where the monitors take them.
+- Suspend and resume work; Hibernate is not offered. To check NVIDIA issue #1343 once a driver says it's fixed: save everything, then follow the test in .agents/research/docs-audit/nvidia-hibernation.md (resume keeps the session, `boot_id` unchanged, no `nv_pmops_freeze -5`).
+- Idle VRAM use (`nvidia-smi`) with the desktop running; only act if it's gigabytes.
+- If the CPU's integrated GPU is enabled, Hyprland draws on the NVIDIA card.
+
+Framework 13 AMD:
+- `pacman -Q linux-cachyos` comes from `cachyos-znver4` (Ryzen 7040).
+- Lid on battery: suspend, then hibernate after 2 h; lid on AC, unplug, wait 2 h: it hibernates.
+- Idle suspend on battery; resume with the Wi-Fi card (MT7922) working, no reboot instead of resume.
+- Headphone jack: no buzz or pop at idle (if there is, `snd_hda_intel power_save=0` for Framework).
+- Fingerprint: lock screen and polkit prompts take it, sudo asks for the password.
+- A USB4 dock: Ethernet and USB behind it work (bolt).
+- Suspend with a VM running.
+- Charge limit set in the BIOS or with `framework_tool --charge-limit`; the battery panel shows it.
+- Console text at the disk password prompt is readable.
