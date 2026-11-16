@@ -3,3 +3,5 @@
 %wheel ALL=(ALL:ALL) ALL
 Defaults timestamp_timeout=10
 Defaults passwd_tries=10
+# No first-use lecture: it would open the first update or install window.
+Defaults lecture=never
