@@ -314,7 +314,7 @@ function isDisabled(disabledResults, entry) {
 // earns the same marker.
 function isMarked(entry, checkedResults, disabledResults) {
   if (!entry) return false
-  return !!((entry.checked && checkedResults && checkedResults[entry.id]) || isDisabled(disabledResults, entry))
+  return !!(entry.current === true || (entry.checked && checkedResults && checkedResults[entry.id]) || isDisabled(disabledResults, entry))
 }
 
 function labelFor(entry) {
@@ -383,6 +383,9 @@ function searchScore(items, entry, query) {
   // An installed app whose name contains the query as a whole word ("zen"
   // for Zen Browser) beats exact-labeled menu entries like Install > Zen.
   else if (entry.kind === "app" && label.split(/\s+/).indexOf(needle) >= 0) score = 0
+  // A row that names the query as one of its aliases ("network" on Network
+  // Settings) beats rows whose label merely starts with it (Network Shares).
+  else if (entry.kind !== "app" && (entry.aliases || []).some(function(a) { return String(a).toLowerCase() === needle })) score = 5
   else if (label.indexOf(needle) === 0) score = 10
   else if (label.indexOf(needle) >= 0) score = 30
   else if (nameText.indexOf(needle) >= 0) score = 40

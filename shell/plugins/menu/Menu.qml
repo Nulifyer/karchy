@@ -77,6 +77,7 @@ Item {
   property var dmenuOptions: []
   property bool dmenuMultiple: false
   property var dmenuSelected: []
+  property bool dmenuCursorToMarked: false
   // What the last confirmed change applied; a failed change returns the checks here.
   property var dmenuSaved: []
   property string dmenuChangeKey: ""
@@ -92,6 +93,11 @@ Item {
   // Resets of filterText reach the search line; its edits come back through setFilter.
   onFilterTextChanged: if (filterInput.text !== filterText) filterInput.text = filterText
   property int selectedIndex: 0
+  // Set on entering a menu: the cursor starts on the current choice (the
+  // font in use, the default layout) once its rows arrive, until you move it.
+  property bool cursorToCurrent: false
+  // Going back puts the cursor on the submenu just left.
+  property string cursorToId: ""
   property bool cursorActive: false
   property int requestSerial: 0
   property int applySerial: 0
@@ -135,7 +141,9 @@ Item {
   property int dividerHeight: Style.space(17)
   property bool searchDivider: false
   property int layoutSerial: 0
-  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : ((root.activeMenu === "record" || root.activeMenu === "appearance.font" || root.activeMenu === "update.kernel") ? Style.space(520) : Style.space(300)), panel.width - Style.gapsOut * 2)
+  // One width for every level, so the card doesn't jump as you go deeper;
+  // it fits the longest shipped label ("Desktop + Microphone + Webcam").
+  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : Style.space(420), panel.width - Style.gapsOut * 2)
   property int visibleRowsHeight: root.dmenuActive ? dmenuRowListHeight(layoutSerial, displayModel.count, filterText) : rowListHeight(layoutSerial, displayModel.count, filterText, searchDivider)
   property int cardHeight: root.dmenuActive
     ? Math.min(contentMargin * 2 + headerHeight + (mode === "input" ? 0 : contentSpacing + visibleRowsHeight), panel.height - Style.gapsOut * 2)
@@ -455,7 +463,10 @@ Item {
         parent: menuId,
         kind: "action",
         icon: "",
-        iconName: (value === current) ? "ui.check" : (spec.iconName || ""),
+        iconName: spec.iconName || "",
+        // The current choice gets the same check mark on the right as a
+        // `checked:` row, and the cursor starts on it.
+        current: value === current,
         label: label,
         title: "",
         target: "",
@@ -626,6 +637,28 @@ Item {
   // A menu with nothing selectable in it -- every app in it already installed
   // -- shows no cursor at all, and grows one the moment a row can take it.
   function settleCursor() {
+    var backTo = root.cursorToId
+    root.cursorToId = ""
+    if (backTo && !root.filterText && !root.dmenuActive) {
+      for (var k = 0; k < displayModel.count; k++) {
+        var back = displayModel.get(k)
+        if (back.target !== backTo || back.disabled) continue
+        root.selectedIndex = k
+        root.cursorActive = true
+        root.cursorToCurrent = false
+        return
+      }
+    }
+    if (root.cursorToCurrent && !root.filterText && !root.dmenuActive) {
+      for (var i = 0; i < displayModel.count; i++) {
+        var row = displayModel.get(i)
+        if (!row.marked || row.disabled) continue
+        root.selectedIndex = i
+        root.cursorActive = true
+        root.cursorToCurrent = false
+        return
+      }
+    }
     var target = root.nextSelectable(root.selectedIndex, 1)
     root.selectedIndex = target >= 0 ? target : 0
     root.cursorActive = target >= 0
@@ -678,8 +711,14 @@ Item {
         provider: "",
         score: i,
         section: "",
-        marked: false
+        // A single pick shows the current value (--selected) checked, as the
+        // menu's own lists do, and opens on it.
+        marked: !root.dmenuMultiple && root.dmenuSelected.indexOf(MenuModel.dmenuValue(root.dmenuOptions[i])) !== -1
       })
+      if (root.dmenuCursorToMarked && !query && displayModel.get(displayModel.count - 1).marked) {
+        selectedIndex = displayModel.count - 1
+        root.dmenuCursorToMarked = false
+      }
     }
 
     layoutSerial += 1
@@ -735,7 +774,8 @@ Item {
         if (!root.isDescendantOf(entry.id, active)) continue
         if (!root.matchesQuery(entry, query)) continue
 
-        var detail = root.parentPathFor(entry.id)
+        // Apps need no "Apps" subtitle; every other row shows where it lives.
+        var detail = entry.kind === "app" ? "" : root.parentPathFor(entry.id)
         var row = root.displayRow(entry, detail, root.searchScore(entry, query))
         if (entry.parent === active) currentRows.push(row)
         else drilldownRows.push(row)
@@ -748,11 +788,19 @@ Item {
 
       currentRows.sort(searchSort)
       drilldownRows.sort(searchSort)
-      root.searchDivider = currentRows.length > 0 && drilldownRows.length > 0
+      // This level's rows come first, unless a deeper row matches in a better
+      // tier (its name, against a row matched only by an alias or its
+      // description): "install package" puts Install Package above the
+      // Packages submenu, whose alias is "install". The second group sits
+      // below the divider ("drilldown" names that section).
+      var tier = function(rowsOf) { return rowsOf.length ? Math.floor(rowsOf[0].score / 1000) : Infinity }
+      var first = currentRows, second = drilldownRows
+      if (tier(drilldownRows) < tier(currentRows)) { first = drilldownRows; second = currentRows }
+      root.searchDivider = first.length > 0 && second.length > 0
       if (root.searchDivider) {
-        for (var d = 0; d < drilldownRows.length; d++) drilldownRows[d].section = "drilldown"
+        for (var d = 0; d < second.length; d++) second[d].section = "drilldown"
       }
-      rows = currentRows.concat(drilldownRows)
+      rows = first.concat(second)
     } else {
       for (var j = 0; j < root.itemOrder.length; j++) {
         var child = root.item(root.itemOrder[j])
@@ -811,6 +859,7 @@ Item {
   }
 
   function select(delta) {
+    root.cursorToCurrent = false
     if (displayModel.count === 0) return
 
     root.disarmPointer()
@@ -827,6 +876,7 @@ Item {
     panel.freezeCardTop()
     root.filterText = nextFilter
     root.selectedIndex = 0
+    root.cursorToCurrent = false
     root.cursorActive = root.mode !== "input"
     root.disarmPointer()
     if (!root.dmenuActive && root.filterText.trim()) root.loadProvidersForSearch()
@@ -840,6 +890,7 @@ Item {
     root.activeMenu = id
     root.filterText = ""
     root.selectedIndex = 0
+    root.cursorToCurrent = true
     root.cursorActive = true
     if (fromPointer) pointerGate.allowInitialSample()
     else root.disarmPointer()
@@ -850,6 +901,7 @@ Item {
 
   function goBack() {
     if (root.activeMenu === "root") return false
+    root.cursorToId = root.activeMenu
 
     if (root.navStack.length > 0) {
       var previous = root.navStack[root.navStack.length - 1]
@@ -989,6 +1041,7 @@ Item {
     dmenuChangeKey = String(payload.changeKey || JSON.stringify(dmenuOnChange))
     dmenuSelected = MenuModel.dmenuSelections(dmenuOptions, Array.isArray(payload.selected) ? payload.selected : [], dmenuOnChange.length > 0)
     dmenuSaved = dmenuSelected
+    dmenuCursorToMarked = !dmenuMultiple && dmenuSelected.length > 0
     if (dmenuOnChange.length > 0)
       dmenuSelected = MenuModel.dmenuSelections(dmenuOptions, selectionProc.requestedSelection(), true)
     selectionFile = String(payload.selectionFile || "")
@@ -1045,6 +1098,7 @@ Item {
   function selectFromPointer(index, item, mouse) {
     if (!pointerGate.moved(item, mouse)) return
     if (!root.rowSelectable(index)) return
+    root.cursorToCurrent = false
     root.cursorActive = true
     root.selectedIndex = index
   }
@@ -1424,7 +1478,10 @@ Item {
             anchors.fill: filterInput
             verticalAlignment: Text.AlignVCenter
             visible: !root.filterText && !filterInput.preeditText
-            text: root.dmenuActive ? (root.dmenuPrompt + "…") : ((root.item(root.activeMenu) ? (root.item(root.activeMenu).title || root.item(root.activeMenu).label) : "Go") + "…")
+            // The root says what typing does; a submenu says where you are.
+            text: root.dmenuActive ? (root.dmenuPrompt + "…")
+              : (root.activeMenu !== "root" && root.item(root.activeMenu)) ? (Commons.I18n.rightToLeft ? root.pathFor(root.activeMenu).replace(/ › /g, " ‹ ") : root.pathFor(root.activeMenu))
+              : ((root.item("root") ? root.item("root").label : "Search") + "…")
             color: root.foreground
             opacity: 0.58
             font.family: root.fontFamily
@@ -1625,7 +1682,7 @@ Item {
                   visible: !row.marked
                   text: row.kind === "menu" || row.kind === "link" ? (Commons.I18n.rightToLeft ? "‹" : "›") : ""
                   color: row.hasCursor ? root.selectedText : root.foreground
-                  opacity: row.kind === "menu" || row.kind === "link" ? 0.36 : 0
+                  opacity: row.kind === "menu" || row.kind === "link" ? 0.55 : 0
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.heading
                   font.weight: Font.Normal

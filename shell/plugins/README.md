@@ -19,7 +19,7 @@ User-installed plugins live alongside these conceptually but on disk under
 | Containers | `karchy.containers` | `bar-widget`, `panel` | `containers/Panel.qml`, `containers/Window.qml` |
 | Image picker | `karchy.image-picker` | `overlay` | `image-picker/ImagePicker.qml` |
 | Lock Screen | `karchy.lock` | `service` | `lock/Service.qml` |
-| Karchy menu | `karchy.menu` | `menu`, `bar-widget` | `menu/Menu.qml`, `menu/BarWidget.qml` |
+| Menu (bar: Menu button) | `karchy.menu` | `menu`, `bar-widget` | `menu/Menu.qml`, `menu/BarWidget.qml` |
 | Notifications | `karchy.notifications` | `service` | `notifications/Service.qml` |
 | On-screen display | `karchy.osd` | `panel` | `osd/Osd.qml` |
 | Audio | `karchy.audio` | `bar-widget` | `panels/audio/Panel.qml` |

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "karchy.menu",
-  "name": "Karchy menu",
+  "name": "Menu button",
   "version": "1.0.0",
   "author": "Karchy",
   "description": "Quickshell-powered Karchy command menu",
@@ -15,8 +15,8 @@
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {
-    "displayName": "Karchy menu",
-    "description": "Launches the Karchy menu",
+    "displayName": "Menu button",
+    "description": "Opens the menu (Super+Space works either way)",
     "category": "Compositor",
     "allowMultiple": false
   }
