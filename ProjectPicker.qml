@@ -4,6 +4,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.Commons
+// Colors always come through the namespace: a bare `Color` can resolve to
+// another module's type of that name, which has none of the shell's roles.
+import qs.Commons as Commons
 import qs.Ui
 import "Search.js" as Search
 
@@ -16,6 +19,10 @@ Item {
   readonly property string pluginId: "nulifyer.project-picker"
   readonly property string home: Quickshell.env("HOME")
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("projects.py").toString().replace(/^file:\/\//, ""))
+  // karchy runs the same shell under its own name and config folder.
+  readonly property bool onKarchy: !!Quickshell.env("KARCHY_PATH")
+  readonly property string settingsPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config")
+    + (onKarchy ? "/karchy" : "/omarchy") + "/shell.json"
   property string projectsRoot: Quickshell.env("Z_PROJECTS_ROOT") || home + "/Projects"
   property var editor: ["code"]
   property var projects: []
@@ -31,7 +38,13 @@ Item {
   readonly property int padding: Style.spacing.panelPadding
   readonly property int cardWidth: Math.min(Style.space(720), panel.width - Style.gapsOut * 2)
   readonly property int cardHeight: Math.min(Style.space(500), panel.height - Style.gapsOut * 2)
-  readonly property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", Color.menu.selectedBorder, 0)
+  readonly property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", Commons.Color.menu.selectedBorder, 0)
+  // Secondary text and errors use the shell's derived roles where it has them
+  // (karchy), else the menu text at reduced opacity and the theme's red.
+  readonly property color quietText: typeof Commons.Color.secondaryText === "function"
+    ? Commons.Color.secondaryText(Commons.Color.menu.text, Commons.Color.menu.background)
+    : Util.alpha(Commons.Color.menu.text, 0.55)
+  readonly property color errorColor: Commons.Color.status ? Commons.Color.status.error : Commons.Color.urgent
 
   function open(payloadJson) {
     var initialQuery = ""
@@ -133,10 +146,13 @@ Item {
   }
 
   FileView {
-    path: (Quickshell.env("XDG_CONFIG_HOME") || root.home + "/.config") + "/omarchy/shell.json"
+    path: root.settingsPath
     watchChanges: true
+    printErrors: false
     onFileChanged: reload()
     onLoaded: root.loadSettings(text())
+    // No settings file: the shell runs on its defaults, and so does the picker.
+    onLoadFailed: root.loadSettings("{}")
   }
 
   PointerMoveGate { id: pointerGate; referenceItem: card }
@@ -205,7 +221,7 @@ Item {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
-    Rectangle { anchors.fill: parent; color: Color.menu.scrim }
+    Rectangle { anchors.fill: parent; color: Commons.Color.menu.scrim }
     MouseArea { anchors.fill: parent; onClicked: root.dismiss() }
 
     BorderSurface {
@@ -214,8 +230,8 @@ Item {
       width: root.cardWidth
       height: root.cardHeight
       radius: Style.cornerRadius
-      color: Color.menu.background
-      borderSpec: Border.surfaceSpec("menu", "border", Color.menu.border, Math.max(1, Style.space(2)))
+      color: Commons.Color.menu.background
+      borderSpec: Border.surfaceSpec("menu", "border", Commons.Color.menu.border, Math.max(1, Style.space(2)))
       padding: root.padding
 
       MouseArea { anchors.fill: parent; onClicked: search.forceActiveFocus() }
@@ -236,7 +252,7 @@ Item {
             id: title
             text: "Projects"
             textFormat: Text.PlainText
-            color: Color.menu.text
+            color: Commons.Color.menu.text
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.title
             font.bold: true
@@ -248,8 +264,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: scan.running ? "Searching…" : root.results.length + " / " + root.projects.length
             textFormat: Text.PlainText
-            color: Color.menu.text
-            opacity: 0.58
+            color: root.quietText
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
           }
@@ -259,7 +274,7 @@ Item {
           id: search
           width: parent.width
           height: Math.max(Style.space(40), implicitHeight)
-          foreground: Color.menu.text
+          foreground: Commons.Color.menu.text
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
           placeholderText: "Search projects or paths…"
@@ -286,7 +301,8 @@ Item {
           id: list
           width: parent.width
           height: Math.max(0, card.height - card.contentTopInset - card.contentBottomInset
-            - header.height - search.height - footer.height - errorLabel.height - parent.spacing * 4)
+            - header.height - search.height - footer.height
+            - (errorLabel.visible ? errorLabel.implicitHeight + parent.spacing : 0) - parent.spacing * 3)
           clip: true
           model: root.results
           boundsBehavior: Flickable.StopAtBounds
@@ -299,7 +315,7 @@ Item {
             height: Math.max(root.rowHeight, rowContent.implicitHeight + Style.spacing.controlPaddingY * 2
               + Border.top(root.selectedBorderSpec) + Border.bottom(root.selectedBorderSpec))
             radius: Style.cornerRadius
-            color: index === root.selectedIndex ? Color.menu.selectedBackground : "transparent"
+            color: index === root.selectedIndex ? Commons.Color.menu.selectedBackground : "transparent"
             borderSpec: index === root.selectedIndex ? root.selectedBorderSpec : Border.none()
 
             Column {
@@ -316,7 +332,7 @@ Item {
                 text: Search.plainLabel(row.modelData.name)
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
-                color: row.index === root.selectedIndex ? Color.menu.selectedText : Color.menu.text
+                color: row.index === root.selectedIndex ? Commons.Color.menu.selectedText : Commons.Color.menu.text
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.body
                 font.bold: true
@@ -326,8 +342,7 @@ Item {
                 text: Search.plainLabel(row.modelData.displayPath)
                 textFormat: Text.PlainText
                 elide: Text.ElideMiddle
-                color: Color.menu.text
-                opacity: 0.52
+                color: root.quietText
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.caption
               }
@@ -347,8 +362,7 @@ Item {
             visible: root.results.length === 0
             text: scan.running ? "Looking for projects…" : search.text.length ? "No matching projects" : "Add a folder to ~/Projects to get started"
             textFormat: Text.PlainText
-            color: Color.menu.text
-            opacity: 0.58
+            color: root.quietText
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.body
             width: parent.width
@@ -359,11 +373,13 @@ Item {
 
         Text {
           id: errorLabel
+          // Hidden rather than zero height: an explicit height makes the
+          // multi-line elide below depend on itself.
+          visible: text.length > 0
           width: parent.width
-          height: text.length ? implicitHeight : 0
           text: root.launchError || root.errorText
           textFormat: Text.PlainText
-          color: Color.urgent
+          color: root.errorColor
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.caption
           wrapMode: Text.Wrap
@@ -376,8 +392,7 @@ Item {
           width: parent.width
           text: "Enter  editor     Ctrl+E  terminal     Ctrl+R  refresh     Esc  close"
           textFormat: Text.PlainText
-          color: Color.menu.text
-          opacity: 0.58
+          color: root.quietText
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.caption
           wrapMode: Text.Wrap

@@ -21,12 +21,17 @@ Then set up Ctrl+Alt+P using the included installer:
 python3 ~/.config/omarchy/plugins/nulifyer.project-picker/install.py
 ```
 
+On [karchy](https://github.com/Nulifyer/karchy), use `karchy plugin add` with
+the same URL; the plugin lands in `~/.config/karchy/plugins/` and the installer
+below works the same way, using `karchy` and `karchy-shell`.
+
 This enables the plugin and adds the shortcut to `~/.config/hypr/bindings.lua`.
 It backs up previous configuration under
 `~/.local/state/nulifyer.project-picker/backups/` and validates Hyprland after
 updating the shortcut. Running it again does not duplicate the binding. An
 existing global Ctrl+Alt+P binding is explicitly unbound, and the installer
-reports its previous action.
+reports its previous action. If your desktop configuration already binds
+Ctrl+Alt+P to the picker, the installer leaves your bindings alone.
 
 Omarchy does not execute the included installer automatically. To configure the
 shortcut by hand instead, add the following to `~/.config/hypr/bindings.lua`,
@@ -95,7 +100,11 @@ is managed by the desktop session.
 
 The picker uses the same `[menu]` surface roles as Omarchy's menu, clipboard,
 and emoji plugins. Background, text, scrim, selected-row colors, and border
-specifications come from `qs.Commons.Color` and `Border`. Selected rows support
+specifications come from `qs.Commons.Color` and `Border`. The plugin reads
+colors as `Commons.Color` (imported `as Commons`): a bare `Color` resolves to
+Qt Quick's own `Color` type, which has none of the shell's roles. On karchy,
+secondary text and errors use its derived `secondaryText` and `status.error`
+roles. Selected rows support
 the menu's border widths, gradients, and per-side overrides. Secondary text
 uses the menu foreground with reduced opacity, matching the built-in menu.
 
@@ -108,7 +117,7 @@ colors and geometry without restarting the plugin.
 ## Configure
 
 Edit the plugin's entry inside the existing `plugins` array in
-`~/.config/omarchy/shell.json`. Preserve the surrounding configuration:
+`~/.config/omarchy/shell.json` (`~/.config/karchy/shell.json` on karchy). Preserve the surrounding configuration:
 
 ```json
 {
