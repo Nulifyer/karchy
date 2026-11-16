@@ -543,6 +543,10 @@ end
 -- but not for the windows, so each one is brought in line with the modes as they
 -- now stand: moving the default away from floating has to give back what it
 -- floated, even though nothing names those workspaces any more.
+-- Also used by SUPER + T: a window floated from tiling would otherwise keep
+-- its tiled size, which on a lone window is the whole screen.
+M.place = place
+
 function M.apply()
   -- A default that no longer floats can leave no saved mode at all to start the
   -- watchers, while the windows it floated still carry its tags.

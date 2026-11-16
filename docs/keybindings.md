@@ -65,8 +65,8 @@ This is the complete default set. Anything not listed is unbound. New bindings n
 
 | Key | Action | Tag |
 |---|---|---|
-| Super+Shift+S | Region screenshot with annotation (Omasnap) | [New] |
-| Print | Screenshot (region, window or screen) with annotation (Omasnap) | [O] |
+| Super+Shift+S | Region screenshot (Omasnap): saved and copied; its notification has Open and Edit (annotate) | [New] |
+| Print | Screenshot of a region, window or screen (Omasnap): saved and copied; its notification has Open and Edit (annotate) | [O] |
 | Alt+Print | Start/stop screen recording | [O] |
 
 ## Hardware keys (also work on the lock screen)

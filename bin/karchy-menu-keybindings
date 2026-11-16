@@ -429,6 +429,8 @@ dynamic_bindings() {
 
       # The Copilot key just duplicates an existing binding, so keep it hidden
       [[ $key == "code:201" ]] && continue
+      # Lid and other switches aren't keys anyone presses.
+      [[ $key == switch:* ]] && continue
 
       case "$key" in
         comma) key="COMMA" ;;
@@ -437,20 +439,21 @@ dynamic_bindings() {
         minus) key="MINUS" ;;
         equal) key="EQUAL" ;;
         slash) key="SLASH" ;;
+        mouse_down) key="SCROLL DOWN" ;;
+        mouse_up) key="SCROLL UP" ;;
+        mouse:272) key="LEFT DRAG" ;;
+        mouse:273) key="RIGHT DRAG" ;;
       esac
 
       modifiers=$(modmask_to_text "$modmask")
       arg="${arg//~\/.local\/share\/karchy\/bin\//}"
 
-      printf '%s,%s,%s,%s,%s\n' "$modifiers" "$key" "$description" "$dispatcher" "$arg"
+      # The records are comma-separated, so a comma in a description travels
+      # as \x1e and parse_binding_records turns it back.
+      printf '%s,%s,%s,%s,%s\n' "$modifiers" "$key" "${description//,/$'\x1e'}" "$dispatcher" "$arg"
     done
 }
 
-# Hardcoded bindings, like the copy-url extension and such
-static_bindings() {
-  echo "SHIFT ALT,L,Copy URL from Web App,sendshortcut,SHIFT ALT,L,"
-  echo "SHIFT ALT,D,Download Video from Web App,sendshortcut,SHIFT ALT,D,"
-}
 
 # Actions Karchy binds to a second chord meant as an alternative, named one at
 # a time. A rule would be wrong here: Alt + Tab and Shift + Alt + Tab both say
@@ -495,6 +498,7 @@ BEGIN {
 
     # Use description, if set
     action = $3;
+    gsub(/\x1e/, ",", action);
     dispatcher = $4;
 
     # Reconstruct the dispatcher arg from the remaining fields
@@ -521,6 +525,11 @@ BEGIN {
     # SUPER + Q -> Close window". Both halves have to agree on what they run,
     # since a label is only what a chord is called; an unresolved dispatcher
     # says nothing at all, so it never counts as agreement.
+    # A chord that also brings the window to the top (Alt + Tab) is one key
+    # with two binds; the companion bind adds nothing to read.
+    if (action == "Reveal active window on top" && key_combo in chord_seen) next;
+    chord_seen[key_combo] = 1;
+
     if (action != "") {
         action_key = action SUBSEP dispatcher SUBSEP arg;
         together = "";
@@ -597,8 +606,8 @@ prioritize_entries() {
     if (match(line, /Focus/))  prio = 33
     if (match(line, /Move window$/))  prio = 34
     if (match(line, /Resize window/))  prio = 35
-    if (match(line, /Expand window/))  prio = 36
-    if (match(line, /Shrink window/))  prio = 37
+    if (match(line, /Make window (narrower|wider)/))  prio = 36
+    if (match(line, /Make window (shorter|taller)/))  prio = 37
     if (match(line, /scratchpad|Quake console/))  prio = 38
     if (match(line, /notification/))  prio = 39
     if (match(line, /Toggle window transparency/))  prio = 40
@@ -667,7 +676,6 @@ output_binding_records_uncached() {
 
   {
     [[ -n $dynamic ]] && printf '%s\n' "$dynamic"
-    static_bindings
   } |
     dedupe_binding_records |
     parse_keycodes |
@@ -682,7 +690,7 @@ output_binding_records_uncached() {
 
 keybindings_cache_key() {
   {
-    printf 'v19\n'
+    printf 'v20\n'
     leading_keyboard
     karchy-language 2>/dev/null
     cat "$KARCHY_PATH/default/i18n/$(karchy-language 2>/dev/null)/keybindings.json" 2>/dev/null

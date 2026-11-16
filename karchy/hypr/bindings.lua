@@ -13,14 +13,28 @@ o.bind("SUPER + SHIFT + LEFT", "Swap window to the left", hl.dsp.window.swap({ d
 o.bind("SUPER + SHIFT + RIGHT", "Swap window to the right", hl.dsp.window.swap({ direction = "r" }))
 o.bind("SUPER + SHIFT + UP", "Swap window up", hl.dsp.window.swap({ direction = "u" }))
 o.bind("SUPER + SHIFT + DOWN", "Swap window down", hl.dsp.window.swap({ direction = "d" }))
-o.bind("SUPER + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
+-- A tiled window floats at a comfortable size in the middle of the screen,
+-- as windows on a floating workspace open.
+local function toggle_floating()
+  local window = hl.get_active_window()
+  if not window then
+    return
+  end
+  local tiled = not window.floating
+  hl.dispatch(hl.dsp.window.float({ action = "toggle" }))
+  if tiled then
+    require("default.hypr.workspace-modes").place(window)
+  end
+end
+o.bind_expressions[toggle_floating] = 'hl.dsp.window.float({ action = "toggle" })'
+o.bind("SUPER + T", "Toggle window floating/tiling", toggle_floating)
 o.bind("SUPER + M", "Minimize all windows", "karchy-hyprland-window-minimize --all")
 o.bind("SUPER + SHIFT + M", "Restore minimized windows", "karchy-hyprland-window-restore --all")
 o.bind("SUPER + F", "Full screen", hl.dsp.window.fullscreen({ mode = "fullscreen" }))
-o.bind("SUPER + code:20", "Expand window left", hl.dsp.window.resize({ x = -100, y = 0, relative = true }))
-o.bind("SUPER + code:21", "Shrink window left", hl.dsp.window.resize({ x = 100, y = 0, relative = true }))
-o.bind("SUPER + SHIFT + code:20", "Shrink window up", hl.dsp.window.resize({ x = 0, y = -100, relative = true }))
-o.bind("SUPER + SHIFT + code:21", "Expand window down", hl.dsp.window.resize({ x = 0, y = 100, relative = true }))
+o.bind("SUPER + code:20", "Make window narrower", hl.dsp.window.resize({ x = -100, y = 0, relative = true }))
+o.bind("SUPER + code:21", "Make window wider", hl.dsp.window.resize({ x = 100, y = 0, relative = true }))
+o.bind("SUPER + SHIFT + code:20", "Make window shorter", hl.dsp.window.resize({ x = 0, y = -100, relative = true }))
+o.bind("SUPER + SHIFT + code:21", "Make window taller", hl.dsp.window.resize({ x = 0, y = 100, relative = true }))
 o.bind("SUPER + mouse:272", "Move window", hl.dsp.window.drag(), { mouse = true })
 o.bind("SUPER + mouse:273", "Resize window", hl.dsp.window.resize(), { mouse = true })
 -- Each Alt+Tab chord carries two binds, as in Omarchy: focus, then raise.
