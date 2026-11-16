@@ -93,12 +93,16 @@ base_repos_live() {
     done <"$keyring/karchy-trusted"
   fi
 
-  # Bootstrap mirrors until the cachyos-mirrorlist packages are installed: the
-  # CDN, then CachyOS's own server, which has new packages first (the CDN can
-  # list a package in its database before it holds the file, and pacman then
-  # tries the next server).
+  # Bootstrap mirrors until the cachyos-mirrorlist packages are installed:
+  # CachyOS's own list, shipped with the installer (install/cachyos-mirrorlist),
+  # with $arch spelled out as the directory $1. All of its mirrors, because a
+  # mirror can list a package in its database before it holds the file, and
+  # pacman then tries the next server.
   cachyos_bootstrap_mirrors() {
-    printf 'Server = https://cdn77.cachyos.org/repo/%s/$repo\nServer = https://mirror.cachyos.org/repo/%s/$repo\n' "$1" "$1"
+    local line
+    while IFS= read -r line; do
+      [[ $line == "Server = "* ]] && printf '%s\n' "${line//\$arch/$1}"
+    done <"$KARCHY_SRC/install/cachyos-mirrorlist"
   }
   if [[ ! -f /etc/pacman.d/cachyos-mirrorlist ]]; then
     # shellcheck disable=SC2016  # pacman expands $arch and $repo
