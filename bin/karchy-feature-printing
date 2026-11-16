@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Add or remove printing and scanning (Settings › Optional features, D-38)
+# karchy:summary=Add or remove printing and scanning (Quick install › System features, D-38)
 # karchy:args=status | install | remove
 # karchy:hidden=true
 

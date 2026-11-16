@@ -34,6 +34,14 @@ setup_packages() {
   # karchy's choices first, as dependencies, so the meta-packages find them.
   in_target pacman -Sy --needed --noconfirm --asdeps pipewire-jack qt6-multimedia-ffmpeg tesseract-data-eng
   in_target pacman -S --needed --noconfirm "${packages[@]}"
+  # The apps karchy ships, installed as the user's own (explicitly), so each
+  # can be removed in Quick install (D-71). The list is the installed
+  # catalog's default entries; the ones karchy needs are dependencies above.
+  local -a apps
+  mapfile -t apps < <(jq -r '.apps[] | select(.default and (.required | not)) | .packages[]' \
+    "$KARCHY_MNT/usr/share/karchy/default/karchy/quick-install.json")
+  ((${#apps[@]})) || die "The list of apps karchy ships couldn't be read from the installed karchy package."
+  in_target pacman -S --needed --noconfirm "${apps[@]}"
   # The signing key as a package keeps it current (rotation, revocation).
   if in_target pacman -Si karchy-keyring >/dev/null 2>&1; then
     in_target pacman -S --needed --noconfirm karchy-keyring

@@ -32,6 +32,11 @@ o.window("omacalc", { float = true })
 o.window({ title = "^karchy Settings$" }, { float = true })
 o.window({ title = "^karchy Settings$" }, { center = true })
 
+-- Quick install is a shell window too. Tiled beside another window, its rows
+-- and key hints are cut short.
+o.window({ title = "^Quick install$" }, { float = true })
+o.window({ title = "^Quick install$" }, { center = true })
+
 -- Fullscreen screensaver.
 o.window("org.karchy.screensaver", { fullscreen = true })
 o.window("org.karchy.screensaver", { float = true })

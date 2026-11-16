@@ -32,6 +32,7 @@ User-installed plugins live alongside these conceptually but on disk under
 | Speed Test | `karchy.speedtest` | `panel` | `panels/speedtest/Panel.qml` |
 | Wi-Fi QR | `karchy.wifiqr` | `panel` | `panels/wifiqr/Panel.qml` |
 | Polkit Agent | `karchy.polkit` | `service` | `polkit/PolkitAgent.qml` |
+| Quick install | `karchy.quick-install` | `panel` | `quick-install/Window.qml` |
 | Reminders | `karchy.reminders` | `overlay` | `reminders/ReminderFlow.qml` |
 | Battery | `karchy.battery` | `service` | `services/battery/Service.qml` |
 | Idle | `karchy.idle` | `service` | `services/idle/Service.qml` |

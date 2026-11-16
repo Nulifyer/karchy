@@ -38,7 +38,6 @@ Item {
     { id: "network", label: "Network", iconName: "net.network" },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
     { id: "apps", label: "Default apps", iconName: "menu.apps" },
-    { id: "features", label: "Optional features", iconName: "features" },
     { id: "about", label: "About", iconName: "info" }
   ]
 
@@ -230,7 +229,6 @@ Item {
               case "network": return "NetworkSection.qml"
               case "appearance": return "AppearanceSection.qml"
               case "apps": return "DefaultAppsSection.qml"
-              case "features": return "FeaturesSection.qml"
               case "about": return "AboutSection.qml"
               default: return "DisplaysSection.qml"
             }

@@ -25,6 +25,7 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 
 ```text
 shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they land
+tools/quick-install-search-check   # the Quick install window's search ranking, against the real list
 ```
 
 ## Full checks

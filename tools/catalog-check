@@ -1,0 +1,243 @@
+#!/usr/bin/env python3
+"""Check the Quick install list (default/karchy/quick-install.json, D-70).
+
+Usage:
+  tools/catalog-check            Check the list; exit 1 on any error
+  tools/catalog-check --strict   Treat AUR health warnings as errors too
+
+Errors:
+  - malformed entries: missing fields, duplicate ids, unknown categories,
+    a feature script that isn't in bin/
+  - a main package (the first) that its stated source doesn't carry:
+    "arch" means Arch's core, extra or multilib; "cachyos" the generic
+    [cachyos] repo karchy uses; "omarchy" the [omarchy] repo; "aur" the AUR.
+    The other packages must be in one of those repos, or the AUR when the
+    entry's source is "aur"
+  - a package karchy depends on, directly or through other packages, so
+    the entry could never remove it, unless the entry says it is `required`
+    (shown, not removable)
+  - an entry whose packages conflict with each other, repeat, or aren't
+    plain package names
+  - the apps karchy ships (karchy-desktop's optdepends) and the list's
+    `default` entries differ (D-71)
+
+  - the wrong build: Arch's own package when it carries the app, otherwise
+    the -bin build (a signed repo's, then a well-kept AUR one), and a source
+    build only when no -bin exists
+
+Warnings (errors with --strict): AUR packages that are no longer well kept,
+the bar for being listed at all: 100+ votes, a maintainer, not flagged out
+of date.
+
+It downloads the repositories' package lists and asks the AUR's API, so it
+needs the network. Runs in CI (.github/workflows/checks.yml).
+"""
+import io, json, os, re, sys, tarfile, urllib.parse, urllib.request
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+CATALOG = os.path.join(ROOT, 'default/karchy/quick-install.json')
+REPOS = {
+    'core': 'https://geo.mirror.pkgbuild.com/core/os/x86_64/core.db',
+    'extra': 'https://geo.mirror.pkgbuild.com/extra/os/x86_64/extra.db',
+    'multilib': 'https://geo.mirror.pkgbuild.com/multilib/os/x86_64/multilib.db',
+    'cachyos': 'https://mirror.cachyos.org/repo/x86_64/cachyos/cachyos.db',
+    'omarchy': 'https://pkgs.omarchy.org/stable/x86_64/omarchy.db',
+}
+SOURCES = {'arch': {'core', 'extra', 'multilib'}, 'cachyos': {'cachyos'}, 'omarchy': {'omarchy'}}
+UA = {'User-Agent': 'karchy-catalog-check'}
+
+
+def fetch(url):
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+        return r.read()
+
+
+def bare(dep):
+    return re.split(r'[<>=:]', dep)[0]
+
+
+def repo_db(url, meta):
+    """Package names and what they provide, from a pacman sync database;
+    adds each package's provides, conflicts and depends to `meta`."""
+    names = set()
+    with tarfile.open(fileobj=io.BytesIO(fetch(url))) as tar:
+        for m in tar.getmembers():
+            if not m.name.endswith('/desc'):
+                continue
+            text = tar.extractfile(m).read().decode('utf-8', 'replace')
+            sections = dict(re.findall(r'%([A-Z]+)%\n(.*?)(?:\n\n|\Z)', text, re.S))
+            name = sections.get('NAME', '').strip()
+            fields = {k: [bare(x) for x in sections.get(k.upper(), '').split()] for k in ('provides', 'conflicts', 'depends')}
+            names.add(name)
+            names.update(fields['provides'])
+            meta.setdefault(name, fields)
+    return names
+
+
+def closure(roots, meta):
+    """Every package `roots` pull in, through dependencies and providers."""
+    providers = {}
+    for name, f in meta.items():
+        for p in f['provides']:
+            providers.setdefault(p, name)
+    seen, todo = set(), list(roots)
+    while todo:
+        dep = todo.pop()
+        pkg = dep if dep in meta else providers.get(dep)
+        if not pkg or pkg in seen:
+            continue
+        seen.add(pkg)
+        todo.extend(meta[pkg]['depends'])
+    return seen
+
+
+def karchy_base():
+    base = set()
+    pkgdir = os.path.join(ROOT, 'packaging/pkgbuilds')
+    for name in os.listdir(pkgdir):
+        if 'nvidia' in name or name == 'nulifyer-vpn':
+            continue
+        f = os.path.join(pkgdir, name, 'PKGBUILD')
+        if not os.path.exists(f):
+            continue
+        text = '\n'.join(l.split('#', 1)[0] for l in open(f).read().splitlines())
+        for m in re.finditer(r'\bdepends=\((.*?)\)', text, re.S):
+            base |= set(re.findall(r"'([^'<>=]+)", m.group(1)))
+    return base
+
+
+def main():
+    strict = '--strict' in sys.argv[1:]
+    errors, warnings = [], []
+    data = json.load(open(CATALOG))
+    cats = {c['id'] for c in data['categories']}
+    ids = set()
+    for a in data['apps']:
+        where = a.get('id', '?')
+        for key in ('id', 'name', 'category', 'description', 'packages', 'source'):
+            if not a.get(key):
+                errors.append(f'{where}: no {key}')
+        if a.get('id') in ids:
+            errors.append(f'{where}: duplicate id')
+        ids.add(a.get('id'))
+        if a.get('category') not in cats:
+            errors.append(f'{where}: unknown category {a.get("category")!r}')
+        if a.get('feature') and not os.path.exists(os.path.join(ROOT, 'bin', a['feature'])):
+            errors.append(f'{where}: feature script bin/{a["feature"]} is missing')
+        if a.get('source') not in ('arch', 'cachyos', 'omarchy', 'aur', 'karchy'):
+            errors.append(f'{where}: unknown source {a.get("source")!r}')
+
+    meta = {}
+    repos = {name: repo_db(url, meta) for name, url in REPOS.items()}
+    every_repo = set().union(*repos.values())
+    base = karchy_base()
+    pulled_in = closure(base, meta) - base
+    for a in data['apps']:
+        where, pkgs = a.get('id'), a.get('packages', [])
+        if len(set(pkgs)) != len(pkgs):
+            errors.append(f'{where}: a package is listed twice')
+        for p in pkgs:
+            if not re.fullmatch(r'[a-z0-9@_+][a-z0-9@._+-]*', p):
+                errors.append(f'{where}: {p!r} is not a package name')
+        for x in pkgs:
+            fx = meta.get(x)
+            for y in pkgs:
+                if x == y or not fx:
+                    continue
+                if y in fx['conflicts'] or set(meta.get(y, {}).get('provides', [])) & set(fx['conflicts']):
+                    errors.append(f'{where}: {x} conflicts with {y}, so the entry can never install')
+    def variants(p):
+        stem = re.sub(r'-(bin|git)$', '', p)
+        return stem, stem + '-bin'
+    aur_wanted = {p for a in data['apps'] if a.get('source') == 'aur' for p in a['packages'] if p not in every_repo}
+    aur_wanted |= {v for a in data['apps'] if not a.get('feature') for v in variants(a['packages'][0]) if v not in every_repo}
+    aur_wanted = sorted(aur_wanted)
+    aur = {}
+    for i in range(0, len(aur_wanted), 100):
+        query = '&'.join('arg[]=' + urllib.parse.quote(p) for p in aur_wanted[i:i + 100])
+        for r in json.loads(fetch('https://aur.archlinux.org/rpc/v5/info?' + query))['results']:
+            aur[r['Name']] = r
+
+    for a in data['apps']:
+        src, where = a.get('source'), a.get('id')
+        if a.get('feature'):
+            continue
+        for n, p in enumerate(a.get('packages', [])):
+            if p in base and not a.get('required'):
+                errors.append(f'{where}: {p} is already part of karchy (a dependency, so it could not be removed)')
+            if p in pulled_in and not a.get('required'):
+                errors.append(f'{where}: {p} comes with karchy (another package depends on it), so it could not be removed')
+            if a.get('required') and p not in base:
+                errors.append(f'{where}: marked required, but {p} is not a dependency of karchy\'s packages')
+            # The main package comes from the stated source; the others from
+            # any signed repo, or the AUR when the entry says so.
+            if n == 0 and src in SOURCES and not any(p in repos[r] for r in SOURCES[src]):
+                found = [r for r, names in repos.items() if p in names]
+                errors.append(f'{where}: {p} is not in {src}' + (f' (found in {", ".join(found)})' if found else ''))
+            elif p not in every_repo and src != 'aur':
+                errors.append(f'{where}: {p} is in no signed repository')
+            elif src == 'aur' and p not in every_repo:
+                info = aur.get(p)
+                if not info:
+                    errors.append(f'{where}: {p} is not in the AUR')
+                    continue
+                problems = []
+                if info['NumVotes'] < 100:
+                    problems.append(f'{info["NumVotes"]} votes')
+                if not info['Maintainer']:
+                    problems.append('no maintainer')
+                if info['OutOfDate']:
+                    problems.append('flagged out of date')
+                if problems:
+                    warnings.append(f'{where}: AUR {p} is no longer well kept: {", ".join(problems)}')
+
+    # Which build: Arch's own package when it has one, else the -bin build
+    # (a signed repo's, then a well-kept AUR one); a source build only when
+    # no -bin exists (user 2026-11-15).
+    arch = repos['core'] | repos['extra'] | repos['multilib']
+    signed = repos['cachyos'] | repos['omarchy']
+    def kept(p):
+        i = aur.get(p)
+        return bool(i and i['NumVotes'] >= 100 and i['Maintainer'] and not i['OutOfDate'])
+    for a in data['apps']:
+        if a.get('feature'):
+            continue
+        main = a['packages'][0]
+        stem, b = variants(main)
+        if b in arch:
+            want = b
+        elif stem in arch:
+            want = stem
+        elif b in signed or kept(b):
+            want = b
+        else:
+            want = main
+        if main != want:
+            errors.append(f'{a["id"]}: use {want} instead of {main} (Arch\'s own package first, then the -bin build)')
+
+    # The apps karchy ships (D-71): karchy-desktop's optdepends, installed
+    # by the installer from the catalog's default entries. Both lists match.
+    text = '\n'.join(l.split('#', 1)[0] for l in open(os.path.join(ROOT, 'packaging/pkgbuilds/karchy-desktop/PKGBUILD')).read().splitlines())
+    m = re.search(r'\boptdepends=\((.*?)\n\)', text, re.S)
+    shipped = {re.split(r'[:<>=]', x)[0] for x in re.findall(r"'([^']+)'", m.group(1))} if m else set()
+    defaults = {p for a in data['apps'] if a.get('default') and not a.get('required') for p in a['packages']}
+    for p in sorted(shipped - defaults):
+        errors.append(f'karchy-desktop optdepends {p}, but no default entry in the list installs it')
+    for p in sorted(defaults - shipped):
+        errors.append(f'{p} is in a default entry, but not in karchy-desktop\'s optdepends')
+    for a in data['apps']:
+        if a.get('required') and not a.get('default'):
+            errors.append(f'{a["id"]}: required apps must also be default')
+
+    for w in warnings:
+        print('warning:', w)
+    for e in errors:
+        print('error:', e)
+    if strict:
+        errors += warnings
+    print(f'catalog-check: {len(data["apps"])} apps, {len(errors)} errors, {len(warnings)} warnings')
+    return 1 if errors else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

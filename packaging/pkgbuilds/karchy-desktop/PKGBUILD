@@ -26,18 +26,18 @@ depends=(
   'gnome-themes-extra' 'adw-gtk-theme' 'papirus-icon-theme'
   # Files and mounts (D-24, D-36, D-40)
   'thunar' 'thunar-archive-plugin' 'thunar-volman' 'tumbler' 'ffmpegthumbnailer'
-  'gvfs' 'gvfs-mtp' 'gvfs-smb' 'cifs-utils' 'xarchiver' '7zip' 'udiskie' 'gnome-disk-utility'
-  # Apps (D-34)
-  'foot' 'brave-origin-bin' 'visual-studio-code-bin' 'localsend' 'omacalc' 'imv' 'mpv'
+  'gvfs' 'gvfs-mtp' 'gvfs-smb' 'cifs-utils' 'xarchiver' '7zip' 'udiskie'
+  # The terminal karchy's own commands open; the other apps karchy ships are
+  # optdepends below, so they can be removed (D-71)
+  'foot'
   # Screen sharing: the portal's picker with previews, themed (Omarchy's)
   'hyprland-preview-share-picker'
   # Titlebars with minimize, maximize and close on floating workspaces (D-60)
   'karchy-hyprland-titlebars'
   # Login keyring: the Secret Service for passwords and sign-ins (D-57)
   'oo7' 'libsecret'
-  # Task manager: performance, apps and services, as Windows' (Ctrl+Shift+Esc)
-  'mission-center'
-  # Its per-app network column (limited capabilities: 95-karchy-nethogs.hook)
+  # Mission Center's per-app network column (limited capabilities:
+  # 95-karchy-nethogs.hook)
   'nethogs'
   # Command-line basics scripts and installers expect
   'openssh' 'rsync' 'unzip'
@@ -46,4 +46,20 @@ depends=(
   # Battery state for the shell's battery warnings, power panel and idle
   # suspend; harmless without a battery
   'upower'
+)
+# The apps karchy ships (D-34). The installer installs them explicitly and
+# Quick install lists them as installed, so each can be removed like any app
+# (D-71). They are the `default` entries of default/karchy/quick-install.json;
+# tools/catalog-check keeps this list and those entries the same.
+optdepends=(
+  'brave-origin-bin: the default web browser'
+  'visual-studio-code-bin: the default code editor'
+  'localsend-bin: send files to nearby devices'
+  'omacalc: the calculator'
+  'omawrite: the notepad, and Markdown files open in it'
+  'disktree-bin: see what fills a disk (Open in Disktree on folders)'
+  'imv: the image viewer'
+  'mpv: the video and audio player'
+  'mission-center: the task manager (Ctrl+Shift+Esc)'
+  'gnome-disk-utility: GNOME Disks, for disks and partitions'
 )

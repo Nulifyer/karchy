@@ -1,0 +1,6360 @@
+{
+  "categories": [
+    {
+      "id": "browsers",
+      "name": "Browsers"
+    },
+    {
+      "id": "chat",
+      "name": "Chat & email"
+    },
+    {
+      "id": "office",
+      "name": "Office & notes"
+    },
+    {
+      "id": "media",
+      "name": "Media & creative"
+    },
+    {
+      "id": "gaming",
+      "name": "Gaming"
+    },
+    {
+      "id": "languages",
+      "name": "Languages"
+    },
+    {
+      "id": "editors",
+      "name": "Editors & IDEs"
+    },
+    {
+      "id": "devtools",
+      "name": "Developer tools"
+    },
+    {
+      "id": "databases",
+      "name": "Databases & APIs"
+    },
+    {
+      "id": "cloud",
+      "name": "Cloud & containers"
+    },
+    {
+      "id": "ai",
+      "name": "AI"
+    },
+    {
+      "id": "security",
+      "name": "Passwords & security"
+    },
+    {
+      "id": "network",
+      "name": "Sync & remote"
+    },
+    {
+      "id": "utilities",
+      "name": "Utilities"
+    },
+    {
+      "id": "system",
+      "name": "System features"
+    }
+  ],
+  "apps": [
+    {
+      "id": "brave",
+      "name": "Brave",
+      "category": "browsers",
+      "description": "Web browser that blocks ads and trackers by default (binary release)",
+      "icon": "brave",
+      "packages": [
+        "brave-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "brave-origin",
+      "name": "Brave Origin",
+      "category": "browsers",
+      "description": "Brave without its rewards, wallet, VPN and AI extras; karchy's default web browser",
+      "icon": "brave",
+      "packages": [
+        "brave-origin-bin"
+      ],
+      "source": "cachyos",
+      "default": true,
+      "keywords": [
+        "web",
+        "browser"
+      ]
+    },
+    {
+      "id": "chromium",
+      "name": "Chromium",
+      "category": "browsers",
+      "description": "A web browser built for speed, simplicity, and security",
+      "icon": "chromium",
+      "packages": [
+        "chromium"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "falkon",
+      "name": "Falkon",
+      "category": "browsers",
+      "description": "Cross-platform QtWebEngine browser",
+      "icon": "falkon",
+      "packages": [
+        "falkon"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "firefox",
+      "name": "Firefox",
+      "category": "browsers",
+      "description": "Fast, Private & Safe Web Browser",
+      "icon": "firefox",
+      "packages": [
+        "firefox"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "floorp",
+      "name": "Floorp",
+      "category": "browsers",
+      "description": "Firefox-based web browser focused on performance and customizability",
+      "icon": "",
+      "packages": [
+        "floorp-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "gnome-web",
+      "name": "GNOME Web",
+      "category": "browsers",
+      "description": "A GNOME web browser based on the WebKit rendering engine",
+      "icon": "",
+      "packages": [
+        "epiphany"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Epiphany"
+      ]
+    },
+    {
+      "id": "google-chrome",
+      "name": "Google Chrome",
+      "category": "browsers",
+      "description": "The popular web browser by Google (Stable Channel)",
+      "icon": "google-chrome",
+      "packages": [
+        "google-chrome"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "helium",
+      "name": "Helium",
+      "category": "browsers",
+      "description": "Private, fast, and honest web browser based on Chromium (Latest/Stable)",
+      "icon": "helium",
+      "packages": [
+        "helium-browser-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "konqueror",
+      "name": "Konqueror",
+      "category": "browsers",
+      "description": "KDE File Manager & Web Browser",
+      "icon": "konqueror",
+      "packages": [
+        "konqueror"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lynx",
+      "name": "Lynx",
+      "category": "browsers",
+      "description": "A text browser for the World Wide Web",
+      "icon": "lynx",
+      "packages": [
+        "lynx"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "microsoft-edge",
+      "name": "Microsoft Edge",
+      "category": "browsers",
+      "description": "A browser that combines a minimal design with sophisticated technology to make the web faster, safer, and easier",
+      "icon": "microsoft-edge",
+      "packages": [
+        "microsoft-edge-stable-bin"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "mullvad-browser",
+      "name": "Mullvad Browser",
+      "category": "browsers",
+      "description": "Privacy-focused web browser developed by Mullvad VPN and the Tor Project",
+      "icon": "mullvad-browser",
+      "packages": [
+        "mullvad-browser-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "qutebrowser",
+      "name": "Qutebrowser",
+      "category": "browsers",
+      "description": "A keyboard-driven, vim-like browser based on Python and Qt",
+      "icon": "qutebrowser",
+      "packages": [
+        "qutebrowser"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "tor-browser",
+      "name": "Tor Browser",
+      "category": "browsers",
+      "description": "Securely and easily download, verify, install, and launch Tor Browser in Linux",
+      "icon": "torbrowser",
+      "packages": [
+        "torbrowser-launcher"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ungoogled-chromium",
+      "name": "Ungoogled-chromium",
+      "category": "browsers",
+      "description": "A lightweight approach to removing Google web service dependency",
+      "icon": "",
+      "packages": [
+        "ungoogled-chromium-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "vivaldi",
+      "name": "Vivaldi",
+      "category": "browsers",
+      "description": "An advanced browser made with the power user in mind",
+      "icon": "vivaldi",
+      "packages": [
+        "vivaldi"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "waterfox",
+      "name": "Waterfox",
+      "category": "browsers",
+      "description": "Current/modern generation of customizable privacy-conscious web browser",
+      "icon": "waterfox",
+      "packages": [
+        "waterfox-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "zen",
+      "name": "Zen",
+      "category": "browsers",
+      "description": "Performance oriented Firefox-based web browser",
+      "icon": "zen-browser",
+      "packages": [
+        "zen-browser-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "bridge",
+      "name": "Bridge",
+      "category": "chat",
+      "description": "Integrate ProtonMail paid account with any program that supports IMAP and SMTP (Qt desktop application)",
+      "icon": "protonmail-bridge",
+      "packages": [
+        "protonmail-bridge"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "chat",
+      "description": "All-in-one voice and text chat for gamers",
+      "icon": "discord",
+      "packages": [
+        "discord"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "element",
+      "name": "Element",
+      "category": "chat",
+      "description": "Glossy Matrix collaboration client — desktop version",
+      "icon": "element-desktop",
+      "packages": [
+        "element-desktop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "evolution",
+      "name": "Evolution",
+      "category": "chat",
+      "description": "Manage your email, contacts and schedule",
+      "icon": "evolution",
+      "packages": [
+        "evolution"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "fractal",
+      "name": "Fractal",
+      "category": "chat",
+      "description": "Matrix group messaging app",
+      "icon": "",
+      "packages": [
+        "fractal"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Matrix"
+      ]
+    },
+    {
+      "id": "geary",
+      "name": "Geary",
+      "category": "chat",
+      "description": "A lightweight email client for the GNOME desktop",
+      "icon": "geary",
+      "packages": [
+        "geary"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "halloy",
+      "name": "Halloy",
+      "category": "chat",
+      "description": "An open-source IRC client",
+      "icon": "",
+      "packages": [
+        "halloy"
+      ],
+      "source": "arch",
+      "keywords": [
+        "IRC"
+      ]
+    },
+    {
+      "id": "kmail",
+      "name": "KMail",
+      "category": "chat",
+      "description": "KDE mail client",
+      "icon": "kmail",
+      "packages": [
+        "kmail"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "konversation",
+      "name": "Konversation",
+      "category": "chat",
+      "description": "A user-friendly and fully-featured IRC client",
+      "icon": "konversation",
+      "packages": [
+        "konversation"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mattermost",
+      "name": "Mattermost",
+      "category": "chat",
+      "description": "Mattermost Desktop application",
+      "icon": "mattermost-desktop",
+      "packages": [
+        "mattermost-desktop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mullvad-vpn",
+      "name": "Mullvad VPN",
+      "category": "chat",
+      "description": "Mullvad VPN client (desktop application)",
+      "icon": "mullvad-vpn",
+      "packages": [
+        "mullvad-vpn"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "mullvad-daemon.service"
+        ]
+      }
+    },
+    {
+      "id": "mumble",
+      "name": "Mumble",
+      "category": "chat",
+      "description": "An Open Source, low-latency, high quality voice chat software (client)",
+      "icon": "mumble",
+      "packages": [
+        "mumble"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "neochat",
+      "name": "NeoChat",
+      "category": "chat",
+      "description": "A client for matrix, the decentralized communication protocol",
+      "icon": "",
+      "packages": [
+        "neochat"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "polari",
+      "name": "Polari",
+      "category": "chat",
+      "description": "An IRC Client for GNOME",
+      "icon": "polari",
+      "packages": [
+        "polari"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "proton-mail",
+      "name": "Proton Mail",
+      "category": "chat",
+      "description": "Proton official desktop application for Proton Mail and Proton Calendar",
+      "icon": "proton-mail",
+      "packages": [
+        "proton-mail-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "proton-vpn",
+      "name": "Proton VPN",
+      "category": "chat",
+      "description": "ProtonVPN GTK app, Maintained by Community",
+      "icon": "",
+      "packages": [
+        "proton-vpn-gtk-app"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "signal",
+      "name": "Signal",
+      "category": "chat",
+      "description": "Signal Private Messenger for Linux",
+      "icon": "signal-desktop",
+      "packages": [
+        "signal-desktop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "slack",
+      "name": "Slack",
+      "category": "chat",
+      "description": "Slack Desktop for Linux",
+      "icon": "slack",
+      "packages": [
+        "slack-desktop"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "teams-for-linux",
+      "name": "Teams for Linux",
+      "category": "chat",
+      "description": "Unofficial Microsoft Teams client for Linux using Electron",
+      "icon": "teams-for-linux",
+      "packages": [
+        "teams-for-linux"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "telegram",
+      "name": "Telegram",
+      "category": "chat",
+      "description": "Official Telegram Desktop client",
+      "icon": "telegram-desktop",
+      "packages": [
+        "telegram-desktop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "thunderbird",
+      "name": "Thunderbird",
+      "category": "chat",
+      "description": "Standalone mail and news reader from mozilla.org",
+      "icon": "thunderbird",
+      "packages": [
+        "thunderbird"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "vesktop",
+      "name": "Vesktop",
+      "category": "chat",
+      "description": "A cross platform electron-based desktop app aiming to give you a snappier Discord experience with Vencord pre-installed.(Prebuilt version.Use system-wide electron)",
+      "icon": "vesktop",
+      "packages": [
+        "vesktop-bin"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "Discord menu choice 2"
+      ]
+    },
+    {
+      "id": "wireguard-tools",
+      "name": "WireGuard tools",
+      "category": "chat",
+      "description": "Next generation secure network tunnel - tools for configuration",
+      "icon": "",
+      "packages": [
+        "wireguard-tools"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "zoom",
+      "name": "Zoom",
+      "category": "chat",
+      "description": "Video Conferencing and Web Conferencing Service",
+      "icon": "",
+      "packages": [
+        "zoom"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "abiword",
+      "name": "AbiWord",
+      "category": "office",
+      "description": "Fully-featured word processor",
+      "icon": "abiword",
+      "packages": [
+        "abiword"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "atril",
+      "name": "Atril",
+      "category": "office",
+      "description": "A document viewer for MATE",
+      "icon": "atril",
+      "packages": [
+        "atril"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "bookworm",
+      "name": "Bookworm",
+      "category": "office",
+      "description": "A simple user centric eBook reader which displays multiple eBooks formats uniformly",
+      "icon": "bookworm",
+      "packages": [
+        "bookworm"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "calibre",
+      "name": "Calibre",
+      "category": "office",
+      "description": "Ebook management application",
+      "icon": "calibre",
+      "packages": [
+        "calibre"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "calligra",
+      "name": "Calligra",
+      "category": "office",
+      "description": "A set of applications for productivity and creative usage",
+      "icon": "",
+      "packages": [
+        "calligra"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "citations",
+      "name": "Citations",
+      "category": "office",
+      "description": "Manage your bibliographies using the BibTeX format",
+      "icon": "",
+      "packages": [
+        "citations"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "claws-mail",
+      "name": "Claws Mail",
+      "category": "office",
+      "description": "A GTK based e-mail client",
+      "icon": "claws-mail",
+      "packages": [
+        "claws-mail"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "endeavour",
+      "name": "Endeavour",
+      "category": "office",
+      "description": "Personal task manager (Formerly GNOME Todo)",
+      "icon": "",
+      "packages": [
+        "endeavour"
+      ],
+      "source": "arch",
+      "keywords": [
+        "GNOME To Do"
+      ]
+    },
+    {
+      "id": "errands",
+      "name": "Errands",
+      "category": "office",
+      "description": "Todo application for those who prefer simplicity",
+      "icon": "",
+      "packages": [
+        "errands"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "evince",
+      "name": "Evince",
+      "category": "office",
+      "description": "Document viewer (PDF, PostScript, XPS, djvu, dvi, tiff, cbr, cbz, cb7, cbt)",
+      "icon": "evince",
+      "packages": [
+        "evince"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "fbreader",
+      "name": "FBReader",
+      "category": "office",
+      "description": "An e-book reader for Linux",
+      "icon": "fbreader",
+      "packages": [
+        "fbreader"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "feathernotes",
+      "name": "FeatherNotes",
+      "category": "office",
+      "description": "Lightweight Qt hierarchical notes-manager",
+      "icon": "feathernotes",
+      "packages": [
+        "feathernotes"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "foliate",
+      "name": "Foliate",
+      "category": "office",
+      "description": "A simple and modern GTK eBook reader",
+      "icon": "",
+      "packages": [
+        "foliate"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "geogebra",
+      "name": "GeoGebra",
+      "category": "office",
+      "description": "Dynamic mathematics software with interactive graphics, algebra and spreadsheet",
+      "icon": "geogebra",
+      "packages": [
+        "geogebra"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-calculator",
+      "name": "GNOME Calculator",
+      "category": "office",
+      "description": "GNOME Scientific calculator",
+      "icon": "gnome-calculator",
+      "packages": [
+        "gnome-calculator"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-calendar",
+      "name": "GNOME Calendar",
+      "category": "office",
+      "description": "Simple and beautiful calendar application designed to perfectly fit the GNOME desktop",
+      "icon": "gnome-calendar",
+      "packages": [
+        "gnome-calendar"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-contacts",
+      "name": "GNOME Contacts",
+      "category": "office",
+      "description": "Contacts Manager for GNOME",
+      "icon": "gnome-contacts",
+      "packages": [
+        "gnome-contacts"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-dictionary",
+      "name": "GNOME Dictionary",
+      "category": "office",
+      "description": "Look up words in dictionary sources",
+      "icon": "gnome-dictionary",
+      "packages": [
+        "gnome-dictionary"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-notes",
+      "name": "GNOME Notes",
+      "category": "office",
+      "description": "Write out notes, every detail matters",
+      "icon": "",
+      "packages": [
+        "gnome-notes"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnu-octave",
+      "name": "GNU Octave",
+      "category": "office",
+      "description": "A high-level language, primarily intended for numerical computations",
+      "icon": "octave",
+      "packages": [
+        "octave"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnucash",
+      "name": "GnuCash",
+      "category": "office",
+      "description": "Personal and small-business financial-accounting application",
+      "icon": "gnucash",
+      "packages": [
+        "gnucash"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnumeric",
+      "name": "Gnumeric",
+      "category": "office",
+      "description": "Spreadsheet application for GNOME",
+      "icon": "gnumeric",
+      "packages": [
+        "gnumeric"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "graphs",
+      "name": "Graphs",
+      "category": "office",
+      "description": "Tool to plot and manipulate data",
+      "icon": "",
+      "packages": [
+        "graphs"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "homebank",
+      "name": "HomeBank",
+      "category": "office",
+      "description": "Free, easy, personal accounting for everyone",
+      "icon": "homebank",
+      "packages": [
+        "homebank"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "joplin",
+      "name": "Joplin",
+      "category": "office",
+      "description": "A note taking and to-do application with synchronization capabilities - Desktop",
+      "icon": "joplin-desktop",
+      "packages": [
+        "joplin-desktop"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "kalgebra",
+      "name": "KAlgebra",
+      "category": "office",
+      "description": "Graph Calculator",
+      "icon": "kalgebra",
+      "packages": [
+        "kalgebra"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kcalc",
+      "name": "KCalc",
+      "category": "office",
+      "description": "Scientific Calculator",
+      "icon": "kcalc",
+      "packages": [
+        "kcalc"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kmymoney",
+      "name": "KMyMoney",
+      "category": "office",
+      "description": "Personal finance manager for KDE which operates similarly to MS-Money or Quicken",
+      "icon": "kmymoney",
+      "packages": [
+        "kmymoney"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "libreoffice",
+      "name": "LibreOffice",
+      "category": "office",
+      "description": "LibreOffice branch which contains new features and program enhancements",
+      "icon": "libreoffice",
+      "packages": [
+        "libreoffice-fresh"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mailspring",
+      "name": "Mailspring",
+      "category": "office",
+      "description": "A beautiful, fast and fully open source mail client",
+      "icon": "mailspring",
+      "packages": [
+        "mailspring-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "newsflash",
+      "name": "NewsFlash",
+      "category": "office",
+      "description": "Feed reader application designed to complement an already existing web-based RSS reader account",
+      "icon": "",
+      "packages": [
+        "newsflash"
+      ],
+      "source": "arch",
+      "keywords": [
+        "RSS"
+      ]
+    },
+    {
+      "id": "obsidian",
+      "name": "Obsidian",
+      "category": "office",
+      "description": "A powerful knowledge base that works on top of a local folder of plain text Markdown files",
+      "icon": "obsidian",
+      "packages": [
+        "obsidian"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "okular",
+      "name": "Okular",
+      "category": "office",
+      "description": "Document Viewer",
+      "icon": "okular",
+      "packages": [
+        "okular"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "onlyoffice",
+      "name": "OnlyOffice",
+      "category": "office",
+      "description": "An office suite that combines text, spreadsheet and presentation editors",
+      "icon": "",
+      "packages": [
+        "onlyoffice-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "papers",
+      "name": "Papers",
+      "category": "office",
+      "description": "Document viewer for PDF and other document formats aimed at the GNOME desktop",
+      "icon": "",
+      "packages": [
+        "papers"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "paperwork",
+      "name": "Paperwork",
+      "category": "office",
+      "description": "Personal document manager to manage scanned documents and PDFs",
+      "icon": "paperwork",
+      "packages": [
+        "paperwork"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "sagemath",
+      "name": "SageMath",
+      "category": "office",
+      "description": "Open Source Mathematics Software, free alternative to Magma, Maple, Mathematica, and Matlab",
+      "icon": "",
+      "packages": [
+        "sagemath"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "skrooge",
+      "name": "Skrooge",
+      "category": "office",
+      "description": "Personal finance manager that aims at being powerful and intuitive",
+      "icon": "skrooge",
+      "packages": [
+        "skrooge"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "solanum",
+      "name": "Solanum",
+      "category": "office",
+      "description": "Pomodoro timer for the GNOME desktop",
+      "icon": "",
+      "packages": [
+        "solanum"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Pomodoro"
+      ]
+    },
+    {
+      "id": "wps-office",
+      "name": "WPS Office",
+      "category": "office",
+      "description": "Kingsoft Office (WPS Office) - an office productivity suite",
+      "icon": "",
+      "packages": [
+        "wps-office"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "xournal",
+      "name": "Xournal++",
+      "category": "office",
+      "description": "Handwriting notetaking software with PDF annotation support",
+      "icon": "xournalpp",
+      "packages": [
+        "xournalpp"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "xreader",
+      "name": "Xreader",
+      "category": "office",
+      "description": "Document viewer for files like PDF and Postscript",
+      "icon": "xreader",
+      "packages": [
+        "xreader"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "omawrite",
+      "name": "Omawrite",
+      "category": "office",
+      "description": "A simple notepad for plain text and Markdown; karchy's notepad",
+      "icon": "",
+      "packages": [
+        "omawrite"
+      ],
+      "source": "omarchy",
+      "default": true,
+      "keywords": [
+        "notepad",
+        "notes",
+        "text editor",
+        "markdown",
+        "writing"
+      ],
+      "setup": {
+        "note": "Markdown files open in it."
+      }
+    },
+    {
+      "id": "amberol",
+      "name": "Amberol",
+      "category": "media",
+      "description": "Small and simple sound and music player that is well integrated with GNOME",
+      "icon": "",
+      "packages": [
+        "amberol"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ardour",
+      "name": "Ardour",
+      "category": "media",
+      "description": "Professional-grade digital audio workstation",
+      "icon": "ardour",
+      "packages": [
+        "ardour"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "audacious",
+      "name": "Audacious",
+      "category": "media",
+      "description": "Lightweight, advanced audio player focused on audio quality",
+      "icon": "audacious",
+      "packages": [
+        "audacious"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "audacity",
+      "name": "Audacity",
+      "category": "media",
+      "description": "A program that lets you manipulate digital audio waveforms",
+      "icon": "audacity",
+      "packages": [
+        "audacity"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "audio-sharing",
+      "name": "Audio Sharing",
+      "category": "media",
+      "description": "Share current computer audio playback in the form of an RTSP stream",
+      "icon": "",
+      "packages": [
+        "audio-sharing"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "baka-mplayer",
+      "name": "Baka MPlayer",
+      "category": "media",
+      "description": "A free and open source, cross-platform, libmpv based multimedia player. Qt5 build",
+      "icon": "baka-mplayer",
+      "packages": [
+        "baka-mplayer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "birdfont",
+      "name": "BirdFont",
+      "category": "media",
+      "description": "Font editor which can generate fonts in TTF, EOT and SVG formats",
+      "icon": "birdfont",
+      "packages": [
+        "birdfont"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "bitwig-studio",
+      "name": "Bitwig Studio",
+      "category": "media",
+      "description": "Digital audio workstation for music production, remixing and live performance",
+      "icon": "bitwig-studio",
+      "packages": [
+        "bitwig-studio"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "blanket",
+      "name": "Blanket",
+      "category": "media",
+      "description": "Improve focus and increase your productivity by listening to different sounds",
+      "icon": "",
+      "packages": [
+        "blanket"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "blender",
+      "name": "Blender",
+      "category": "media",
+      "description": "A fully integrated 3D graphics creation suite",
+      "icon": "blender",
+      "packages": [
+        "blender"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "brasero",
+      "name": "Brasero",
+      "category": "media",
+      "description": "CD/DVD mastering tool",
+      "icon": "brasero",
+      "packages": [
+        "brasero"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "celluloid",
+      "name": "Celluloid",
+      "category": "media",
+      "description": "Simple media player, a GTK frontend for mpv",
+      "icon": "",
+      "packages": [
+        "celluloid"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "converseen",
+      "name": "Converseen",
+      "category": "media",
+      "description": "Batch image converter and resizer",
+      "icon": "converseen",
+      "packages": [
+        "converseen"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "curtail",
+      "name": "Curtail",
+      "category": "media",
+      "description": "Image compressor GUI, supporting PNG, JPEG, WebP and SVG file types, both lossless and lossy compression mode",
+      "icon": "",
+      "packages": [
+        "curtail"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "darktable",
+      "name": "Darktable",
+      "category": "media",
+      "description": "Utility to organize and develop raw images",
+      "icon": "darktable",
+      "packages": [
+        "darktable"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "decibels",
+      "name": "Decibels",
+      "category": "media",
+      "description": "Audio player for GNOME",
+      "icon": "",
+      "packages": [
+        "decibels"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "digikam",
+      "name": "DigiKam",
+      "category": "media",
+      "description": "An advanced digital photo management application",
+      "icon": "digikam",
+      "packages": [
+        "digikam"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "dragon-player",
+      "name": "Dragon Player",
+      "category": "media",
+      "description": "A multimedia player where the focus is on simplicity, instead of features",
+      "icon": "",
+      "packages": [
+        "dragon"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ear-tag",
+      "name": "Ear Tag",
+      "category": "media",
+      "description": "Simple audio file tag editor",
+      "icon": "",
+      "packages": [
+        "eartag"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "easyeffects",
+      "name": "EasyEffects",
+      "category": "media",
+      "description": "Audio Effects for Pipewire applications",
+      "icon": "easyeffects",
+      "packages": [
+        "easyeffects"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "easytag",
+      "name": "EasyTAG",
+      "category": "media",
+      "description": "Simple application for viewing and editing tags in audio files",
+      "icon": "easytag",
+      "packages": [
+        "easytag"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "elisa",
+      "name": "Elisa",
+      "category": "media",
+      "description": "A simple music player aiming to provide a nice experience for its users",
+      "icon": "elisa",
+      "packages": [
+        "elisa"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "eye-of-gnome",
+      "name": "Eye of GNOME",
+      "category": "media",
+      "description": "Eye of Gnome: An image viewing and cataloging program",
+      "icon": "eog",
+      "packages": [
+        "eog"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "flowblade",
+      "name": "Flowblade",
+      "category": "media",
+      "description": "Multitrack non-linear video editor",
+      "icon": "flowblade",
+      "packages": [
+        "flowblade"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "fontforge",
+      "name": "FontForge",
+      "category": "media",
+      "description": "Outline and bitmap font editor",
+      "icon": "fontforge",
+      "packages": [
+        "fontforge"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "freecad",
+      "name": "FreeCAD",
+      "category": "media",
+      "description": "Feature based parametric 3D CAD modeler",
+      "icon": "freecad",
+      "packages": [
+        "freecad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "freetube",
+      "name": "FreeTube",
+      "category": "media",
+      "description": "An open source desktop YouTube player built with privacy in mind",
+      "icon": "freetube-bin",
+      "packages": [
+        "freetube-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "fretboard",
+      "name": "Fretboard",
+      "category": "media",
+      "description": "Look up guitar chords",
+      "icon": "",
+      "packages": [
+        "fretboard"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "geeqie",
+      "name": "Geeqie",
+      "category": "media",
+      "description": "Lightweight image viewer",
+      "icon": "geeqie",
+      "packages": [
+        "geeqie"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gimp",
+      "name": "GIMP",
+      "category": "media",
+      "description": "GNU Image Manipulation Program",
+      "icon": "gimp",
+      "packages": [
+        "gimp"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-photos",
+      "name": "GNOME Photos",
+      "category": "media",
+      "description": "Access, organize, and share your photos on GNOME",
+      "icon": "",
+      "packages": [
+        "gnome-photos"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-podcasts",
+      "name": "GNOME Podcasts",
+      "category": "media",
+      "description": "Podcast application for GNOME",
+      "icon": "",
+      "packages": [
+        "gnome-podcasts"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-videos",
+      "name": "GNOME Videos",
+      "category": "media",
+      "description": "Movie player for the GNOME desktop based on GStreamer",
+      "icon": "",
+      "packages": [
+        "totem"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gpicview",
+      "name": "GPicView",
+      "category": "media",
+      "description": "Lightweight image viewer",
+      "icon": "gpicview",
+      "packages": [
+        "gpicview"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gthumb",
+      "name": "GThumb",
+      "category": "media",
+      "description": "Image browser and viewer for the GNOME Desktop",
+      "icon": "gthumb",
+      "packages": [
+        "gthumb"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gwenview",
+      "name": "Gwenview",
+      "category": "media",
+      "description": "A fast and easy to use image viewer",
+      "icon": "gwenview",
+      "packages": [
+        "gwenview"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "handbrake",
+      "name": "Handbrake",
+      "category": "media",
+      "description": "Multithreaded video transcoder",
+      "icon": "",
+      "packages": [
+        "handbrake"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "haruna",
+      "name": "Haruna",
+      "category": "media",
+      "description": "Video player built with Qt/QML on top of libmpv",
+      "icon": "haruna",
+      "packages": [
+        "haruna"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "hypnotix",
+      "name": "Hypnotix",
+      "category": "media",
+      "description": "IPTV streaming application with support for live TV, movies and series",
+      "icon": "hypnotix",
+      "packages": [
+        "hypnotix"
+      ],
+      "source": "arch",
+      "keywords": [
+        "IPTV"
+      ]
+    },
+    {
+      "id": "identity",
+      "name": "Identity",
+      "category": "media",
+      "description": "Compare multiple versions of an image or video",
+      "icon": "",
+      "packages": [
+        "identity"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "imv",
+      "name": "imv",
+      "category": "media",
+      "description": "A fast image viewer for photos and screenshots",
+      "icon": "",
+      "packages": [
+        "imv"
+      ],
+      "source": "arch",
+      "default": true,
+      "keywords": [
+        "image",
+        "photo",
+        "viewer"
+      ]
+    },
+    {
+      "id": "inkscape",
+      "name": "Inkscape",
+      "category": "media",
+      "description": "Professional vector graphics editor",
+      "icon": "inkscape",
+      "packages": [
+        "inkscape"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "jellyfin-desktop",
+      "name": "Jellyfin Desktop",
+      "category": "media",
+      "description": "Jellyfin Desktop Client",
+      "icon": "jellyfin-desktop",
+      "packages": [
+        "jellyfin-desktop"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "k3b",
+      "name": "K3b",
+      "category": "media",
+      "description": "Feature-rich and easy to handle CD burning application",
+      "icon": "k3b",
+      "packages": [
+        "k3b"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kaffeine",
+      "name": "Kaffeine",
+      "category": "media",
+      "description": "KDE media player",
+      "icon": "kaffeine",
+      "packages": [
+        "kaffeine"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kdenlive",
+      "name": "Kdenlive",
+      "category": "media",
+      "description": "A non-linear video editor for Linux using the MLT video framework",
+      "icon": "kdenlive",
+      "packages": [
+        "kdenlive"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kicad",
+      "name": "KiCad",
+      "category": "media",
+      "description": "Electronic schematic and printed circuit board (PCB) design tools",
+      "icon": "kicad",
+      "packages": [
+        "kicad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kid3",
+      "name": "Kid3",
+      "category": "media",
+      "description": "An MP3, Ogg/Vorbis and FLAC tag editor, Qt version",
+      "icon": "kid3-qt",
+      "packages": [
+        "kid3-qt"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kodi",
+      "name": "Kodi",
+      "category": "media",
+      "description": "A software media player and entertainment hub for digital media (gl renderer)",
+      "icon": "kodi",
+      "packages": [
+        "kodi"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kolourpaint",
+      "name": "KolourPaint",
+      "category": "media",
+      "description": "Paint Program",
+      "icon": "kolourpaint",
+      "packages": [
+        "kolourpaint"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "komikku",
+      "name": "Komikku",
+      "category": "media",
+      "description": "Manga and comics reader for GNOME",
+      "icon": "",
+      "packages": [
+        "komikku"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "krita",
+      "name": "Krita",
+      "category": "media",
+      "description": "Edit and paint images",
+      "icon": "krita",
+      "packages": [
+        "krita"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kwave",
+      "name": "Kwave",
+      "category": "media",
+      "description": "A sound editor",
+      "icon": "kwave",
+      "packages": [
+        "kwave"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "letterpress",
+      "name": "Letterpress",
+      "category": "media",
+      "description": "Convert your images into a picture made up of ASCII characters, using Artem",
+      "icon": "",
+      "packages": [
+        "letterpress"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "librecad",
+      "name": "LibreCAD",
+      "category": "media",
+      "description": "A 2D CAD drawing tool based on the community edition of QCad",
+      "icon": "librecad",
+      "packages": [
+        "librecad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lmms",
+      "name": "LMMS",
+      "category": "media",
+      "description": "The Linux MultiMedia Studio",
+      "icon": "lmms",
+      "packages": [
+        "lmms"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lollypop",
+      "name": "Lollypop",
+      "category": "media",
+      "description": "Music player for GNOME",
+      "icon": "lollypop",
+      "packages": [
+        "lollypop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "loupe",
+      "name": "Loupe",
+      "category": "media",
+      "description": "A simple image viewer for GNOME",
+      "icon": "",
+      "packages": [
+        "loupe"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "luminance-hdr",
+      "name": "Luminance HDR",
+      "category": "media",
+      "description": "Open source graphical user interface application that aims to provide a workflow for HDR imaging",
+      "icon": "luminance-hdr",
+      "packages": [
+        "luminancehdr"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mediaelch",
+      "name": "MediaElch",
+      "category": "media",
+      "description": "Media Manager for handling Movies, TV Shows and Concerts/Music Videos for Kodi",
+      "icon": "",
+      "packages": [
+        "mediaelch"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mixxx",
+      "name": "Mixxx",
+      "category": "media",
+      "description": "Free, open source software for digital DJing",
+      "icon": "mixxx",
+      "packages": [
+        "mixxx"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mousai",
+      "name": "Mousai",
+      "category": "media",
+      "description": "Simple application to identify songs",
+      "icon": "",
+      "packages": [
+        "mousai"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mpv",
+      "name": "mpv",
+      "category": "media",
+      "description": "A video and audio player that plays almost any file",
+      "icon": "mpv",
+      "packages": [
+        "mpv"
+      ],
+      "source": "arch",
+      "default": true,
+      "keywords": [
+        "video",
+        "player",
+        "music"
+      ],
+      "setup": {
+        "note": "karchy's screen recorder uses mpv for the webcam overlay and to play recordings."
+      }
+    },
+    {
+      "id": "musescore",
+      "name": "MuseScore",
+      "category": "media",
+      "description": "Create, play and print beautiful sheet music",
+      "icon": "musescore",
+      "packages": [
+        "musescore"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mypaint",
+      "name": "MyPaint",
+      "category": "media",
+      "description": "Fast and easy painting application for digital painters, with brush dynamics",
+      "icon": "mypaint",
+      "packages": [
+        "mypaint"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "obs-studio",
+      "name": "OBS Studio",
+      "category": "media",
+      "description": "Free, open source software for live streaming and recording",
+      "icon": "obs",
+      "packages": [
+        "obs-studio"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "opentoonz",
+      "name": "OpenToonz",
+      "category": "media",
+      "description": "A full-featured 2D animation creation software",
+      "icon": "",
+      "packages": [
+        "opentoonz"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "parole",
+      "name": "Parole",
+      "category": "media",
+      "description": "Modern media player based on the GStreamer framework",
+      "icon": "parole",
+      "packages": [
+        "parole"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "peek",
+      "name": "Peek",
+      "category": "media",
+      "description": "Simple screen recorder with an easy to use interface",
+      "icon": "peek",
+      "packages": [
+        "peek"
+      ],
+      "source": "arch",
+      "keywords": [
+        "GIF recorder"
+      ]
+    },
+    {
+      "id": "pencil2d",
+      "name": "Pencil2D",
+      "category": "media",
+      "description": "Easy, intuitive tool to make 2D hand-drawn animations",
+      "icon": "pencil2d",
+      "packages": [
+        "pencil2d"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "photoflare",
+      "name": "Photoflare",
+      "category": "media",
+      "description": "Quick, simple but powerful Qt-based image editor inspired by PhotoFiltre",
+      "icon": "photoflare",
+      "packages": [
+        "photoflare"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pinta",
+      "name": "Pinta",
+      "category": "media",
+      "description": "Drawing/editing program modeled after Paint.NET. It's goal is to provide a simplified alternative to GIMP for casual users",
+      "icon": "pinta",
+      "packages": [
+        "pinta"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pitivi",
+      "name": "Pitivi",
+      "category": "media",
+      "description": "Editor for audio/video projects using the GStreamer framework",
+      "icon": "pitivi",
+      "packages": [
+        "pitivi"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "qmmp",
+      "name": "Qmmp",
+      "category": "media",
+      "description": "Qt based audio-player",
+      "icon": "qmmp",
+      "packages": [
+        "qmmp"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rapid-photo-downloader",
+      "name": "Rapid Photo Downloader",
+      "category": "media",
+      "description": "Photo and video downloader",
+      "icon": "rapid-photo-downloader",
+      "packages": [
+        "rapid-photo-downloader"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rawtherapee",
+      "name": "RawTherapee",
+      "category": "media",
+      "description": "A powerful cross-platform raw image processing program",
+      "icon": "rawtherapee",
+      "packages": [
+        "rawtherapee"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rhythmbox",
+      "name": "Rhythmbox",
+      "category": "media",
+      "description": "Music playback and management application",
+      "icon": "rhythmbox",
+      "packages": [
+        "rhythmbox"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ristretto",
+      "name": "Ristretto",
+      "category": "media",
+      "description": "A fast and lightweight picture viewer for Xfce",
+      "icon": "ristretto",
+      "packages": [
+        "ristretto"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rosegarden",
+      "name": "Rosegarden",
+      "category": "media",
+      "description": "MIDI/audio sequencer and notation editor",
+      "icon": "rosegarden",
+      "packages": [
+        "rosegarden"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "scribus",
+      "name": "Scribus",
+      "category": "media",
+      "description": "Desktop publishing software",
+      "icon": "scribus",
+      "packages": [
+        "scribus"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "shortwave",
+      "name": "Shortwave",
+      "category": "media",
+      "description": "Internet radio player",
+      "icon": "",
+      "packages": [
+        "shortwave"
+      ],
+      "source": "arch",
+      "keywords": [
+        "radio"
+      ]
+    },
+    {
+      "id": "shotcut",
+      "name": "Shotcut",
+      "category": "media",
+      "description": "Cross-platform Qt based Video Editor",
+      "icon": "shotcut",
+      "packages": [
+        "shotcut"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "shotwell",
+      "name": "Shotwell",
+      "category": "media",
+      "description": "A digital photo organizer designed for the GNOME desktop environment",
+      "icon": "shotwell",
+      "packages": [
+        "shotwell"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "showtime",
+      "name": "Showtime",
+      "category": "media",
+      "description": "Video player for GNOME",
+      "icon": "showtime",
+      "packages": [
+        "showtime"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "smplayer",
+      "name": "SMPlayer",
+      "category": "media",
+      "description": "Media player with built-in codecs that can play virtually all video and audio formats",
+      "icon": "smplayer",
+      "packages": [
+        "smplayer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "soundconverter",
+      "name": "SoundConverter",
+      "category": "media",
+      "description": "A simple sound converter application for GNOME",
+      "icon": "soundconverter",
+      "packages": [
+        "soundconverter"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "spotify",
+      "name": "Spotify",
+      "category": "media",
+      "description": "A proprietary music streaming service",
+      "icon": "spotify",
+      "packages": [
+        "spotify"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "strawberry",
+      "name": "Strawberry",
+      "category": "media",
+      "description": "A music player aimed at audio enthusiasts and music collectors",
+      "icon": "strawberry",
+      "packages": [
+        "strawberry"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "subtitle-composer",
+      "name": "Subtitle Composer",
+      "category": "media",
+      "description": "Video subtitle editor",
+      "icon": "subtitlecomposer",
+      "packages": [
+        "subtitlecomposer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "sweet-home-3d",
+      "name": "Sweet Home 3D",
+      "category": "media",
+      "description": "An interior design application to draw the plan of your house in a 3D environment",
+      "icon": "sweethome3d",
+      "packages": [
+        "sweethome3d"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "switcheroo",
+      "name": "Switcheroo",
+      "category": "media",
+      "description": "Convert between different image filetypes and resize them easily",
+      "icon": "",
+      "packages": [
+        "switcheroo"
+      ],
+      "source": "arch",
+      "keywords": [
+        "image converter"
+      ]
+    },
+    {
+      "id": "synfig-studio",
+      "name": "Synfig Studio",
+      "category": "media",
+      "description": "Professional vector animation program (GUI)",
+      "icon": "",
+      "packages": [
+        "synfigstudio"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "tenacity",
+      "name": "Tenacity",
+      "category": "media",
+      "description": "An easy-to-use multi-track audio editor and recorder, forked from Audacity",
+      "icon": "tenacity",
+      "packages": [
+        "tenacity"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "transmageddon",
+      "name": "Transmageddon",
+      "category": "media",
+      "description": "Simple python application for transcoding video into formats supported by GStreamer",
+      "icon": "transmageddon",
+      "packages": [
+        "transmageddon"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "video-trimmer",
+      "name": "Video Trimmer",
+      "category": "media",
+      "description": "Cut out a fragment of a video quickly",
+      "icon": "",
+      "packages": [
+        "video-trimmer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "vlc",
+      "name": "VLC",
+      "category": "media",
+      "description": "Free and open source cross-platform multimedia player and framework",
+      "icon": "vlc",
+      "packages": [
+        "vlc"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "vokoscreenng",
+      "name": "VokoscreenNG",
+      "category": "media",
+      "description": "Easy to use screencast creator",
+      "icon": "vokoscreen",
+      "packages": [
+        "vokoscreen"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "xfburn",
+      "name": "Xfburn",
+      "category": "media",
+      "description": "A simple CD/DVD burning tool based on libburnia libraries",
+      "icon": "xfburn",
+      "packages": [
+        "xfburn"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "0-a-d",
+      "name": "0 A.D.",
+      "category": "gaming",
+      "description": "Cross-platform, 3D and historically-based real-time strategy game",
+      "icon": "0ad",
+      "packages": [
+        "0ad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "aisleriot",
+      "name": "AisleRiot",
+      "category": "gaming",
+      "description": "A collection of patience games written in guile scheme",
+      "icon": "",
+      "packages": [
+        "aisleriot"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "bottles",
+      "name": "Bottles",
+      "category": "gaming",
+      "description": "Easily manage wine and proton prefix",
+      "icon": "",
+      "packages": [
+        "bottles"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "cartridges",
+      "name": "Cartridges",
+      "category": "gaming",
+      "description": "Simple game launcher written in Python using GTK4 and Libadwaita",
+      "icon": "",
+      "packages": [
+        "cartridges"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "chess-clock",
+      "name": "Chess Clock",
+      "category": "gaming",
+      "description": "Simple application to provide time control for over-the-board chess games",
+      "icon": "chess",
+      "packages": [
+        "chess-clock"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "controller-udev-rules",
+      "name": "Controller udev rules",
+      "category": "gaming",
+      "description": "List of devices Steam and SteamVR will want read/write permissions on",
+      "icon": "",
+      "packages": [
+        "steam-devices"
+      ],
+      "source": "arch",
+      "multilib": true
+    },
+    {
+      "id": "dolphin-emulator",
+      "name": "Dolphin Emulator",
+      "category": "gaming",
+      "description": "A Gamecube and Wii emulator",
+      "icon": "dolphin-emu",
+      "packages": [
+        "dolphin-emu"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "epic-games-launcher",
+      "name": "Epic Games Launcher",
+      "category": "gaming",
+      "description": "Official Epic Games Store launcher (Preview)",
+      "icon": "epic-games",
+      "packages": [
+        "epic-games-launcher-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "faugus-launcher",
+      "name": "Faugus Launcher",
+      "category": "gaming",
+      "description": "A simple and lightweight app for running Windows games using UMU-Launcher",
+      "icon": "",
+      "packages": [
+        "faugus-launcher"
+      ],
+      "source": "cachyos",
+      "multilib": true,
+      "setup": {
+        "gpu32": true
+      }
+    },
+    {
+      "id": "flips",
+      "name": "Flips",
+      "category": "gaming",
+      "description": "A patcher for IPS and BPS files",
+      "icon": "",
+      "packages": [
+        "flips"
+      ],
+      "source": "arch",
+      "keywords": [
+        "patcher"
+      ]
+    },
+    {
+      "id": "gamemode",
+      "name": "GameMode",
+      "category": "gaming",
+      "description": "A daemon/lib combo that allows games to request a set of optimisations be temporarily applied to the host OS",
+      "icon": "",
+      "packages": [
+        "gamemode",
+        "lib32-gamemode"
+      ],
+      "source": "arch",
+      "multilib": true,
+      "setup": {
+        "groups": [
+          "gamemode"
+        ]
+      }
+    },
+    {
+      "id": "gamescope",
+      "name": "Gamescope",
+      "category": "gaming",
+      "description": "SteamOS session compositing window manager",
+      "icon": "",
+      "packages": [
+        "gamescope"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-mahjongg",
+      "name": "GNOME Mahjongg",
+      "category": "gaming",
+      "description": "Disassemble a pile of tiles by removing matching pairs",
+      "icon": "gnome-mahjongg",
+      "packages": [
+        "gnome-mahjongg"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-mines",
+      "name": "GNOME Mines",
+      "category": "gaming",
+      "description": "Clear hidden mines from a minefield",
+      "icon": "gnome-mines",
+      "packages": [
+        "gnome-mines"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-sudoku",
+      "name": "GNOME Sudoku",
+      "category": "gaming",
+      "description": "Test your logic skills in this number grid puzzle",
+      "icon": "gnome-sudoku",
+      "packages": [
+        "gnome-sudoku"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "hedgewars",
+      "name": "Hedgewars",
+      "category": "gaming",
+      "description": "Turn-based strategy artillery game similiar to Worms",
+      "icon": "hedgewars",
+      "packages": [
+        "hedgewars"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "heroic-games-launcher",
+      "name": "Heroic Games Launcher",
+      "category": "gaming",
+      "description": "An Open source Launcher for Epic, Amazon and GOG Games",
+      "icon": "heroic",
+      "packages": [
+        "heroic-games-launcher-bin"
+      ],
+      "source": "cachyos",
+      "multilib": true,
+      "setup": {
+        "gpu32": true
+      }
+    },
+    {
+      "id": "itch",
+      "name": "Itch",
+      "category": "gaming",
+      "description": "Installer for the itch.io desktop app",
+      "icon": "itch",
+      "packages": [
+        "itch-setup-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "kapman",
+      "name": "Kapman",
+      "category": "gaming",
+      "description": "A clone of the well known game Pac-Man",
+      "icon": "kapman",
+      "packages": [
+        "kapman"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kmahjongg",
+      "name": "KMahjongg",
+      "category": "gaming",
+      "description": "A tile matching game for one or two players",
+      "icon": "kmahjongg",
+      "packages": [
+        "kmahjongg"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "knights",
+      "name": "Knights",
+      "category": "gaming",
+      "description": "Chess board by KDE with XBoard protocol support",
+      "icon": "knights",
+      "packages": [
+        "knights"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lsfg-vk",
+      "name": "Lsfg-vk",
+      "category": "gaming",
+      "description": "Lossless Scaling Frame Generation on Linux",
+      "icon": "",
+      "packages": [
+        "lsfg-vk"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "Lossless Scaling frame gen"
+      ]
+    },
+    {
+      "id": "luanti",
+      "name": "Luanti",
+      "category": "gaming",
+      "description": "Multiplayer infinite-world block sandbox game",
+      "icon": "",
+      "packages": [
+        "luanti"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lutris",
+      "name": "Lutris",
+      "category": "gaming",
+      "description": "Open Gaming Platform",
+      "icon": "lutris",
+      "packages": [
+        "lutris",
+        "umu-launcher",
+        "wine-staging",
+        "winetricks"
+      ],
+      "source": "arch",
+      "multilib": true,
+      "setup": {
+        "gpu32": true
+      }
+    },
+    {
+      "id": "mame",
+      "name": "MAME",
+      "category": "gaming",
+      "description": "Port of the popular Multiple Arcade Machine Emulator using SDL with OpenGL support",
+      "icon": "mame",
+      "packages": [
+        "mame"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mangohud-goverlay",
+      "name": "MangoHud, GOverlay",
+      "category": "gaming",
+      "description": "A Vulkan overlay layer for monitoring FPS, temperatures, CPU/GPU load and more",
+      "icon": "",
+      "packages": [
+        "mangohud",
+        "lib32-mangohud",
+        "goverlay"
+      ],
+      "source": "arch",
+      "multilib": true
+    },
+    {
+      "id": "mangojuice",
+      "name": "MangoJuice",
+      "category": "gaming",
+      "description": "A convenient alternative to GOverlay for configuring MangoHud",
+      "icon": "",
+      "packages": [
+        "mangojuice"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "mari0",
+      "name": "Mari0",
+      "category": "gaming",
+      "description": "The Mario game with Portal gun mechanics",
+      "icon": "",
+      "packages": [
+        "mari0"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "minecraft-launcher",
+      "name": "Minecraft Launcher",
+      "category": "gaming",
+      "description": "Official Minecraft Launcher",
+      "icon": "minecraft-launcher",
+      "packages": [
+        "minecraft-launcher"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "moonlight",
+      "name": "Moonlight",
+      "category": "gaming",
+      "description": "GameStream client for PCs",
+      "icon": "moonlight",
+      "packages": [
+        "moonlight-qt"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mupen-64-plus",
+      "name": "Mupen 64 Plus",
+      "category": "gaming",
+      "description": "Nintendo64 Emulator",
+      "icon": "mupen64plus",
+      "packages": [
+        "mupen64plus"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ntsync-autoload",
+      "name": "NTSync autoload",
+      "category": "gaming",
+      "description": "NTSync kernel module autoload",
+      "icon": "",
+      "packages": [
+        "ntsync-autoload"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "openmw",
+      "name": "OpenMW",
+      "category": "gaming",
+      "description": "Open-source engine reimplementation for the role-playing game Morrowind",
+      "icon": "openmw",
+      "packages": [
+        "openmw"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "osu",
+      "name": "Osu!",
+      "category": "gaming",
+      "description": "The future of osu! and the beginning of an open era! Commonly known by the codename osu!lazer. Pew pew",
+      "icon": "osu-lazer",
+      "packages": [
+        "osu-lazer-bin"
+      ],
+      "source": "aur",
+      "keywords": [
+        "lazer"
+      ]
+    },
+    {
+      "id": "ppsspp",
+      "name": "PPSSPP",
+      "category": "gaming",
+      "description": "A PSP emulator written in C++",
+      "icon": "ppsspp",
+      "packages": [
+        "ppsspp"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "prism-launcher-minecraft",
+      "name": "Prism Launcher (Minecraft)",
+      "category": "gaming",
+      "description": "Minecraft launcher with ability to manage multiple instances",
+      "icon": "",
+      "packages": [
+        "prismlauncher"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Minecraft"
+      ]
+    },
+    {
+      "id": "proton-cachyos",
+      "name": "Proton-CachyOS",
+      "category": "gaming",
+      "description": "A compatibility tool for Steam Play based on Wine and additional components, experimental branch with extra CachyOS flavour (Steam Linux Runtime build)",
+      "icon": "",
+      "packages": [
+        "proton-cachyos-slr"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "protonplus",
+      "name": "ProtonPlus",
+      "category": "gaming",
+      "description": "A modern compatibility tools manager",
+      "icon": "protonplus",
+      "packages": [
+        "protonplus"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "protonup-qt",
+      "name": "ProtonUp-Qt",
+      "category": "gaming",
+      "description": "Install and manage GE-Proton, Luxtorpeda & more for Steam, Lutris and Heroic",
+      "icon": "protonup-qt",
+      "packages": [
+        "protonup-qt"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "category": "gaming",
+      "description": "Reference frontend for the libretro API",
+      "icon": "retroarch",
+      "packages": [
+        "retroarch"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "retroarch-cores",
+      "name": "RetroArch Cores",
+      "category": "gaming",
+      "description": "Common emulator cores for RetroArch: PlayStation, PSP, NES and Game Boy Advance",
+      "icon": "retroarch",
+      "packages": [
+        "libretro-beetle-psx",
+        "libretro-play",
+        "libretro-ppsspp",
+        "libretro-nestopia",
+        "libretro-mesen",
+        "libretro-mgba"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ryujinx",
+      "name": "Ryujinx",
+      "category": "gaming",
+      "description": "Experimental Nintendo Switch Emulator written in C#",
+      "icon": "ryujinx",
+      "packages": [
+        "ryujinx"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "scummvm",
+      "name": "ScummVM",
+      "category": "gaming",
+      "description": "A 'virtual machine' for several classic graphical point-and-click adventure games",
+      "icon": "scummvm",
+      "packages": [
+        "scummvm"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "snes9x",
+      "name": "Snes9x",
+      "category": "gaming",
+      "description": "Portable Super Nintendo Entertainment System (TM) emulator",
+      "icon": "snes9x",
+      "packages": [
+        "snes9x-gtk"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "steam",
+      "name": "Steam",
+      "category": "gaming",
+      "description": "Valve's digital software delivery system",
+      "icon": "steam",
+      "packages": [
+        "steam"
+      ],
+      "source": "arch",
+      "multilib": true,
+      "setup": {
+        "gpu32": true
+      }
+    },
+    {
+      "id": "steamcmd",
+      "name": "SteamCMD",
+      "category": "gaming",
+      "description": "Steam Command Line Tools",
+      "icon": "",
+      "packages": [
+        "steamcmd"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "stella",
+      "name": "Stella",
+      "category": "gaming",
+      "description": "Atari 2600 VCS emulator",
+      "icon": "stella",
+      "packages": [
+        "stella"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "sunshine",
+      "name": "Sunshine",
+      "category": "gaming",
+      "description": "Self-hosted game stream host for Moonlight",
+      "icon": "",
+      "packages": [
+        "sunshine"
+      ],
+      "source": "cachyos",
+      "setup": {
+        "note": "Pair a device from Sunshine's web page at https://localhost:47990."
+      }
+    },
+    {
+      "id": "supertux",
+      "name": "SuperTux",
+      "category": "gaming",
+      "description": "A classic 2D jump'n'run sidescroller game in a style similar to the original SuperMario games",
+      "icon": "supertux",
+      "packages": [
+        "supertux"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "supertuxkart",
+      "name": "SuperTuxKart",
+      "category": "gaming",
+      "description": "Kart racing game featuring Tux and his friends",
+      "icon": "supertuxkart",
+      "packages": [
+        "supertuxkart"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "teeworlds",
+      "name": "Teeworlds",
+      "category": "gaming",
+      "description": "Fast-paced multiplayer 2D shooter game",
+      "icon": "teeworlds",
+      "packages": [
+        "teeworlds"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "wine-helpers",
+      "name": "Wine helpers",
+      "category": "gaming",
+      "description": "Run Winetricks commands for Steam Play/Proton games among other common Wine features",
+      "icon": "wine",
+      "packages": [
+        "protontricks",
+        "winetricks",
+        "umu-launcher",
+        "wine-cachyos-opt"
+      ],
+      "source": "arch",
+      "multilib": true
+    },
+    {
+      "id": "xonotic",
+      "name": "Xonotic",
+      "category": "gaming",
+      "description": "A free, fast-paced cross-platform first person shooter",
+      "icon": "xonotic",
+      "packages": [
+        "xonotic"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "net-sdk",
+      "name": ".NET SDK",
+      "category": "languages",
+      "description": "The .NET Core SDK",
+      "icon": "",
+      "packages": [
+        "dotnet-sdk"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "android-sdk",
+      "name": "Android SDK",
+      "category": "languages",
+      "description": "Android platform tools",
+      "icon": "android-sdk",
+      "packages": [
+        "android-tools",
+        "scrcpy"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "bun",
+      "name": "Bun",
+      "category": "languages",
+      "description": "Incredibly fast JavaScript runtime, bundler, test runner, and package manager – all in one",
+      "icon": "",
+      "packages": [
+        "bun"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "clojure",
+      "name": "Clojure",
+      "category": "languages",
+      "description": "Lisp dialect for the JVM",
+      "icon": "",
+      "packages": [
+        "clojure",
+        "leiningen",
+        "rlwrap"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "crystal",
+      "name": "Crystal",
+      "category": "languages",
+      "description": "The Crystal Programming Language",
+      "icon": "",
+      "packages": [
+        "crystal"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "dart",
+      "name": "Dart",
+      "category": "languages",
+      "description": "The dart programming language SDK",
+      "icon": "",
+      "packages": [
+        "dart"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "deno",
+      "name": "Deno",
+      "category": "languages",
+      "description": "A secure runtime for JavaScript and TypeScript",
+      "icon": "",
+      "packages": [
+        "deno"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "elixir",
+      "name": "Elixir",
+      "category": "languages",
+      "description": "A dynamic, functional language for building scalable and maintainable applications",
+      "icon": "elixir",
+      "packages": [
+        "elixir",
+        "erlang"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "category": "languages",
+      "description": "Software reverse engineering framework",
+      "icon": "ghidra",
+      "packages": [
+        "ghidra"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gleam",
+      "name": "Gleam",
+      "category": "languages",
+      "description": "Friendly programming language for building type-safe and scalable systems",
+      "icon": "",
+      "packages": [
+        "gleam"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "go",
+      "name": "Go",
+      "category": "languages",
+      "description": "Core compiler tools for the Go programming language",
+      "icon": "go",
+      "packages": [
+        "go",
+        "gopls"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "haskell",
+      "name": "Haskell",
+      "category": "languages",
+      "description": "The Glasgow Haskell Compiler",
+      "icon": "",
+      "packages": [
+        "ghc",
+        "cabal-install",
+        "stack",
+        "haskell-language-server"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "java",
+      "name": "Java",
+      "category": "languages",
+      "description": "OpenJDK Java 25 development kit",
+      "icon": "java",
+      "packages": [
+        "jdk25-openjdk",
+        "jdk21-openjdk",
+        "jdk17-openjdk",
+        "jdk11-openjdk",
+        "jdk8-openjdk"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "java-kotlin",
+      "name": "Java/Kotlin",
+      "category": "languages",
+      "description": "OpenJDK Java 27 development kit",
+      "icon": "",
+      "packages": [
+        "jdk-openjdk"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "julia",
+      "name": "Julia",
+      "category": "languages",
+      "description": "High-level, high-performance, dynamic programming language",
+      "icon": "julia",
+      "packages": [
+        "julia"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "jupyter",
+      "name": "Jupyter",
+      "category": "languages",
+      "description": "JupyterLab computational environment",
+      "icon": "jupyter",
+      "packages": [
+        "jupyterlab"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kotlin",
+      "name": "Kotlin",
+      "category": "languages",
+      "description": "Statically typed programming language with multiplatform support",
+      "icon": "",
+      "packages": [
+        "kotlin"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "laravel",
+      "name": "Laravel",
+      "category": "languages",
+      "description": "Dependency Manager for PHP",
+      "icon": "",
+      "packages": [
+        "composer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lua",
+      "name": "Lua (LuaRocks)",
+      "category": "languages",
+      "description": "Lua's package manager, with the Lua language",
+      "icon": "",
+      "packages": [
+        "luarocks"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "nim",
+      "name": "Nim",
+      "category": "languages",
+      "description": "Imperative, multi-paradigm, compiled programming language",
+      "icon": "",
+      "packages": [
+        "nim"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "node-js",
+      "name": "Node.js",
+      "category": "languages",
+      "description": "Evented I/O for V8 javascript (\"Current\" release)",
+      "icon": "",
+      "packages": [
+        "nodejs",
+        "npm",
+        "pnpm"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "node-js-lts",
+      "name": "Node.js LTS",
+      "category": "languages",
+      "description": "Evented I/O for V8 javascript (\"Active LTS\" release: Krypton)",
+      "icon": "",
+      "packages": [
+        "nodejs-lts-krypton"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ocaml",
+      "name": "OCaml",
+      "category": "languages",
+      "description": "The OCaml language and opam, its package manager",
+      "icon": "ocaml",
+      "packages": [
+        "opam",
+        "ocaml"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "odin",
+      "name": "Odin",
+      "category": "languages",
+      "description": "Data-oriented programming language",
+      "icon": "",
+      "packages": [
+        "odin"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "older-pythons",
+      "name": "Older Pythons",
+      "category": "languages",
+      "description": "The Python programming language (version 3.11)",
+      "icon": "",
+      "packages": [
+        "python311",
+        "python313"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "php",
+      "name": "PHP",
+      "category": "languages",
+      "description": "A general-purpose scripting language that is especially suited to web development",
+      "icon": "",
+      "packages": [
+        "php"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pnpm",
+      "name": "Pnpm",
+      "category": "languages",
+      "description": "Fast, disk space efficient package manager",
+      "icon": "",
+      "packages": [
+        "pnpm"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pypy",
+      "name": "PyPy",
+      "category": "languages",
+      "description": "A Python3 implementation written in Python, JIT enabled",
+      "icon": "",
+      "packages": [
+        "pypy3"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "r",
+      "name": "R",
+      "category": "languages",
+      "description": "Language and environment for statistical computing and graphics",
+      "icon": "",
+      "packages": [
+        "r"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ruby",
+      "name": "Ruby",
+      "category": "languages",
+      "description": "An object-oriented language for quick and easy programming",
+      "icon": "",
+      "packages": [
+        "ruby"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rust",
+      "name": "Rust",
+      "category": "languages",
+      "description": "The Rust toolchain installer",
+      "icon": "rust",
+      "packages": [
+        "rustup"
+      ],
+      "source": "arch",
+      "setup": {
+        "run": [
+          "rustup default stable"
+        ]
+      }
+    },
+    {
+      "id": "rust-extras",
+      "name": "Rust extras",
+      "category": "languages",
+      "description": "Shared compilation cache",
+      "icon": "rust",
+      "packages": [
+        "sccache",
+        "cargo-nextest",
+        "bacon",
+        "cargo-watch"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "symfony",
+      "name": "Symfony",
+      "category": "languages",
+      "description": "The Symfony client helps developers create and manage Symfony applications",
+      "icon": "",
+      "packages": [
+        "symfony-cli"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "uv",
+      "name": "Uv",
+      "category": "languages",
+      "description": "An extremely fast Python package installer and resolver written in Rust",
+      "icon": "",
+      "packages": [
+        "uv",
+        "python-pipx",
+        "pypy3"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Python"
+      ]
+    },
+    {
+      "id": "yarn",
+      "name": "Yarn",
+      "category": "languages",
+      "description": "Fast, reliable, and secure dependency management",
+      "icon": "",
+      "packages": [
+        "yarn"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "zig",
+      "name": "Zig",
+      "category": "languages",
+      "description": "A general-purpose programming language and toolchain for maintaining robust, optimal, and reusable software",
+      "icon": "",
+      "packages": [
+        "zig",
+        "zls"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "android-studio",
+      "name": "Android Studio",
+      "category": "editors",
+      "description": "The official Android IDE (Stable branch)",
+      "icon": "android-studio",
+      "packages": [
+        "android-studio"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "apostrophe",
+      "name": "Apostrophe",
+      "category": "editors",
+      "description": "Distraction free Markdown editor",
+      "icon": "",
+      "packages": [
+        "apostrophe"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Markdown"
+      ]
+    },
+    {
+      "id": "clion",
+      "name": "CLion",
+      "category": "editors",
+      "description": "Cross-platform IDE for C and C++ from JetBrains",
+      "icon": "clion",
+      "packages": [
+        "clion"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "category": "editors",
+      "description": "AI-first coding environment",
+      "icon": "cursor",
+      "packages": [
+        "cursor-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "emacs",
+      "name": "Emacs",
+      "category": "editors",
+      "description": "The extensible, customizable, self-documenting real-time display editor",
+      "icon": "emacs",
+      "packages": [
+        "emacs"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "featherpad",
+      "name": "FeatherPad",
+      "category": "editors",
+      "description": "Lightweight Qt plain text editor",
+      "icon": "featherpad",
+      "packages": [
+        "featherpad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gedit",
+      "name": "Gedit",
+      "category": "editors",
+      "description": "Easy-to-use general-purpose text editor",
+      "icon": "gedit",
+      "packages": [
+        "gedit"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-builder",
+      "name": "GNOME Builder",
+      "category": "editors",
+      "description": "An IDE for writing GNOME-based software",
+      "icon": "",
+      "packages": [
+        "gnome-builder"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "helix",
+      "name": "Helix",
+      "category": "editors",
+      "description": "A post-modern modal text editor",
+      "icon": "helix",
+      "packages": [
+        "helix"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "intellij-idea",
+      "name": "IntelliJ IDEA",
+      "category": "editors",
+      "description": "IDE for Java, Groovy and other programming languages with advanced refactoring features",
+      "icon": "intellij-idea",
+      "packages": [
+        "intellij-idea-oss"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "jetbrains-toolbox",
+      "name": "JetBrains Toolbox",
+      "category": "editors",
+      "description": "Manage all your JetBrains Projects and Tools",
+      "icon": "jetbrains-toolbox",
+      "packages": [
+        "jetbrains-toolbox"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "kakoune",
+      "name": "Kakoune",
+      "category": "editors",
+      "description": "Multiple-selection, UNIX-flavored modal editor",
+      "icon": "kakoune",
+      "packages": [
+        "kakoune"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kate",
+      "name": "Kate",
+      "category": "editors",
+      "description": "Advanced text editor",
+      "icon": "kate",
+      "packages": [
+        "kate"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "l3afpad",
+      "name": "L3afpad",
+      "category": "editors",
+      "description": "Simple GTK plain text editor",
+      "icon": "l3afpad",
+      "packages": [
+        "l3afpad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mousepad",
+      "name": "Mousepad",
+      "category": "editors",
+      "description": "Simple text editor for Xfce",
+      "icon": "mousepad",
+      "packages": [
+        "mousepad"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "neovim",
+      "name": "Neovim",
+      "category": "editors",
+      "description": "Fork of Vim aiming to improve user experience, plugins, and GUIs",
+      "icon": "",
+      "packages": [
+        "neovim"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "phpstorm",
+      "name": "PhpStorm",
+      "category": "editors",
+      "description": "Lightweight and Smart PHP IDE",
+      "icon": "phpstorm",
+      "packages": [
+        "phpstorm"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "pluma",
+      "name": "Pluma",
+      "category": "editors",
+      "description": "A powerful text editor for MATE",
+      "icon": "",
+      "packages": [
+        "pluma"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pycharm",
+      "name": "PyCharm",
+      "category": "editors",
+      "description": "Python IDE for Professional Developers",
+      "icon": "pycharm-community",
+      "packages": [
+        "pycharm-community-edition"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "qt-creator",
+      "name": "Qt Creator",
+      "category": "editors",
+      "description": "Lightweight, cross-platform integrated development environment",
+      "icon": "qtcreator",
+      "packages": [
+        "qtcreator"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rider",
+      "name": "Rider",
+      "category": "editors",
+      "description": "A cross-platform .NET IDE by JetBrains",
+      "icon": "rider",
+      "packages": [
+        "rider"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "sublime-text-4",
+      "name": "Sublime Text 4",
+      "category": "editors",
+      "description": "Sophisticated text editor for code, html and prose - stable build",
+      "icon": "",
+      "packages": [
+        "sublime-text-4"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "vim",
+      "name": "Vim",
+      "category": "editors",
+      "description": "Vi Improved, a highly configurable, improved version of the vi text editor",
+      "icon": "vim",
+      "packages": [
+        "vim"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "vs-code",
+      "name": "Visual Studio Code",
+      "category": "editors",
+      "description": "Microsoft's code editor, with its extension marketplace; karchy's default code editor",
+      "icon": "visual-studio-code",
+      "packages": [
+        "visual-studio-code-bin"
+      ],
+      "source": "omarchy",
+      "default": true,
+      "keywords": [
+        "vscode",
+        "code"
+      ]
+    },
+    {
+      "id": "vscodium",
+      "name": "VSCodium",
+      "category": "editors",
+      "description": "Binary releases of VS Code without MS branding/telemetry/licensing",
+      "icon": "vscodium",
+      "packages": [
+        "vscodium-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "webstorm",
+      "name": "WebStorm",
+      "category": "editors",
+      "description": "JavaScript IDE and HTML editor",
+      "icon": "webstorm",
+      "packages": [
+        "webstorm"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "xed",
+      "name": "Xed",
+      "category": "editors",
+      "description": "A small and lightweight text editor",
+      "icon": "xed",
+      "packages": [
+        "xed"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "zed",
+      "name": "Zed",
+      "category": "editors",
+      "description": "A high-performance, multiplayer code editor from the creators of Atom and Tree-sitter",
+      "icon": "zed",
+      "packages": [
+        "zed"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "actionlint",
+      "name": "Actionlint",
+      "category": "devtools",
+      "description": "Static checker for GitHub Actions workflow files",
+      "icon": "",
+      "packages": [
+        "actionlint"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "age",
+      "name": "Age",
+      "category": "devtools",
+      "description": "A simple, modern and secure file encryption tool",
+      "icon": "",
+      "packages": [
+        "age"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ast-grep",
+      "name": "Ast-grep",
+      "category": "devtools",
+      "description": "CLI tool for code structural search, lint and rewriting",
+      "icon": "",
+      "packages": [
+        "ast-grep"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "atuin",
+      "name": "Atuin",
+      "category": "devtools",
+      "description": "Magical shell history",
+      "icon": "",
+      "packages": [
+        "atuin"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "bat",
+      "name": "Bat",
+      "category": "devtools",
+      "description": "Cat clone with syntax highlighting and git integration",
+      "icon": "",
+      "packages": [
+        "bat"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "beyond-compare",
+      "name": "Beyond Compare",
+      "category": "devtools",
+      "description": "Beyond Compare 5: Compare, sync, and merge files and folders",
+      "icon": "bcompare",
+      "packages": [
+        "bcompare"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "delta",
+      "name": "Delta",
+      "category": "devtools",
+      "description": "Syntax-highlighting pager for git and diff output",
+      "icon": "",
+      "packages": [
+        "git-delta"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "difftastic",
+      "name": "Difftastic",
+      "category": "devtools",
+      "description": "An experimental diff tool that compares files based on their syntax",
+      "icon": "",
+      "packages": [
+        "difftastic"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "direnv",
+      "name": "Direnv",
+      "category": "devtools",
+      "description": "A shell extension that manages your environment",
+      "icon": "",
+      "packages": [
+        "direnv"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "dust",
+      "name": "Dust",
+      "category": "devtools",
+      "description": "A more intuitive version of du in rust",
+      "icon": "",
+      "packages": [
+        "dust"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "entr",
+      "name": "Entr",
+      "category": "devtools",
+      "description": "Run arbitrary commands when files change",
+      "icon": "",
+      "packages": [
+        "entr"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "eza",
+      "name": "Eza",
+      "category": "devtools",
+      "description": "A modern replacement for ls (community fork of exa)",
+      "icon": "",
+      "packages": [
+        "eza"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "fd",
+      "name": "Fd",
+      "category": "devtools",
+      "description": "Simple, fast and user-friendly alternative to find",
+      "icon": "",
+      "packages": [
+        "fd"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "git-lfs",
+      "name": "Git LFS",
+      "category": "devtools",
+      "description": "Git extension for versioning large files",
+      "icon": "git",
+      "packages": [
+        "git-lfs"
+      ],
+      "source": "arch",
+      "setup": {
+        "run": [
+          "git lfs install"
+        ]
+      }
+    },
+    {
+      "id": "gitg",
+      "name": "Gitg",
+      "category": "devtools",
+      "description": "GNOME GUI client to view git repositories",
+      "icon": "gitg",
+      "packages": [
+        "gitg"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "github-cli",
+      "name": "GitHub CLI",
+      "category": "devtools",
+      "description": "The GitHub CLI",
+      "icon": "github",
+      "packages": [
+        "github-cli"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gitkraken",
+      "name": "GitKraken",
+      "category": "devtools",
+      "description": "The intuitive, fast, and beautiful cross-platform Git client",
+      "icon": "gitkraken",
+      "packages": [
+        "gitkraken"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "gitlab-cli",
+      "name": "GitLab CLI",
+      "category": "devtools",
+      "description": "Cli tool to help work seamlessly with GitLab from the command line",
+      "icon": "gitlab",
+      "packages": [
+        "glab"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gitui",
+      "name": "Gitui",
+      "category": "devtools",
+      "description": "Blazing fast terminal-ui for git written in Rust",
+      "icon": "",
+      "packages": [
+        "gitui"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "glow",
+      "name": "Glow",
+      "category": "devtools",
+      "description": "Command-line markdown renderer",
+      "icon": "",
+      "packages": [
+        "glow"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "hexyl",
+      "name": "Hexyl",
+      "category": "devtools",
+      "description": "Colored command-line hex viewer",
+      "icon": "",
+      "packages": [
+        "hexyl"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "httpie",
+      "name": "HTTPie",
+      "category": "devtools",
+      "description": "Human-friendly CLI HTTP client for the API era",
+      "icon": "",
+      "packages": [
+        "httpie"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "hurl",
+      "name": "Hurl",
+      "category": "devtools",
+      "description": "Run and test HTTP requests with plain text",
+      "icon": "",
+      "packages": [
+        "hurl"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "hyperfine",
+      "name": "Hyperfine",
+      "category": "devtools",
+      "description": "A command-line benchmarking tool",
+      "icon": "",
+      "packages": [
+        "hyperfine"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "just",
+      "name": "Just",
+      "category": "devtools",
+      "description": "A handy way to save and run project-specific commands",
+      "icon": "",
+      "packages": [
+        "just"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lazygit",
+      "name": "Lazygit",
+      "category": "devtools",
+      "description": "Simple terminal UI for git commands",
+      "icon": "",
+      "packages": [
+        "lazygit"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lnav",
+      "name": "Lnav",
+      "category": "devtools",
+      "description": "A curses-based tool for viewing and analyzing log files",
+      "icon": "",
+      "packages": [
+        "lnav"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ltrace",
+      "name": "Ltrace",
+      "category": "devtools",
+      "description": "Tracks runtime library calls in dynamically linked programs",
+      "icon": "",
+      "packages": [
+        "ltrace"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "meld",
+      "name": "Meld",
+      "category": "devtools",
+      "description": "Compare files, directories and working copies",
+      "icon": "meld",
+      "packages": [
+        "meld"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mitmproxy",
+      "name": "Mitmproxy",
+      "category": "devtools",
+      "description": "SSL-capable man-in-the-middle HTTP proxy",
+      "icon": "",
+      "packages": [
+        "mitmproxy"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pre-commit",
+      "name": "Pre-commit",
+      "category": "devtools",
+      "description": "A framework for managing and maintaining multi-language pre-commit hooks",
+      "icon": "",
+      "packages": [
+        "pre-commit"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ripgrep",
+      "name": "Ripgrep",
+      "category": "devtools",
+      "description": "A search tool that combines the usability of ag with the raw speed of grep",
+      "icon": "",
+      "packages": [
+        "ripgrep"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "shellcheck",
+      "name": "ShellCheck",
+      "category": "devtools",
+      "description": "Shell script analysis tool",
+      "icon": "",
+      "packages": [
+        "shellcheck"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "shfmt",
+      "name": "Shfmt",
+      "category": "devtools",
+      "description": "Format shell programs",
+      "icon": "",
+      "packages": [
+        "shfmt"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "sops",
+      "name": "Sops",
+      "category": "devtools",
+      "description": "Editor of encrypted files that supports YAML, JSON, ENV, INI and BINARY formats",
+      "icon": "",
+      "packages": [
+        "sops"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "strace",
+      "name": "Strace",
+      "category": "devtools",
+      "description": "A diagnostic, debugging and instructional userspace tracer",
+      "icon": "",
+      "packages": [
+        "strace"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "tig",
+      "name": "Tig",
+      "category": "devtools",
+      "description": "Text-mode interface for Git",
+      "icon": "",
+      "packages": [
+        "tig"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "tldr-pages",
+      "name": "tldr (tealdeer)",
+      "category": "devtools",
+      "description": "A fast tldr client in Rust",
+      "icon": "",
+      "packages": [
+        "tealdeer"
+      ],
+      "source": "arch",
+      "setup": {
+        "run": [
+          "tldr --update"
+        ]
+      }
+    },
+    {
+      "id": "tmux",
+      "name": "Tmux",
+      "category": "devtools",
+      "description": "Terminal multiplexer",
+      "icon": "",
+      "packages": [
+        "tmux"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "tokei",
+      "name": "Tokei",
+      "category": "devtools",
+      "description": "A blazingly fast CLOC (Count Lines Of Code) program",
+      "icon": "",
+      "packages": [
+        "tokei"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "watchexec",
+      "name": "Watchexec",
+      "category": "devtools",
+      "description": "Executes commands in response to file modifications",
+      "icon": "",
+      "packages": [
+        "watchexec"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "wireshark",
+      "name": "Wireshark",
+      "category": "devtools",
+      "description": "Network traffic and protocol analyzer/sniffer - Qt GUI",
+      "icon": "wireshark",
+      "packages": [
+        "wireshark-qt"
+      ],
+      "source": "arch",
+      "setup": {
+        "groups": [
+          "wireshark"
+        ]
+      }
+    },
+    {
+      "id": "xh",
+      "name": "Xh",
+      "category": "devtools",
+      "description": "Friendly and fast tool for sending HTTP requests",
+      "icon": "",
+      "packages": [
+        "xh"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "yq",
+      "name": "Yq",
+      "category": "devtools",
+      "description": "Portable command-line YAML processor",
+      "icon": "",
+      "packages": [
+        "go-yq"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "zellij",
+      "name": "Zellij",
+      "category": "devtools",
+      "description": "A terminal multiplexer",
+      "icon": "",
+      "packages": [
+        "zellij"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "zoxide",
+      "name": "Zoxide",
+      "category": "devtools",
+      "description": "A smarter cd command for your terminal",
+      "icon": "",
+      "packages": [
+        "zoxide"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "db-browser-for-sqlite",
+      "name": "DB Browser for SQLite",
+      "category": "databases",
+      "description": "A light GUI editor for SQLite databases, built on top of Qt",
+      "icon": "sqlitebrowser",
+      "packages": [
+        "sqlitebrowser"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "dbeaver",
+      "name": "DBeaver",
+      "category": "databases",
+      "description": "Free universal SQL Client for developers and database administrators (community edition)",
+      "icon": "dbeaver",
+      "packages": [
+        "dbeaver"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "insomnia",
+      "name": "Insomnia",
+      "category": "databases",
+      "description": "API Client and Design Platform for GraphQL and REST",
+      "icon": "insomnia",
+      "packages": [
+        "insomnia-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "mariadb",
+      "name": "MariaDB",
+      "category": "databases",
+      "description": "Fast SQL database server, derived from MySQL",
+      "icon": "",
+      "packages": [
+        "mariadb"
+      ],
+      "source": "arch",
+      "setup": {
+        "note": "Create the data directory before first use: sudo mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql, then sudo systemctl enable --now mariadb."
+      }
+    },
+    {
+      "id": "mongodb-compass",
+      "name": "MongoDB Compass",
+      "category": "databases",
+      "description": "The official GUI for MongoDB",
+      "icon": "mongodb-compass",
+      "packages": [
+        "mongodb-compass"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "mysql-workbench",
+      "name": "MySQL Workbench",
+      "category": "databases",
+      "description": "A cross-platform, visual database design tool developed by MySQL",
+      "icon": "mysql-workbench",
+      "packages": [
+        "mysql-workbench"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pgcli",
+      "name": "Pgcli",
+      "category": "databases",
+      "description": "A command line interface for PostgreSQL with auto-completion and syntax highlighting",
+      "icon": "",
+      "packages": [
+        "pgcli"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "postgresql",
+      "name": "PostgreSQL",
+      "category": "databases",
+      "description": "Sophisticated object-relational DBMS",
+      "icon": "",
+      "packages": [
+        "postgresql"
+      ],
+      "source": "arch",
+      "setup": {
+        "note": "Create the database cluster before first use: sudo -iu postgres initdb -D /var/lib/postgres/data, then sudo systemctl enable --now postgresql."
+      }
+    },
+    {
+      "id": "postman",
+      "name": "Postman",
+      "category": "databases",
+      "description": "Build, test, and document your APIs faster",
+      "icon": "postman",
+      "packages": [
+        "postman-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "valkey",
+      "name": "Valkey",
+      "category": "databases",
+      "description": "An in-memory database that persists on disk",
+      "icon": "",
+      "packages": [
+        "valkey"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "valkey.service"
+        ]
+      },
+      "keywords": [
+        "Redis"
+      ]
+    },
+    {
+      "id": "yaak",
+      "name": "Yaak",
+      "category": "databases",
+      "description": "A fast, secure, and offline API client",
+      "icon": "",
+      "packages": [
+        "yaak",
+        "yaak-cli"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ansible",
+      "name": "Ansible",
+      "category": "cloud",
+      "description": "Official assortment of Ansible collections",
+      "icon": "",
+      "packages": [
+        "ansible"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "aws-cli",
+      "name": "AWS CLI",
+      "category": "cloud",
+      "description": "Universal Command Line Interface for Amazon Web Services (version 2)",
+      "icon": "",
+      "packages": [
+        "aws-cli-v2"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "azure-cli",
+      "name": "Azure CLI",
+      "category": "cloud",
+      "description": "Command-line tools for Microsoft Azure",
+      "icon": "",
+      "packages": [
+        "azure-cli"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "buildah",
+      "name": "Buildah",
+      "category": "cloud",
+      "description": "A tool which facilitates building OCI images",
+      "icon": "",
+      "packages": [
+        "buildah"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare",
+      "category": "cloud",
+      "description": "The CLI for Cloudflare Workers",
+      "icon": "",
+      "packages": [
+        "wrangler",
+        "cloudflared"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "digitalocean-cli",
+      "name": "DigitalOcean CLI",
+      "category": "cloud",
+      "description": "The official command line interface for the DigitalOcean API",
+      "icon": "",
+      "packages": [
+        "doctl"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "dive",
+      "name": "Dive",
+      "category": "cloud",
+      "description": "A tool for exploring layers in a docker image",
+      "icon": "",
+      "packages": [
+        "dive"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "google-cloud-cli",
+      "name": "Google Cloud CLI",
+      "category": "cloud",
+      "description": "A core set of command-line tools for the Google Cloud Platform. Includes only gcloud core (with beta and alpha commands), gcloud-crc32c and man pages",
+      "icon": "google",
+      "packages": [
+        "google-cloud-cli"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "helm",
+      "name": "Helm",
+      "category": "cloud",
+      "description": "The Kubernetes Package Manager",
+      "icon": "helm",
+      "packages": [
+        "helm"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "k9s",
+      "name": "K9s",
+      "category": "cloud",
+      "description": "TUI for managing Kubernetes clusters and pods",
+      "icon": "",
+      "packages": [
+        "k9s"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kubectl",
+      "name": "Kubectl",
+      "category": "cloud",
+      "description": "A command line tool for communicating with a Kubernetes API server",
+      "icon": "",
+      "packages": [
+        "kubectl"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kubectx",
+      "name": "Kubectx",
+      "category": "cloud",
+      "description": "Utility to manage and switch between kubectl contexts and Kubernetes namespaces",
+      "icon": "",
+      "packages": [
+        "kubectx"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kustomize",
+      "name": "Kustomize",
+      "category": "cloud",
+      "description": "Template-free customization of Kubernetes YAML manifests",
+      "icon": "",
+      "packages": [
+        "kustomize"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lazydocker",
+      "name": "Lazydocker",
+      "category": "cloud",
+      "description": "A simple terminal UI for docker and docker-compose, written in Go with the gocui library",
+      "icon": "",
+      "packages": [
+        "lazydocker"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "local-clusters",
+      "name": "Local clusters",
+      "category": "cloud",
+      "description": "Kubernetes IN Docker - local clusters for testing Kubernetes",
+      "icon": "",
+      "packages": [
+        "kind",
+        "minikube"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ngrok",
+      "name": "Ngrok",
+      "category": "cloud",
+      "description": "A tunneling, reverse proxy for developing and understanding networked, HTTP services",
+      "icon": "",
+      "packages": [
+        "ngrok"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "opentofu",
+      "name": "OpenTofu",
+      "category": "cloud",
+      "description": "Lets you declaratively manage your cloud infrastructure",
+      "icon": "",
+      "packages": [
+        "opentofu"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "packer",
+      "name": "Packer",
+      "category": "cloud",
+      "description": "Tool for creating machine images for platforms from a single source configuration",
+      "icon": "",
+      "packages": [
+        "packer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "pulumi",
+      "name": "Pulumi",
+      "category": "cloud",
+      "description": "Modern Infrastructure as Code",
+      "icon": "",
+      "packages": [
+        "pulumi"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "skopeo",
+      "name": "Skopeo",
+      "category": "cloud",
+      "description": "A command line utility for various operations on container images and image repositories",
+      "icon": "",
+      "packages": [
+        "skopeo"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "stern",
+      "name": "Stern",
+      "category": "cloud",
+      "description": "Multi pod and container log tailing for Kubernetes",
+      "icon": "",
+      "packages": [
+        "stern"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "terraform",
+      "name": "Terraform",
+      "category": "cloud",
+      "description": "HashiCorp tool for building and updating infrastructure as code idempotently",
+      "icon": "",
+      "packages": [
+        "terraform"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "claude-code",
+      "name": "Claude Code",
+      "category": "ai",
+      "description": "An agentic coding tool that lives in your terminal",
+      "icon": "",
+      "packages": [
+        "claude-code"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "claude-desktop",
+      "name": "Claude Desktop",
+      "category": "ai",
+      "description": "Official Claude AI desktop app from Anthropic",
+      "icon": "",
+      "packages": [
+        "claude-desktop"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "codex-cli",
+      "name": "Codex CLI",
+      "category": "ai",
+      "description": "OpenAIs lightweight coding agent that runs in your terminal",
+      "icon": "",
+      "packages": [
+        "openai-codex"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "codex-desktop",
+      "name": "Codex Desktop",
+      "category": "ai",
+      "description": "Official ChatGPT desktop app with Codex",
+      "icon": "",
+      "packages": [
+        "openai-codex-desktop"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "crush",
+      "name": "Crush",
+      "category": "ai",
+      "description": "A powerful terminal-based AI assistant for developers, providing intelligent coding assistance directly in your terminal",
+      "icon": "",
+      "packages": [
+        "crush-bin"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "cursor-cli",
+      "name": "Cursor CLI",
+      "category": "ai",
+      "description": "CLI tool for Cursor, the AI-first coding agent",
+      "icon": "cursor",
+      "packages": [
+        "cursor-cli"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "gemini-cli",
+      "name": "Gemini CLI",
+      "category": "ai",
+      "description": "Open-source AI agent that brings the power of Gemini directly into your terminal",
+      "icon": "gemini",
+      "packages": [
+        "gemini-cli"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "github-copilot-cli",
+      "name": "GitHub Copilot CLI",
+      "category": "ai",
+      "description": "GitHub Copilot CLI brings the power of Copilot coding agent directly to your terminal",
+      "icon": "github",
+      "packages": [
+        "github-copilot-cli"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "llama-cpp",
+      "name": "Llama.cpp",
+      "category": "ai",
+      "description": "Run large language models locally, on any graphics card through Vulkan",
+      "icon": "",
+      "packages": [
+        "llama-cpp",
+        "ggml-vulkan"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lm-studio",
+      "name": "LM Studio",
+      "category": "ai",
+      "description": "LM Studio - A desktop app for exploring and running large language models locally",
+      "icon": "",
+      "packages": [
+        "lmstudio-bin"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama",
+      "category": "ai",
+      "description": "Run large language models locally, on any graphics card through Vulkan",
+      "icon": "",
+      "packages": [
+        "ollama-vulkan"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "ollama.service"
+        ]
+      }
+    },
+    {
+      "id": "opencode",
+      "name": "OpenCode",
+      "category": "ai",
+      "description": "The open source coding agent",
+      "icon": "",
+      "packages": [
+        "opencode"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "t3-code",
+      "name": "T3 Code",
+      "category": "ai",
+      "description": "Open-source control plane for coding agents",
+      "icon": "",
+      "packages": [
+        "t3code-bin"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "1password",
+      "name": "1Password",
+      "category": "security",
+      "description": "Password manager and secure wallet",
+      "icon": "1password",
+      "packages": [
+        "1password",
+        "1password-cli"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "authenticator",
+      "name": "Authenticator",
+      "category": "security",
+      "description": "Simple application for generating two-factor authentication (2FA) codes",
+      "icon": "",
+      "packages": [
+        "authenticator"
+      ],
+      "source": "arch",
+      "keywords": [
+        "2FA"
+      ]
+    },
+    {
+      "id": "bitwarden",
+      "name": "Bitwarden",
+      "category": "security",
+      "description": "A secure and free password manager for all of your devices",
+      "icon": "bitwarden",
+      "packages": [
+        "bitwarden"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "clamui",
+      "name": "ClamUI",
+      "category": "security",
+      "description": "Modern GUI for ClamAV antivirus",
+      "icon": "",
+      "packages": [
+        "clamui"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "firewalld",
+      "name": "Firewalld",
+      "category": "security",
+      "description": "Firewall daemon with D-Bus interface",
+      "icon": "",
+      "packages": [
+        "firewalld"
+      ],
+      "source": "arch",
+      "keywords": [
+        "firewall-config"
+      ]
+    },
+    {
+      "id": "gufw",
+      "name": "Gufw",
+      "category": "security",
+      "description": "Uncomplicated way to manage your Linux firewall",
+      "icon": "gufw",
+      "packages": [
+        "gufw"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "keepassxc",
+      "name": "KeePassXC",
+      "category": "security",
+      "description": "Cross-platform community-driven port of Keepass password manager",
+      "icon": "keepassxc",
+      "packages": [
+        "keepassxc"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kwalletmanager",
+      "name": "KWalletManager",
+      "category": "security",
+      "description": "Wallet management tool",
+      "icon": "kwalletmanager",
+      "packages": [
+        "kwalletmanager"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "metadata-cleaner",
+      "name": "Metadata Cleaner",
+      "category": "security",
+      "description": "Python GTK application to view and clean metadata in files, using mat2",
+      "icon": "",
+      "packages": [
+        "metadata-cleaner"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "obfuscate",
+      "name": "Obfuscate",
+      "category": "security",
+      "description": "Censor private information from any image",
+      "icon": "",
+      "packages": [
+        "obfuscate"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "proton-pass",
+      "name": "Proton Pass",
+      "category": "security",
+      "description": "Open-source and secure identity manager",
+      "icon": "proton-pass",
+      "packages": [
+        "proton-pass"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "raider",
+      "name": "Raider",
+      "category": "security",
+      "description": "File deletion program designed to permanently remove sensitive files from your computer, enhancing data privacy",
+      "icon": "",
+      "packages": [
+        "raider"
+      ],
+      "source": "arch",
+      "keywords": [
+        "file shredder"
+      ]
+    },
+    {
+      "id": "seahorse",
+      "name": "Seahorse",
+      "category": "security",
+      "description": "GNOME application for managing PGP keys",
+      "icon": "seahorse",
+      "packages": [
+        "seahorse"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "secrets",
+      "name": "Secrets",
+      "category": "security",
+      "description": "Password manager for GNOME which makes use of the KeePass v.4 format",
+      "icon": "",
+      "packages": [
+        "secrets"
+      ],
+      "source": "arch",
+      "keywords": [
+        "KeePass"
+      ]
+    },
+    {
+      "id": "deluge",
+      "name": "Deluge",
+      "category": "network",
+      "description": "GTK UI for Deluge",
+      "icon": "deluge",
+      "packages": [
+        "deluge-gtk"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "deskflow",
+      "name": "Deskflow",
+      "category": "network",
+      "description": "Share one mouse and keyboard between multiple computers",
+      "icon": "",
+      "packages": [
+        "deskflow"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "dropbox",
+      "name": "Dropbox",
+      "category": "network",
+      "description": "A free service that lets you bring your photos, docs, and videos anywhere and share them easily",
+      "icon": "dropbox",
+      "packages": [
+        "dropbox",
+        "dropbox-cli"
+      ],
+      "source": "omarchy"
+    },
+    {
+      "id": "filezilla",
+      "name": "FileZilla",
+      "category": "network",
+      "description": "Fast and reliable FTP, FTPS and SFTP client",
+      "icon": "filezilla",
+      "packages": [
+        "filezilla"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "fragments",
+      "name": "Fragments",
+      "category": "network",
+      "description": "BitTorrent client for GNOME",
+      "icon": "",
+      "packages": [
+        "fragments"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "free-download-manager",
+      "name": "Free Download Manager",
+      "category": "network",
+      "description": "FDM is a powerful modern download accelerator and organizer",
+      "icon": "freedownloadmanager",
+      "packages": [
+        "freedownloadmanager"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "kopia",
+      "name": "Kopia",
+      "category": "network",
+      "description": "Encrypted, deduplicated backups to disks and cloud storage",
+      "icon": "",
+      "packages": [
+        "kopia"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "ktorrent",
+      "name": "KTorrent",
+      "category": "network",
+      "description": "A powerful BitTorrent client for KDE",
+      "icon": "ktorrent",
+      "packages": [
+        "ktorrent"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "localsend",
+      "name": "LocalSend",
+      "category": "network",
+      "description": "Send files to nearby phones and computers over the local network, no account needed",
+      "icon": "localsend",
+      "packages": [
+        "localsend-bin"
+      ],
+      "source": "omarchy",
+      "default": true,
+      "keywords": [
+        "airdrop",
+        "share"
+      ]
+    },
+    {
+      "id": "nextcloud-client",
+      "name": "Nextcloud client",
+      "category": "network",
+      "description": "Nextcloud desktop client",
+      "icon": "nextcloud",
+      "packages": [
+        "nextcloud-client"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "nordvpn",
+      "name": "NordVPN",
+      "category": "network",
+      "description": "NordVPN CLI tool for Linux",
+      "icon": "",
+      "packages": [
+        "nordvpn-bin"
+      ],
+      "source": "omarchy",
+      "setup": {
+        "services": [
+          "nordvpnd.service"
+        ],
+        "groups": [
+          "nordvpn"
+        ]
+      }
+    },
+    {
+      "id": "parsec",
+      "name": "Parsec",
+      "category": "network",
+      "description": "Remotely connect to a gaming pc for a low latency remote computing experience",
+      "icon": "parsec",
+      "packages": [
+        "parsec-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "putty",
+      "name": "PuTTY",
+      "category": "network",
+      "description": "A terminal integrated SSH/Telnet client",
+      "icon": "putty",
+      "packages": [
+        "putty"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "qbittorrent",
+      "name": "QBittorrent",
+      "category": "network",
+      "description": "An advanced BitTorrent client programmed in C++, based on Qt toolkit and libtorrent-rasterbar",
+      "icon": "qbittorrent",
+      "packages": [
+        "qbittorrent"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rclone",
+      "name": "rclone",
+      "category": "network",
+      "description": "Sync files to and from cloud storage, like rsync for the cloud",
+      "icon": "",
+      "packages": [
+        "rclone"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "remmina",
+      "name": "Remmina",
+      "category": "network",
+      "description": "Remote desktop client written in GTK+",
+      "icon": "remmina",
+      "packages": [
+        "remmina"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "resilio-sync",
+      "name": "Resilio Sync",
+      "category": "network",
+      "description": "Resilio Sync (ex:BitTorrent Sync) - automatically sync files via secure, distributed technology",
+      "icon": "",
+      "packages": [
+        "rslsync"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "restic",
+      "name": "restic",
+      "category": "network",
+      "description": "Fast, encrypted, deduplicating backups from the command line",
+      "icon": "restic",
+      "packages": [
+        "restic"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rustdesk",
+      "name": "RustDesk",
+      "category": "network",
+      "description": "Yet another remote desktop software, written in Rust. Works out of the box, no configuration required. Great alternative to TeamViewer and AnyDesk!",
+      "icon": "rustdesk",
+      "packages": [
+        "rustdesk-bin"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "syncthing",
+      "name": "Syncthing",
+      "category": "network",
+      "description": "Open Source Continuous Replication / Cluster Synchronization Thing",
+      "icon": "syncthing",
+      "packages": [
+        "syncthing",
+        "syncthingtray"
+      ],
+      "source": "arch",
+      "setup": {
+        "userServices": [
+          "syncthing.service"
+        ]
+      }
+    },
+    {
+      "id": "tailscale",
+      "name": "Tailscale",
+      "category": "network",
+      "description": "A mesh VPN that makes it easy to connect your devices, wherever they are",
+      "icon": "",
+      "packages": [
+        "tailscale"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "tailscaled.service"
+        ]
+      }
+    },
+    {
+      "id": "transmission",
+      "name": "Transmission",
+      "category": "network",
+      "description": "Fast, easy, and free BitTorrent client (GTK+ GUI)",
+      "icon": "transmission-gtk",
+      "packages": [
+        "transmission-gtk"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "vorta",
+      "name": "Vorta",
+      "category": "network",
+      "description": "A desktop app for Borg backups",
+      "icon": "vorta",
+      "packages": [
+        "vorta"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "warp",
+      "name": "Warp",
+      "category": "network",
+      "description": "Securely send files to each other via the internet or local network by exchanging a word-based code",
+      "icon": "",
+      "packages": [
+        "warp"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "warpinator",
+      "name": "Warpinator",
+      "category": "network",
+      "description": "LAN file sender, send and receive files across the network",
+      "icon": "warpinator",
+      "packages": [
+        "warpinator"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "alacritty",
+      "name": "Alacritty",
+      "category": "utilities",
+      "description": "A cross-platform, GPU-accelerated terminal emulator",
+      "icon": "",
+      "packages": [
+        "alacritty"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "audio-mixer",
+      "name": "Audio mixer",
+      "category": "utilities",
+      "description": "PulseAudio Volume Control",
+      "icon": "pavucontrol",
+      "packages": [
+        "pavucontrol"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "catfish",
+      "name": "Catfish",
+      "category": "utilities",
+      "description": "Versatile file searching tool",
+      "icon": "catfish",
+      "packages": [
+        "catfish"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ckb-next",
+      "name": "Ckb-next",
+      "category": "utilities",
+      "description": "Corsair Keyboard and Mouse RGB Driver",
+      "icon": "ckb-next",
+      "packages": [
+        "ckb-next"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "ckb-next-daemon.service"
+        ]
+      },
+      "keywords": [
+        "Corsair"
+      ]
+    },
+    {
+      "id": "clairvoyant",
+      "name": "Clairvoyant",
+      "category": "utilities",
+      "description": "Get psychic answers from this fortune teller",
+      "icon": "",
+      "packages": [
+        "clairvoyant"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "clapgrep",
+      "name": "Clapgrep",
+      "category": "utilities",
+      "description": "One app to search through all your files",
+      "icon": "",
+      "packages": [
+        "clapgrep"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "collision",
+      "name": "Collision",
+      "category": "utilities",
+      "description": "GUI tool to generate, compare and verify MD5, SHA-1, SHA-256, SHA-512, Blake3, CRC32 and Adler32 hashes",
+      "icon": "",
+      "packages": [
+        "collision"
+      ],
+      "source": "arch",
+      "keywords": [
+        "hashes"
+      ]
+    },
+    {
+      "id": "commit",
+      "name": "Commit",
+      "category": "utilities",
+      "description": "Editor that helps you write better Git and Mercurial commit messages",
+      "icon": "",
+      "packages": [
+        "commit"
+      ],
+      "source": "arch",
+      "keywords": [
+        "message editor"
+      ]
+    },
+    {
+      "id": "conky",
+      "name": "Conky",
+      "category": "utilities",
+      "description": "Light-weight system monitor for X, Wayland, and other things, too",
+      "icon": "conky",
+      "packages": [
+        "conky"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "coolercontrol",
+      "name": "CoolerControl",
+      "category": "utilities",
+      "description": "A program to monitor and control your cooling devices",
+      "icon": "",
+      "packages": [
+        "coolercontrol",
+        "coolercontrold"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "coolercontrold.service"
+        ]
+      }
+    },
+    {
+      "id": "decoder",
+      "name": "Decoder",
+      "category": "utilities",
+      "description": "QR code scanner and generator",
+      "icon": "",
+      "packages": [
+        "decoder"
+      ],
+      "source": "arch",
+      "keywords": [
+        "QR"
+      ]
+    },
+    {
+      "id": "dialect",
+      "name": "Dialect",
+      "category": "utilities",
+      "description": "Translation app for GNOME based on Google Translate and other online services",
+      "icon": "",
+      "packages": [
+        "dialect"
+      ],
+      "source": "arch",
+      "keywords": [
+        "translator"
+      ]
+    },
+    {
+      "id": "disk-usage",
+      "name": "Disk usage",
+      "category": "utilities",
+      "description": "A graphical directory tree analyzer",
+      "icon": "baobab",
+      "packages": [
+        "baobab"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "droidcam",
+      "name": "DroidCam",
+      "category": "utilities",
+      "description": "A tool to turn your phone/tablet into a wireless/usb webcam",
+      "icon": "droidcam",
+      "packages": [
+        "droidcam"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "elastic",
+      "name": "Elastic",
+      "category": "utilities",
+      "description": "Design and export spring physics-based animations to use with libadwaita",
+      "icon": "",
+      "packages": [
+        "elastic"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "emblem",
+      "name": "Emblem",
+      "category": "utilities",
+      "description": "Generate projects avatars for your Matrix rooms and git forges from a symbolic icon",
+      "icon": "",
+      "packages": [
+        "emblem"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "epson-printer-drivers",
+      "name": "Epson printer drivers",
+      "category": "utilities",
+      "description": "Epson Inkjet Printer Driver (ESC/P-R) for Linux",
+      "icon": "",
+      "packages": [
+        "epson-inkjet-printer-escpr"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "extension-manager",
+      "name": "Extension Manager",
+      "category": "utilities",
+      "description": "A native tool for browsing, installing, and managing GNOME Shell Extensions",
+      "icon": "",
+      "packages": [
+        "extension-manager"
+      ],
+      "source": "arch",
+      "keywords": [
+        "GNOME"
+      ]
+    },
+    {
+      "id": "eyedropper",
+      "name": "Eyedropper",
+      "category": "utilities",
+      "description": "Color picker and formatter",
+      "icon": "",
+      "packages": [
+        "eyedropper"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "flameshot",
+      "name": "Flameshot",
+      "category": "utilities",
+      "description": "Powerful yet simple to use screenshot software",
+      "icon": "flameshot",
+      "packages": [
+        "flameshot"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "flatseal",
+      "name": "Flatseal",
+      "category": "utilities",
+      "description": "A permissions manager for Flatpak",
+      "icon": "",
+      "packages": [
+        "flatseal"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "foot",
+      "name": "foot",
+      "category": "utilities",
+      "description": "A fast, lightweight terminal; karchy's terminal",
+      "icon": "foot",
+      "packages": [
+        "foot"
+      ],
+      "source": "arch",
+      "default": true,
+      "required": "karchy opens its own tools, installs and updates in it",
+      "keywords": [
+        "terminal"
+      ]
+    },
+    {
+      "id": "forge-sparks",
+      "name": "Forge Sparks",
+      "category": "utilities",
+      "description": "Simple notifier app with support for Github, GitLab, Gitea and Forgejo",
+      "icon": "",
+      "packages": [
+        "forge-sparks"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gaphor",
+      "name": "Gaphor",
+      "category": "utilities",
+      "description": "Simple UML and SysML modeling tool",
+      "icon": "gaphor",
+      "packages": [
+        "gaphor"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "geany",
+      "name": "Geany",
+      "category": "utilities",
+      "description": "Fast and lightweight IDE",
+      "icon": "geany",
+      "packages": [
+        "geany"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ghex",
+      "name": "GHex",
+      "category": "utilities",
+      "description": "Hex editor for the GNOME desktop",
+      "icon": "ghex",
+      "packages": [
+        "ghex"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "ghostty",
+      "name": "Ghostty",
+      "category": "utilities",
+      "description": "Fast, native, feature-rich terminal emulator pushing modern features",
+      "icon": "",
+      "packages": [
+        "ghostty"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-clocks",
+      "name": "GNOME Clocks",
+      "category": "utilities",
+      "description": "Clocks applications for GNOME",
+      "icon": "gnome-clocks",
+      "packages": [
+        "gnome-clocks"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-disks",
+      "name": "GNOME Disks",
+      "category": "utilities",
+      "description": "Format, partition and check disks, and make or restore disk images",
+      "icon": "gnome-disks",
+      "packages": [
+        "gnome-disk-utility"
+      ],
+      "source": "arch",
+      "default": true,
+      "keywords": [
+        "partition",
+        "format",
+        "usb"
+      ]
+    },
+    {
+      "id": "gnome-maps",
+      "name": "GNOME Maps",
+      "category": "utilities",
+      "description": "Find places around the world",
+      "icon": "gnome-maps",
+      "packages": [
+        "gnome-maps"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-weather",
+      "name": "GNOME Weather",
+      "category": "utilities",
+      "description": "Access current weather conditions and forecasts",
+      "icon": "gnome-weather",
+      "packages": [
+        "gnome-weather"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "google-earth-pro",
+      "name": "Google Earth Pro",
+      "category": "utilities",
+      "description": "3D interface to explore the globe, terrain, streets, buildings and other planets (Pro version)",
+      "icon": "google-earth-pro",
+      "packages": [
+        "google-earth-pro"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "health",
+      "name": "Health",
+      "category": "utilities",
+      "description": "Health tracking app for the GNOME desktop",
+      "icon": "",
+      "packages": [
+        "health"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "hp-printer-drivers",
+      "name": "HP printer drivers",
+      "category": "utilities",
+      "description": "Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet",
+      "icon": "hplip",
+      "packages": [
+        "hplip"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "junction",
+      "name": "Junction",
+      "category": "utilities",
+      "description": "Application chooser to open files and links",
+      "icon": "",
+      "packages": [
+        "junction"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kdevelop",
+      "name": "KDevelop",
+      "category": "utilities",
+      "description": "C++ IDE using KDE technologies",
+      "icon": "kdevelop",
+      "packages": [
+        "kdevelop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kitty",
+      "name": "Kitty",
+      "category": "utilities",
+      "description": "A modern, hackable, featureful, OpenGL-based terminal emulator",
+      "icon": "kitty",
+      "packages": [
+        "kitty"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "krename",
+      "name": "KRename",
+      "category": "utilities",
+      "description": "A very powerful batch file renamer",
+      "icon": "krename",
+      "packages": [
+        "krename"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lact",
+      "name": "LACT",
+      "category": "utilities",
+      "description": "Linux GPU Configuration Tool",
+      "icon": "",
+      "packages": [
+        "lact"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "lactd.service"
+        ]
+      },
+      "keywords": [
+        "GPU control"
+      ]
+    },
+    {
+      "id": "liberation-ms-core-fonts",
+      "name": "Liberation / MS core fonts",
+      "category": "utilities",
+      "description": "Font family which aims at metric compatibility with Arial, Times New Roman, and Courier New",
+      "icon": "",
+      "packages": [
+        "ttf-liberation"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "liquidctl",
+      "name": "Liquidctl",
+      "category": "utilities",
+      "description": "Cross-platform CLI and Python drivers for AIO liquid coolers and other devices",
+      "icon": "",
+      "packages": [
+        "liquidctl"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "lorem",
+      "name": "Lorem",
+      "category": "utilities",
+      "description": "Simple app to generate the Lorem Ipsum placeholder text",
+      "icon": "",
+      "packages": [
+        "lorem"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "mission-center",
+      "name": "Mission Center",
+      "category": "utilities",
+      "description": "Task manager: processor, memory, disk, network and GPU use, apps and services",
+      "icon": "io.missioncenter.MissionCenter",
+      "packages": [
+        "mission-center"
+      ],
+      "source": "arch",
+      "default": true,
+      "keywords": [
+        "task manager",
+        "monitor"
+      ],
+      "setup": {
+        "note": "Ctrl+Shift+Esc opens it."
+      }
+    },
+    {
+      "id": "nvtop",
+      "name": "Nvtop",
+      "category": "utilities",
+      "description": "GPUs process monitoring for AMD, Intel and NVIDIA",
+      "icon": "nvtop",
+      "packages": [
+        "nvtop"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "omacalc",
+      "name": "Omacalc",
+      "category": "utilities",
+      "description": "A keyboard-first calculator",
+      "icon": "",
+      "packages": [
+        "omacalc"
+      ],
+      "source": "omarchy",
+      "default": true,
+      "keywords": [
+        "calculator"
+      ]
+    },
+    {
+      "id": "disktree",
+      "name": "Disktree",
+      "category": "utilities",
+      "description": "See what fills a disk as a treemap, mark what should go and move it to the trash; karchy's disk usage tool",
+      "icon": "",
+      "packages": [
+        "disktree-bin"
+      ],
+      "source": "omarchy",
+      "default": true,
+      "keywords": [
+        "disk usage",
+        "disk space",
+        "treemap",
+        "cleanup",
+        "du"
+      ],
+      "setup": {
+        "note": "Right-click a folder in Thunar and choose Open in Disktree."
+      }
+    },
+    {
+      "id": "openrgb",
+      "name": "OpenRGB",
+      "category": "utilities",
+      "description": "Open source RGB lighting control that doesn't depend on manufacturer software",
+      "icon": "openrgb",
+      "packages": [
+        "openrgb"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "piper",
+      "name": "Piper",
+      "category": "utilities",
+      "description": "GTK application to configure gaming mice",
+      "icon": "",
+      "packages": [
+        "piper"
+      ],
+      "source": "arch",
+      "keywords": [
+        "gaming mice"
+      ]
+    },
+    {
+      "id": "podman-compose",
+      "name": "Podman-compose",
+      "category": "utilities",
+      "description": "A script to run docker-compose.yml using podman",
+      "icon": "",
+      "packages": [
+        "podman-compose"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "railway",
+      "name": "Railway",
+      "category": "utilities",
+      "description": "Look up travel information for many different railways",
+      "icon": "",
+      "packages": [
+        "railway"
+      ],
+      "source": "arch",
+      "keywords": [
+        "DieBahn"
+      ]
+    },
+    {
+      "id": "ramalama",
+      "name": "Ramalama",
+      "category": "utilities",
+      "description": "Simple local AI using OCI containers",
+      "icon": "",
+      "packages": [
+        "ramalama"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "rofi",
+      "name": "Rofi",
+      "category": "utilities",
+      "description": "A window switcher, application launcher and dmenu replacement",
+      "icon": "",
+      "packages": [
+        "rofi"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "share-preview",
+      "name": "Share Preview",
+      "category": "utilities",
+      "description": "Preview and debug websites metadata tags for social media share",
+      "icon": "",
+      "packages": [
+        "share-preview"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "solaar",
+      "name": "Solaar",
+      "category": "utilities",
+      "description": "Linux device manager for a wide range of Logitech devices",
+      "icon": "solaar",
+      "packages": [
+        "solaar"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Logitech"
+      ]
+    },
+    {
+      "id": "tangram",
+      "name": "Tangram",
+      "category": "utilities",
+      "description": "Browser for your pinned tabs",
+      "icon": "",
+      "packages": [
+        "tangram"
+      ],
+      "source": "arch",
+      "keywords": [
+        "web apps"
+      ]
+    },
+    {
+      "id": "text-pieces",
+      "name": "Text Pieces",
+      "category": "utilities",
+      "description": "Powerful scratchpad with ability to perform a lot of text transformations",
+      "icon": "",
+      "packages": [
+        "textpieces"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "thunar",
+      "name": "Thunar",
+      "category": "utilities",
+      "description": "The file manager",
+      "icon": "thunar",
+      "packages": [
+        "thunar"
+      ],
+      "source": "arch",
+      "default": true,
+      "required": "the desktop opens folders, drives and downloads in it",
+      "keywords": [
+        "files",
+        "file manager"
+      ]
+    },
+    {
+      "id": "variety",
+      "name": "Variety",
+      "category": "utilities",
+      "description": "Changes the wallpaper on a regular interval using user-specified or automatically downloaded images",
+      "icon": "variety",
+      "packages": [
+        "variety"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "webfont-kit-generator",
+      "name": "Webfont Kit Generator",
+      "category": "utilities",
+      "description": "Utility to generate WOFF, WOFF2 and the necessary CSS boilerplate from non-web font formats (OTF & TTF)",
+      "icon": "",
+      "packages": [
+        "webfont-kit-generator"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "wezterm",
+      "name": "WezTerm",
+      "category": "utilities",
+      "description": "A GPU-accelerated cross-platform terminal emulator and multiplexer",
+      "icon": "",
+      "packages": [
+        "wezterm"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "wike",
+      "name": "Wike",
+      "category": "utilities",
+      "description": "Wikipedia reader for the GNOME desktop",
+      "icon": "",
+      "packages": [
+        "wike"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Wikipedia"
+      ]
+    },
+    {
+      "id": "xarchiver",
+      "name": "Xarchiver",
+      "category": "utilities",
+      "description": "Open and make zip, 7z, tar and other archives",
+      "icon": "xarchiver",
+      "packages": [
+        "xarchiver"
+      ],
+      "source": "arch",
+      "default": true,
+      "required": "Thunar's Extract and Compress menu items use it",
+      "keywords": [
+        "zip",
+        "archive",
+        "extract"
+      ]
+    },
+    {
+      "id": "yakuake",
+      "name": "Yakuake",
+      "category": "utilities",
+      "description": "A drop-down terminal emulator based on KDE konsole technology",
+      "icon": "yakuake",
+      "packages": [
+        "yakuake"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "zsh-prompt",
+      "name": "ZSH Prompt",
+      "category": "utilities",
+      "description": "A very advanced and programmable command interpreter (shell) for UNIX",
+      "icon": "",
+      "packages": [
+        "zsh"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "asusctl",
+      "name": "Asusctl",
+      "category": "system",
+      "description": "An utility for Linux to control many aspects of various ASUS laptops",
+      "icon": "",
+      "packages": [
+        "asusctl"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "back-in-time",
+      "name": "Back In Time",
+      "category": "system",
+      "description": "Simple backup system inspired from the Flyback Project and TimeVault. Qt6 GUI version",
+      "icon": "",
+      "packages": [
+        "backintime"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "bazaar",
+      "name": "Bazaar",
+      "category": "system",
+      "description": "A fast and modern store for GNOME with focus on Flatpaks, particularly from Flathub",
+      "icon": "",
+      "packages": [
+        "bazaar"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Flatpak store"
+      ]
+    },
+    {
+      "id": "borgbackup",
+      "name": "BorgBackup",
+      "category": "system",
+      "description": "Deduplicating backup program with compression and authenticated encryption",
+      "icon": "",
+      "packages": [
+        "borg"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "containers",
+      "name": "Containers",
+      "category": "system",
+      "icon": "podman-desktop",
+      "description": "Run containers with Podman, without root. The docker command and docker compose work too, and the bar shows what's running.",
+      "packages": [
+        "podman",
+        "podman-docker",
+        "docker-compose"
+      ],
+      "source": "karchy",
+      "feature": "karchy-feature-containers",
+      "keywords": [
+        "podman",
+        "docker",
+        "compose"
+      ]
+    },
+    {
+      "id": "cpu-x",
+      "name": "CPU-X",
+      "category": "system",
+      "description": "A Free software that gathers information on CPU, motherboard and more",
+      "icon": "cpu-x",
+      "packages": [
+        "cpu-x"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "deja-dup",
+      "name": "Deja Dup",
+      "category": "system",
+      "description": "Easy to use backup tool based on Restic",
+      "icon": "deja-dup",
+      "packages": [
+        "deja-dup"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "distrobox",
+      "name": "Distrobox",
+      "category": "system",
+      "description": "Use any linux distribution inside your terminal",
+      "icon": "",
+      "packages": [
+        "distrobox"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "docker",
+      "name": "Docker",
+      "category": "system",
+      "description": "Pack, ship and run any application as a lightweight container",
+      "icon": "",
+      "packages": [
+        "docker",
+        "docker-compose",
+        "docker-buildx"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "docker.socket"
+        ],
+        "groups": [
+          "docker"
+        ]
+      }
+    },
+    {
+      "id": "fcitx5",
+      "name": "Fcitx5",
+      "category": "system",
+      "description": "Next generation of fcitx, cross-platform input method framework",
+      "icon": "",
+      "packages": [
+        "fcitx5"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "fedora-media-writer",
+      "name": "Fedora Media Writer",
+      "category": "system",
+      "description": "Fedora Media Writer - write Fedora images to portable media",
+      "icon": "mediawriter",
+      "packages": [
+        "mediawriter"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "filelight",
+      "name": "Filelight",
+      "category": "system",
+      "description": "View disk usage information",
+      "icon": "filelight",
+      "packages": [
+        "filelight"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "flatpak-flathub",
+      "name": "Flatpak + Flathub",
+      "category": "system",
+      "description": "Linux application sandboxing and distribution framework (formerly xdg-app)",
+      "icon": "",
+      "packages": [
+        "flatpak",
+        "flatseal",
+        "warehouse"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "genymotion",
+      "name": "Genymotion",
+      "category": "system",
+      "description": "Complete set of tools that provides a virtual environment for Android",
+      "icon": "genymotion",
+      "packages": [
+        "genymotion"
+      ],
+      "source": "aur"
+    },
+    {
+      "id": "gnome-boxes",
+      "name": "GNOME Boxes",
+      "category": "system",
+      "description": "Simple GNOME application to access virtual systems",
+      "icon": "gnome-boxes",
+      "packages": [
+        "gnome-boxes"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-firmware",
+      "name": "GNOME Firmware",
+      "category": "system",
+      "description": "Manage firmware on devices supported by fwupd",
+      "icon": "gnome-firmware",
+      "packages": [
+        "gnome-firmware"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gnome-software",
+      "name": "GNOME Software",
+      "category": "system",
+      "description": "Allows you to find and install new apps",
+      "icon": "gnome-software",
+      "packages": [
+        "gnome-software"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gparted",
+      "name": "GParted",
+      "category": "system",
+      "description": "A Partition Magic clone, frontend to GNU Parted",
+      "icon": "gparted",
+      "packages": [
+        "gparted"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gpu-in-containers",
+      "name": "GPU in containers",
+      "category": "system",
+      "description": "NVIDIA container toolkit",
+      "icon": "",
+      "packages": [
+        "nvidia-container-toolkit"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "gpu-viewer",
+      "name": "GPU-Viewer",
+      "category": "system",
+      "description": "A frontend to glxinfo and vulkaninfo",
+      "icon": "",
+      "packages": [
+        "gpu-viewer"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "grsync",
+      "name": "Grsync",
+      "category": "system",
+      "description": "GTK GUI for rsync to synchronize folders, files and make backups",
+      "icon": "grsync",
+      "packages": [
+        "grsync"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "impression",
+      "name": "Impression",
+      "category": "system",
+      "description": "Application to create bootable drives from disk images",
+      "icon": "",
+      "packages": [
+        "impression"
+      ],
+      "source": "arch",
+      "keywords": [
+        "USB writer"
+      ]
+    },
+    {
+      "id": "kde-discover",
+      "name": "KDE Discover",
+      "category": "system",
+      "description": "KDE and Plasma resources management GUI",
+      "icon": "kde",
+      "packages": [
+        "discover"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "kde-partition-manager",
+      "name": "KDE Partition Manager",
+      "category": "system",
+      "description": "A KDE utility that allows you to manage disks, partitions, and file systems",
+      "icon": "partitionmanager",
+      "packages": [
+        "partitionmanager"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "nautilus",
+      "name": "Nautilus",
+      "category": "system",
+      "description": "Default file manager for GNOME",
+      "icon": "nautilus",
+      "packages": [
+        "nautilus"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Files"
+      ]
+    },
+    {
+      "id": "omarchy-windows-vm",
+      "name": "Omarchy Windows VM",
+      "category": "system",
+      "description": "Free implementation of the Remote Desktop Protocol (RDP)",
+      "icon": "",
+      "packages": [
+        "freerdp"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "openrazer",
+      "name": "OpenRazer",
+      "category": "system",
+      "description": "Userspace daemon that abstracts access to the kernel driver. Provides a DBus service for applications to use",
+      "icon": "",
+      "packages": [
+        "openrazer-daemon"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "opentabletdriver",
+      "name": "OpenTabletDriver",
+      "category": "system",
+      "description": "A cross-platform open source tablet driver",
+      "icon": "",
+      "packages": [
+        "opentabletdriver"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "pika-backup",
+      "name": "Pika Backup",
+      "category": "system",
+      "description": "Easy to use backup tool to keep your data safe",
+      "icon": "",
+      "packages": [
+        "pika-backup"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "popsicle",
+      "name": "Popsicle",
+      "category": "system",
+      "description": "Linux utility for flashing multiple USB devices in parallel, written in Rust",
+      "icon": "",
+      "packages": [
+        "popsicle"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "USB flasher"
+      ]
+    },
+    {
+      "id": "printing",
+      "name": "Printers & scanners",
+      "category": "system",
+      "icon": "printer",
+      "description": "Print to network and USB printers, and scan with Document Scanner. Printers that need no driver are found on their own.",
+      "packages": [
+        "cups",
+        "cups-browsed",
+        "sane-airscan",
+        "simple-scan"
+      ],
+      "source": "karchy",
+      "feature": "karchy-feature-printing",
+      "keywords": [
+        "cups",
+        "scan",
+        "sane"
+      ]
+    },
+    {
+      "id": "profile-sync-daemon",
+      "name": "Profile-sync-daemon",
+      "category": "system",
+      "description": "Symlinks and syncs browser profile dirs to RAM",
+      "icon": "",
+      "packages": [
+        "profile-sync-daemon"
+      ],
+      "source": "arch",
+      "setup": {
+        "userServices": [
+          "psd.service"
+        ]
+      }
+    },
+    {
+      "id": "raspberry-pi-imager",
+      "name": "Raspberry Pi Imager",
+      "category": "system",
+      "description": "Raspberry Pi Imaging Utility",
+      "icon": "rpi-imager",
+      "packages": [
+        "rpi-imager"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "sched-ext-schedulers",
+      "name": "Sched-ext schedulers",
+      "category": "system",
+      "description": "Sched_ext schedulers and tools",
+      "icon": "",
+      "packages": [
+        "scx-scheds",
+        "scx-tools",
+        "scx-manager"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "scx_loader.service"
+        ]
+      }
+    },
+    {
+      "id": "ventoy",
+      "name": "Ventoy",
+      "category": "system",
+      "description": "A new bootable USB solution",
+      "icon": "ventoy",
+      "packages": [
+        "ventoy-bin"
+      ],
+      "source": "cachyos"
+    },
+    {
+      "id": "virtual-machine-manager",
+      "name": "Virtual Machine Manager",
+      "category": "system",
+      "description": "Desktop user interface for managing virtual machines",
+      "icon": "virt-manager",
+      "packages": [
+        "virt-manager"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "libvirtd.socket"
+        ],
+        "groups": [
+          "libvirt"
+        ]
+      }
+    },
+    {
+      "id": "vms",
+      "name": "Virtual machines",
+      "category": "system",
+      "icon": "virt-manager",
+      "description": "Run Linux and Windows VMs with QEMU/KVM, each in a window of its own. The bar shows which VMs are running.",
+      "packages": [
+        "qemu-desktop",
+        "edk2-ovmf",
+        "swtpm",
+        "spice-gtk"
+      ],
+      "source": "karchy",
+      "feature": "karchy-feature-vms",
+      "keywords": [
+        "qemu",
+        "kvm",
+        "windows"
+      ]
+    },
+    {
+      "id": "waydroid",
+      "name": "Waydroid",
+      "category": "system",
+      "description": "A container-based approach to boot a full Android system on a regular Linux system",
+      "icon": "waydroid",
+      "packages": [
+        "waydroid",
+        "dkms"
+      ],
+      "source": "arch"
+    },
+    {
+      "id": "winboat",
+      "name": "WinBoat",
+      "category": "system",
+      "description": "Run Windows apps on Linux with seamless integration",
+      "icon": "",
+      "packages": [
+        "winboat",
+        "docker",
+        "docker-compose"
+      ],
+      "source": "cachyos"
+    }
+  ]
+}

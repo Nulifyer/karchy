@@ -479,9 +479,9 @@ Item {
       Layout.fillWidth: true
       iconName: "vms"
       title: "Virtual machines aren't set up"
-      body: "Add them in Settings › Optional features: that installs QEMU, the UEFI firmware, a software TPM and the viewer."
-      actionText: "Open Optional features"
-      onAction: Quickshell.execDetached(["karchy-settings", "features"])
+      body: "Install Virtual machines from Quick install › System features: that installs QEMU, the UEFI firmware, a software TPM and the viewer."
+      actionText: "Open Quick install"
+      onAction: Quickshell.execDetached(["karchy-quick-install", "window", "@system"])
     }
   }
 
