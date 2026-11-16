@@ -9,7 +9,10 @@ pkgdesc="karchy laptop additions: power profiles and suspend-then-hibernate"
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
-depends=('karchy-desktop' 'power-profiles-daemon')
+# bolt authorizes USB4/Thunderbolt devices, so a dock's PCIe-attached
+# Ethernet and USB work (boltd starts on demand).
+# sof-firmware: the audio DSP firmware many laptops need for sound.
+depends=('karchy-desktop' 'power-profiles-daemon' 'bolt' 'sof-firmware')
 source=("karchy-src.tar.gz")
 sha256sums=('SKIP')
 

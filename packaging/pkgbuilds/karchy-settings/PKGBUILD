@@ -44,6 +44,10 @@ package() {
   install -Dm644 snapper/root "$pkgdir/etc/snapper/config-templates/karchy"
   install -Dm644 systemd/tmp.mount.d/karchy.conf "$pkgdir/etc/systemd/system/tmp.mount.d/karchy.conf"
   install -Dm644 systemd/oomd.conf.d/10-karchy.conf "$pkgdir/etc/systemd/oomd.conf.d/10-karchy.conf"
+  # Rescue and emergency shells work with root's password locked.
+  install -Dm644 systemd/sulogin.conf "$pkgdir/usr/lib/systemd/system/rescue.service.d/10-karchy-sulogin.conf"
+  install -Dm644 systemd/sulogin.conf "$pkgdir/usr/lib/systemd/system/emergency.service.d/10-karchy-sulogin.conf"
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/coredump.conf.d" systemd/coredump.conf.d/10-karchy.conf
   install -Dm644 systemd/fprintd.service.d/10-stop-timeout.conf \
     "$pkgdir/usr/lib/systemd/system/fprintd.service.d/10-stop-timeout.conf"
   # LocalSend's port follows the trusted-network list (D-33).
@@ -74,6 +78,8 @@ package() {
   install -Dm644 -t "$pkgdir/usr/lib/systemd/system.conf.d" systemd/system.conf.d/*.conf
   install -Dm644 -t "$pkgdir/usr/lib/systemd/user.conf.d" systemd/user.conf.d/*.conf
   install -Dm644 udev/60-karchy-ioschedulers.rules "$pkgdir/usr/lib/udev/rules.d/60-karchy-ioschedulers.rules"
+  # USB autosuspend off (user 2026-11-16).
+  install -Dm644 udev/90-karchy-usb-autosuspend.rules "$pkgdir/usr/lib/udev/rules.d/90-karchy-usb-autosuspend.rules"
   install -Dm644 -t "$pkgdir/usr/lib/systemd/user/wayland-wm@hyprland.desktop.service.d" \
     "systemd/user/wayland-wm@hyprland.desktop.service.d/10-karchy-keep-shell.conf"
   install -Dm644 mpv/mpv.conf "$pkgdir/etc/mpv/mpv.conf"

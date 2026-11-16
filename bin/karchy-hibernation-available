@@ -30,6 +30,15 @@ if [[ ! $HIBERNATION_IMAGE_SIZE =~ ^[0-9]+$ ]]; then
   exit 1
 fi
 
+# systemd's own verdict, which counts sleep.conf: karchy-nvidia turns
+# hibernation off there (early KMS breaks resume, NVIDIA issue #1343).
+if [[ -z ${KARCHY_SYS_POWER_PATH:-} ]] && command -v busctl >/dev/null &&
+  can=$(busctl call org.freedesktop.login1 /org/freedesktop/login1 \
+    org.freedesktop.login1.Manager CanHibernate 2>/dev/null) &&
+  [[ $can != 's "yes"' && $can != 's "challenge"' ]]; then
+  exit 1
+fi
+
 # karchy's systemd initramfs resumes from the resume= and resume_offset= the
 # installer puts on the kernel command line (D-32).
 if (( SWAPSIZE > HIBERNATION_IMAGE_SIZE )) && grep -qw 'resume=[^ ]*' "$CMDLINE_PATH"; then

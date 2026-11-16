@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Remove fingerprint authentication from sudo, polkit, and lock screen
+# karchy:summary=Remove fingerprint authentication from polkit and the lock screen (and sudo, where older setups added it)
 # karchy:requires-sudo=true
 
 set -e
@@ -33,6 +33,17 @@ remove_pam_config() {
   if [[ -f /etc/pam.d/polkit-1 ]] && grep -Eq 'pam_fprintd\.so|karchy-hw-laptop-closed' /etc/pam.d/polkit-1; then
     echo "Removing fingerprint authentication from polkit..."
     sudo sed -i -e '/pam_fprintd\.so/d' -e '/karchy-hw-laptop-closed/d' /etc/pam.d/polkit-1
+  fi
+  # Setup created /etc/pam.d/polkit-1 when there was none; what's left of it
+  # now would shadow polkit's own file in /usr/lib/pam.d, so drop it when it
+  # says nothing more than that file or the stock "include system-auth" stack.
+  if [[ -f /etc/pam.d/polkit-1 ]]; then
+    local left
+    left=$(grep -Ev '^[[:space:]]*(#|$)' /etc/pam.d/polkit-1 | tr -s ' \t' ' ')
+    if cmp -s /etc/pam.d/polkit-1 /usr/lib/pam.d/polkit-1 ||
+      [[ $left == $'auth include system-auth\naccount include system-auth\npassword include system-auth\nsession include system-auth' ]]; then
+      sudo rm -f /etc/pam.d/polkit-1
+    fi
   fi
 }
 

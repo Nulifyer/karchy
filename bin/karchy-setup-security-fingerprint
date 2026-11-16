@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Set up fingerprint authentication for sudo, polkit, and lock screen
+# karchy:summary=Set up fingerprint authentication for polkit prompts and the lock screen
 # karchy:requires-sudo=true
 
 set -e
@@ -18,16 +18,10 @@ setup_pam_config() {
   # $KARCHY_PATH trees but leaves /usr/bin untouched.
   local fprintd_gate="auth      [success=1 default=ignore] pam_exec.so quiet /usr/bin/karchy-hw-laptop-closed"
 
-  # Configure sudo
-  if ! grep -q pam_fprintd.so /etc/pam.d/sudo; then
-    echo "Configuring sudo for fingerprint authentication..."
-    sudo sed -i '1i auth      sufficient pam_fprintd.so' /etc/pam.d/sudo
-  fi
-  if ! grep -q 'karchy-hw-laptop-closed' /etc/pam.d/sudo; then
-    echo "Adding clamshell gate to sudo..."
-    # Insert immediately before pam_fprintd so success=1 skips exactly it.
-    sudo sed -i "/pam_fprintd\.so/i $fprintd_gate" /etc/pam.d/sudo
-  fi
+  # Not sudo (D-14, revised 2026-11-16): any process running as the user can
+  # start sudo in the background and get root from the next touch of the
+  # reader, meant for the lock screen or a polkit prompt (CVE-2024-37408, Arch
+  # Wiki fprint). A polkit prompt says what is asking; sudo keeps the password.
 
   # Configure polkit
   if [[ -f /etc/pam.d/polkit-1 ]]; then
@@ -152,7 +146,7 @@ fi
 # one transaction, so a failed install leaves the existing driver in place.
 if karchy-pkg-missing libfprint-git fprintd usbutils; then
   echo "Installing required packages..."
-  sudo pacman -S --needed --noconfirm --ask 4 -- libfprint-git fprintd usbutils
+  sudo pacman --color auto -S --needed --noconfirm --ask 4 -- libfprint-git fprintd usbutils
 fi
 
 # Enroll first fingerprint
@@ -215,12 +209,15 @@ if (( enroll_status == 0 )); then
       exit 1
     fi
     echo -e "\e[32m\nPerfect! Fingerprint authentication is now configured.\e[0m"
-    echo "You can use your fingerprint for sudo, polkit, and lock screen (Super + Ctrl + L)."
+    echo "Your fingerprint now unlocks the lock screen (Super + Ctrl + L) and answers password"
+    echo "prompts from apps. sudo in a terminal still asks for your password."
   else
     echo -e "\e[31m\nVerification failed. You may want to try enrolling again.\e[0m"
     exit 1
   fi
 else
   echo -e "\e[31m\nEnrollment failed. Please try again.\e[0m"
+  echo "If it keeps failing, the reader may need newer firmware: run Update Firmware from"
+  echo "the menu (Update), then set up the fingerprint again."
   exit 1
 fi

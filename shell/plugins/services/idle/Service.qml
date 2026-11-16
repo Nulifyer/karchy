@@ -97,12 +97,14 @@ Item {
 
   // Suspend (then hibernate, where the laptop can) after the lock, unless sleep
   // is turned off. Whether the machine is on battery is checked when the timer
-  // fires, so unplugging during the idle stretch counts.
+  // fires, so unplugging during the idle stretch counts. systemd refuses
+  // suspend-then-hibernate when the swap can't hold memory right now, and a
+  // plain suspend is better than staying awake.
   function suspendSystem(reason) {
     logEvent("suspend-system", reason || "requested")
     runProcess(suspendProcess, "suspend",
       "karchy-toggle-enabled suspend-off || karchy-sleep-disabled || " +
-      "{ if karchy-hibernation-available; then systemctl suspend-then-hibernate; else systemctl suspend; fi; }")
+      "{ if karchy-hibernation-available; then systemctl suspend-then-hibernate || systemctl suspend; else systemctl suspend; fi; }")
   }
 
   function startIdleCycle() {

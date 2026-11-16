@@ -1,0 +1,7 @@
+# karchy (user 2026-11-16, as Omarchy): USB devices are never suspended when
+# idle, so mice, keyboards, docks and audio interfaces that drop out after
+# waking (a common firmware bug) keep working. Costs a little laptop battery.
+# A rule rather than usbcore.autosuspend: usbcore is built into the kernel, so
+# a modprobe.d option never reaches it. After systemd's 60-autosuspend.rules,
+# which turns autosuspend on for devices its hwdb lists.
+ACTION=="add", SUBSYSTEM=="usb", TEST=="power/control", ATTR{power/control}="on"

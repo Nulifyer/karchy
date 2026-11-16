@@ -47,12 +47,10 @@ elif [[ -r $state_file ]]; then
   profile=$(<"$state_file")
 fi
 
+# Balanced on both sources until a profile is picked for that source (user
+# 2026-11-16: less heat and fan noise at a desk; Performance is one click away).
 if [[ -z ${profile:-} ]] || ! profile_available "$profile"; then
-  if [[ $action == "ac" ]] && profile_available performance; then
-    profile=performance
-  else
-    profile=balanced
-  fi
+  profile=balanced
 fi
 
 powerprofilesctl set "$profile" || exit

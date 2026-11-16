@@ -27,4 +27,9 @@ package() {
   # that their install triggers already includes it.
   install -Dm644 "$srcdir/karchy/system/nvidia/mkinitcpio.conf" \
     "$pkgdir/etc/mkinitcpio.conf.d/karchy-nvidia.conf"
+  # No hibernation with early KMS (NVIDIA issue #1343); the lid suspends.
+  install -Dm644 "$srcdir/karchy/system/nvidia/sleep.conf" \
+    "$pkgdir/usr/lib/systemd/sleep.conf.d/karchy-nvidia.conf"
+  install -Dm644 "$srcdir/karchy/system/nvidia/logind.conf" \
+    "$pkgdir/usr/lib/systemd/logind.conf.d/karchy-nvidia.conf"
 }

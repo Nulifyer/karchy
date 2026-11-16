@@ -65,13 +65,18 @@ line() {
   entry=$(list | awk -F'\t' -v d="$device" '$1 == d')
   [[ -n $entry ]] || { echo "$device is not a data partition waiting for a mount" >&2; exit 1; }
   IFS=$'\t' read -r _ uuid fstype _ mount <<<"$entry"
-  options="nofail,x-gvfs-show,x-systemd.device-timeout=5s"
+  # nofail: boot never waits on a data disk, so a slow-spinning one isn't cut
+  # off by a short device timeout either. ext4 and FAT get a boot-time check.
+  local passno=0
+  options="nofail,x-gvfs-show"
   case "$fstype" in
     ntfs) fstype=ntfs3; options+=",uid=$uid,gid=$gid,windows_names" ;;
-    exfat | vfat) options+=",uid=$uid,gid=$gid,umask=022" ;;
-    btrfs | ext4 | xfs) options+=",noatime" ;;
+    exfat) options+=",uid=$uid,gid=$gid,umask=022" ;;
+    vfat) options+=",uid=$uid,gid=$gid,umask=022"; passno=2 ;;
+    ext4) options+=",noatime"; passno=2 ;;
+    btrfs | xfs) options+=",noatime" ;;
   esac
-  printf 'UUID=%s %s %s %s 0 0 %s\n' "$uuid" "$mount" "$fstype" "$options" "$MARKER"
+  printf 'UUID=%s %s %s %s 0 %s %s\n' "$uuid" "$mount" "$fstype" "$options" "$passno" "$MARKER"
 }
 
 case "${1:-}" in

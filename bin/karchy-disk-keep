@@ -43,7 +43,15 @@ if ! sudo mount "$mount"; then
   sudo systemctl daemon-reload
   sudo rmdir "$mount" 2>/dev/null || true
   echo "The disk did not mount, so nothing was changed. If it holds Windows, shut Windows down fully (turn off Fast Startup) and try again."
+  if [[ $(awk '{ print $3 }' <<<"$line") == ntfs3 ]]; then
+    echo "If Windows isn't installed on it any more, clear its dirty flag with: sudo ntfsfix --clear-dirty $device (from the ntfsprogs package)"
+  fi
   exit 1
+fi
+
+# A btrfs data disk gets the same monthly scrub as the system disk.
+if [[ $(awk '{ print $3 }' <<<"$line") == btrfs ]]; then
+  sudo systemctl enable --now "btrfs-scrub@$(systemd-escape -p "$mount").timer" >/dev/null 2>&1 || true
 fi
 
 # A new Linux filesystem's top folder belongs to root, so nobody could write to
