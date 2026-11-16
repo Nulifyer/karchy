@@ -28,8 +28,8 @@ done
 
 if (( ${#installed[@]} > 0 )); then
   if (( EUID == 0 )); then
-    pacman -Rns --noconfirm "${installed[@]}"
+    pacman --color auto -Rns --noconfirm "${installed[@]}"
   else
-    sudo pacman -Rns --noconfirm "${installed[@]}"
+    sudo pacman --color auto -Rns --noconfirm "${installed[@]}"
   fi
 fi

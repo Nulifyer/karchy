@@ -33,6 +33,10 @@
 
 set -uo pipefail
 
+# Headlines in bold in a terminal (the floating install window); plain when
+# piped or with NO_COLOR.
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then BOLD=$'\e[1m' DIM=$'\e[2m' RESET=$'\e[0m'; else BOLD="" DIM="" RESET=""; fi
+
 CATALOG=${KARCHY_PATH:-/usr/share/karchy}/default/karchy/quick-install.json
 
 die() {
@@ -191,14 +195,14 @@ install_app() {
     ((${#extra[@]})) && echo "Adding the 32-bit graphics driver for this machine: ${extra[*]}"
   fi
 
-  echo "Installing $name: ${pkgs[*]} ${extra[*]}"
+  printf '%s%s%s %s\n' "$BOLD" "Installing $name" "$RESET" "${pkgs[*]} ${extra[*]}"
   if [[ $(field "$app" .source) == aur ]]; then
-    echo "From the AUR: built on this computer from a community-maintained script."
-    paru "$sync" --needed "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
+    printf '%s%s%s\n' "$DIM" "From the AUR: built on this computer from a community-maintained script." "$RESET"
+    paru --color auto "$sync" --needed "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
   else
     # The window's Install is the confirmation; pacman still lists what it
     # installs (user 2026-11-15). paru keeps its own prompts for the AUR.
-    sudo pacman "$sync" --needed --noconfirm -- "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
+    sudo pacman --color auto "$sync" --needed --noconfirm -- "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
   fi
 
   while read -r unit; do
@@ -283,9 +287,9 @@ remove_app() {
     [[ -n $unit ]] && systemctl is-enabled --quiet "$unit" 2>/dev/null &&
       sudo systemctl disable --now "$unit" 2>/dev/null && stopped+=("$unit")
   done < <(field "$app" '.setup.services[]? // empty')
-  echo "Removing $name: ${installed[*]}"
+  printf '%s%s%s %s\n' "$BOLD" "Removing $name" "$RESET" "${installed[*]}"
   # The window asked already; pacman still lists what it removes.
-  if ! sudo pacman -Rns --noconfirm -- "${installed[@]}"; then
+  if ! sudo pacman --color auto -Rns --noconfirm -- "${installed[@]}"; then
     for unit in "${stopped_user[@]}"; do systemctl --user enable --now "$unit"; done
     for unit in "${stopped[@]}"; do sudo systemctl enable --now "$unit"; done
     die "$name wasn't removed."

@@ -25,10 +25,10 @@ status() {
 
 install_feature() {
   echo "Adding virtual machines: ${PACKAGES[*]}"
-  sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
+  sudo pacman --color auto -S --needed --noconfirm "${PACKAGES[@]}"
   # The ISO chooser asks the desktop portal through Python's GLib bindings.
   # A dependency, so removing VMs leaves it to whatever else uses it.
-  pacman -Q python-gobject >/dev/null 2>&1 || sudo pacman -S --needed --noconfirm --asdeps python-gobject
+  pacman -Q python-gobject >/dev/null 2>&1 || sudo pacman --color auto -S --needed --noconfirm --asdeps python-gobject
 
   if [[ ! -e /dev/kvm ]]; then
     echo "Note: /dev/kvm is missing. Turn on virtualization (Intel VT-x or AMD-V) in the firmware settings."
@@ -65,7 +65,7 @@ remove_feature() {
     echo "Remove that package first, then try again. Nothing was changed."
     exit 1
   fi
-  ((${#installed[@]} == 0)) || sudo pacman -Rns --noconfirm "${installed[@]}"
+  ((${#installed[@]} == 0)) || sudo pacman --color auto -Rns --noconfirm "${installed[@]}"
   [[ -d $VM_ROOT ]] && echo "Your VMs stay in $VM_ROOT; delete that folder yourself if you don't need them."
   karchy-shell -q karchy.vms refresh
   karchy-notification-send -g vms "Virtual machines removed" 2>/dev/null || true

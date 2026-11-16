@@ -205,6 +205,30 @@ show_details() {
 
 show_summary
 
+# Arch's news posts since the last update: the ones that need a manual step
+# before or after updating are announced there (Arch Wiki, System
+# maintenance). Read without root; a feed that can't be fetched is skipped.
+since=$(cat "$state_dir/last-update" 2>/dev/null || true)
+if [[ ! $since =~ ^[0-9]+$ ]]; then
+  since=$(date -d "$(sed -n 's/^KARCHY_INSTALLED=//p' /etc/karchy/install.conf 2>/dev/null)" +%s 2>/dev/null || date -d '30 days ago' +%s)
+fi
+news=$(curl -fsSL --max-time 10 https://archlinux.org/feeds/news/ 2>/dev/null |
+  awk 'BEGIN { RS = "<item>" } NR > 1 {
+    t = $0; sub(/.*<title>/, "", t); sub(/<\/title>.*/, "", t)
+    d = $0; sub(/.*<pubDate>/, "", d); sub(/<\/pubDate>.*/, "", d)
+    print d "\t" t }' |
+  while IFS=$'\t' read -r date title; do
+    when=$(date -d "$date" +%s 2>/dev/null) || continue
+    ((when > since)) || continue
+    title=${title//&amp;/&}; title=${title//&lt;/<}; title=${title//&gt;/>}
+    title=${title//&quot;/\"}; title=${title//&#39;/\'}
+    printf '        %s  %s\n' "$(date -d "@$when" +%Y-%m-%d)" "$title"
+  done) || true
+if [[ -n $news ]]; then
+  printf '\n      %sArch news since your last update%s (read before updating: https://archlinux.org/news/)\n' "$yellow$bold" "$reset"
+  printf '%s\n' "$news"
+fi
+
 # --------------------------------------------------- 2. approve, password once
 if [[ $assume_yes != "true" ]]; then
   source karchy-restart-gum 2>/dev/null || true
@@ -233,7 +257,7 @@ trap 'kill "$keepalive" 2>/dev/null || true' EXIT
 step 2 "Signing keys"
 mapfile -t keyrings < <(awk '{ print $1 }' <<<"$repo_updates" | grep -E '^(archlinux|cachyos|omarchy|karchy)-keyring$' || true)
 if ((${#keyrings[@]} > 0)); then
-  sudo pacman -Sy --needed --noconfirm "${keyrings[@]}"
+  sudo pacman --color auto -Sy --needed --noconfirm "${keyrings[@]}"
   good "Updated ${keyrings[*]}"
 else
   good "Already current"
@@ -243,8 +267,17 @@ fi
 step 3 "System packages"
 if [[ -n $repo_updates ]]; then
   note "snapper takes a snapshot before and after; both appear in the boot menu"
-  sudo pacman -Syu --noconfirm
+  log_lines=$(wc -l </var/log/pacman.log 2>/dev/null || echo 0)
+  sudo pacman --color auto -Syu --noconfirm
   good "System packages updated"
+  # What packages printed while installing (manual steps, changed defaults)
+  # scrolls past above; repeat it where it can be read.
+  notices=$(tail -n +"$((log_lines + 1))" /var/log/pacman.log 2>/dev/null |
+    sed -n 's/^\[[^]]*\] \[ALPM-SCRIPTLET\] //p' | grep -v '^[[:space:]]*$' | head -n 40 || true)
+  if [[ -n $notices ]]; then
+    warn "Notes from the updated packages:"
+    sed 's/^/        /' <<<"$notices"
+  fi
 else
   good "Nothing to update"
 fi
@@ -252,7 +285,14 @@ fi
 # ------------------------------------------------------------- 5. AUR packages
 step 4 "AUR packages"
 if [[ -n $aur_updates ]]; then
-  paru -Sua --noconfirm --skipreview
+  if [[ $assume_yes == "true" ]]; then
+    paru --color auto -Sua --noconfirm --skipreview
+  else
+    # paru shows each changed build script before building it with your
+    # rights; read it before you continue (Arch Wiki, AUR).
+    note "paru shows what changed in each AUR package's build files; review it before you continue"
+    paru --color auto -Sua
+  fi
   good "AUR packages updated"
 else
   good "Nothing to update"
@@ -267,9 +307,13 @@ mapfile -t pacnew < <(pacdiff --output 2>/dev/null)
 if ((${#pacnew[@]} > 0)); then
   warn "${#pacnew[@]} updated config file(s) wait beside your changed ones:"
   printf '        %s\n' "${pacnew[@]}"
-  note "Merge them with: sudo DIFFPROG='code --wait --diff' pacdiff"
+  if command -v code >/dev/null; then
+    note "Merge them with: DIFFPROG='code --wait --diff' pacdiff -s"
+  else
+    note "Review them with: DIFFPROG='diff -u' pacdiff -s"
+  fi
   karchy-notification-send -g config "Config files to review" \
-    "${#pacnew[@]} updated config file(s) are waiting beside your changed ones. Run: sudo pacdiff" || true
+    "${#pacnew[@]} updated config file(s) are waiting beside your changed ones. Run: pacdiff -s" || true
 else
   good "No config files to review"
 fi
@@ -294,6 +338,7 @@ else
 fi
 kill "$keepalive" 2>/dev/null || true
 karchy-update-check --quiet >/dev/null 2>&1 || true
+date +%s >"$state_dir/last-update"
 
 # ------------------------------------------------------------------- summary
 after=$(release_version)

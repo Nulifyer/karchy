@@ -66,7 +66,7 @@ apply() {
 
   # Forced: pacman keeps a database copy that is newer than the server's, and
   # another channel's database can be older than the one already here.
-  pacman -Syy
+  pacman --color auto -Syy
   # Every installed karchy package at the version this channel has, older or
   # newer, as part of a full upgrade (never a partial one). A package the
   # channel doesn't have stays as it is.
@@ -78,7 +78,7 @@ apply() {
       sync+=("karchy/$name")
     fi
   done < <(pacman -Sl karchy)
-  pacman -Su --noconfirm "${sync[@]}"
+  pacman --color auto -Su --noconfirm "${sync[@]}"
   trap - ERR
 }
 

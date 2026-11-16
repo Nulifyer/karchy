@@ -90,4 +90,7 @@ fi
 cp -p "$MIRRORLIST" "$MIRRORLIST.karchy-backup"
 install -m 644 "$work/mirrorlist" "$MIRRORLIST.karchy-new"
 mv "$MIRRORLIST.karchy-new" "$MIRRORLIST"
+# pacman-mirrorlist's new list is superseded by this ranking; leaving it would
+# flag a config file to review after every mirrorlist update.
+rm -f "$MIRRORLIST.pacnew"
 log "mirror list updated: ${#good[@]} ranked mirrors, then the GeoDNS mirror"
