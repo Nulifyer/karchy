@@ -12,3 +12,4 @@ audio/mpeg=mpv.desktop
 audio/flac=mpv.desktop
 audio/ogg=mpv.desktop
 text/plain=com.microsoft.VSCode.desktop
+text/markdown=omawrite.desktop

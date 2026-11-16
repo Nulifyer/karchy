@@ -3,4 +3,4 @@
 # karchy:summary=List available monospace fonts
 # karchy:examples=karchy font list | karchy font set "CaskaydiaMono Nerd Font"
 
-fc-list :spacing=100 -f "%{family[0]}\n" | grep -v -i -E 'emoji|signwriting|karchy' | sort -u
+fc-list :spacing=100 -f "%{family[0]}\n" | grep -v -i -E 'emoji|signwriting|karchy|omarchy|^symbols nerd font' | sort -u
