@@ -694,10 +694,9 @@ system/xkb/rules/evdev	etc/xkb/rules/evdev	1e94f26bade4931426c836eab58e7845b3843
 system/xkb/symbols/karchy	etc/xkb/symbols/omarchy	c127da408d2d9d6abde5f281b59a97685dc5b0ee
 system/systemd/logind.conf.d/10-ignore-power-button.conf	etc/systemd/logind.conf.d/10-ignore-power-button.conf	d86b866292f6973765be8ada0fcf9f19efb59b66
 system/systemd/logind.conf.d/20-inhibit-delay.conf	etc/systemd/logind.conf.d/20-inhibit-delay.conf	bebd95ee3f25b9f9404a2188b9108cd90786de80
-default/features/printing/cups-browsed.conf	etc/cups/cups-browsed.conf	19863e59779e53c4b8ca31e43a0f4a4c381b08ce
-default/features/printing/cups-files.conf	etc/cups/cups-files.conf	e515117f0fd1705e7991995b9ff486a96e1e0d80
-default/features/printing/cups-browsed-service.conf	etc/systemd/system/cups-browsed.service.d/10-omarchy.conf	541071979bf06d42703b587c247e08e8c8a76ece
-default/features/printing/sysusers.conf	etc/sysusers.d/omarchy-cups-browsed.conf	fa602c18e9053685e55c7a9e77060d5559937c4e
+packaging/pkgbuilds/karchy-printing/cups-browsed.service.conf	etc/cups/cups-browsed.conf	19863e59779e53c4b8ca31e43a0f4a4c381b08ce
+packaging/pkgbuilds/karchy-printing/cups-browsed.service.conf	etc/systemd/system/cups-browsed.service.d/10-omarchy.conf	541071979bf06d42703b587c247e08e8c8a76ece
+packaging/pkgbuilds/karchy-printing/sysusers.conf	etc/sysusers.d/omarchy-cups-browsed.conf	fa602c18e9053685e55c7a9e77060d5559937c4e
 bin/karchy-theme-set-keyboard	bin/omarchy-theme-set-keyboard	0fd1a2020870f4e6b24da558e36a2b89156ef98b
 bin/karchy-theme-set-keyboard-asus-rog	bin/omarchy-theme-set-keyboard-asus-rog	5dd42ee596999560eaf116e22aa3046055a624ea
 bin/karchy-theme-set-keyboard-f16	bin/omarchy-theme-set-keyboard-f16	0d25c1c69d6dbefb85d514c5e472b12956a638fc

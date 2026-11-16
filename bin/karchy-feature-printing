@@ -4,46 +4,61 @@
 # karchy:args=status | install | remove
 # karchy:hidden=true
 
-# install: CUPS with a hardened cups-browsed (its own user, sandboxed, queues
-# only for driverless network printers), system-config-printer to add others,
-# and SANE with sane-airscan and Document Scanner. Settings runs install and
-# remove in a floating terminal, so pacman's progress and sudo's password
-# prompt are visible. The config files root installs always come from the
-# packaged copy, never a dev checkout (D-50).
+# install: the karchy-printing package (D-67): CUPS with a hardened
+# cups-browsed (its own user, sandboxed, queues only for driverless network
+# printers), system-config-printer to add others, SANE with sane-airscan and
+# Document Scanner, and ipp-usb for driverless USB printers and scanners. Its
+# system files are the package's; this turns CUPS and cups-browsed on and
+# off. Quick install runs install and remove in a floating terminal, so
+# pacman's progress and sudo's password prompt are visible.
 
 set -euo pipefail
 
-PACKAGES=(cups cups-browsed cups-filters system-config-printer sane sane-airscan simple-scan)
-SOURCE=/usr/share/karchy/default/features/printing
+PACKAGE=karchy-printing
+# Files an earlier version of this command wrote; the package's own copies
+# in /usr/lib replace them.
+LEGACY=(/etc/sysusers.d/karchy-cups-browsed.conf /etc/systemd/system/cups-browsed.service.d/10-karchy.conf)
 
 status() {
-  if pacman -Q cups cups-browsed sane-airscan >/dev/null 2>&1; then
+  if pacman -Q "$PACKAGE" >/dev/null 2>&1; then
     echo installed
   else
     echo available
   fi
 }
 
+remove_legacy() {
+  local file
+  for file in "${LEGACY[@]}"; do
+    [[ -e $file ]] && ! pacman -Qo "$file" >/dev/null 2>&1 && sudo rm -f "$file"
+  done
+  sudo rmdir /etc/systemd/system/cups-browsed.service.d 2>/dev/null || true
+}
+
+# The package and those of its dependencies pacman installed for it, so
+# removing them is refused when something else, such as a printer driver,
+# still needs one (packages you installed yourself stay).
+removable() {
+  pacman -Q "$PACKAGE" >/dev/null 2>&1 || return 0
+  echo "$PACKAGE"
+  comm -12 <(pactree -lu -d1 "$PACKAGE" | grep -vxF "$PACKAGE" | sort) <(pacman -Qqd | sort)
+}
+
 install_feature() {
-  echo "Adding printers & scanners: ${PACKAGES[*]}"
-  sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
-  sudo install -Dm644 "$SOURCE/sysusers.conf" /etc/sysusers.d/karchy-cups-browsed.conf
-  sudo systemd-sysusers /etc/sysusers.d/karchy-cups-browsed.conf
-  sudo install -Dm644 "$SOURCE/cups-browsed.conf" /etc/cups/cups-browsed.conf
-  sudo install -Dm644 "$SOURCE/cups-files.conf" /etc/cups/cups-files.conf
-  sudo install -Dm644 "$SOURCE/cups-browsed-service.conf" /etc/systemd/system/cups-browsed.service.d/10-karchy.conf
-  sudo systemctl daemon-reload
+  echo "Adding printers & scanners ($PACKAGE)."
+  remove_legacy
+  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE"
   sudo systemctl enable --now cups.socket cups-browsed.service
-  karchy-notification-send -g printer "Printers & scanners added" "Add a printer with Print Settings; scan with Document Scanner."
+  karchy-notification-send -g printer "Printers & scanners added" "Add a printer with Print Settings; scan with Document Scanner." || true
   echo "Done."
 }
 
 remove_feature() {
   echo "Removing printers & scanners."
   local installed=()
-  mapfile -t installed < <(pacman -Qq "${PACKAGES[@]}" 2>/dev/null)
-  # Check first that pacman can remove them all (another package, such as a
-  # printer driver, may need cups), so a refusal leaves printing as it was.
+  mapfile -t installed < <(removable)
+  # Check first that pacman can remove them all, so a refusal leaves
+  # printing as it was.
   if ((${#installed[@]} > 0)) && ! pacman -Rs --print "${installed[@]}" >/dev/null 2>&1; then
     echo "Another installed package needs part of printing:"
     pacman -Rs --print "${installed[@]}" 2>&1 | grep -i "required by\|breaks dependency" || true
@@ -51,11 +66,9 @@ remove_feature() {
     exit 1
   fi
   sudo systemctl disable --now cups-browsed.service cups.socket cups.service 2>/dev/null || true
-  sudo rm -f /etc/systemd/system/cups-browsed.service.d/10-karchy.conf /etc/sysusers.d/karchy-cups-browsed.conf
-  sudo rmdir /etc/systemd/system/cups-browsed.service.d 2>/dev/null || true
-  sudo systemctl daemon-reload
-  ((${#installed[@]} == 0)) || sudo pacman -Rns --noconfirm "${installed[@]}"
-  karchy-notification-send -g printer "Printers & scanners removed"
+  remove_legacy
+  ((${#installed[@]} == 0)) || sudo pacman --color auto -Rns --noconfirm "${installed[@]}"
+  karchy-notification-send -g printer "Printers & scanners removed" || true
   echo "Done."
 }
 

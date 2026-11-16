@@ -6225,6 +6225,7 @@
       "packages": [
         "cups",
         "cups-browsed",
+        "ipp-usb",
         "sane-airscan",
         "simple-scan"
       ],

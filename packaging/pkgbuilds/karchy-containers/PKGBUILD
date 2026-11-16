@@ -1,0 +1,33 @@
+# karchy-containers: containers, an optional feature (D-63, D-67): rootless
+# Podman with podman-docker for the `docker` command and docker-compose
+# talking to the user's Podman socket. Installed from Quick install › System
+# features by karchy-feature-containers, which also gives the user
+# subordinate IDs and, with karchy-nvidia, adds GPU containers.
+#
+# Podman's Docker-compatible socket is enabled for every user here, in
+# /usr/lib, so no user's files change (D-23) and removing the package turns
+# it off. DOCKER_HOST is set only while this package is installed, so a real
+# Docker setup is never pointed at Podman (podman-docker conflicts with
+# docker anyway). The one file in /etc is podman-docker's switch for its
+# "Emulate Docker CLI" notice, which it looks for only there.
+
+pkgname=karchy-containers
+pkgver=0
+pkgrel=1
+pkgdesc="karchy containers: rootless Podman with the docker command and Compose"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('podman' 'crun' 'netavark' 'aardvark-dns' 'passt' 'podman-docker' 'docker-compose')
+optdepends=('nvidia-container-toolkit: GPU containers with the NVIDIA driver')
+backup=('etc/containers/nodocker')
+source=('containers.conf' 'environment.conf')
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  install -Dm644 containers.conf "$pkgdir/usr/share/containers/containers.conf.d/50-karchy.conf"
+  install -Dm644 environment.conf "$pkgdir/usr/lib/environment.d/50-karchy-containers.conf"
+  install -d "$pkgdir/usr/lib/systemd/user/sockets.target.wants"
+  ln -s ../podman.socket "$pkgdir/usr/lib/systemd/user/sockets.target.wants/podman.socket"
+  install -Dm644 /dev/null "$pkgdir/etc/containers/nodocker"
+}

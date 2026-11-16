@@ -4,32 +4,34 @@
 # karchy:args=status | install | remove
 # karchy:hidden=true
 
-# install: rootless Podman, podman-docker for the `docker` command, and
-# docker-compose talking to the user's Podman socket (DOCKER_HOST, set for
-# every session through /etc/environment.d). Users get subordinate ID ranges
-# if they have none. On a machine with karchy-nvidia, GPU containers come as
-# a separate step: nvidia-container-toolkit, whose own units keep the CDI
-# spec current after driver updates. Settings runs install and remove in a
+# install: the karchy-containers package (D-67): rootless Podman,
+# podman-docker for the `docker` command, and docker-compose talking to the
+# user's Podman socket. The package holds the system files: DOCKER_HOST for
+# every session (environment.d), Podman's socket enabled for every user, and
+# podman-docker's quiet switch. This adds the per-user parts: subordinate ID
+# ranges if the user has none, and the socket and DOCKER_HOST in the running
+# session. On a machine with karchy-nvidia, GPU containers come as a
+# separate step: nvidia-container-toolkit, whose own units keep the CDI spec
+# current after driver updates. Quick install runs install and remove in a
 # floating terminal, so pacman's progress and sudo's password prompt are
-# visible. The config files root installs always come from the packaged
-# copy, never a dev checkout (D-50). Nothing is written into the user's own
-# config files (D-23): the socket is enabled for all users with --global.
+# visible. Nothing is written into the user's own config files (D-23).
 
 set -euo pipefail
 
-PACKAGES=(podman crun netavark aardvark-dns passt podman-docker docker-compose)
+PACKAGE=karchy-containers
 GPU_PACKAGES=(nvidia-container-toolkit)
-SOURCE=/usr/share/karchy/default/features/containers
-ENV_FILE=/etc/environment.d/50-karchy-containers.conf
-CONF_FILE=/etc/containers/containers.conf.d/50-karchy.conf
-NODOCKER=/etc/containers/nodocker
-# What install added, so remove takes away only that.
+# What install added besides the package (subordinate IDs, GPU packages), so
+# remove takes away only that.
 STATE=/var/lib/karchy/feature-containers
+# Files an earlier version of this command wrote; the package's own copies
+# (in /usr) replace them.
+LEGACY=(/etc/environment.d/50-karchy-containers.conf /etc/containers/containers.conf.d/50-karchy.conf
+  /etc/containers/nodocker /etc/systemd/user/sockets.target.wants/podman.socket)
 ICON=containers
 USER_NAME=$(id -un)
 
 status() {
-  if pacman -Q podman podman-docker docker-compose >/dev/null 2>&1 && [[ -f $ENV_FILE ]]; then
+  if pacman -Q "$PACKAGE" >/dev/null 2>&1; then
     echo installed
   else
     echo available
@@ -63,11 +65,19 @@ add_subids() {
   echo "${added# }"
 }
 
+remove_legacy() {
+  local file
+  for file in "${LEGACY[@]}"; do
+    [[ -e $file || -L $file ]] && ! pacman -Qo "$file" >/dev/null 2>&1 && sudo rm -f "$file"
+  done
+  sudo rmdir /etc/containers/containers.conf.d /etc/systemd/user/sockets.target.wants 2>/dev/null || true
+}
+
 install_gpu() {
   echo
   echo "This machine has the NVIDIA driver (karchy-nvidia): adding GPU containers."
   mapfile -t GPU_ADDED < <(pacman -T "${GPU_PACKAGES[@]}" || true)
-  sudo pacman -S --needed --noconfirm "${GPU_PACKAGES[@]}"
+  sudo pacman --color auto -S --needed --noconfirm "${GPU_PACKAGES[@]}"
   # The toolkit's nvidia-cdi-refresh units write /var/run/cdi/nvidia.yaml at
   # boot, when the driver module loads and after driver updates.
   sudo systemctl start nvidia-cdi-refresh.service || echo "The GPU spec is written once the NVIDIA driver is loaded (after a reboot)."
@@ -75,28 +85,24 @@ install_gpu() {
 }
 
 install_feature() {
-  if pacman -Q docker >/dev/null 2>&1; then
+  # pacman -Q answers for provides too, and podman-docker provides docker.
+  if [[ $(pacman -Qq docker 2>/dev/null) == docker ]]; then
     echo "Docker is installed, and the Containers panel already works with it."
     echo "To use Podman instead, remove the docker package first. Nothing was changed."
     exit 1
   fi
-  echo "Adding containers: ${PACKAGES[*]}"
-  local added_packages=()
-  mapfile -t added_packages < <(pacman -T "${PACKAGES[@]}" || true)
-  sudo pacman -S --needed --noconfirm "${PACKAGES[@]}"
-
-  # podman-docker's `docker` otherwise prints a notice on every call.
-  sudo install -Dm644 /dev/null "$NODOCKER"
-  sudo install -Dm644 "$SOURCE/containers.conf" "$CONF_FILE"
-  sudo install -Dm644 "$SOURCE/environment.conf" "$ENV_FILE"
+  echo "Adding containers ($PACKAGE)."
+  remove_legacy
+  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE"
 
   local subids
   subids=$(add_subids)
   [[ -z $subids ]] || podman system migrate
 
-  # The Docker-compatible API socket, for every user; it starts the service
+  # The package enables the Docker-compatible API socket for every user from
+  # their next sign-in; start it in this session too. It starts the service
   # only when something connects.
-  sudo systemctl --global enable podman.socket
+  systemctl --user daemon-reload
   systemctl --user start podman.socket
   # Sessions read environment.d when they start; give this one the
   # variable too, so a terminal opened now already has it.
@@ -107,8 +113,8 @@ install_feature() {
     install_gpu
   fi
 
-  printf 'packages=%s\nsubids=%s\nsubids_user=%s\ngpu_packages=%s\n' \
-    "${added_packages[*]}" "$subids" "$USER_NAME" "${GPU_ADDED[*]}" | sudo install -Dm644 /dev/stdin "$STATE"
+  printf 'subids=%s\nsubids_user=%s\ngpu_packages=%s\n' \
+    "$subids" "$USER_NAME" "${GPU_ADDED[*]}" | sudo install -Dm644 /dev/stdin "$STATE"
 
   karchy-shell -q karchy.containers refresh
   karchy-notification-send -g "$ICON" "Containers added" "Use podman or docker; docker compose works too. Open terminals pick it up after you sign in again." || true
@@ -146,19 +152,31 @@ remove_user_data() {
   fi
 }
 
+# The package and those of its dependencies pacman installed for it, so
+# removing them is refused when something else, such as distrobox, still
+# needs one (packages you installed yourself stay).
+removable() {
+  pacman -Q "$PACKAGE" >/dev/null 2>&1 || return 0
+  echo "$PACKAGE"
+  comm -12 <(pactree -lu -d1 "$PACKAGE" | grep -vxF "$PACKAGE" | sort) <(pacman -Qqd | sort)
+}
+
 remove_feature() {
   echo "Removing containers."
   local packages subids subids_user gpu_packages
+  # packages=: what an earlier version of this command installed itself.
   packages=$(state_get packages)
   subids=$(state_get subids)
   subids_user=$(state_get subids_user)
   gpu_packages=$(state_get gpu_packages)
-  # Without a record (an older install), remove what the feature installs.
-  [[ -r $STATE ]] || packages="${PACKAGES[*]}"
 
   local installed=()
+  # pacman -Qq without names would list every package.
   # shellcheck disable=SC2086 # word lists from the state file
-  mapfile -t installed < <(pacman -Qq $packages $gpu_packages 2>/dev/null || true)
+  mapfile -t installed < <({
+    removable
+    [[ -z ${packages// /}${gpu_packages// /} ]] || pacman -Qq $packages $gpu_packages 2>/dev/null
+  } | sort -u)
   # Check first that pacman can remove them all, so a refusal leaves
   # everything as it was.
   if ((${#installed[@]} > 0)) && ! pacman -Rs --print "${installed[@]}" >/dev/null 2>&1; then
@@ -172,23 +190,23 @@ remove_feature() {
   data=$(remove_user_data)
 
   systemctl --user stop podman.socket podman.service 2>/dev/null || true
-  sudo systemctl --global disable podman.socket 2>/dev/null || true
   systemctl --user unset-environment DOCKER_HOST || true
-  sudo rm -f "$ENV_FILE" "$CONF_FILE" "$NODOCKER"
-  sudo rmdir /etc/containers/containers.conf.d 2>/dev/null || true
+  remove_legacy
 
   # Subordinate IDs own the files of kept images; they stay with the data.
+  # Only the exact ranges install added go; usermod --del-subuids refuses a
+  # user who is signed in, as the one removing this is.
   if [[ $data == deleted && -n $subids && -n $subids_user ]]; then
     local range
     for range in $subids; do
       case "$range" in
-        uid:*) sudo usermod --del-subuids "${range#uid:}-$((${range#uid:} + 65535))" "$subids_user" ;;
-        gid:*) sudo usermod --del-subgids "${range#gid:}-$((${range#gid:} + 65535))" "$subids_user" ;;
+        uid:*) sudo sed -i "/^$subids_user:${range#uid:}:65536\$/d" /etc/subuid ;;
+        gid:*) sudo sed -i "/^$subids_user:${range#gid:}:65536\$/d" /etc/subgid ;;
       esac
     done
   fi
 
-  ((${#installed[@]} == 0)) || sudo pacman -Rns --noconfirm "${installed[@]}"
+  ((${#installed[@]} == 0)) || sudo pacman --color auto -Rns --noconfirm "${installed[@]}"
   sudo rm -f "$STATE"
 
   karchy-shell -q karchy.containers refresh

@@ -91,11 +91,17 @@ def closure(roots, meta):
     return seen
 
 
+# karchy's packages a machine has only when chosen: the detected NVIDIA
+# metas, the VPN, and the optional features Quick install adds (D-67), whose
+# dependencies other entries may install and remove on their own.
+OPT_IN = {'nulifyer-vpn', 'karchy-containers', 'karchy-printing'}
+
+
 def karchy_base():
     base = set()
     pkgdir = os.path.join(ROOT, 'packaging/pkgbuilds')
     for name in os.listdir(pkgdir):
-        if 'nvidia' in name or name == 'nulifyer-vpn':
+        if 'nvidia' in name or name in OPT_IN:
             continue
         f = os.path.join(pkgdir, name, 'PKGBUILD')
         if not os.path.exists(f):
