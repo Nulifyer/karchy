@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- karchy's Thunar right-click actions (D-36, D-40). karchy-thunar-actions
      merges them into ~/.config/Thunar/uca.xml at each login, replacing only
-     actions whose unique-id starts with "karchy-", so your own are kept.
+     actions whose unique-id starts with "karchy-", so your own are kept. An
+     action whose program isn't installed is left out.
      Extract Here / Extract To / Create Archive come from thunar-archive-plugin;
-     Open With and Set Default Application are Thunar's own. -->
+     Open With and Set Default Application are Thunar's own. Send To › LocalSend
+     is a Send To entry (karchy-settings), and network shares are kept from the
+     menu, Setup › Network Shares (user 2026-11-15). -->
 <actions>
 <action>
   <icon>utilities-terminal</icon>
@@ -19,28 +22,19 @@
   <name>Open in VS Code</name>
   <unique-id>karchy-vscode</unique-id>
   <command>code %F</command>
-  <description>Open in Visual Studio Code</description>
+  <description>Open this folder in Visual Studio Code</description>
   <patterns>*</patterns>
   <directories/>
-  <audio-files/>
-  <image-files/>
-  <other-files/>
-  <text-files/>
-  <video-files/>
 </action>
 <action>
-  <icon>localsend</icon>
-  <name>Send with LocalSend</name>
-  <unique-id>karchy-localsend</unique-id>
-  <command>localsend --headless send %F</command>
-  <description>Send to a nearby device with LocalSend</description>
+  <icon>disktree</icon>
+  <name>Open in Disktree</name>
+  <unique-id>karchy-disktree</unique-id>
+  <command>disktree %f</command>
+  <description>See what fills this folder, and clear space</description>
+  <range>1</range>
   <patterns>*</patterns>
   <directories/>
-  <audio-files/>
-  <image-files/>
-  <other-files/>
-  <text-files/>
-  <video-files/>
 </action>
 <action>
   <icon>edit-copy</icon>
@@ -65,37 +59,5 @@
   <range>1</range>
   <patterns>*.jpg;*.jpeg;*.png;*.webp;*.JPG;*.JPEG;*.PNG;*.WEBP</patterns>
   <image-files/>
-</action>
-<action>
-  <icon>dialog-password</icon>
-  <name>Checksum (SHA-256)</name>
-  <unique-id>karchy-checksum</unique-id>
-  <command>karchy-file-action checksum %f</command>
-  <description>Copy this file's SHA-256 checksum to the clipboard</description>
-  <range>1</range>
-  <patterns>*</patterns>
-  <audio-files/>
-  <image-files/>
-  <other-files/>
-  <text-files/>
-  <video-files/>
-</action>
-<action>
-  <icon>folder-remote</icon>
-  <name>Keep This Mount</name>
-  <unique-id>karchy-mount-keep</unique-id>
-  <command>karchy-launch-floating-terminal-with-presentation karchy-mount-keep %f</command>
-  <description>Mount this network share at /mnt whenever it is opened (D-24)</description>
-  <patterns>*</patterns>
-  <directories/>
-</action>
-<action>
-  <icon>folder-remote</icon>
-  <name>Remove Kept Mount</name>
-  <unique-id>karchy-mount-remove</unique-id>
-  <command>karchy-launch-floating-terminal-with-presentation karchy-mount-keep --remove %f</command>
-  <description>Stop keeping this network share mounted</description>
-  <patterns>*</patterns>
-  <directories/>
 </action>
 </actions>

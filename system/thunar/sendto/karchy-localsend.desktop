@@ -1,0 +1,10 @@
+[Desktop Entry]
+# Thunar's Send To › LocalSend (karchy, user 2026-11-15). TryExec hides it
+# when LocalSend is removed in Quick install.
+Type=Application
+Version=1.0
+Name=LocalSend
+Comment=Send to a nearby device with LocalSend
+Icon=localsend
+TryExec=localsend
+Exec=localsend --headless send %F

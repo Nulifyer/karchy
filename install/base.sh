@@ -62,6 +62,32 @@ base_fstab() {
 
 base_repos_target() {
   base_add_repos "$KARCHY_MNT/etc/pacman.conf"
+  base_noextract "$KARCHY_MNT/etc/pacman.conf"
+}
+
+# Two Thunar files that don't work on karchy, never installed (user
+# 2026-11-15): the "Set as wallpaper" plugin, which sets Xfce's desktop
+# (karchy's own Set as Wallpaper sets the theme's background), and Send To ›
+# Mail Recipient, which needs a mail app karchy doesn't set up. Thunar has no
+# setting to hide either. Runs before the desktop packages are installed;
+# pacman keeps the line through updates, since pacman.conf is a backup file.
+KARCHY_NOEXTRACT=(
+  usr/lib/thunarx-3/thunar-wallpaper-plugin.so
+  usr/share/Thunar/sendto/thunar-sendto-email.desktop
+)
+base_noextract() {
+  local conf="$1" line="NoExtract   = ${KARCHY_NOEXTRACT[*]}"
+  grep -qF "$line" "$conf" && return
+  # Fill in the stock empty line, or add one under [options] (pacman adds up
+  # repeated NoExtract lines).
+  if grep -qE '^#NoExtract *=$' "$conf"; then
+    awk -v line="$line" '/^#NoExtract *=$/ && !done { print line; done = 1; next } { print }' \
+      "$conf" >"$conf.karchy" && mv "$conf.karchy" "$conf"
+  else
+    awk -v line="$line" '{ print } /^\[options\]$/ && !done { print line; done = 1 }' \
+      "$conf" >"$conf.karchy" && mv "$conf.karchy" "$conf"
+  fi
+  grep -qF "$line" "$conf"
 }
 
 # Insert [cachyos] just before Arch's [core]; append [omarchy] and [karchy].

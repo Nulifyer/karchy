@@ -18,6 +18,9 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("karchy-theme-set-gnome")
   -- karchy's Thunar right-click actions, merged beside the user's own (D-36).
   hl.exec_cmd("karchy-thunar-actions")
+  -- Once, at the first login: Downloads, Projects, Pictures and Videos in the
+  -- file manager's sidebar, Desktop pointed at home, and starter templates.
+  hl.exec_cmd("karchy-user-folders")
   -- Offer to mount internal data disks that have no mount yet (D-24).
   hl.exec_cmd("karchy-disks-check")
   -- Offer to re-enroll Secure Boot keys a firmware update cleared (D-31).

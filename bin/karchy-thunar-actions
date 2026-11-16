@@ -7,10 +7,15 @@ Actions whose unique-id starts with "karchy-" are replaced by the current set
 from $KARCHY_PATH/default/thunar/uca.xml; every other action is kept as it is.
 Without a uca.xml yet, Thunar's own defaults are the starting point. Thunar's
 stock "Open Terminal Here" (it relies on Xfce's terminal helper) is dropped;
-karchy's opens the default terminal. Runs at each login; writes only when something changed.
+karchy's opens the default terminal. An action whose program isn't installed
+(VS Code or Disktree removed in Quick install, D-71) is left out.
+Runs at each login and after Quick install adds or removes an app; writes only
+when something changed.
 """
 
 import os
+import shlex
+import shutil
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -26,8 +31,17 @@ def unique_id(action):
     return (action.findtext("unique-id") or "").strip()
 
 
+def installed(action):
+    """Whether the program the action runs is on the PATH."""
+    try:
+        words = shlex.split(action.findtext("command") or "")
+    except ValueError:
+        return False
+    return bool(words) and shutil.which(words[0]) is not None
+
+
 def main():
-    ours = ET.parse(SOURCE).getroot().findall("action")
+    ours = [a for a in ET.parse(SOURCE).getroot().findall("action") if installed(a)]
     if CONFIG.is_file():
         tree = ET.parse(CONFIG)
         before = ET.tostring(tree.getroot())

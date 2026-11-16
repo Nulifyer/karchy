@@ -91,6 +91,8 @@ package() {
   install -d -m 755 "$pkgdir/etc/brave/policies/managed"
   # foot entries that tell xdg-terminal-exec how to pass --app-id and friends.
   install -Dm644 -t "$pkgdir/usr/share/applications" applications/karchy-*.desktop
+  # Thunar's Send To › LocalSend; hidden while LocalSend isn't installed.
+  install -Dm644 thunar/sendto/karchy-localsend.desktop "$pkgdir/usr/share/Thunar/sendto/karchy-localsend.desktop"
   install -Dm644 pam.d/karchy-lock-password "$pkgdir/etc/pam.d/karchy-lock-password"
   # Font defaults: monospace is JetBrainsMono Nerd Font; karchy-font-set's user
   # file loads later and wins.
