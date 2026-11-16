@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # karchy:summary=Keep a network share mounted at /mnt, or remove a kept one (D-24)
-# karchy:args=<folder on a gvfs SMB share> | --remove <kept mount folder>
+# karchy:args=[smb://server/share | folder on an open share] | --remove [kept mount folder]
 # karchy:hidden=true
 
-# Thunar's "Keep This Mount" and "Remove Kept Mount" run this in a floating
-# terminal. Keeping a share writes:
+# The menu's Setup › Network Shares runs this in a floating terminal. With no
+# share named, it offers the shares open in the file manager or asks for an
+# address; --remove with no folder offers the kept ones. Keeping a share writes:
 #   /etc/karchy/smb/<server>-<share>.cred   username and password, root only
 #   an fstab line tagged "# karchy-kept-mount" that automounts the share at
 #   /mnt/<share> on first use (nofail, _netdev, idle timeout), so boot never
@@ -18,13 +19,19 @@ FSTAB=/etc/fstab
 CRED_DIR=/etc/karchy/smb
 MARKER="# karchy-kept-mount"
 
+# The menu's floating terminal shows Failed and waits for a key.
 die() {
   echo "$*" >&2
-  read -r -p "Press Enter to close." _ || true
   exit 1
 }
 
-# fstab fields escape spaces and tabs as octal.
+# A command to finish a step by hand, quoted so it can be pasted as is.
+fix_with() {
+  printf '%q ' "$@" | sed 's/ $//'
+}
+
+# fstab fields escape spaces and tabs as octal. awk compares them through
+# ENVIRON, since -v would turn the \040 back into a space.
 fstab_escape() {
   local value=${1// /\\040}
   printf '%s' "${value//$'\t'/\\011}"
@@ -35,15 +42,67 @@ fstab_unescape() {
   printf '%s' "${value//\\011/$'\t'}"
 }
 
+# The shares open in the file manager, one gvfs folder per line:
+# /run/user/<uid>/gvfs/smb-share:server=nas.local,share=media,user=bob
+open_shares() {
+  compgen -G "/run/user/$(id -u)/gvfs/smb-share:*" || true
+}
+
+# "//server/share" for a gvfs folder, to show in a list.
+share_name() {
+  printf '//%s/%s' "$(sed -n 's/.*[:,]server=\([^,]*\).*/\1/p' <<<"$1")" \
+    "$(sed -n 's/.*[:,]share=\([^,]*\).*/\1/p' <<<"$1")"
+}
+
+# With no share named: pick one open in the file manager, or type an address.
+pick_share() {
+  local -a found open=() names=()
+  local name choice other="Another share…" i
+  mapfile -t found < <(open_shares)
+  # Shares already kept are left out.
+  for i in "${found[@]}"; do
+    name=$(share_name "$i")
+    grep -qF "$(fstab_escape "$name") " "$FSTAB" && continue
+    open+=("$i") names+=("$name")
+  done
+  if ((${#open[@]})); then
+    choice=$(gum choose --header "Keep which share mounted?" "${names[@]}" "$other") || exit 0
+    for i in "${!names[@]}"; do
+      [[ ${names[i]} == "$choice" ]] && { printf '%s' "${open[i]}"; return; }
+    done
+  fi
+  # Asked again until it looks like a share; "nas/media" and "//nas/media"
+  # mean smb://nas/media.
+  local header="The share's address"
+  name=""
+  while true; do
+    name=$(gum input --header "$header" --placeholder "smb://server/share" --value "$name") || exit 0
+    [[ -n $name ]] || exit 0
+    [[ $name == smb://* ]] || name="smb://${name#//}"
+    [[ $name =~ ^smb://[^/@]+@?[^/]*/[^/]+ ]] && break
+    header="The share's address: the server and the share, like smb://nas/media"
+  done
+  printf '%s' "$name"
+}
+
 keep() {
-  local path="$1" mount_dir server share user password cred target unit
-  # /run/user/<uid>/gvfs/smb-share:server=nas.local,share=media,user=bob/...
-  mount_dir=$(sed -n 's#^\(/run/user/[0-9]\+/gvfs/smb-share:[^/]*\).*#\1#p' <<<"$path")
-  [[ -n $mount_dir ]] || die "Keep This Mount works on folders of a network share opened in Thunar (smb://…). This folder is not one."
-  server=$(sed -n 's/.*[:,]server=\([^,]*\).*/\1/p' <<<"$mount_dir")
-  share=$(sed -n 's/.*[:,]share=\([^,]*\).*/\1/p' <<<"$mount_dir")
-  user=$(sed -n 's/.*[:,]user=\([^,]*\).*/\1/p' <<<"$mount_dir")
-  [[ -n $server && -n $share ]] || die "Could not read the server and share from $mount_dir"
+  local path="$1" mount_dir address server share user="" password cred target unit
+  if [[ $path == smb://* ]]; then
+    # smb://[user@]server/share[/folder…]
+    address=${path#smb://}
+    [[ $address == *@* ]] && { user=${address%%@*}; address=${address#*@}; }
+    server=${address%%/*}
+    share=${address#*/}
+    share=${share%%/*}
+    [[ $address == */* && -n $server && -n $share ]] || die "$path is not a share address. It looks like smb://server/share."
+  else
+    mount_dir=$(sed -n 's#^\(/run/user/[0-9]\+/gvfs/smb-share:[^/]*\).*#\1#p' <<<"$path")
+    [[ -n $mount_dir ]] || die "$path is not on a network share. Name one as smb://server/share."
+    server=$(sed -n 's/.*[:,]server=\([^,]*\).*/\1/p' <<<"$mount_dir")
+    share=$(sed -n 's/.*[:,]share=\([^,]*\).*/\1/p' <<<"$mount_dir")
+    user=$(sed -n 's/.*[:,]user=\([^,]*\).*/\1/p' <<<"$mount_dir")
+    [[ -n $server && -n $share ]] || die "Could not read the server and share from $mount_dir"
+  fi
   # gvfs percent-encodes names. The server controls the share's name, and it
   # becomes a folder under /mnt and part of the mount options, so only plain
   # names pass: no separators, commas, quotes or control characters.
@@ -53,70 +112,282 @@ keep() {
     die "The share name '$share' has characters karchy won't put in /etc/fstab."
   fi
 
-  target="/mnt/$share"
-  if grep -qF " $(fstab_escape "$target") " "$FSTAB"; then
-    die "$target is already in /etc/fstab."
+  # A share kept already: ask for new sign-in details for it instead.
+  local kept
+  kept=$(grep -F "$MARKER" "$FSTAB" | S="$(fstab_escape "//$server/$share")" awk '$1 == ENVIRON["S"]' | head -n 1 || true)
+  if [[ -n $kept ]]; then
+    target=$(fstab_unescape "$(awk '{ print $2 }' <<<"$kept")")
+    cred=$(fstab_unescape "$(sed -n 's/.*credentials=\([^,]*\).*/\1/p' <<<"$kept")")
+    echo "//$server/$share is kept at $target already."
+    gum confirm "Change the username and password karchy uses for it?" || exit 130
+  else
+    # /mnt/<share>, or /mnt/<server>-<share> when that is taken: a folder
+    # no fstab line mounts, and that is missing or an empty folder nothing is
+    # mounted on.
+    local candidate
+    target=""
+    for candidate in "/mnt/$share" "/mnt/$server-$share"; do
+      T="$(fstab_escape "$candidate")" awk '$1 !~ /^#/ && $2 == ENVIRON["T"] { found = 1 } END { exit !found }' "$FSTAB" && continue
+      # A symlink, even a dangling one, is never a mount folder.
+      [[ -L $candidate ]] && continue
+      if [[ -e $candidate ]]; then
+        [[ -d $candidate ]] || continue
+        mountpoint -q "$candidate" && continue
+        # A folder this user can't list might hold files; it isn't used.
+        [[ -r $candidate && -x $candidate ]] || continue
+        [[ -z $(ls -A "$candidate" 2>/dev/null) ]] || continue
+      fi
+      target=$candidate
+      break
+    done
+    [[ -n $target ]] || die "Both /mnt/$share and /mnt/$server-$share are in use or hold files. Free one of them and try again; nothing was changed."
+    # A readable file name with no characters fstab would need to escape, plus
+    # a hash of the exact share, so two shares never share a credentials file.
+    cred="$CRED_DIR/$(tr -c 'A-Za-z0-9._-' '_' <<<"$server-$share" | sed 's/_$//')-$(printf '%s' "//$server/$share" | sha256sum | cut -c1-8).cred"
+    echo "Keep //$server/$share mounted at $target"
+    echo "It mounts when first opened and never delays startup when the server is away."
   fi
-  [[ ! -e $target ]] || [[ -z $(ls -A "$target" 2>/dev/null) ]] || target="/mnt/$server-$share"
-
-  echo "Keep //$server/$share mounted at $target"
-  echo "It mounts when first opened and never delays startup when the server is away."
   echo
-  user=$(gum input --prompt "Username: " --value "${user:-$USER}")
-  password=$(gum input --password --prompt "Password: ")
-  echo
-
-  # A readable file name with no characters fstab would need to escape, plus
-  # a hash of the exact share, so two shares never share a credentials file.
-  cred="$CRED_DIR/$(tr -c 'A-Za-z0-9._-' '_' <<<"$server-$share" | sed 's/_$//')-$(printf '%s' "//$server/$share" | sha256sum | cut -c1-8).cred"
-  printf 'username=%s\npassword=%s\n' "$user" "$password" |
-    sudo install -D -m 600 -o root -g root /dev/stdin "$cred"
-  sudo mkdir -p "$target"
-  printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s 0 0 %s\n' \
-    "$(fstab_escape "//$server/$share")" "$(fstab_escape "$target")" "$(fstab_escape "$cred")" \
-    "$(id -u)" "$(id -g)" "$MARKER" | sudo tee -a "$FSTAB" >/dev/null
-  sudo systemctl daemon-reload
   unit=$(systemd-escape --path --suffix=automount "$target")
-  sudo systemctl start "$unit"
 
-  if ls "$target" >/dev/null 2>&1; then
+  # New details go to a file of their own, $cred.karchy-new, and the sign-in is
+  # checked with a mount of its own using it; only after it works does the
+  # file replace the share's details. So a wrong password, an absent server,
+  # Esc, or the window closed mid-way (when sudo can no longer clean up) never
+  # touches a kept share's details, and a share that is mounted (and busy)
+  # can't make wrong details look right. A .karchy-new left by a closed window
+  # is removed by the next run. Esc or Stop closes the window (exit 130).
+  # What this run has changed, for give_up: the side file written, the details
+  # moved into place (a new share's), the fstab line, the mount folder.
+  local new_cred="$cred.karchy-new" wrote_new="" placed_cred="" added_fstab="" made_dir=""
+  trap 'give_up' HUP TERM
+  user=${user:-$USER}
+  while true; do
+    user=$(gum input --header "Username for //$server/$share" --value "$user") || give_up
+    password=$(gum input --password --header "Password for //$server/$share" --placeholder "empty for a guest share") || give_up
+    sudo -v -p "Your password for this computer, to save the share: " ||
+      give_up 1 "This computer's password wasn't accepted."
+    # Side files a closed window left behind, for any share.
+    sudo find "$CRED_DIR" -maxdepth 1 -name '*.karchy-new' -delete 2>/dev/null || true
+    wrote_new=1
+    printf 'username=%s\npassword=%s\n' "$user" "$password" |
+      sudo install -D -m 600 -o root -g root /dev/stdin "$new_cred" || give_up 1 "Couldn't save the details."
+
+    echo "Checking the username and password with //$server/$share…"
+    share_signs_in "$new_cred" && break
+    echo "//$server/$share didn't accept them: the username or password is wrong, the share's name is, or the server is away."
+    case $(gum choose --header "What now?" "Try another username or password" "Use another address" "Stop") in
+      "Try another username or password") ;;
+      # The new run takes the lock again, so this one lets go of it first.
+      "Use another address") give_up_quietly || exit 1; clear; exec {lock_fd}>&-; exec "$0" ;;
+      *) give_up ;;
+    esac
+  done
+
+  # The checked details become the share's.
+  [[ -n $kept ]] || placed_cred=1
+  sudo mv "$new_cred" "$cred" || give_up 1 "Couldn't save the details."
+  wrote_new=""
+
+  # Any step failing from here also goes back through give_up.
+  if [[ -z $kept ]]; then
+    if [[ ! -d $target ]]; then
+      made_dir=1
+      sudo mkdir -p "$target" || give_up 1 "Couldn't create $target."
+    fi
+    added_fstab=1
+    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s 0 0 %s\n' \
+      "$(fstab_escape "//$server/$share")" "$(fstab_escape "$target")" "$(fstab_escape "$cred")" \
+      "$(id -u)" "$(id -g)" "$MARKER" | sudo tee -a "$FSTAB" >/dev/null || give_up 1 "Couldn't add the share to /etc/fstab."
+    sudo systemctl daemon-reload || give_up 1 "systemd couldn't read the new /etc/fstab."
+    sudo systemctl start "$unit" || give_up 1 "Couldn't start mounting $target on use."
+    trap - HUP TERM
     karchy-notification-send -g share "Share kept" "//$server/$share is at $target"
     echo "Done: //$server/$share is at $target."
+    [[ -z $probe_left ]] || { echo "Only the check mount at $probe_left is left over; it goes at the next restart."; exit 1; }
   else
-    echo "The fstab entry is in place, but the share did not mount just now (wrong password, or the server is away)."
-    echo "It will try again when $target is opened. Remove it with Thunar's Remove Kept Mount."
-    read -r -p "Press Enter to close." _ || true
+    trap - HUP TERM
+    # The new details take effect at the next mount; one in use stays as it is.
+    if mountpoint -q "$target" && ! sudo umount "$target" 2>/dev/null; then
+      echo "Saved. $target is in use, so it keeps its current connection until it next mounts."
+    else
+      echo "Saved: $target uses the new details."
+    fi
+    karchy-notification-send -g share "Share details changed" "//$server/$share at $target"
+    [[ -z $probe_left ]] || { echo "Only the check mount at $probe_left is left over; it goes at the next restart."; exit 1; }
   fi
+}
+
+# Mounts the share once, read-only, somewhere private with the given details
+# file: whether the server takes them, without touching the kept mount. The
+# probe's folder is recorded so an interrupted run takes it down too.
+# A probe that couldn't be taken down is said at once and remembered in
+# probe_left, so the run ends as Failed even when the share was saved.
+probe=""
+probe_left=""
+share_signs_in() {
+  local details="$1" status=1
+  probe=$(sudo mktemp -d /run/karchy-share-check.XXXXXX) || return 1
+  sudo timeout 20 mount -t cifs "//$server/$share" "$probe" -o "credentials=$details,ro,nosuid,nodev,noexec" 2>/dev/null && status=0
+  if ! remove_probe; then
+    echo "The check mount at $probe couldn't be taken down; it goes at the next restart."
+    probe_left=$probe
+    probe=""
+  fi
+  return "$status"
+}
+
+remove_probe() {
+  [[ -n $probe ]] || return 0
+  if mountpoint -q "$probe"; then
+    sudo -n umount "$probe" 2>/dev/null || sudo -n umount -l "$probe" 2>/dev/null || return 1
+  fi
+  if [[ -d $probe ]] && ! sudo -n rmdir "$probe" 2>/dev/null; then
+    return 1
+  fi
+  probe=""
+}
+
+# Puts back what this run changed: a share added now is not kept; a kept share
+# was never changed. Says what it couldn't put back, and how, and returns 1
+# then.
+give_up_quietly() {
+  trap - HUP TERM
+  local ok=0
+  remove_probe || { echo "The check mount at $probe couldn't be taken down; it goes at the next restart."; ok=1; }
+  # One left by an earlier attempt was said already; the run still failed.
+  [[ -z $probe_left ]] || ok=1
+  if [[ -n $added_fstab ]]; then
+    # Stopping a unit that never started is fine; one still running is not.
+    sudo -n systemctl stop "$unit" "${unit%.automount}.mount" 2>/dev/null || true
+    if systemctl is-active --quiet "$unit" "${unit%.automount}.mount" 2>/dev/null; then
+      echo "Couldn't stop mounting $target: $(fix_with sudo systemctl stop "$unit" "${unit%.automount}.mount")"
+      ok=1
+    fi
+    if T="$(fstab_escape "$target")" M="$MARKER" awk '!(index($0, ENVIRON["M"]) && $2 == ENVIRON["T"])' "$FSTAB" |
+      sudo -n tee "$FSTAB.karchy-new" >/dev/null && sudo -n mv "$FSTAB.karchy-new" "$FSTAB"; then
+      sudo -n systemctl daemon-reload 2>/dev/null ||
+        { echo "systemd still has the old /etc/fstab: sudo systemctl daemon-reload"; ok=1; }
+    else
+      echo "Couldn't take the share back out of /etc/fstab: delete the line for $target that ends in '$MARKER'."
+      ok=1
+    fi
+  fi
+  if [[ -n $made_dir && -d $target ]] && ! sudo -n rmdir "$target" 2>/dev/null; then
+    echo "The empty folder $target is left: $(fix_with sudo rmdir "$target")"
+    ok=1
+  fi
+  # Only files this run wrote; a kept share's own details are never touched
+  # before the new ones work. With the window gone sudo can't run, and the
+  # side file is removed by the next run instead.
+  if [[ -n $wrote_new ]]; then
+    sudo -n rm -f "$new_cred" 2>/dev/null || { echo "Couldn't delete $new_cred: $(fix_with sudo rm "$new_cred")"; ok=1; }
+  fi
+  if [[ -n $placed_cred ]]; then
+    sudo -n rm -f "$cred" 2>/dev/null || { echo "Couldn't delete $cred: $(fix_with sudo rm "$cred")"; ok=1; }
+  fi
+  return "$ok"
+}
+
+# The same, then closes the window: give_up [code] [reason]. A cancel (130)
+# closes it at once; a failure says why and what was left as it was, and the
+# window shows Failed. A put-back that failed always shows Failed.
+give_up() {
+  local code=${1:-130}
+  [[ -z ${2:-} ]] || echo "$2"
+  if give_up_quietly; then
+    ((code == 130)) || echo "Nothing was changed."
+  else
+    code=1
+  fi
+  exit "$code"
+}
+
+
+# With no folder named: pick one of the kept mounts, shown as
+# "/mnt/media  (//nas.local/media)".
+pick_kept() {
+  local -a targets=() labels=()
+  local source target choice i
+  while read -r source target; do
+    targets+=("$(fstab_unescape "$target")")
+    labels+=("${targets[-1]}  ($(fstab_unescape "$source"))")
+  done < <(grep -F "$MARKER" "$FSTAB" | awk '{ print $1, $2 }')
+  ((${#targets[@]})) || die "No network shares are kept mounted."
+  if ((${#targets[@]} == 1)); then
+    printf '%s' "${targets[0]}"
+    return
+  fi
+  choice=$(gum choose --header "Stop keeping which share?" "${labels[@]}") || exit 0
+  for i in "${!labels[@]}"; do
+    [[ ${labels[i]} == "$choice" ]] && { printf '%s' "${targets[i]}"; return 0; }
+  done
+  return 1
 }
 
 remove() {
   local path="$1" target line unit cred
   target=$(realpath -m "$path")
   while [[ $target != "/" ]]; do
-    line=$(grep -F "$MARKER" "$FSTAB" | awk -v t="$(fstab_escape "$target")" '$2 == t' || true)
+    line=$(grep -F "$MARKER" "$FSTAB" | T="$(fstab_escape "$target")" awk '$2 == ENVIRON["T"]' || true)
     [[ -z $line ]] || break
     target=$(dirname "$target")
   done
   [[ -n $line ]] || die "$path is not inside a mount kept by karchy."
 
   cred=$(fstab_unescape "$(sed -n 's/.*credentials=\([^,]*\).*/\1/p' <<<"$line")")
-  echo "Remove the kept mount at $target"
-  gum confirm "Remove it? Files on the server are not touched." || exit 0
+  local source
+  source=$(fstab_unescape "$(awk '{ print $1 }' <<<"$line")")
+  echo "Stop keeping $source mounted at $target"
+  gum confirm "Stop keeping it? Files on the server are not touched." || exit 130
+  sudo -v -p "Your password for this computer, to remove the share: " || exit 1
 
+  # Unmounted first: while something holds it open, nothing is changed.
   unit=$(systemd-escape --path --suffix=automount "$target")
   sudo systemctl stop "$unit" "${unit%.automount}.mount" 2>/dev/null || true
-  sudo awk -v t="$(fstab_escape "$target")" -v m="$MARKER" '!(index($0, m) && $2 == t)' "$FSTAB" |
-    sudo tee "$FSTAB.karchy-new" >/dev/null
-  sudo mv "$FSTAB.karchy-new" "$FSTAB"
-  [[ -z $cred ]] || sudo rm -f "$cred"
-  sudo systemctl daemon-reload
-  sudo rmdir "$target" 2>/dev/null || true
-  karchy-notification-send -g share "Kept mount removed" "$target"
-  echo "Removed."
+  if systemctl is-active --quiet "$unit" || systemctl is-active --quiet "${unit%.automount}.mount"; then
+    die "$target is still mounted, probably open in an app or a terminal. Close it and try again; nothing was changed."
+  fi
+  T="$(fstab_escape "$target")" M="$MARKER" awk '!(index($0, ENVIRON["M"]) && $2 == ENVIRON["T"])' "$FSTAB" |
+    sudo tee "$FSTAB.karchy-new" >/dev/null && sudo mv "$FSTAB.karchy-new" "$FSTAB" ||
+    die "Couldn't take the share out of /etc/fstab; nothing was changed."
+  # From here the share is no longer kept; what is left over is said, with
+  # how to finish it.
+  local leftover=0
+  if [[ -n $cred ]] && ! sudo rm -f "$cred"; then
+    echo "Its saved password is left in $cred: $(fix_with sudo rm "$cred")"
+    leftover=1
+  fi
+  sudo systemctl daemon-reload || { echo "systemd still has the old /etc/fstab: sudo systemctl daemon-reload"; leftover=1; }
+  if [[ -d $target ]] && ! sudo rmdir "$target" 2>/dev/null; then
+    echo "The folder $target is left (it isn't empty, or is in use): $(fix_with sudo rmdir "$target")"
+    leftover=1
+  fi
+  karchy-notification-send -g share "Share no longer kept" "$source at $target"
+  echo "Done: $source is no longer kept at $target."
+  exit "$leftover"
 }
 
+# One run at a time, for every user: two runs keeping or removing shares at
+# once would share the side file and the fstab rewrite. The lock is held for
+# the whole run; tmpfiles (karchy-settings) creates it at boot, writable by all.
+{ exec {lock_fd}>>/run/lock/karchy-mount-keep; } 2>/dev/null ||
+  die "/run/lock/karchy-mount-keep is missing, so changing network shares isn't safe. Restart, or reinstall karchy-settings."
+flock -n "$lock_fd" || die "Another window is keeping or removing a network share. Finish that one first."
+
+# The pickers run in a subshell, so an empty answer means cancelled, which
+# closes the window (exit 130, the menu terminal's cancel); for --remove with
+# nothing kept, pick_kept has said so and failed.
 case "${1:-}" in
-  --remove) remove "${2:?Usage: karchy-mount-keep --remove <folder>}" ;;
-  "") die "Usage: karchy-mount-keep <folder> | --remove <folder>" ;;
+  --remove)
+    folder=${2:-$(pick_kept)} || exit 1
+    [[ -n $folder ]] || exit 130
+    remove "$folder"
+    ;;
+  "")
+    address=$(pick_share)
+    [[ -n $address ]] || exit 130
+    keep "$address"
+    ;;
   *) keep "$1" ;;
 esac

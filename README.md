@@ -30,7 +30,7 @@ the box; nothing you didn't ask for is installed.
 | 🔄 | Updates you can trust | One click or `karchy update` updates everything, with snapshots before and after. Signed packages, on the stable, rc or nightly channel. |
 | 📸 | Snapshots | btrfs and snapper, with every snapshot bootable from the boot menu. |
 | 🔒 | Secure by default | Full-disk encryption, Secure Boot set up for you, a firewall, fingerprint unlock on laptops, and a keyring that opens at login. |
-| 💾 | Disks and NAS | Internal drives mounted like Windows does; keep a network share mounted with one right-click. |
+| 💾 | Disks and NAS | Internal drives mounted like Windows does; keep a network share mounted from the menu. |
 | 📡 | Sharing | LocalSend that only opens its port on networks you trust. |
 | 🖥️ | Made for your hardware | Laptops, NVIDIA GPUs and VMs are detected at install and get what they need. |
 | ⚡ | CachyOS kernel | CachyOS's optimized kernel and packages on top of Arch. |
