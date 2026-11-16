@@ -32,6 +32,9 @@ PROTECT = [
     re.compile(r"/usr/lib/omarchy-hyprland-titlebars"),
     re.compile(r"\bomarchy-hyprland-titlebars\b"),
     re.compile(r"/usr/share/omarchy-platform\b"),
+    # Omarchy's paths and commands that [omarchy] apps use, which karchy
+    # provides under those names (D-72).
+    re.compile(r"\.local/state/omarchy\b"),
     re.compile(r"(?:basecamp|omacom)/omarchy\b"),
 ]
 
@@ -46,6 +49,8 @@ REPLACE = [
 
 SKIP_DIRS = {".git", "vendor", "docs", ".agents"}
 SKIP_FILES = {"tools/rebrand", "tools/upstream-review", "LICENSE"}
+# Commands named like Omarchy's for the [omarchy] apps (D-72); kept as named.
+COMPAT = "system/omarchy-compat/"
 
 
 def map_text(text):
@@ -75,7 +80,7 @@ def tracked_files():
 
 
 def skipped(rel):
-    return rel.split("/")[0] in SKIP_DIRS or rel in SKIP_FILES
+    return rel.split("/")[0] in SKIP_DIRS or rel in SKIP_FILES or rel.startswith(COMPAT)
 
 
 def apply(dry_run):

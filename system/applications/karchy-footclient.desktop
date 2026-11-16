@@ -6,7 +6,7 @@
 Type=Application
 Name=Foot Client
 Comment=Fast, lightweight Wayland terminal
-Exec=footclient
+Exec=karchy-footclient
 Icon=foot
 Terminal=false
 Categories=System;TerminalEmulator;

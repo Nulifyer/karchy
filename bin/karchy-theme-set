@@ -430,6 +430,14 @@ fi
 # Store theme name for reference
 echo "$THEME_NAME" >"$CURRENT_THEME_NAME_PATH"
 
+# Apps from [omarchy] (Omacalc, Omawrite, Disktree) read the theme from
+# Omarchy's path, so point that at karchy's (D-72). A real directory there is
+# the user's own (copied from an Omarchy install) and stays as it is.
+OMARCHY_CURRENT_LINK="$HOME/.local/state/omarchy/current"
+if [[ -L $OMARCHY_CURRENT_LINK || ! -e $OMARCHY_CURRENT_LINK ]]; then
+  mkdir -p "${OMARCHY_CURRENT_LINK%/*}" && ln -sfn ../karchy/current "$OMARCHY_CURRENT_LINK" || true
+fi
+
 # Make the running shell pick up the new palette immediately while the rest of
 # the theme hooks run.
 colors_payload=$([[ -f $CURRENT_THEME_PATH/colors.toml ]] && base64 -w 0 "$CURRENT_THEME_PATH/colors.toml")

@@ -44,6 +44,8 @@ package() {
   for cmd in bin/*; do
     ln -s "../share/karchy/bin/${cmd#bin/}" "$pkgdir/usr/bin/${cmd#bin/}"
   done
+  # Omarchy's command names, for the [omarchy] apps (D-72).
+  install -Dm755 -t "$pkgdir/usr/bin" system/omarchy-compat/*
   cp -a shell karchy logo.txt "$share/"
   cp -a default "$share/"
   install -d "$share/install"

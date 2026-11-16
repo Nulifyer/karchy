@@ -8,6 +8,15 @@ foot_ini=$HOME/.local/state/karchy/current/theme/foot.ini
 
 [[ -f $colors_toml ]] || exit 0
 
+# foot's server reads the theme only when it starts. With no windows open it
+# is stopped, so the next window starts a fresh one in the new colors (its
+# socket starts it again); while windows are open, karchy-footclient passes
+# the new colors to each new window.
+server_pid=$(systemctl --user show foot-server.service -p MainPID --value 2>/dev/null)
+if [[ ${server_pid:-0} != 0 && -z $(pgrep -P "$server_pid") ]]; then
+  systemctl --user stop foot-server.service 2>/dev/null
+fi
+
 # Theme switches wait on this retint, and pgrep scans every process, so it runs
 # once; each terminal's shells come from the kernel's list of its children.
 foot_pids=$(pgrep -x foot) || exit 0

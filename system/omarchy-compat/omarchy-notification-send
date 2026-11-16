@@ -1,0 +1,4 @@
+#!/bin/bash
+# Apps from the [omarchy] repository (Omasnap's notifications and their text)
+# call Omarchy's commands by name; karchy's karchy-notification-send takes the same arguments (D-72).
+exec karchy-notification-send "$@"
