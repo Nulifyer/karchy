@@ -1,0 +1,39 @@
+# karchy's build environment: stock Arch with the build tools, nothing from
+# the machine that runs it. packaging/container/run builds this image and
+# starts a fresh container from it for each build; packaging/build,
+# packaging/iso/build and CI's packaging/ci/publish all run in one.
+#
+# The base is pinned by digest, so every build starts from the same files.
+# To move it forward: podman pull docker.io/archlinux/archlinux:base-devel,
+# then put the new digest (podman image inspect --format '{{.Digest}}') and
+# its version label here. The tools are installed when the image is built,
+# and kept until this file changes or `packaging/container/run --refresh`.
+FROM docker.io/archlinux/archlinux:base-devel@sha256:957559197e198f84888c8539fa9d6143d59a07c741873a60fa53af0e67dce6f8
+# base-devel 20261113.0.624902
+
+RUN pacman -Syu --noconfirm --needed archiso git github-cli jq pacman-contrib python \
+ && rm -rf /var/cache/pacman/pkg/*
+
+# The build runs as "builder", uid 1000; packaging/container/run maps the
+# caller's own account to it, so what a build writes belongs to the caller.
+# makepkg installs a package's build dependencies through sudo pacman.
+RUN useradd -m -u 1000 -U builder \
+ && echo 'builder ALL=(root) NOPASSWD: /usr/bin/pacman' >/etc/sudoers.d/builder \
+ && chmod 0440 /etc/sudoers.d/builder
+
+# mkarchiso runs as builder: archiso builds without root by giving each step
+# a user namespace (unshare --map-auto), which maps builder's subordinate
+# IDs. They are the container's other IDs, and newuidmap and newgidmap need
+# their file capabilities, which the image's layers don't carry.
+RUN echo 'builder:1001:64535' >/etc/subuid \
+ && echo 'builder:1001:64535' >/etc/subgid \
+ && setcap cap_setuid+ep /usr/bin/newuidmap \
+ && setcap cap_setgid+ep /usr/bin/newgidmap
+
+# A named volume over the package cache keeps downloads between builds. A new
+# volume takes this directory's owner, so builder's mkarchiso can write to it.
+RUN chown builder:builder /var/cache/pacman/pkg
+
+ENV KARCHY_BUILD_ENV=1
+USER builder
+WORKDIR /home/builder

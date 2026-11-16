@@ -47,14 +47,13 @@ Esc or Ctrl-C at a question leaves the installer for a root shell; `karchy-insta
 
 ### Building the ISO
 
-`mkarchiso` needs root. `packaging/iso/build` copies `releng`, adds `packaging/iso/` (the autostart, a `karchy-install` command, `gum` for the form, the boot menu names) and the working tree's installer (`install/`, `bin/`, `system/`, `packaging/keyring/`, uncommitted changes included), and writes `out/iso/karchy-<date>-x86_64.iso` with a `.sha256`:
+`packaging/iso/build` copies `releng`, adds `packaging/iso/` (the autostart, a `karchy-install` command, `gum` for the form, the boot menu names) and the working tree's installer (`install/`, `bin/`, `system/`, `packaging/keyring/`, uncommitted changes included), and writes `out/iso/karchy-<date>-x86_64.iso` with a `.sha256`:
 
 ```sh
-sudo packaging/iso/build           # on Arch, with archiso installed
-packaging/iso/build --vm           # without root here: builds in the tools/vm VM "isobuild"
+packaging/iso/build                # as your user; needs podman
 ```
 
-With `--vm`, the build runs in a libvirt VM booted from the stock Arch ISO (`tools/vm fetch` first). The VM's 20 GiB disk (created on the first build) keeps an Arch build root with archiso and a package cache, so a rebuild downloads only updates. The ISO comes back to `out/iso/` over HTTP on this machine's loopback (the guest sends it to `10.0.2.2:8091`), so no firewall change is needed. Delete the VM with `tools/vm --name isobuild destroy` when you no longer build ISOs.
+The build runs in a fresh container of karchy's build environment, removed afterwards (see [Build container](../packaging/README.md#build-container)). mkarchiso runs there without root, in archiso's user-namespace mode, so nothing needs sudo. The first build downloads about 1 GiB of packages; later builds reuse the container's package cache.
 
 To try an ISO in a VM, boot it with `KARCHY_VM_ISO`, and hand it the VM test answers through the repository server:
 

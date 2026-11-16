@@ -1,0 +1,108 @@
+#!/bin/bash
+
+# Run a command in a fresh container of karchy's build environment
+# (packaging/container/Containerfile), removed when the command ends.
+#
+# Usage:
+#   packaging/container/run [options] [--] COMMAND [ARG...]
+#
+#   --writable    mount the checkout read-write (CI: publish checks out the
+#                 released commit); by default only out/ is writable
+#   --volume DIR  also mount DIR, read-write, at the same path
+#   --volume-ro DIR  the same, read-only
+#   --env NAME    pass the caller's NAME into the container
+#   --iso         what mkarchiso needs: user namespaces with their own mounts
+#                 (podman --privileged, which in a rootless podman grants
+#                 nothing outside the container)
+#   --refresh     rebuild the image first, for newer build tools
+#
+# The command runs as the container's "builder", mapped to the caller's own
+# account, in the checkout, which is mounted at its own path so paths mean
+# the same thing inside. The image is built when this Containerfile has no
+# image yet (tagged by the file's hash), and reused until the file changes.
+# Downloaded packages are kept in the podman volume karchy-build-pkg-cache
+# (`podman volume rm karchy-build-pkg-cache` frees it).
+#
+# Needs podman, rootless: the container's root is the caller.
+
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+CONTAINERFILE="$ROOT/packaging/container/Containerfile"
+CACHE_VOLUME=karchy-build-pkg-cache
+
+die() {
+  echo "container: $*" >&2
+  exit 1
+}
+
+usage() {
+  awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"
+}
+
+writable=false
+refresh=false
+args=()
+while (($#)); do
+  case "$1" in
+    --writable) writable=true ;;
+    --volume)
+      dir=$(realpath -e "${2:?--volume needs a directory}") || die "no directory ${2}"
+      args+=(--volume "$dir:$dir")
+      shift
+      ;;
+    --volume-ro)
+      dir=$(realpath -e "${2:?--volume-ro needs a directory}") || die "no directory ${2}"
+      args+=(--volume "$dir:$dir:ro")
+      shift
+      ;;
+    --env)
+      [[ ${2:-} =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || die "--env needs a variable name"
+      args+=(--env "$2")
+      shift
+      ;;
+    --iso) args+=(--privileged) ;;
+    --refresh) refresh=true ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*) die "unknown option: $1 (see --help)" ;;
+    *) break ;;
+  esac
+  shift
+done
+(($#)) || die "no command (see --help)"
+command -v podman >/dev/null || die "missing podman (pacman -S podman)"
+((EUID != 0)) || die "run this as your user: rootless podman maps your account into the container"
+
+image="localhost/karchy-build:$(sha256sum "$CONTAINERFILE" | cut -c1-12)"
+if [[ $refresh == "true" ]] || ! podman image exists "$image"; then
+  echo "container: building the build image $image" >&2
+  podman build --pull=missing --no-cache --tag "$image" --file "$CONTAINERFILE" "$ROOT/packaging/container" >&2
+  # Images of earlier Containerfiles aren't used again.
+  podman image ls --filter reference=localhost/karchy-build --format '{{.Repository}}:{{.Tag}}' |
+    grep -vxF "$image" | xargs -r podman rmi >/dev/null 2>&1 || true
+fi
+
+mkdir -p "$ROOT/out"
+if [[ $writable == "true" ]]; then
+  args+=(--volume "$ROOT:$ROOT")
+else
+  args+=(--volume "$ROOT:$ROOT:ro" --volume "$ROOT/out:$ROOT/out")
+fi
+
+# The caller's account is builder (uid 1000) inside; the container's other
+# IDs come from the caller's subordinate range.
+[[ -t 0 && -t 1 ]] && args+=(--tty)
+exec podman run --rm --init --interactive \
+  --userns=keep-id:uid=1000,gid=1000 \
+  --volume "$CACHE_VOLUME:/var/cache/pacman/pkg" \
+  --env KARCHY_BUILD_ENV="$image" \
+  --workdir "$ROOT" \
+  "${args[@]}" \
+  "$image" "$@"

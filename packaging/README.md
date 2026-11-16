@@ -43,8 +43,18 @@ Releasing the VPN: tag `vX.Y.Z` in Nulifyer/omarchy-vpn-plugin and push it, then
 
 `tools/vm repo` serves `out/` so test VMs reach `http://10.0.2.2:8090/repo-<channel>`; `tests/vm-install.conf` installs from `dev`.
 
+## Build container
+
+Builds run in a fresh container of `container/Containerfile`, removed when the build ends: `packaging/build` and `packaging/iso/build` start one themselves, and CI runs `ci/publish` in one. Every build, here or in CI, starts from the same files: stock Arch, pinned by image digest, with the build tools and Arch's own makepkg settings. Nothing comes from the machine running it, such as a CachyOS `makepkg.conf` that compiles for that machine's CPU.
+
+- `container/run [--writable] [--volume DIR] [--env NAME] [--iso] [--refresh] -- COMMAND` runs a command in one (`--help`). It needs rootless podman. Your account is the container's `builder`, so files it writes belong to you. The checkout is mounted read-only at its own path, with `out/` writable.
+- The image is built the first time and tagged with the Containerfile's hash, so a changed Containerfile builds a new one. `--refresh` rebuilds it with the current tools.
+- Downloaded packages stay in the podman volume `karchy-build-pkg-cache`.
+- Native builds (`--native`) upgrade the container's packages first, so they build against Arch as it is that day.
+- To move the base image forward, put a new digest in the Containerfile (its comment says how).
+
 ## Publishing
 
-`.github/workflows/release.yml` runs `ci/publish` in an Arch container, one job per channel so each repository has one writer at a time. `ci/publish` downloads the channel's repository from its GitHub release, builds with `--native --sign`, and uploads only new and changed files, packages before the database. Tags `vX.Y.Z` publish stable and rc (rc is skipped when it is already ahead), `vX.Y.Z-rc.N` publishes rc, each with release notes; pushes to main publish nightly; a daily run rebuilds each channel's titlebars from that channel's released commit when Arch's Hyprland changes. The version always comes from the pushed tag.
+`.github/workflows/release.yml` runs `ci/publish` in the build container, one job per channel so each repository has one writer at a time. `ci/publish` downloads the channel's repository from its GitHub release, builds with `--native --sign`, and uploads only new and changed files, packages before the database. Tags `vX.Y.Z` publish stable and rc (rc is skipped when it is already ahead), `vX.Y.Z-rc.N` publishes rc, each with release notes; pushes to main publish nightly; a daily run rebuilds each channel's titlebars from that channel's released commit when Arch's Hyprland changes. The version always comes from the pushed tag.
 
 Before the first run: the signing key (`keyring/README.md`) and the `KARCHY_SIGNING_KEY` secret and `KARCHY_SIGNING_KEY_ID` variable on GitHub.

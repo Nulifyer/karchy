@@ -10,9 +10,16 @@ Usage:
                 including uncommitted and untracked (not ignored) files
   --repo DIR    repository directory (default: out/repo-CH)
   --native      also build the native (non-"any") packages, such as the
-                titlebars plugin; needs an Arch environment with their makedepends
+                titlebars plugin, against Arch as it is now (the container's
+                packages are upgraded first)
   --sign KEY    sign each new package and the database with this gpg key (CI)
   PKG           build only these packages (default: every packaging/pkgbuilds/*)
+
+The build runs in a fresh container of karchy's build environment
+(packaging/container/run): stock Arch's makepkg settings and packages, the
+same on every machine, never this machine's (a CachyOS makepkg.conf builds
+for its own CPU). NULIFYER_VPN_GIT and NULIFYER_VPN_REF are passed in, and a
+local NULIFYER_VPN_GIT is mounted read-only.
 
 Versions (D-61) come from git tags, converted to pacman's ordering:
   v3.0.0             -> 3.0.0             stable releases
@@ -190,6 +197,22 @@ def build(pkg, version, source, conf, workdir, env, native):
     return found[0]
 
 
+def in_container(argv, repo):
+    """Run this build again in a fresh build container; doesn't return."""
+    runner = [str(PACKAGING / "container" / "run")]
+    out = (ROOT / "out").resolve()
+    if repo and out not in (repo, *repo.parents):
+        repo.mkdir(parents=True, exist_ok=True)
+        runner += ["--volume", str(repo)]
+    for name in ("NULIFYER_VPN_GIT", "NULIFYER_VPN_REF"):
+        if os.environ.get(name):
+            runner += ["--env", name]
+    vpn = os.environ.get("NULIFYER_VPN_GIT", "")
+    if vpn and "://" not in vpn and Path(vpn).is_dir():
+        runner += ["--volume-ro", str(Path(vpn).resolve())]
+    os.execv(runner[0], [*runner, "--", str(PACKAGING / "build"), *argv])
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--channel", default="dev", choices=CHANNELS)
@@ -200,6 +223,12 @@ def main():
     ap.add_argument("--sign", metavar="KEY")
     ap.add_argument("packages", nargs="*")
     args = ap.parse_args()
+    if not os.environ.get("KARCHY_BUILD_ENV"):
+        in_container(sys.argv[1:], Path(args.repo).resolve() if args.repo else None)
+    if args.native:
+        # Native packages build against Arch as it is now (the titlebars
+        # follow Arch's Hyprland), not as it was when the image was built.
+        run(["sudo", "pacman", "-Syu", "--noconfirm"], stdout=subprocess.DEVNULL)
 
     version = args.version or release_version(args.ref)
     if args.channel == "dev" and not args.version:
@@ -223,7 +252,7 @@ def main():
         source = workdir / "karchy-src.tar.gz"
         stage_source(str(ROOT), args.ref, source)
         conf = workdir / "makepkg.conf"
-        conf.write_text("source /etc/makepkg.conf\n"
+        conf.write_text("source /etc/makepkg.conf\n"  # Arch's, in the build container
                         "OPTIONS=(!strip docs !libtool !staticlibs emptydirs zipman purge !debug !lto !autodeps)\n"
                         "PKGEXT='.pkg.tar.zst'\n"
                         "PACKAGER='karchy-pkgs <karchy-pkgs@users.noreply.github.com>'\n")
@@ -236,7 +265,7 @@ def main():
                 print(f"{pkg}: skipped, {missing} doesn't exist yet")
                 continue
             if is_native(pkg) and not args.native:
-                print(f"{pkg}: native, skipped (build with --native in an Arch environment)")
+                print(f"{pkg}: native, skipped (build with --native)")
                 continue
             pkg_version = own_version(pkg)
             if pkg_version == "":

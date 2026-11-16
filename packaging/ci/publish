@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build, sign and publish one channel's [karchy] repository (D-61). Run by
-# .github/workflows/release.yml as root in an archlinux:base-devel container,
-# from the repository root.
+# .github/workflows/release.yml in karchy's build container
+# (packaging/container/run --writable), from the repository root.
 #
 # Usage: packaging/ci/publish <stable|rc|nightly> [--version V | --native-only]
 #
@@ -42,12 +42,8 @@ repo="$PWD/out/repo-$channel"
 : "${KARCHY_SIGNING_KEY:?the KARCHY_SIGNING_KEY secret is not set}"
 : "${KARCHY_SIGNING_KEY_ID:?the KARCHY_SIGNING_KEY_ID variable is not set}"
 
-# makepkg refuses root: build as "builder", who may install makedepends.
-id builder >/dev/null 2>&1 || useradd -m builder
-echo 'builder ALL=(root) NOPASSWD: /usr/bin/pacman' >/etc/sudoers.d/builder
-git config --global --add safe.directory "$PWD"
-chown -R builder "$PWD"
-sudo -u builder gpg --batch --import <<<"$KARCHY_SIGNING_KEY"
+[[ -n ${KARCHY_BUILD_ENV:-} ]] || { echo "publish: run this in the build container (packaging/container/run)" >&2; exit 1; }
+gpg --batch --import <<<"$KARCHY_SIGNING_KEY"
 
 # The channel's current repository (none on the very first run, or after a
 # first run that failed before uploading).
@@ -76,7 +72,6 @@ declare -A before=()
 for file in "$repo"/*; do
   [[ -f $file && ! -L $file ]] && before[${file##*/}]=$(sha256sum "$file" | cut -d' ' -f1)
 done
-chown -R builder "$repo"
 
 args=(--channel "$channel" --repo "$repo" --native --sign "$KARCHY_SIGNING_KEY_ID")
 if [[ $native_only == "true" ]]; then
@@ -84,11 +79,11 @@ if [[ $native_only == "true" ]]; then
   commit=$(sed -n 's/^COMMIT=//p' "$repo/release")
   mapfile -t natives < <(grep -L "^arch=('any')" packaging/pkgbuilds/*/PKGBUILD | xargs -n1 dirname | xargs -n1 basename)
   # The channel's released PKGBUILDs, not main's.
-  sudo -u builder git checkout --quiet --detach "$commit"
-  sudo -u builder packaging/build "${args[@]}" --version "$current" "${natives[@]}"
+  git checkout --quiet --detach "$commit"
+  packaging/build "${args[@]}" --version "$current" "${natives[@]}"
 else
   [[ -n $version ]] && args+=(--version "$version")
-  sudo -u builder packaging/build "${args[@]}"
+  packaging/build "${args[@]}"
 fi
 
 # Upload new and changed files: packages first, the database and release last.
