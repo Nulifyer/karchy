@@ -10,7 +10,7 @@ import "TrayModel.js" as TrayModel
 
 BarWidget {
   id: root
-  moduleName: "omarchy.tray"
+  moduleName: "karchy.tray"
 
   property bool expanded: false
   property bool managePopupOpen: false
@@ -62,7 +62,7 @@ BarWidget {
 
   // Submenu drill-down state. QsMenuEntry.display() renders a *platform* menu,
   // which Quickshell refuses unless the shell root sets `//@ pragma
-  // UseQApplication` - omarchy's shell.qml does not, so every submenu click was
+  // UseQApplication` - karchy's shell.qml does not, so every submenu click was
   // a silent no-op ("Cannot display PlatformMenuEntry as quickshell was not
   // started in QApplication mode" in the shell log) and apps whose whole UI is
   // submenus, e.g. radiotray-ng's station list, were unusable. QsMenuEntry
@@ -186,9 +186,9 @@ BarWidget {
     return "drawer"
   }
 
-  function ownedByOmarchy(item) {
+  function ownedByKarchy(item) {
     var layout = root.bar && root.bar.layoutConfig ? root.bar.layoutConfig : null
-    return TrayModel.ownedByOmarchy(item, layout)
+    return TrayModel.ownedByKarchy(item, layout)
   }
 
   function bucket(category) {
@@ -197,7 +197,7 @@ BarWidget {
     for (var i = 0; i < values.length; i++) {
       var item = values[i]
       if (item.status === Status.Passive) continue
-      if (ownedByOmarchy(item)) continue
+      if (ownedByKarchy(item)) continue
       if (category === "all") {
         result.push(item)
         continue
@@ -209,7 +209,7 @@ BarWidget {
 
   function persistTrayState(pinned, hidden) {
     if (!root.bar || !root.bar.shell || typeof root.bar.shell.updateEntryInline !== "function") return
-    var id = root.moduleName || "omarchy.tray"
+    var id = root.moduleName || "karchy.tray"
     root.bar.shell.updateEntryInline(id, { id: id, pinned: pinned, hidden: hidden })
   }
 
@@ -292,7 +292,7 @@ BarWidget {
           width: implicitWidth
           height: implicitHeight
           x: root.fixedAtStart ? root.revealExtent : 0
-          text: root.fixedAtStart ? "\uf054" : "\uf053"
+          text: Icons.glyph(root.fixedAtStart ? "ui.chevron.right" : "ui.chevron.left")
           onPressed: function(button) {
             if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen
           }
@@ -382,7 +382,7 @@ BarWidget {
           width: implicitWidth
           height: implicitHeight
           y: root.fixedAtStart ? root.revealExtent : 0
-          text: root.fixedAtStart ? "\uf054" : "\uf053"
+          text: Icons.glyph(root.fixedAtStart ? "ui.chevron.right" : "ui.chevron.left")
           textRotation: 90
           onPressed: function(button) {
             if (button === Qt.RightButton) root.managePopupOpen = !root.managePopupOpen
@@ -470,7 +470,7 @@ BarWidget {
       Text {
         text: Commons.I18n.t("tray.help")
         textFormat: Text.PlainText
-        color: Qt.darker(root.foreground, 1.4)
+        color: Commons.Color.secondaryText(root.foreground, Commons.Color.popups.background)
         font.family: root.fontFamily
         font.pixelSize: Style.font.caption
         wrapMode: Text.WordWrap
@@ -481,7 +481,7 @@ BarWidget {
         visible: root.allItems.length === 0
         text: Commons.I18n.t("tray.empty")
         textFormat: Text.PlainText
-        color: Qt.darker(root.foreground, 1.5)
+        color: Commons.Color.secondaryText(root.foreground, Commons.Color.popups.background)
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         font.italic: true
@@ -536,12 +536,12 @@ BarWidget {
             id: rowPinBtn
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: parent.right
-            iconText: "\uf08d"
+            iconText: Icons.glyph("ui.pin")
             text: rowRoot.isPinned ? Commons.I18n.t("tray.unpin") : Commons.I18n.t("tray.pin")
             foreground: root.foreground
             horizontalPadding: 8
             verticalPadding: 3
-            iconSize: Style.font.bodySmall
+            iconSize: Style.font.iconSmall
             fontSize: Style.font.bodySmall
             onClicked: root.togglePin(rowRoot.itemId)
           }
@@ -551,12 +551,12 @@ BarWidget {
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: rowPinBtn.left
             anchors.rightMargin: Style.space(6)
-            iconText: "\uf06e"
+            iconText: Icons.glyph(rowRoot.isHidden ? "ui.show" : "ui.hide")
             text: rowRoot.isHidden ? Commons.I18n.t("tray.show") : Commons.I18n.t("tray.hide")
             foreground: root.foreground
             horizontalPadding: 8
             verticalPadding: 3
-            iconSize: Style.font.bodySmall
+            iconSize: Style.font.iconSmall
             fontSize: Style.font.bodySmall
             onClicked: root.toggleHide(rowRoot.itemId)
           }
@@ -743,10 +743,10 @@ BarWidget {
                 anchors.left: parent.left
                 width: Style.space(22)
                 horizontalAlignment: Text.AlignHCenter
-                text: menuRow.modelData.checkState === Qt.Checked ? "\uf00c" : ""
+                text: menuRow.modelData.checkState === Qt.Checked ? Icons.glyph("ui.check") : ""
                 color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
+                font.family: Icons.family
+                font.pixelSize: Style.font.iconSmall
               }
 
               Image {

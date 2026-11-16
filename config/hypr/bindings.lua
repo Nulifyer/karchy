@@ -1,0 +1,4 @@
+-- Your keybindings. karchy's set is karchy/hypr/bindings.lua (docs/keybindings.md).
+-- Add one:       o.bind("SUPER + SHIFT + R", "SSH", "footclient ssh my-server")
+-- Replace one:   o.rebind("SUPER + E", "File manager", "karchy-launch-files ~/Projects")
+-- Remove one:    hl.unbind("SUPER + K")

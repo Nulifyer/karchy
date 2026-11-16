@@ -1,0 +1,251 @@
+#!/bin/bash
+
+# karchy:summary=List and control containers with Podman, or Docker when it is the engine (D-63)
+# karchy:args=open [container] | engine | summary | list | images | watch | start|stop|restart|remove <container> | logs <container> [lines] | follow <container> | compose up|down|restart <project> | forget <project> | remove-image <image> | prune
+# karchy:examples=karchy containers open | karchy containers list | karchy containers compose down myapp
+
+# The Containers panel and window (shell/plugins/containers) read and act
+# through this command, so both engines answer in one JSON shape:
+#   list    {engine, containers: [{id, name, image, state, status, ports:
+#           [{ip, host, container, proto}], project, service, workdir, files,
+#           created}], projects: [{name, workdir, files, running, total}]}
+#   summary {engine, running: [{name, image, project}]}
+#   images  [{id, name, tags, size, created, containers}]
+# Compose projects are found from the labels Compose puts on its containers.
+# A project's folder and files are remembered in ~/.local/state/karchy, so a
+# project taken down can be brought up again from the window.
+# Podman is preferred; with podman-docker `docker` is Podman anyway.
+
+set -euo pipefail
+
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/containers"
+PROJECTS_FILE="$STATE_DIR/projects.json"
+ICON=containers
+
+engine() {
+  if command -v podman >/dev/null; then
+    echo podman
+  elif command -v docker >/dev/null; then
+    echo docker
+  else
+    return 1
+  fi
+}
+
+require_engine() {
+  ENGINE=$(engine) || { echo "Neither Podman nor Docker is installed." >&2; exit 3; }
+}
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-containers /p' "$0" >&2
+  exit 1
+}
+
+# Containers in the common shape, stopped ones included; Podman's pod infra
+# containers are left out.
+containers_json() {
+  if [[ $ENGINE == podman ]]; then
+    podman ps -a --format json | jq '[.[] | select(.IsInfra != true) | (.Labels // {}) as $l | {
+      id: .Id[0:12],
+      name: ((.Names // [])[0] // .Id[0:12]),
+      image: .Image,
+      state: .State,
+      status: (.Status // ""),
+      ports: ([(.Ports // [])[] | select(.host_port != null and .host_port != 0)
+        | {ip: (.host_ip // ""), host: .host_port, container: .container_port, proto: (.protocol // "tcp")}]
+        | unique_by([.host, .proto])),
+      project: ($l["com.docker.compose.project"] // $l["io.podman.compose.project"] // ""),
+      service: ($l["com.docker.compose.service"] // $l["io.podman.compose.service"] // ""),
+      workdir: ($l["com.docker.compose.project.working_dir"] // ""),
+      files: ($l["com.docker.compose.project.config_files"] // ""),
+      created: (.Created // 0)
+    }]'
+  else
+    # Docker's own JSON flattens labels into one comma-joined string, which
+    # config_files (itself comma-joined) would break; ask for each label.
+    local format='{"id":{{json .ID}},"names":{{json .Names}},"image":{{json .Image}},"state":{{json .State}},"status":{{json .Status}},"ports":{{json .Ports}},"created":{{json .CreatedAt}},"project":{{json (.Label "com.docker.compose.project")}},"service":{{json (.Label "com.docker.compose.service")}},"workdir":{{json (.Label "com.docker.compose.project.working_dir")}},"files":{{json (.Label "com.docker.compose.project.config_files")}}}'
+    docker ps -a --no-trunc --format "$format" | jq -s '[.[] | {
+      id: .id[0:12],
+      name: (.names | split(",")[0]),
+      image, state, status,
+      ports: ([.ports | split(", ")[] | capture("^((?<ip>.*):)?(?<host>[0-9]+)(-[0-9]+)?->(?<container>[0-9]+)(-[0-9]+)?/(?<proto>[a-z]+)$")?
+        | {ip: (.ip // "" | ltrimstr("[") | rtrimstr("]")), host: (.host | tonumber), container: (.container | tonumber), proto}]
+        | unique_by([.host, .proto])),
+      project, service, workdir, files,
+      created: ((.created[0:19] | strptime("%Y-%m-%d %H:%M:%S") | mktime)
+        - ((.created[20:25] | capture("^(?<s>[+-])(?<h>[0-9]{2})(?<m>[0-9]{2})$")
+          | (if .s == "-" then -1 else 1 end) * ((.h | tonumber) * 3600 + (.m | tonumber) * 60))? // 0))
+    }]'
+  fi
+}
+
+remembered_projects() {
+  if [[ -s $PROJECTS_FILE ]] && jq -e 'type == "object"' "$PROJECTS_FILE" >/dev/null 2>&1; then
+    cat "$PROJECTS_FILE"
+  else
+    echo '{}'
+  fi
+}
+
+list() {
+  local containers remembered result
+  containers=$(containers_json)
+  remembered=$(remembered_projects)
+  result=$(jq -n --arg engine "$ENGINE" --argjson c "$containers" --argjson r "$remembered" '
+    ($c | map(select(.project != "")) | group_by(.project) | map({
+      name: .[0].project,
+      workdir: (map(.workdir) | map(select(. != "")) | first // ($r[.[0].project].workdir // "")),
+      files: (map(.files) | map(select(. != "")) | first // ($r[.[0].project].files // "")),
+      running: map(select(.state == "running")) | length,
+      total: length
+    })) as $live
+    | ($live | map(.name)) as $names
+    | {
+        engine: $engine,
+        containers: ($c | sort_by(.project, .name)),
+        projects: ($live + [$r | to_entries[] | select(.key as $k | $names | index($k) | not)
+          | {name: .key, workdir: .value.workdir, files: .value.files, running: 0, total: 0}] | sort_by(.name))
+      }')
+  remember "$result"
+  echo "$result"
+}
+
+# Keep each Compose project's folder and files, so `compose up` still knows
+# them once `down` has removed every container.
+remember() {
+  local next
+  next=$(jq -c --argjson r "$(remembered_projects)" \
+    '$r + ([.projects[] | select(.workdir != "") | {key: .name, value: {workdir, files}}] | from_entries)' <<<"$1")
+  [[ $next == "$(remembered_projects | jq -c .)" ]] && return
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$next" >"$PROJECTS_FILE.tmp" && mv "$PROJECTS_FILE.tmp" "$PROJECTS_FILE"
+}
+
+summary() {
+  if [[ $ENGINE == podman ]]; then
+    podman ps --format json | jq -c --arg engine podman '{engine: $engine, running: [.[] | select(.IsInfra != true) | {
+      name: ((.Names // [])[0] // .Id[0:12]), image: .Image,
+      project: ((.Labels // {})["com.docker.compose.project"] // (.Labels // {})["io.podman.compose.project"] // "")}]}'
+  else
+    docker ps --format '{"name":{{json .Names}},"image":{{json .Image}},"project":{{json (.Label "com.docker.compose.project")}}}' \
+      | jq -sc '{engine: "docker", running: .}'
+  fi
+}
+
+images() {
+  if [[ $ENGINE == podman ]]; then
+    podman images --format json | jq '[.[] | {
+      id: .Id[0:12],
+      name: ((.Names // [])[0] // "<none>"),
+      tags: ((.Names // []) | length),
+      size: (.Size // 0 | if . >= 1e9 then "\(. / 1e8 | floor / 10) GB" elif . >= 1e6 then "\(. / 1e6 | floor) MB" else "\(. / 1e3 | floor) kB" end),
+      created: (.Created // 0),
+      containers: (.Containers // 0)
+    }] | sort_by(.name)'
+  else
+    docker images --no-trunc --format '{{json .}}' | jq -s '[.[] | {
+      id: (.ID | ltrimstr("sha256:"))[0:12],
+      name: (if .Repository == "<none>" then "<none>" else "\(.Repository):\(.Tag)" end),
+      tags: 1,
+      size: .Size,
+      created: ((.CreatedAt[0:19] | strptime("%Y-%m-%d %H:%M:%S") | mktime)? // 0),
+      containers: (.Containers | tonumber? // 0)
+    }] | sort_by(.name)'
+  fi
+}
+
+# One line per container event that changes what runs; the shell reads the
+# list again after a burst of them instead of polling.
+watch_events() {
+  local filters=(--filter type=container) events event
+  # The engines name the same events differently.
+  if [[ $ENGINE == podman ]]; then
+    events=(create start died remove pause unpause rename)
+  else
+    events=(create start die destroy pause unpause rename)
+  fi
+  for event in "${events[@]}"; do
+    filters+=(--filter "event=$event")
+  done
+  echo ready
+  if [[ $ENGINE == podman ]]; then
+    exec podman events "${filters[@]}" --format '{{.Status}} {{.Name}}'
+  else
+    exec docker events "${filters[@]}" --format '{{.Action}} {{.Actor.Attributes.name}}'
+  fi
+}
+
+# Run an engine command; on failure say why in a notification too, since the
+# panel that asked may already be closed.
+run() {
+  local output
+  if ! output=$("$@" 2>&1); then
+    printf '%s\n' "$output" >&2
+    karchy-notification-send -u critical -g "$ICON" "Containers: $2 failed" "$(tail -n 3 <<<"$output")" >/dev/null 2>&1 || true
+    exit 1
+  fi
+  [[ -z $output ]] || printf '%s\n' "$output"
+}
+
+compose() {
+  local action=$1 project=$2 workdir files
+  [[ $action =~ ^(up|down|restart)$ ]] || usage
+  read -r workdir files < <(list | jq -r --arg p "$project" \
+    '(.projects[] | select(.name == $p) | [(.workdir | @base64), (.files | @base64)] | join(" ")) // ""')
+  workdir=$(base64 -d <<<"${workdir:-}" 2>/dev/null || true)
+  files=$(base64 -d <<<"${files:-}" 2>/dev/null || true)
+
+  local args=(-p "$project") file
+  if [[ -n $files ]]; then
+    IFS=, read -ra file_list <<<"$files"
+    for file in "${file_list[@]}"; do
+      [[ -f $file ]] && args+=(-f "$file")
+    done
+  fi
+  if [[ $action == up ]] && ((${#args[@]} == 2)); then
+    echo "The compose file of $project is gone; start it from its folder instead." >&2
+    karchy-notification-send -u critical -g "$ICON" "Can't start $project" "Its compose file was not found." >/dev/null 2>&1 || true
+    exit 1
+  fi
+  [[ -n $workdir && -d $workdir ]] && cd "$workdir"
+  case "$action" in
+    up) run "$ENGINE" compose "${args[@]}" up -d ;;
+    down) run "$ENGINE" compose "${args[@]}" down ;;
+    restart) run "$ENGINE" compose "${args[@]}" restart ;;
+  esac
+}
+
+forget() {
+  local next
+  next=$(remembered_projects | jq --arg p "$1" 'del(.[$p])')
+  mkdir -p "$STATE_DIR"
+  printf '%s\n' "$next" >"$PROJECTS_FILE.tmp" && mv "$PROJECTS_FILE.tmp" "$PROJECTS_FILE"
+}
+
+follow() {
+  exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.karchy.terminal --title="Logs: $1" \
+    -e "$ENGINE" logs --follow --tail 300 "$1"
+}
+
+case "${1:-}" in
+  # The window, at one container's page when a name is given.
+  open) exec karchy-shell shell summon karchy.containers "$(jq -cn --arg c "${2:-}" 'if $c == "" then {} else {container: $c} end')" ;;
+  engine) engine; exit ;;
+esac
+
+require_engine
+case "${1:-}" in
+  summary) summary ;;
+  list) list ;;
+  images) images ;;
+  watch) watch_events ;;
+  start | stop | restart) (($# == 2)) || usage; run "$ENGINE" "$1" "$2" ;;
+  remove) (($# == 2)) || usage; run "$ENGINE" rm "$2" ;;
+  remove-image) (($# == 2)) || usage; run "$ENGINE" rmi "$2" ;;
+  prune) run "$ENGINE" system prune --force ;;
+  logs) (($# >= 2)) || usage; "$ENGINE" logs --tail "${3:-300}" "$2" 2>&1 ;;
+  follow) (($# == 2)) || usage; follow "$2" ;;
+  compose) (($# == 3)) || usage; compose "$2" "$3" ;;
+  forget) (($# == 2)) || usage; forget "$2" ;;
+  *) usage ;;
+esac

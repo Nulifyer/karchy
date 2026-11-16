@@ -1,0 +1,6 @@
+#!/bin/sh
+# karchy (D-33): re-check LocalSend's firewall port whenever connections change.
+[ -x /usr/bin/karchy-localsend-firewall ] || exit 0
+case "$2" in
+  up|down|vpn-up|vpn-down|connectivity-change) exec /usr/bin/karchy-localsend-firewall ;;
+esac

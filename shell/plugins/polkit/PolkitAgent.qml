@@ -169,14 +169,14 @@ Item {
 
   Process {
     id: laptopClosedProc
-    command: ["bash", "-c", "omarchy-hw-laptop-closed && echo closed || echo open"]
+    command: ["bash", "-c", "karchy-hw-laptop-closed && echo closed || echo open"]
     stdout: StdioCollector { id: laptopClosedOut; waitForEnd: true }
     onExited: root.laptopClosed = String(laptopClosedOut.text || "").trim() === "closed"
   }
 
   PolkitAgent {
     id: polkitAgent
-    path: "/org/omarchy/PolkitAgent"
+    path: "/org/karchy/PolkitAgent"
 
     onAuthenticationRequestStarted: root.beginFlow()
     onIsActiveChanged: {
@@ -184,8 +184,8 @@ Item {
       else if (!root.closing) root.resetSnapshot()
     }
     onIsRegisteredChanged: {
-      if (isRegistered) console.log("omarchy polkit agent registered")
-      else console.warn("omarchy polkit agent is not registered; another agent may be running")
+      if (isRegistered) console.log("karchy polkit agent registered")
+      else console.warn("karchy polkit agent is not registered; another agent may be running")
     }
   }
 
@@ -228,7 +228,7 @@ Item {
     visible: root.dialogVisible
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "omarchy-polkit"
+    WlrLayershell.namespace: "karchy-polkit"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
@@ -280,8 +280,8 @@ Item {
         width: Math.round(root.fieldHeight * 0.7)
         height: width
         visible: root.fingerprintMode
-        text: "\udb80\ude37"
-        fontFamily: root.fontFamily
+        text: Icons.glyph("security.fingerprint")
+        fontFamily: Icons.family
         fontSize: Math.round(root.fieldHeight * 0.7)
         color: root.errorFlash ? Commons.Color.polkit.textError : root.accent
       }
@@ -297,9 +297,9 @@ Item {
         spacing: Style.space(14)
 
         Text {
-          text: "\uf023"
+          text: Icons.glyph("system.lock")
           color: root.errorFlash ? Commons.Color.polkit.textError : root.accent
-          font.family: root.fontFamily
+          font.family: Icons.family
           font.pixelSize: Style.font.iconLarge
           width: Style.space(26)
           height: root.fieldHeight

@@ -2,36 +2,39 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value))
 }
 
-// The widest glyph `iconFor` can return. The progress OSD sizes its icon
+// Icons are names from default/karchy/icons.json; Osd.qml draws them with
+// Icons.resolve, which also passes through a glyph a caller sent as is.
+//
+// The widest icon `iconFor` can return. The progress OSD sizes its icon
 // column to it so the bar keeps its place as the icon changes.
-var widestIcon = ""
+var widestIcon = "audio.volume.high"
 
 function iconFor(name, percent) {
   var n = String(name || "").toLowerCase()
-  if (n === "volume-muted" || n === "volume-mute" || n === "muted" || n === "mute") return ""
-  if (n === "volume-low") return ""
-  if (n === "volume-medium") return ""
-  if (n === "volume-high" || n === "volume") return ""
-  if (n === "microphone-muted" || n === "microphone-off" || n === "mic-muted" || n === "mic-off") return "󰍭"
-  if (n === "microphone" || n === "mic") return "󰍬"
-  if (n === "keyboard") return "󰌌"
-  if (n === "brightness" || n === "display") return "󰍹"
-  if (n === "touchpad") return "󰟸"
-  if (n === "touch" || n === "touchscreen") return "󰝁"
-  if (n === "reboot" || n === "restart") return "󰜉"
-  if (n === "shutdown" || n === "power" || n === "poweroff") return "󰐥"
-  if (n === "logout" || n === "sign-out" || n === "leave") return "󰍃"
-  if (n === "media" || n === "player") return "󰝚"
-  if (n === "media-source" || n === "player-source") return "󰝚"
-  if (n === "media-play" || n === "player-play") return "󰐊"
-  if (n === "media-pause" || n === "player-pause") return "󰏤"
-  if (n === "media-next" || n === "player-next") return "󰒭"
-  if (n === "media-previous" || n === "player-previous") return "󰒮"
+  if (n === "volume-muted" || n === "volume-mute" || n === "muted" || n === "mute") return "audio.volume.muted"
+  if (n === "volume-low") return "audio.volume.low"
+  if (n === "volume-medium") return "audio.volume.medium"
+  if (n === "volume-high" || n === "volume") return "audio.volume.high"
+  if (n === "microphone-muted" || n === "microphone-off" || n === "mic-muted" || n === "mic-off") return "audio.mic.muted"
+  if (n === "microphone" || n === "mic") return "audio.mic"
+  if (n === "keyboard") return "input.keyboard"
+  if (n === "brightness" || n === "display") return "display"
+  if (n === "touchpad") return "input.trackpad"
+  if (n === "touch" || n === "touchscreen") return "input.touch"
+  if (n === "reboot" || n === "restart") return "system.reboot"
+  if (n === "shutdown" || n === "power" || n === "poweroff") return "system.power"
+  if (n === "logout" || n === "sign-out" || n === "leave") return "system.logout"
+  if (n === "media" || n === "player") return "media.music"
+  if (n === "media-source" || n === "player-source") return "media.music"
+  if (n === "media-play" || n === "player-play") return "media.play"
+  if (n === "media-pause" || n === "player-pause") return "media.pause"
+  if (n === "media-next" || n === "player-next") return "media.next"
+  if (n === "media-previous" || n === "player-previous") return "media.previous"
   if (n.length > 0) return name
-  if (percent <= 0) return ""
-  if (percent <= 33) return ""
-  if (percent <= 66) return ""
-  return ""
+  if (percent <= 0) return "audio.volume.muted"
+  if (percent <= 33) return "audio.volume.low"
+  if (percent <= 66) return "audio.volume.medium"
+  return "audio.volume.high"
 }
 
 // fmt(value) writes the percentage in the display language; QML passes

@@ -14,8 +14,8 @@ import "BarModel.js" as BarModel
 Item {
   id: root
 
-  // The omarchy-shell host injects omarchyPath from OMARCHY_PATH.
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  // The karchy-shell host injects karchyPath from KARCHY_PATH.
+  property string karchyPath: Quickshell.env("KARCHY_PATH")
   // Injected by the host shell so bar slots can resolve enabled widgets.
   property var barWidgetRegistry: fallbackBarWidgetRegistry
   // Read-only registry view for third-party full bars; the built-in bar does
@@ -44,7 +44,7 @@ Item {
   property bool barHidden: false
   property string home: Quickshell.env("HOME")
   property string stateHome: home + "/.local/state"
-  property string omarchyConfigDir: home + "/.config/omarchy"
+  property string karchyConfigDir: home + "/.config/karchy"
   property var fallbackBarConfig: ({
     position: "top",
     background: "opaque",
@@ -73,8 +73,11 @@ Item {
   property bool centerHoverRevealSuppressed: false
   property int barConfigSerial: 0
   property string position: "top"
+  // auto, floating or docked (BarModel.normalizeStyle). Auto floats the bar
+  // and docks it on a monitor while a window there is maximized.
+  property string barStyle: "auto"
   // Resolves through fontconfig at paint time (Style.font.family defaults
-  // to "monospace"), so changing the system font (via `omarchy-font-set`)
+  // to "monospace"), so changing the system font (via `karchy-font-set`)
   // updates the bar without a reload.
   property string fontFamily: Style.font.family
   // Bound to the central Color singleton so the bar tracks shell.toml's
@@ -766,13 +769,38 @@ Item {
     return Math.max(root.barSize, BarModel.notchFloor(root.displayCutouts, root.position, screen.name, screen.width, screen.height, screen.devicePixelRatio, root.panelModeFor(screen), Style.bar.notchHeight))
   }
 
-  // Each screen's bar thickness, by screen name: barSize, or more where a notch
-  // floor raises a top bar. Toasts and plugins clear the bar by it; barSize
-  // stays the configured size the widgets are drawn at.
+  // Whether the bar on a screen docks against the edge instead of floating
+  // inset from it (BarModel.dockedOn): by style, by a notch that a top bar
+  // has to cover, or in auto by a window maximized on a workspace the
+  // monitor shows. A hidden special workspace (minimized windows) isn't shown.
+  function dockedFor(screen) {
+    if (!screen) return true
+    var monitor = Hyprland.monitorFor(screen)
+    var shown = []
+    var active = monitor ? monitor.activeWorkspace : null
+    if (active) shown.push({ id: active.id, name: active.name })
+    var special = monitor && monitor.lastIpcObject ? monitor.lastIpcObject.specialWorkspace : null
+    if (special && special.name) shown.push({ id: special.id, name: special.name })
+    return BarModel.dockedOn(Hyprland.toplevels.values, shown, {
+      style: root.barStyle,
+      notched: !root.vertical && root.thicknessFor(screen) > root.barSize
+    })
+  }
+
+  // How far the bar reaches into each screen, by screen name: its thickness
+  // (barSize, or more where a notch floor raises a top bar) plus, floating,
+  // the gap to the screen edge, as the strip is drawn at this moment. Panels,
+  // toasts and plugins clear the bar by it, so they move with the strip when
+  // it docks or floats; barSize stays the size the widgets are drawn at.
   readonly property var screenBarSizes: {
     var sizes = ({})
     var screens = Quickshell.screens
     for (var i = 0; i < screens.length; i++) sizes[screens[i].name] = root.thicknessFor(screens[i])
+    var panels = barPanels.instances
+    for (var j = 0; j < panels.length; j++) {
+      var panel = panels[j]
+      if (panel && panel.screen) sizes[panel.screen.name] = panel.footprint
+    }
     return sizes
   }
 
@@ -794,6 +822,7 @@ Item {
     var config = Util.isPlainObject(barConfig) ? barConfig : fallbackBarConfig
 
     position = normalizePosition(config.position)
+    barStyle = BarModel.normalizeStyle(config.style)
     // opaque, glassy or none; a config from before background says
     // transparent instead.
     var look = config.background || (config.transparent === true ? "none" : "opaque")
@@ -804,7 +833,7 @@ Item {
     if (look !== "none") glassy = look === "glassy"
     if (look !== glassSyncedLook) {
       glassSyncedLook = look
-      Util.execDetached("omarchy-bar sync-glass")
+      Util.execDetached("karchy-bar sync-glass")
     }
 
     // Each widget keeps its key while it stays in the layout, wherever it
@@ -930,7 +959,7 @@ Item {
     return monitor ? String(monitor.name || "") : ""
   }
 
-  // Resolve the live bar-widget instance for a plugin id (e.g. "omarchy.bluetooth").
+  // Resolve the live bar-widget instance for a plugin id (e.g. "karchy.bluetooth").
   // Only widgets that expose popup open/close methods count; plain indicators
   // (clock, workspaces, tray) return null. Used by shell.summon/toggle so
   // panel hotkeys route through the bar instead of a per-target IPC handler
@@ -1001,7 +1030,7 @@ Item {
   }
 
   function customModuleSource(entry) {
-    var source = BarModel.customModulePath(entry, home, omarchyConfigDir)
+    var source = BarModel.customModulePath(entry, home, karchyConfigDir)
     return source ? Util.fileUrl(source) : ""
   }
 
@@ -1042,9 +1071,9 @@ Item {
   }
 
   // Steps the bar background from clear to glassy to opaque and around. Through
-  // omarchy-bar, which keeps Hyprland's blur behind a glassy bar in step.
+  // karchy-bar, which keeps Hyprland's blur behind a glassy bar in step.
   function cycleBackground() {
-    Util.execDetached("omarchy-bar background cycle")
+    Util.execDetached("karchy-bar background cycle")
   }
 
   function moduleDropAtScene(scenePoint, sourceSlot) {
@@ -1352,13 +1381,14 @@ Item {
   }
 
   // How far past the bar the drag point sits, in screen coordinates: past
-  // the strip its screen's bar surface draws, thickness deep along its edge.
+  // the strip its screen's bar surface draws, and a floating strip's gap to
+  // the edge, along its edge.
   // The strip, not the window, is the boundary: the window spans the whole
   // screen (BarPanel).
   function moduleRemoveDistance(screenPoint) {
     var screen = barDragScreen
     if (!screen) return 0
-    var thickness = thicknessFor(screen)
+    var thickness = barSizeFor(screen.name)
     var x = screenPoint.x
     var y = screenPoint.y
     if (vertical) {
@@ -1513,7 +1543,7 @@ Item {
     if (!requestedTransparent || transparentForegroundProc.running) return
 
     transparentForegroundProc.command = [
-      "omarchy-bar-text-color",
+      "karchy-bar-text-color",
       root.position,
       String(root.barSize),
       colorHex(root.themeForeground),
@@ -1553,9 +1583,9 @@ Item {
   }
 
   // FileView also fires for any change in its path's parent directory, so watch
-  // a path inside current/: every plugin writes to ~/.local/state/omarchy.
+  // a path inside current/: every plugin writes to ~/.local/state/karchy.
   FileView {
-    path: root.stateHome + "/omarchy/current/theme"
+    path: root.stateHome + "/karchy/current/theme"
     watchChanges: true
     printErrors: false
     onFileChanged: root.scheduleTransparentForegroundRefresh()
@@ -1631,15 +1661,15 @@ Item {
 
   // Presence of the `bar-off` flag = bar hidden. Watching the parent toggles
   // directory because FileView can't observe a file that doesn't exist yet,
-  // and the flag is created/removed by `omarchy-toggle-bar`.
+  // and the flag is created/removed by `karchy-toggle-bar`.
   Process {
     id: barHiddenProbe
     running: true
-    command: ["bash", "-c", "[[ -f $HOME/.local/state/omarchy/toggles/bar-off ]] && echo yes || echo no"]
+    command: ["bash", "-c", "[[ -f $HOME/.local/state/karchy/toggles/bar-off ]] && echo yes || echo no"]
     stdout: SplitParser { onRead: function(line) { root.barHidden = String(line).trim() === "yes" } }
   }
   FileView {
-    path: root.home + "/.local/state/omarchy/toggles"
+    path: root.home + "/.local/state/karchy/toggles"
     watchChanges: true
     printErrors: false
     onFileChanged: barHiddenProbe.running = true
@@ -1647,10 +1677,10 @@ Item {
 
   // The directory watch can permanently stop delivering events after flag
   // changes land in quick succession, stranding the bar off screen until the
-  // shell restarts. `omarchy-toggle-bar` nudges this after flipping the flag
+  // shell restarts. `karchy-toggle-bar` nudges this after flipping the flag
   // so the probe re-reads it even when the watch has gone quiet.
   ShellIpc {
-    target: "omarchy.bar"
+    target: "karchy.bar"
 
     // Start rather than restart: a probe already in flight was launched by the
     // directory watch after the flag flipped, so its answer is current, and
@@ -1660,16 +1690,39 @@ Item {
     }
   }
 
-  // Hyprland's window list does not follow fullscreen on its own, and each
-  // BarPanel reads it to drop its input under a fullscreen window.
+  // Hyprland's window and monitor lists don't follow fullscreen, maximize,
+  // moves or an opened special workspace on their own. Each BarPanel reads
+  // them to drop its input under a fullscreen window and to dock while a
+  // window is maximized (Hyprland sends "fullscreen" for both). A burst of
+  // events refreshes each list once.
+  property bool toplevelsStale: false
+  property bool monitorsStale: false
+
+  function refreshHyprland() {
+    if (toplevelsStale) Hyprland.refreshToplevels()
+    if (monitorsStale) Hyprland.refreshMonitors()
+    toplevelsStale = false
+    monitorsStale = false
+  }
+
   Connections {
     target: Hyprland
     function onRawEvent(event) {
-      if (event && String(event.name) === "fullscreen") Hyprland.refreshToplevels()
+      var name = event ? String(event.name) : ""
+      if (name === "fullscreen" || name === "openwindow" || name === "movewindowv2") {
+        root.toplevelsStale = true
+      } else if (name === "activespecialv2" || name === "moveworkspacev2" ||
+                 name === "monitoraddedv2" || name === "monitorremovedv2") {
+        root.monitorsStale = true
+      } else {
+        return
+      }
+      Qt.callLater(root.refreshHyprland)
     }
   }
 
   Variants {
+    id: barPanels
     model: Quickshell.screens
 
     delegate: Component {
@@ -1722,9 +1775,11 @@ Item {
     // good: when the mode settles it, or after two seconds without one.
     visible: !remapGuard.remapping && (cutoutWaitOver || !cutoutPending)
     // An explicit zone instead of Auto: the reserved area stays the strip's
-    // thickness though the window spans its screen.
+    // thickness, and floating the gap to the edge, though the window spans
+    // its screen. It takes the state at once, not the animated inset, so the
+    // windows resize once, together with the maximize that docked the bar.
     exclusionMode: root.barHidden ? ExclusionMode.Ignore : ExclusionMode.Normal
-    exclusiveZone: thickness
+    exclusiveZone: thickness + (docked ? 0 : Style.bar.floatMargin)
 
     // While this window's widget or bar-move drag is live, the whole surface
     // takes input (mask below), so the pointer never leaves the bar surface
@@ -1776,8 +1831,26 @@ Item {
       onTriggered: barWindow.cutoutWaitOver = true
     }
 
-    // The same thickness the bar publishes for its screen (screenBarSizes).
+    // The strip's thickness on this screen.
     readonly property int thickness: root.thicknessFor(screen)
+
+    // Floating, the strip stands off the screen edge and its two ends by the
+    // float margin, with rounded corners; docked, it fills the edge as it
+    // always did. The change slides the strip into place, and the panels,
+    // toasts and plugins that clear it follow through the footprint.
+    readonly property bool docked: root.dockedFor(screen)
+    property real floatProgress: docked ? 0 : 1
+    Behavior on floatProgress {
+      NumberAnimation {
+        duration: Style.duration(200)
+        easing.type: Easing.Bezier
+        easing.bezierCurve: Style.easeOut
+      }
+    }
+    readonly property real inset: floatProgress * Style.bar.floatMargin
+    // What the bar publishes for its screen (screenBarSizes): the strip and
+    // the gap to the edge, in whole pixels.
+    readonly property int footprint: thickness + Math.round(inset)
     // Where the center box starts along the bar, set by the drawn center
     // sections. Hovering past it, over the clock, its trailing widgets and the
     // right section, leaves the indicator peek shut.
@@ -1795,7 +1868,7 @@ Item {
     implicitHeight: root.vertical ? 0 : (screen ? screen.height : thickness)
     color: "transparent"
     surfaceFormat.opaque: false
-    WlrLayershell.namespace: "omarchy-bar"
+    WlrLayershell.namespace: "karchy-bar"
     WlrLayershell.layer: WlrLayer.Top
 
     // Whether the active workspace on this screen holds a real fullscreen
@@ -1806,8 +1879,10 @@ Item {
       return !!workspace && BarModel.fullscreenOn(Hyprland.toplevels.values, workspace.id)
     }
 
-    // Idle, only the strip takes input, so the clear expanse passes clicks
-    // through to the windows and desktop below. Under a fullscreen window
+    // Idle, only the strip takes input, and floating the gap between it and
+    // the screen edge, so a pointer thrown against the edge stays on the bar.
+    // The clear expanse past it passes clicks through to the windows and
+    // desktop below. Under a fullscreen window
     // nothing does: Hyprland 0.56 passes the pointer through a faded top
     // layer only while it holds the layer below fullscreen, and it lifts
     // every layer on the monitor back above whenever a window on any other
@@ -1817,24 +1892,94 @@ Item {
 
     Region {
       id: stripInputRegion
-      item: barStrip
+      item: barBand
+    }
+
+    // The strip and, floating, the gap between it and the screen edge.
+    Item {
+      id: barBand
+
+      x: root.position === "right" ? parent.width - width : 0
+      y: root.position === "bottom" ? parent.height - height : 0
+      width: root.vertical ? barWindow.thickness + barWindow.inset : parent.width
+      height: root.vertical ? parent.height : barWindow.thickness + barWindow.inset
     }
 
     Region {
       id: noInputRegion
     }
 
+    // The gap between a floating strip and the screen edge (and between its
+    // ends and the screen sides) still presses the bar: a pointer thrown
+    // against the edge hits the widget in line with it, as it does docked.
+    // Under the strip, so the widgets take their own clicks first; a click
+    // that misses them is moved to the strip's middle, clamped to its length,
+    // and handed to the click target there. Wheel turns go the same way.
+    MouseArea {
+      id: edgeReach
+
+      anchors.fill: barBand
+      enabled: !barWindow.dragActive && !barWindow.underFullscreen
+      acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+
+      function targetAt(x, y) {
+        var p = mapToItem(barStrip, x, y)
+        var sx = root.vertical ? barStrip.width / 2 : Util.clamp(p.x, 0, barStrip.width - 1)
+        var sy = root.vertical ? Util.clamp(p.y, 0, barStrip.height - 1) : barStrip.height / 2
+        // The widget in line with the pointer, or else the nearest one along
+        // the bar within a short reach, so the screen corner opens the first
+        // widget (the menu) and the far corner the last.
+        // Only near the bar's two ends, floating or docked; elsewhere empty
+        // bar presses nothing.
+        var along0 = root.vertical ? p.y : p.x
+        var span = root.vertical ? barStrip.height : barStrip.width
+        var nearEnd = along0 < Style.space(16) || along0 >= span - Style.space(16)
+        var reach = nearEnd ? Style.space(16) : 0
+        var best = null
+        var bestDistance = reach
+        for (var i = root.clickTargets.length - 1; i >= 0; i--) {
+          var target = root.clickTargets[i]
+          if (!root.moduleTargetClickable(target)) continue
+          if (!root.sameWindow(root.targetWindow(target), barWindow)) continue
+          if (Util.itemContainsPoint(target, barStrip, sx, sy)) return target
+          var a = target.mapFromItem(barStrip, sx, sy)
+          var along = root.vertical ? a.y : a.x
+          var length = root.vertical ? target.height : target.width
+          var distance = along < 0 ? -along : along - length
+          if (distance < bestDistance && Util.itemContainsPoint(target, barStrip,
+              root.vertical ? sx : sx - (along < 0 ? along : along - length + 1),
+              root.vertical ? sy - (along < 0 ? along : along - length + 1) : sy)) {
+            best = target
+            bestDistance = distance
+          }
+        }
+        return best
+      }
+
+      onClicked: function(mouse) {
+        var target = targetAt(mouse.x, mouse.y)
+        if (target) target.triggerPress(mouse.button)
+        else mouse.accepted = false
+      }
+      onWheel: function(wheel) {
+        var target = targetAt(wheel.x, wheel.y)
+        if (target && typeof target.wheelMoved === "function") target.wheelMoved(wheel.angleDelta.y)
+        else wheel.accepted = false
+      }
+    }
+
     // The bar itself, along its screen edge.
     Item {
       id: barStrip
 
-      x: root.position === "right" ? parent.width - barWindow.thickness : 0
-      y: root.position === "bottom" ? parent.height - barWindow.thickness : 0
-      width: root.vertical ? barWindow.thickness : parent.width
-      height: root.vertical ? parent.height : barWindow.thickness
+      x: root.position === "right" ? parent.width - barWindow.thickness - barWindow.inset : barWindow.inset
+      y: root.position === "bottom" ? parent.height - barWindow.thickness - barWindow.inset : barWindow.inset
+      width: root.vertical ? barWindow.thickness : parent.width - 2 * barWindow.inset
+      height: root.vertical ? parent.height - 2 * barWindow.inset : barWindow.thickness
 
       Rectangle {
         anchors.fill: parent
+        radius: barWindow.floatProgress * Style.bar.floatRadius
         color: root.transparent ? "transparent" : (root.glassy ? root.glassBackground : root.background)
       }
 
@@ -2027,7 +2172,7 @@ Item {
     visible: (active && sourceItem !== null) || poofShown
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "omarchy-bar-drag-ghost"
+    WlrLayershell.namespace: "karchy-bar-drag-ghost"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
@@ -2221,7 +2366,7 @@ Item {
     visible: root.barMoveActive && root.sameScreen(root.barMoveScreen, ghostScreen)
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "omarchy-bar-move-ghost"
+    WlrLayershell.namespace: "karchy-bar-move-ghost"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 

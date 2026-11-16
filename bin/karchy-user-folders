@@ -1,0 +1,45 @@
+#!/bin/bash
+# karchy:summary=Create the home folders, add the main ones to the file manager's sidebar and add starter templates
+# karchy:hidden=true
+
+# Runs at each login, and does its work once: when the sidebar bookmarks file
+# doesn't exist yet. After that the folders and bookmarks are the user's to
+# change; a bookmark they remove stays removed. The folders are the XDG user
+# folders (Downloads, Projects, ...), named in the user's language, so a
+# translated Downloads is bookmarked under its own name.
+
+set -euo pipefail
+
+bookmarks="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks"
+[[ -e $bookmarks ]] && exit 0
+
+# xdg-user-dirs' own login service does this too; doing it here first means
+# the folders exist before they are bookmarked.
+xdg-user-dirs-update
+
+# karchy draws no desktop icons, so the Desktop folder is home itself, which
+# takes it out of the sidebar (user 2026-11-15). xdg-user-dirs keeps a folder
+# that exists, and home always does.
+desktop=$(xdg-user-dir DESKTOP)
+if [[ $desktop != "$HOME" ]]; then
+  xdg-user-dirs-update --set DESKTOP "$HOME"
+  rmdir "$desktop" 2>/dev/null || true
+fi
+
+# Starter files for the file manager's Create Document: Text File and
+# Markdown Document. Only into an empty Templates folder.
+templates=$(xdg-user-dir TEMPLATES)
+if [[ $templates != "$HOME" && -d $templates && -z $(ls -A "$templates") ]]; then
+  cp -n "${KARCHY_PATH:-/usr/share/karchy}/default/thunar/templates/"* "$templates/" || true
+fi
+
+mkdir -p "${bookmarks%/*}"
+tmp="$bookmarks.karchy-new"
+: >"$tmp"
+for kind in DOWNLOAD PROJECTS PICTURES VIDEOS; do
+  dir=$(xdg-user-dir "$kind")
+  # An unset folder resolves to home itself, which needs no bookmark.
+  [[ -n $dir && $dir != "$HOME" && -d $dir ]] || continue
+  printf 'file://%s %s\n' "${dir// /%20}" "${dir##*/}" >>"$tmp"
+done
+mv "$tmp" "$bookmarks"

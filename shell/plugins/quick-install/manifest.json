@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.quick-install",
+  "name": "Quick install",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "Quick install window: common apps and karchy's optional features, searched like fzf and installed in a terminal",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Window.qml"
+  }
+}

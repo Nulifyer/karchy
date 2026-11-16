@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# karchy:summary=Set the system monospace font
+# karchy:args=<font-name>
+# karchy:examples=karchy font list | karchy font set "CaskaydiaMono Nerd Font"
+
+usage() {
+  echo "Usage: karchy-font-set <font-name>"
+}
+
+font_name="${1:-}"
+
+case "$font_name" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  "")
+    usage >&2
+    exit 1
+    ;;
+esac
+
+if ! fc-list | grep -Fqi -- "$font_name"; then
+  echo "Font '$font_name' not found."
+  exit 1
+fi
+
+# fontconfig is the single source of truth: the terminals ask for "monospace"
+# (their starter configs say so), and so do the shell, Qt and GTK apps. No
+# terminal config is rewritten (D-23). karchy's choice goes in conf.d, which
+# fontconfig reads before ~/.config/fontconfig/fonts.conf, so a hand-written
+# fonts.conf still wins. prepend_first puts the family ahead of the one the
+# package default (50-karchy.conf) prefers.
+fontconfig_file="$HOME/.config/fontconfig/conf.d/60-karchy-font.conf"
+font_xml=$(printf '%s' "$font_name" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+mkdir -p "$(dirname "$fontconfig_file")"
+tmp=$(mktemp "$fontconfig_file.XXXXXX")
+cat >"$tmp" <<XML
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<!-- Written by karchy-font-set (Settings › Appearance). -->
+<fontconfig>
+  <match target="pattern">
+    <test name="family" qual="any">
+      <string>monospace</string>
+    </test>
+    <edit name="family" mode="prepend_first" binding="strong">
+      <string>$font_xml</string>
+    </edit>
+  </match>
+</fontconfig>
+XML
+mv "$tmp" "$fontconfig_file"
+
+karchy-restart-shell
+
+# kitty re-reads its config and fonts on SIGUSR1; the others pick the font up
+# in new windows.
+pkill -USR1 -x kitty 2>/dev/null || true
+for terminal in ghostty alacritty foot; do
+  if pgrep -x "$terminal" >/dev/null; then
+    karchy-notification-send -g look.font "$(karchy-i18n font.restartToSeeChange "${terminal^}")"
+  fi
+done
+
+karchy-hook font-set "$font_name"

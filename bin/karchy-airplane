@@ -1,0 +1,121 @@
+#!/bin/bash
+
+# karchy:summary=Turn airplane mode on or off: every radio (Wi-Fi, Bluetooth, mobile broadband) at once
+# karchy:group=network
+# karchy:args=on | off | toggle | status [--json] | key | forget
+# karchy:examples=karchy airplane on | karchy airplane toggle | karchy airplane status
+
+# Airplane mode is every radio soft-blocked with rfkill. systemd-rfkill saves
+# each radio's state when it changes and restores it at boot, so airplane mode
+# stays on across a restart. /dev/rfkill belongs to the person at the seat
+# (systemd's uaccess), so no password is asked.
+#
+# Every radio blocked isn't always airplane mode: turning Wi-Fi off in the
+# panel blocks the Wi-Fi radio too (NetworkManager uses rfkill), and with
+# Bluetooth already off that is every radio. So turning airplane mode on is
+# remembered ($XDG_STATE_HOME/karchy/airplane: "on" or "off"), and airplane
+# mode is that choice while every radio is still blocked. The network panel
+# reads the same two facts.
+#
+# The airplane key (XF86RFKill) has one owner. Arch's and CachyOS's kernels
+# handle it themselves (CONFIG_RFKILL_INPUT: the "rfkill" input handler
+# toggles every radio on KEY_RFKILL), also on the lock screen, at the login
+# prompt and on a text console. Hyprland's binding runs `key`: with the
+# kernel's handler registered it records and shows the result; only without
+# one does it toggle. Toggling in both places would turn airplane mode on and
+# straight back off. (A program that takes the key over with
+# RFKILL_IOCTL_NOINPUT, such as GNOME's settings daemon, isn't part of karchy.)
+
+set -euo pipefail
+
+MARKER=${XDG_STATE_HOME:-$HOME/.local/state}/karchy/airplane
+
+# "all", "some", "none" (radios blocked in software) or "absent" (no radios),
+# then "hard" when one is blocked by a hardware switch, else "-".
+radios() {
+  rfkill -J 2>/dev/null | jq -r '
+    (.rfkilldevices // []) as $d
+    | [ (if ($d | length) == 0 then "absent"
+         elif ($d | all(.soft == "blocked")) then "all"
+         elif ($d | any(.soft == "blocked")) then "some" else "none" end),
+        (if ($d | any(.hard == "blocked")) then "hard" else "-" end) ] | @tsv' 2>/dev/null ||
+    printf 'absent\t-\n'
+}
+
+remembered() {
+  [[ $(cat "$MARKER" 2>/dev/null) == "on" ]]
+}
+
+remember() {
+  mkdir -p "${MARKER%/*}"
+  printf '%s\n' "$1" >"$MARKER"
+  # The panel reads the choice again (it also follows rfkill on its own).
+  karchy-shell -q karchy.network radiosChanged >/dev/null 2>&1 || true
+}
+
+osd() {
+  local blocked hard message
+  IFS=$'\t' read -r blocked hard < <(radios)
+  if [[ $blocked == "absent" ]]; then
+    message=$(karchy-i18n airplane.noRadios)
+  elif [[ $blocked == "all" ]]; then
+    message=$(karchy-i18n airplane.on)
+  elif [[ $hard == "hard" ]]; then
+    message=$(karchy-i18n airplane.offHardware)
+  else
+    message=$(karchy-i18n airplane.off)
+  fi
+  karchy-osd -i net.airplane -m "$message" >/dev/null 2>&1 || true
+}
+
+set_mode() {
+  if [[ $1 == "on" ]]; then
+    remember on
+    rfkill block all
+  else
+    rfkill unblock all
+    remember off
+  fi
+  osd
+}
+
+kernel_handles_key() {
+  grep -q 'Name=rfkill$' /proc/bus/input/handlers 2>/dev/null
+}
+
+on() {
+  local blocked
+  IFS=$'\t' read -r blocked _ < <(radios)
+  [[ $blocked == "all" ]] && remembered
+}
+
+case "${1:-}" in
+  on|off) set_mode "$1" ;;
+  toggle) set_mode "$(on && echo off || echo on)" ;;
+  key)
+    if kernel_handles_key; then
+      # The kernel's handler runs its change from a work queue, at most 200 ms
+      # after the previous one; record and show the state once it has landed.
+      sleep 0.3
+      IFS=$'\t' read -r blocked _ < <(radios)
+      remember "$([[ $blocked == "all" ]] && echo on || echo off)"
+      osd
+    else
+      "$0" toggle
+    fi
+    ;;
+  forget) remember off ;;
+  status)
+    IFS=$'\t' read -r blocked hard < <(radios)
+    state=off
+    on && state=on
+    [[ $blocked == "absent" ]] && state=none
+    if [[ ${2:-} == "--json" ]]; then
+      jq -cn --arg state "$state" --arg hard "$hard" --arg blocked "$blocked" \
+        '{airplane: ($state == "on"), radios: ($state != "none"), all_blocked: ($blocked == "all"), hardware_blocked: ($hard == "hard")}'
+    else
+      echo "$state"
+    fi
+    ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-airplane /p' "$0" >&2; exit 1 ;;
+esac

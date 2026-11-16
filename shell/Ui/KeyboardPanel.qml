@@ -126,7 +126,7 @@ PanelWindow {
   color: "transparent"
   exclusionMode: ExclusionMode.Ignore
 
-  WlrLayershell.namespace: "omarchy-keyboard-panel"
+  WlrLayershell.namespace: "karchy-keyboard-panel"
   WlrLayershell.layer: WlrLayer.Overlay
   // Keyboard focus follows `open` (NOT `visible`). The window remains
   // mapped during the fade-out so the opacity animation has something to
@@ -480,7 +480,7 @@ PanelWindow {
         color: "transparent"
         exclusionMode: ExclusionMode.Ignore
 
-        WlrLayershell.namespace: "omarchy-keyboard-panel-dismiss"
+        WlrLayershell.namespace: "karchy-keyboard-panel-dismiss"
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
@@ -514,7 +514,7 @@ PanelWindow {
     color: Commons.Color.popups.background
     borderSpec: root.borderSpec
     padding: root.padding
-    radius: Style.cornerRadius
+    radius: Style.radius.surface
 
     // The card fades in as it grows out of the bar from just under full size,
     // toward the icon it hangs from, and goes in two thirds of the time. On a

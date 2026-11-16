@@ -1,22 +1,22 @@
-# Omarchy bar
+# Karchy bar
 
-This is the Quickshell implementation of the Omarchy status bar. It is
-shipped as a first-party plugin of [`omarchy-shell`](../../README.md), the
+This is the Quickshell implementation of the Karchy status bar. It is
+shipped as a first-party plugin of [`karchy-shell`](../../README.md), the
 long-running shell host. The bar is mounted at startup and lives inside
 the shell for its whole session.
 
-- `manifest.json` declares the plugin (`id: omarchy.bar`, `kind: bar`) and points at `Bar.qml` as the entry point.
-- `Bar.qml` is Omarchy-owned bar engine code, loaded by the omarchy-shell host. Users should not edit it directly.
+- `manifest.json` declares the plugin (`id: karchy.bar`, `kind: bar`) and points at `Bar.qml` as the entry point.
+- `Bar.qml` is Karchy-owned bar engine code, loaded by the karchy-shell host. Users should not edit it directly.
 - `widgets/` holds simple first-party bar widgets with sibling manifests.
 - Feature plugins such as `../panels/audio/`, `../panels/network/`, `../panels/power/`, and `../agents/` provide richer popup bar plugins.
-- The bar receives its config from the host shell as a `barConfig` property; the host loads it from `~/.config/omarchy/shell.json` (or `config/omarchy/shell.json` when the user has no file).
-- `omarchy bar position` updates only the user shell.json file.
+- The bar receives its config from the host shell as a `barConfig` property; the host loads it from `~/.config/karchy/shell.json` (or `config/karchy/shell.json` when the user has no file).
+- `karchy bar position` updates only the user shell.json file.
 
 ## Customizing
 
-The bar config lives under the `bar:` key of [`~/.config/omarchy/shell.json`](../../../docs/omarchy-shell.md#shelljson). Out of the box the shell uses [`config/omarchy/shell.json`](../../../config/omarchy/shell.json). Once you customize anything via the bar gestures, `omarchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
+The bar config lives under the `bar:` key of [`~/.config/karchy/shell.json`](../../../docs/karchy-shell.md#shelljson). Out of the box the shell uses [`config/karchy/shell.json`](../../../config/karchy/shell.json). Once you customize anything via the bar gestures, `karchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
 
-The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to cycle the bar background from clear to glassy to opaque, and drag widgets to reorder them. The `omarchy bar position`, `omarchy bar background`, `omarchy bar move`, and `omarchy bar set` commands do the same from scripts. Enable or disable widgets with `omarchy plugin enable` and `omarchy plugin disable` (widget ids come from `omarchy plugin list`).
+The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to cycle the bar background from clear to glassy to opaque, and drag widgets to reorder them. The `karchy bar position`, `karchy bar background`, `karchy bar move`, and `karchy bar set` commands do the same from scripts. `karchy bar style auto|floating|docked` (or Settings › Appearance) picks whether the bar floats inset from the screen edge, stays docked, or, in auto (the default), floats and docks on a monitor while a window there is maximized; see `docs/architecture.md`, "The bar: floating and docked". Enable or disable widgets with `karchy plugin enable` and `karchy plugin disable` (widget ids come from `karchy plugin list`).
 
 Example `shell.json` (bar subtree only shown):
 
@@ -26,22 +26,23 @@ Example `shell.json` (bar subtree only shown):
   "bar": {
     "position": "top",
     "background": "opaque",
+    "style": "auto",
     "layout": {
       "left": [
-        { "id": "omarchy.menu" },
-        { "id": "omarchy.spacer", "size": 12 },
-        { "id": "omarchy.workspaces" }
+        { "id": "karchy.menu" },
+        { "id": "karchy.spacer", "size": 12 },
+        { "id": "karchy.workspaces" }
       ],
       "centerBegin": [
-        { "id": "omarchy.media" }
+        { "id": "karchy.media" }
       ],
       "center": [
-        { "id": "omarchy.clock", "format": "HH:mm" }
+        { "id": "karchy.clock", "format": "HH:mm" }
       ],
       "centerEnd": [],
       "right": [
-        { "id": "omarchy.audio" },
-        { "id": "omarchy.power" }
+        { "id": "karchy.audio" },
+        { "id": "karchy.power" }
       ]
     }
   }
@@ -56,25 +57,23 @@ Example `shell.json` (bar subtree only shown):
 
 | Name | What it does | Interactions |
 |---|---|---|
-| `omarchy.menu` | Omarchy menu launcher | left = menu · right = terminal |
-| `omarchy.workspaces` | Hyprland workspace switcher; the focused workspace shows its layout | left = focus workspace, or cycle the focused one's layout |
-| `omarchy.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping | left = popup · right = cycle label format · middle = timezone selector |
-| `omarchy.media` | MPRIS now-playing — scrolling track + artist, cover-art popup | left = play/pause · middle = next · scroll = prev/next · right = popup |
-| `omarchy.indicators` | Manual state indicators | left = indicator action |
-| `omarchy.system-update` | Available update indicator | left = update |
-| `omarchy.tray` | System tray | hover = reveal drawer · right on chevron = manage |
-| `omarchy.weather` | Weather icon + popup with forecast | left = popup · right = full notification |
-| `omarchy.microphone` | Mic icon + scroll volume | left = mute toggle · middle = audio panel · scroll = source volume |
+| `karchy.menu` | Karchy menu launcher | left = menu · right = terminal |
+| `karchy.workspaces` | Hyprland workspace switcher; the focused workspace shows its layout | left = focus workspace, or cycle the focused one's layout |
+| `karchy.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping | left = popup · right = cycle label format · middle = timezone selector |
+| `karchy.media` | MPRIS now-playing — scrolling track + artist, cover-art popup | left = play/pause · middle = next · scroll = prev/next · right = popup |
+| `karchy.indicators` | Manual state indicators | left = indicator action |
+| `karchy.system-update` | Available update indicator | left = update |
+| `karchy.tray` | System tray | hover = reveal drawer · right on chevron = manage |
+| `karchy.microphone` | Mic icon + scroll volume | left = mute toggle · middle = audio panel · scroll = source volume |
 
-| `omarchy.audio` | Volume icon + popup with master slider, output-device picker, per-app mixer | left = popup · right = mute · middle = popup · scroll = volume |
-| `omarchy.network` | Wi-Fi/Ethernet icon + popup with Wi-Fi scan, signal, connect, DNS provider selection | left = popup |
-| `omarchy.tailscale` | Tailscale status, connection switcher, machine browser, and copy actions | left = popup · right = toggle · middle = refresh |
-| `omarchy.agents` | AI coding agent limits with pace, today, last week, and all-time model breakdown | left = panel · right = launch agent · middle = next subscription |
-| `omarchy.power` | Battery/AC icon + popup with battery stats, power profiles, and system info | left = popup · right = toggle percentage |
-| `omarchy.bluetooth` | Bluetooth icon + popup with device list, connect/disconnect, battery | left = popup · right = toggle radio |
-| `omarchy.monitor` | Brightness and laptop display controls | left = popup |
+| `karchy.audio` | Volume icon + popup with master slider, output-device picker, per-app mixer | left = popup · right = mute · middle = popup · scroll = volume |
+| `karchy.network` | Wi-Fi/Ethernet icon + popup with Wi-Fi scan, signal, connect, DNS provider selection | left = popup |
+| `karchy.power` | Battery/AC icon + popup with battery stats, power profiles, and system info | left = popup · right = toggle percentage |
+| `karchy.bluetooth` | Bluetooth icon + popup with device list, connect/disconnect, battery | left = popup · right = toggle radio |
+| `karchy.monitor` | Brightness and laptop display controls | left = popup |
+| `karchy.vms` | Shown only while a QEMU/KVM VM runs: count + popup to show, shut down, force off or start VMs | left = popup · right = Virtual machines window |
 
-The `omarchy.indicators` widget loads individual bar indicators from `indicators/`. Omit `items` (or set it to an empty array) to show all indicators in the default order, or set `items` to a subset such as `["Dnd", "Reminder", "NightLight"]`. Set `alwaysShow` to `true` to keep inactive indicators visible instead of revealing them only on hover. Multiple `omarchy.indicators` instances are allowed, so different sections can show different subsets.
+The `karchy.indicators` widget loads individual bar indicators from `indicators/`. Omit `items` (or set it to an empty array) to show all indicators in the default order, or set `items` to a subset such as `["Dnd", "Reminder", "NightLight"]`. Set `alwaysShow` to `true` to keep inactive indicators visible instead of revealing them only on hover. Multiple `karchy.indicators` instances are allowed, so different sections can show different subsets.
 
 ## Orientation
 
@@ -104,19 +103,19 @@ Command module:
   "bar": {
     "layout": {
       "right": [
-        { "id": "omarchy.tray" },
-        { "id": "vpn", "type": "command", "exec": "~/.config/omarchy/bar/scripts/vpn-status", "interval": 5, "tooltip": "VPN", "onClick": "nm-connection-editor" },
-        { "id": "omarchy.audio" }
+        { "id": "karchy.tray" },
+        { "id": "vpn", "type": "command", "exec": "~/.config/karchy/bar/scripts/vpn-status", "interval": 5, "tooltip": "VPN", "onClick": "nm-connection-editor" },
+        { "id": "karchy.audio" }
       ]
     }
   }
 }
 ```
 
-The command may print plain text or Waybar-style JSON, for example:
+The command may print plain text or Waybar-style JSON. Take icons from karchy's icon map (`karchy-icon --list`) rather than pasting glyphs, for example:
 
-```json
-{"text":"󰌆","tooltip":"Work VPN","class":"active"}
+```bash
+printf '{"text":"%s","tooltip":"Work VPN","class":"active"}\n' "$(karchy-icon net.vpn)"
 ```
 
 QML module:
@@ -128,14 +127,14 @@ QML module:
     "layout": {
       "right": [
         { "id": "gpu", "type": "qml" },
-        { "id": "omarchy.audio" }
+        { "id": "karchy.audio" }
       ]
     }
   }
 }
 ```
 
-Then create `~/.config/omarchy/bar/modules/gpu.qml`. If you want to store it elsewhere, add a `source` path.
+Then create `~/.config/karchy/bar/modules/gpu.qml`. If you want to store it elsewhere, add a `source` path.
 
 Custom QML modules should be an `Item` with `implicitWidth` and `implicitHeight`. They may optionally define these properties, which the bar fills after loading:
 
@@ -160,7 +159,7 @@ Item {
 
   MouseArea {
     anchors.fill: parent
-    onClicked: if (bar) bar.run("omarchy-launch-or-focus-tui btop")
+    onClicked: if (bar) bar.run("karchy-launch-or-focus-tui btop")
   }
 }
 ```
@@ -182,8 +181,8 @@ First-party bar widgets are manifest-backed just like third-party widgets.
 Simple widgets carry sibling manifests such as `widgets/Workspaces.manifest.json`;
 richer popup plugins live in feature directories such as `../panels/audio/`,
 `../panels/network/`, and `../agents/`; and feature plugins such as
-`omarchy.menu` and `omarchy.media` declare their bar-widget entry points in their own
-`manifest.json`. Bar layout ids are namespaced, e.g. `omarchy.audio`,
-`omarchy.network`, and `omarchy.clock`.
+`karchy.menu` and `karchy.media` declare their bar-widget entry points in their own
+`manifest.json`. Bar layout ids are namespaced, e.g. `karchy.audio`,
+`karchy.network`, and `karchy.clock`.
 
-Third-party widgets ship as separate plugins under `~/.config/omarchy/plugins/<plugin-id>/` with their own `manifest.json` declaring `kinds: ["bar-widget"]` and a `barWidget` entry point. See the [shell reference](../../../docs/omarchy-shell.md#plugin-manifest) for the manifest schema. Rescan, enable, and place third-party plugins with `omarchy-shell shell rescanPlugins`, `omarchy plugin enable`, and `omarchy bar move`.
+Third-party widgets ship as separate plugins under `~/.config/karchy/plugins/<plugin-id>/` with their own `manifest.json` declaring `kinds: ["bar-widget"]` and a `barWidget` entry point. See the [shell reference](../../../docs/karchy-shell.md#plugin-manifest) for the manifest schema. Rescan, enable, and place third-party plugins with `karchy-shell shell rescanPlugins`, `karchy plugin enable`, and `karchy bar move`.

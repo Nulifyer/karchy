@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# karchy:summary=Open a foot window in the current theme's colors
+# karchy:hidden=true
+
+# foot's server reads its config once, when it starts, so after a theme
+# switch it would keep opening windows in the old colors. When the theme's
+# foot.ini is newer than the running server, this passes the theme's colors
+# to the new window as overrides. karchy-theme-set-foot stops a server that
+# has no windows, so this is only needed while old windows are open.
+
+foot_ini=$HOME/.local/state/karchy/current/theme/foot.ini
+overrides=()
+
+if [[ -f $foot_ini ]]; then
+  started=$(systemctl --user show foot-server.service -p ExecMainStartTimestamp --value 2>/dev/null)
+  started=$(date -d "$started" +%s 2>/dev/null || echo 0)
+  if ((started > 0 && $(stat -L -c %Y "$foot_ini") > started)); then
+    section=""
+    while IFS= read -r line; do
+      line=${line%%#*}
+      line=${line#"${line%%[![:space:]]*}"}
+      line=${line%"${line##*[![:space:]]}"}
+      [[ -z $line ]] && continue
+      if [[ $line == \[*\] ]]; then
+        section=${line:1:-1}
+      elif [[ -n $section && $line == *=* ]]; then
+        overrides+=(-o "$section.${line%%=*}=${line#*=}")
+      fi
+    done <"$foot_ini"
+  fi
+fi
+
+exec footclient "${overrides[@]}" "$@"

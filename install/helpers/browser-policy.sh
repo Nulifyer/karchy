@@ -1,5 +1,5 @@
 # Chromium-family machine policy is mandatory for every profile. Directories
-# stay 0755 root:root; omarchy-theme-set-browser-policy is the privileged
+# stay 0755 root:root; karchy-theme-set-browser-policy is the privileged
 # write for color.json.
 
 source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/as-root.sh"
@@ -79,14 +79,14 @@ browser_policy_setup_parents_for() {
   done
 }
 
-# Links reach the browser through omarchy-browser.desktop, so the browser never
+# Links reach the browser through karchy-browser.desktop, so the browser never
 # sees itself as the default. Hide its check and its button to become one, which
-# would rewrite mimeapps.list behind Omarchy's back.
+# would rewrite mimeapps.list behind Karchy's back.
 browser_policy_install_defaults() {
   local policy_dir=$1
-  local policies=${2:-$OMARCHY_PATH/default/chromium/policies/omarchy.json}
+  local policies=${2:-$KARCHY_PATH/default/chromium/policies/karchy.json}
 
-  as_root install -m 644 -o root -g root -T "$policies" "$policy_dir/omarchy.json"
+  as_root install -m 644 -o root -g root -T "$policies" "$policy_dir/karchy.json"
 }
 
 browser_policy_setup_dir() {
@@ -164,12 +164,12 @@ browser_policy_firefox_hardened() {
 
 browser_policy_install_firefox_policies() {
   local distribution_dir=$1
-  local policies=${2:-$OMARCHY_PATH/default/firefox/policies.json}
+  local policies=${2:-$KARCHY_PATH/default/firefox/policies.json}
 
   as_root install -m 644 -o root -g root -T "$policies" "$distribution_dir/policies.json"
 }
 
-# Add Omarchy's default-browser setting to an existing policies.json, keeping
+# Add Karchy's default-browser setting to an existing policies.json, keeping
 # whatever else an administrator put there.
 browser_policy_firefox_skip_default_check() {
   local file=$1/policies.json
@@ -187,7 +187,7 @@ browser_policy_firefox_skip_default_check() {
 
 browser_policy_setup_firefox_distribution() {
   local distribution_dir=$1
-  local policies=${2:-$OMARCHY_PATH/default/firefox/policies.json}
+  local policies=${2:-$KARCHY_PATH/default/firefox/policies.json}
 
   browser_policy_setup_parent "$distribution_dir"
   browser_policy_purge_dir "$distribution_dir"

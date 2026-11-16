@@ -1,0 +1,130 @@
+#!/bin/bash
+
+# karchy:summary=Show which GPU draws the desktop, and warn at login when it falls back to the processor
+# karchy:args=[--json] | check | stop-warning | warn-again
+# karchy:examples=karchy hw renderer | karchy hw renderer --json
+
+# Hyprland and the shell draw through EGL, the same stack every Wayland app
+# uses, so the renderer an EGL client gets here is the one the desktop uses.
+# When no driver can drive the GPU, Mesa falls back to llvmpipe, which draws
+# on the processor: everything still works but feels slow, often with no
+# other sign. The usual causes, which `reason` names:
+#   - a virtual machine without 3D graphics
+#   - a kernel update whose modules aren't loaded until a restart
+#   - an NVIDIA card whose driver isn't loaded, or one too old for NVIDIA's
+#     current drivers (D-69)
+#
+#   (no args)      renderer and whether it's software, for people
+#   --json         the same for Settings › About: renderer, vendor, software,
+#                  reason, fix, warn (whether the login warning is on)
+#   check          at login: notify once per session when drawing in software,
+#                  unless the warning was turned off
+#   stop-warning   "Don't show again"
+#   warn-again     turn the login warning back on
+
+set -uo pipefail
+
+FLAG="$HOME/.local/state/karchy/toggles/renderer-warning-off"
+
+renderer="" vendor=""
+probe() {
+  local platform out
+  for platform in wayland gbm; do
+    [[ $platform == wayland && -z ${WAYLAND_DISPLAY:-} ]] && continue
+    out=$(timeout 10 eglinfo -B -p "$platform" 2>/dev/null) || continue
+    renderer=$(sed -n 's/^OpenGL \(core \|ES \)\?profile renderer: //p' <<<"$out" | head -n1)
+    vendor=$(sed -n 's/^OpenGL \(core \|ES \)\?profile vendor: //p' <<<"$out" | head -n1)
+    [[ -n $renderer ]] && return 0
+  done
+  return 1
+}
+
+is_software() {
+  [[ ${renderer,,} =~ llvmpipe|softpipe|swrast|swiftshader|software ]]
+}
+
+has_nvidia_gpu() {
+  local dev
+  for dev in /sys/bus/pci/devices/*; do
+    [[ $(<"$dev/vendor") == 0x10de && $(<"$dev/class") == 0x03* ]] 2>/dev/null && return 0
+  done
+  return 1
+}
+
+# Sets reason and fix: the likeliest cause first.
+reason="" fix=""
+diagnose() {
+  if systemd-detect-virt --quiet --vm; then
+    reason="This is a virtual machine without 3D graphics."
+    fix="Turn on 3D acceleration (VirGL) in the virtual machine's display settings."
+  elif [[ ! -d /usr/lib/modules/$(uname -r) ]]; then
+    reason="The kernel was updated, and its graphics driver can't load until you restart."
+    fix="Restart the computer."
+  elif has_nvidia_gpu && [[ $(karchy-hw-nvidia-generation 2>/dev/null) == "unsupported" ]]; then
+    reason="This NVIDIA card is too old for NVIDIA's current drivers."
+    fix="Nothing to install: the open-source driver is the only one that supports it."
+  elif has_nvidia_gpu && [[ ! -d /sys/module/nvidia ]]; then
+    reason="NVIDIA's driver isn't loaded."
+    fix="Update the system (karchy update) and restart. If it stays this way, the kernel log says why: journalctl -b -k | grep -i nvidia"
+  else
+    reason="No graphics driver could be used for this GPU."
+    fix="Update the system (karchy update) and restart."
+  fi
+}
+
+case "${1:-}" in
+  stop-warning)
+    mkdir -p "${FLAG%/*}" && touch "$FLAG"
+    exit 0
+    ;;
+  warn-again)
+    rm -f "$FLAG"
+    exit 0
+    ;;
+  check)
+    [[ -f $FLAG ]] && exit 0
+    karchy-notifications-wait || exit 0
+    probe || exit 0
+    is_software || exit 0
+    diagnose
+    # Stays until acted on or closed: it has a choice to make.
+    karchy-notification-send -u normal -t 0 -g display \
+      "The desktop is drawing on the processor" \
+      "Everything works, but it will feel slow. $reason" \
+      --action "Open Settings" karchy-settings about \
+      --action "Don't show again" karchy-hw-renderer stop-warning
+    exit 0
+    ;;
+  --json)
+    probe
+    software=false
+    if [[ -n $renderer ]] && is_software; then
+      software=true
+      diagnose
+    fi
+    jq -n --arg renderer "$renderer" --arg vendor "$vendor" --argjson software "$software" \
+      --arg reason "$reason" --arg fix "$fix" --argjson warn "$([[ -f $FLAG ]] && echo false || echo true)" \
+      '{renderer: $renderer, vendor: $vendor, software: $software, reason: $reason, fix: $fix, warn: $warn}'
+    ;;
+  "")
+    if ! probe; then
+      echo "Renderer: unknown (eglinfo found no EGL display)"
+      exit 1
+    fi
+    echo "Renderer: $renderer"
+    if is_software; then
+      diagnose
+      echo "Drawing on the processor: $reason"
+      echo "Fix: $fix"
+    else
+      echo "Drawing on the graphics card."
+    fi
+    ;;
+  -h | --help)
+    echo "Usage: karchy-hw-renderer [--json] | check | stop-warning | warn-again"
+    ;;
+  *)
+    echo "Usage: karchy-hw-renderer [--json] | check | stop-warning | warn-again" >&2
+    exit 1
+    ;;
+esac

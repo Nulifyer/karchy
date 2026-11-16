@@ -10,8 +10,10 @@ import qs.Commons as Commons
 //
 // Defaults bind to qs.Commons.Color so a caller with no theme overrides
 // just works; foreground / accent / selectionTint can be overridden per
-// instance. activeFocus and mouse hover / panel cursor use the same
-// hover-cursor defaults, so text inputs match Button, Toggle, and Dropdown.
+// instance. Mouse hover paints the hover-cursor state; activeFocus and the
+// panel cursor add the FocusRing, as Button, Toggle and Dropdown do. The
+// placeholder uses the secondary text role, so it reads as a hint (quieter
+// than typed text) in light and dark themes alike.
 //
 // Sizing is driven by font.pixelSize + verticalPadding. The default 30px
 // implicitHeight fits dialog forms; inline callers (wifi's row-embedded
@@ -35,15 +37,15 @@ TextField {
 
   readonly property bool _focused: activeFocus
   readonly property bool _hot: hovered || hasCursor
-  readonly property var _borderSpec: Border.controlSpec(_focused ? "focus" : (_hot ? "hover-cursor" : "normal"), root.foreground, root.accent)
+  readonly property var _borderSpec: Border.controlSpec(_focused || _hot ? "hover-cursor" : "normal", root.foreground, root.accent)
 
   echoMode: password ? TextInput.Password : TextInput.Normal
   font.family: Style.font.family
   font.pixelSize: Style.font.body
-  color: foreground
+  color: enabled ? foreground : Commons.Color.disabledText(foreground)
   selectionColor: selectionTint
   selectedTextColor: foreground
-  placeholderTextColor: Qt.darker(foreground, 1.6)
+  placeholderTextColor: Commons.Color.secondaryText(foreground)
 
   leftPadding: horizontalPadding + Border.left(_borderSpec)
   rightPadding: horizontalPadding + Border.right(_borderSpec)
@@ -53,6 +55,8 @@ TextField {
   background: BorderSurface {
     color: Style.controlFill(root._focused, root._hot, root.foreground, root.accent)
     borderSpec: root._borderSpec
-    radius: Style.cornerRadius
+    radius: Style.radius.control
+
+    FocusRing { shown: root._focused || root.hasCursor; control: root; textEntry: true }
   }
 }

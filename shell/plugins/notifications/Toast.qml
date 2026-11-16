@@ -11,7 +11,7 @@ import qs.Ui
 import "Security.js" as Security
 import "Delivery.js" as Delivery
 import "Store.js" as Store
-import "Icons.js" as Icons
+import "Icons.js" as AppIcons
 
 Item {
   id: card
@@ -71,15 +71,15 @@ Item {
   signal linkOpened()
 
   readonly property bool critical: row.urgency === 2
-  readonly property color dimColor: Qt.darker(Commons.Color.notifications.text, 1.4)
-  readonly property color bodyColor: Qt.darker(Commons.Color.notifications.text, 1.15)
-  readonly property color accentColor: critical ? Commons.Color.urgent
+  readonly property color dimColor: Commons.Color.secondaryText(Commons.Color.notifications.text, Commons.Color.notifications.background)
+  readonly property color bodyColor: Commons.Color.notifications.text
+  readonly property color accentColor: critical ? Commons.Color.status.error
                                                : (row.urgency === 0 ? dimColor : Commons.Color.notifications.countdown)
   readonly property bool hasBody: String(row.body || "").length > 0
   readonly property bool redacted: Store.redacted(row)
-  // Omarchy's own toasts and bare notify-send calls name no source worth a
+  // Karchy's own toasts and bare notify-send calls name no source worth a
   // letter, and a summary that opens with its own glyph already has its mark.
-  readonly property bool anonymous: row.app === "omarchy-action" || row.app === "notify-send"
+  readonly property bool anonymous: row.app === "karchy-action" || row.app === "notify-send"
   readonly property bool glyphLed: Delivery.summaryStartsWithGlyph(row.summary)
   readonly property real contentPaddingY: hasBody ? Style.space(10) : Style.space(7)
   // A card behind the front of a collapsed deck is a shape: the cards are
@@ -112,7 +112,7 @@ Item {
     return out
   }
 
-  // Buttons an Omarchy sender asked for (--action), as commands the shell runs.
+  // Buttons an Karchy sender asked for (--action), as commands the shell runs.
   readonly property var execActions: Security.parseExecActions(row.execActions) || []
 
   // Every button, in Delivery.deeds' order, with the code labels translated.
@@ -129,7 +129,7 @@ Item {
   // acted on; a verification code is marked even where they are hidden.
   readonly property var marks: {
     var out = []
-    if (String(row.code || "")) out.push("\u{f0306}")
+    if (String(row.code || "")) out.push(Icons.glyph("notify.code"))
     return out
   }
 
@@ -225,8 +225,13 @@ Item {
     height: body.height
     radius: Style.cornerRadius
     color: Commons.Color.notifications.background
-    borderSpec: Border.surfaceSpec("notifications", "border", Commons.Color.notifications.border,
-                                   Math.max(1, Style.space(2)))
+    readonly property var surfaceBorder: Border.surfaceSpec("notifications", "border", Commons.Color.notifications.border,
+                                                            Math.max(1, Style.space(2)))
+    // A critical notification (a failure, low battery) is edged in the error
+    // color, so it doesn't read like an ordinary one.
+    borderSpec: card.critical
+      ? { color: Commons.Color.status.error, widths: surfaceBorder.widths, gradient: { colors: [], angle: 0, enabled: false } }
+      : surfaceBorder
   }
 
   // The keyboard's card is tinted with the theme's hover fill, buttons and all.
@@ -236,6 +241,9 @@ Item {
               topMargin: plate.borderTop; bottomMargin: plate.borderBottom }
     visible: card.selected
     color: Style.hoverFillFor(Commons.Color.notifications.text, Commons.Color.accent)
+    radius: Math.max(0, plate.radius - plate.borderLeft)
+
+    FocusRing { shown: true }
   }
 
   Item {
@@ -253,7 +261,7 @@ Item {
       spacing: thumb.compact ? Style.space(8) : Style.space(12)
 
       // The sender's image, else the icon resolved for its source, else the
-      // glyph an Omarchy sender asked for, else the first letter of the source.
+      // glyph an Karchy sender asked for, else the first letter of the source.
       Item {
         id: thumb
         readonly property bool pictured: picture.status === Image.Ready && best !== ""
@@ -280,7 +288,7 @@ Item {
                                        ? String(card.row.image) : Security.localImageUrl(card.row.image)
 
         // Best first: the sender's picture, then the icon theme, then a
-        // desktop entry's icon (Icons.candidates has the names). A file that will not load gives way to the next.
+        // desktop entry's icon (AppIcons.candidates has the names). A file that will not load gives way to the next.
         function firstOf(names, look) {
           for (var i = 0; i < names.length; i++) {
             var found = look(names[i])
@@ -290,7 +298,7 @@ Item {
         }
         readonly property var sources: {
           var appsRevision = DesktopEntries.applications.values.length
-          var want = Icons.candidates(card.row)
+          var want = AppIcons.candidates(card.row)
           var found = [sent,
             firstOf(want.themed, function(name) { return Quickshell.iconPath(name, true) }),
             firstOf(want.entries, function(name) {
@@ -304,7 +312,7 @@ Item {
         onSourcesKeyChanged: failed = 0
         readonly property string best: sources[failed] || ""
         readonly property bool photo: best !== "" && best === sent
-        readonly property bool mono: !photo && Icons.isSymbolic(best)
+        readonly property bool mono: !photo && AppIcons.isSymbolic(best)
 
         Rectangle {
           anchors.fill: parent
@@ -316,7 +324,7 @@ Item {
             textFormat: Text.PlainText
             anchors.centerIn: parent
             text: String(card.row.source || card.row.app || "?").substring(0, 1).toUpperCase()
-            color: card.dimColor
+            color: card.critical ? Commons.Color.status.error : card.dimColor
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             font.weight: Font.DemiBold
@@ -330,7 +338,7 @@ Item {
           visible: thumb.glyphed
           text: String(card.row.glyph || "")
           color: Commons.Color.notifications.text
-          font.family: Delivery.omarchyGlyph(card.row.glyph) ? "omarchy" : Style.font.family
+          font.family: Icons.family
           font.pixelSize: (thumb.compact ? Style.font.icon : Style.font.displayLarge)
         }
 
@@ -423,8 +431,8 @@ Item {
                 text: modelData
                 color: Commons.Color.notifications.text
                 opacity: 0.9
-                font.family: Style.font.family
-                font.pixelSize: Style.font.body
+                font.family: Icons.family
+                font.pixelSize: Style.font.iconSmall
               }
             }
           }
@@ -471,9 +479,10 @@ Item {
                   id: closeMark
                   anchors.centerIn: parent
                   textFormat: Text.PlainText
-                  text: "✕"
+                  text: Icons.glyph("ui.close")
                   color: shut.hot ? Commons.Color.notifications.text : card.dimColor
-                  font.pixelSize: Math.round(Style.font.caption * 1.44)
+                  font.family: Icons.family
+                  font.pixelSize: Style.font.icon
                 }
 
                 MouseArea {

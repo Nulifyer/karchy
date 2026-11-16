@@ -5,19 +5,20 @@ function formatter(fmt) {
 }
 
 function parseNetworkStatus(raw) {
-  var parts = String(raw || "disconnected\t\t\t").replace(/\r?\n+$/, "").split("\t")
+  var parts = String(raw || "disconnected\t\t\t\t").replace(/\r?\n+$/, "").split("\t")
   return {
     kind: parts[0] || "disconnected",
     label: parts[1] || "",
     signalStrength: parts[2] ? parseInt(parts[2], 10) : -1,
-    frequency: parts[3] || ""
+    frequency: parts[3] || "",
+    vpn: parts[4] || ""
   }
 }
 
+// Icon names from default/karchy/icons.json; the QML draws them with Icons.glyph.
 function wifiIconFor(strength) {
-  var icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
   var index = Math.max(0, Math.min(4, Math.ceil(strength / 20) - 1))
-  return icons[index]
+  return "net.wifi." + index
 }
 
 // The connected network's own strength comes from the access points
@@ -42,9 +43,14 @@ function parseActiveApSignal(raw) {
   return -1
 }
 
-// A known plain-HTTP endpoint lets the network redirect the browser to its
-// login page. Never execute or automatically open an untrusted Location header.
-var captivePortalUrl = "http://ping.omacom.io/nm-check.txt"
+// The page "Sign in to network" opens, on an explicit click only. It has to be
+// plain HTTP so the portal can redirect it to its login page. NetworkManager
+// keeps detecting portals with Arch's own check, but archlinux.org is
+// HSTS-preloaded, so a browser forces HTTPS there and the portal can't
+// intercept it. neverssl.com exists for exactly this. The floating-window rule
+// (default/hypr/apps/captive-portal.lua) matches its host. Never execute or
+// automatically open an untrusted Location header.
+var captivePortalUrl = "http://neverssl.com"
 
 function connectivityState(kind, connectivity, states, checksEnabled) {
   if (kind === "disconnected") return "none"
@@ -57,11 +63,229 @@ function connectivityState(kind, connectivity, states, checksEnabled) {
   return "unknown"
 }
 
-function connectionIcon(kind, signalStrength, connectivity) {
+// The bar's one network icon. While the VPN protects the connection it gets
+// the VPN variant of the same glyph (a lock on the Wi-Fi strength, a shield on
+// Ethernet), so a protected link reads as such at a glance. With nothing
+// connected in airplane mode it is the airplane.
+function connectionIcon(kind, signalStrength, connectivity, vpnState, airplane) {
+  if (kind === "disconnected" && airplane) return "net.airplane"
   var restricted = connectivity === "portal" || connectivity === "limited"
-  if (kind === "wifi") return restricted ? "󰤩" : wifiIconFor(signalStrength)
-  if (kind === "ethernet") return restricted ? "󰈂" : "󰈀"
-  return "󰤮"
+  var vpn = vpnState === "protecting" && !restricted ? ".vpn" : ""
+  if (kind === "wifi") return restricted ? "net.wifi.restricted" : wifiIconFor(signalStrength) + vpn
+  if (kind === "ethernet") return restricted ? "net.ethernet.restricted" : "net.ethernet" + vpn
+  return "net.wifi.off"
+}
+
+// ---- The VPN (nulifyer-vpn, D-68) -------------------------------------------
+// The VPN package publishes /run/nulifyer-vpn/status (JSON, rewritten
+// atomically on every change): mode off|auto|on; state standing-by,
+// connecting, protecting, failed, paused or off; reason; network (the link
+// it applies to, with trust); until (a sign-in pause's end, epoch seconds).
+// The panel watches the file; this adapter is all it knows of the format.
+var vpnStates = ["off", "standing-by", "connecting", "protecting", "failed", "paused"]
+
+function parseVpnStatus(raw) {
+  var none = { present: false, mode: "", state: "", reason: "", network: null, until: 0 }
+  var text = String(raw || "").trim()
+  if (text === "") return none
+  try {
+    var value = JSON.parse(text)
+    if (!value || vpnStates.indexOf(value.state) < 0) return none
+    return {
+      present: true,
+      mode: ["off", "auto", "on"].indexOf(value.mode) >= 0 ? value.mode : "auto",
+      state: value.state,
+      reason: String(value.reason || ""),
+      network: value.network || null,
+      until: Number(value.until) || 0
+    }
+  } catch (error) {
+    return none
+  }
+}
+
+// The internet is blocked on purpose: the guard holds traffic until the
+// tunnel is up.
+function vpnBlocksInternet(vpn) {
+  return !!(vpn && vpn.present && (vpn.state === "connecting" || vpn.state === "failed"))
+}
+
+// "error" while it failed, "warning" while it connects or is paused for a
+// sign-in, "" otherwise. The bar icon and the status line take this color.
+function vpnTone(vpn) {
+  if (!vpn || !vpn.present) return ""
+  if (vpn.state === "failed") return "error"
+  if (vpn.state === "connecting" || vpn.state === "paused") return "warning"
+  return ""
+}
+
+// One line under the VPN controls saying what the VPN does right now.
+// formatTime turns epoch seconds into the clock time ("7:12 PM").
+function vpnStatusLine(vpn, tr, formatTime) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  if (!vpn || !vpn.present) return ""
+  switch (vpn.state) {
+  case "protecting":
+    if (vpn.network && vpn.network.trusted) return t("network.vpnProtectingHome", "Protecting this connection. Local devices stay reachable.")
+    return t("network.vpnProtecting", "Protecting this connection")
+  case "connecting": return t("network.vpnConnecting", "Connecting. The internet is blocked until it's up.")
+  case "failed": return t("network.vpnFailed", "Can't connect. The internet is blocked.")
+  case "paused":
+    var until = vpn.until && typeof formatTime === "function" ? formatTime(vpn.until) : ""
+    return until !== ""
+      ? t("network.vpnPausedUntil", "Paused while you sign in, until %1").replace("%1", until)
+      : t("network.vpnPaused", "Paused while you sign in")
+  case "standing-by":
+    if (vpn.reason === "trusted") return t("network.vpnStandingBy", "Standing by on a trusted network")
+    return t("network.vpnWaiting", "Waiting for a network")
+  case "off": return t("network.vpnOff", "Not protecting this connection")
+  }
+  return ""
+}
+
+// The bar's tooltip while the VPN needs attention; "" when it doesn't.
+function vpnTooltip(vpn, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  if (!vpn || !vpn.present) return ""
+  if (vpn.state === "connecting") return t("network.vpnConnectingTooltip", "VPN connecting: internet blocked")
+  if (vpn.state === "failed") return t("network.vpnFailedTooltip", "VPN can't connect: internet blocked")
+  if (vpn.state === "paused") return t("network.vpnPausedTooltip", "VPN paused while you sign in")
+  return ""
+}
+
+// ---- Radios and airplane mode (rfkill) --------------------------------------
+// `rfkill event` prints every radio once when it starts, then each change:
+// "2026-11-14 10:00:00,1+01:00: idx 0 type 1 op 0 soft 0 hard 0". op 0 adds a
+// radio, 1 removes it, 2 and 3 change it; type 1 is Wi-Fi. `radios` maps idx to
+// { type, soft, hard }; this returns the next map.
+function applyRfkillEvent(radios, line) {
+  var match = /idx (\d+) type (\d+) op (\d+) soft (\d+) hard (\d+)/.exec(String(line || ""))
+  var next = {}
+  var key
+  for (key in radios || {}) next[key] = radios[key]
+  if (!match) return next
+  if (match[3] === "1") delete next[match[1]]
+  else next[match[1]] = { type: parseInt(match[2], 10), soft: match[4] === "1", hard: match[5] === "1" }
+  return next
+}
+
+// Whether every radio, or any, is blocked in software. Airplane mode is
+// karchy-airplane's remembered choice while every radio is still blocked:
+// turning Wi-Fi off blocks its radio too, and with Bluetooth already off that
+// would otherwise read as airplane mode.
+function radioState(radios) {
+  var keys = Object.keys(radios || {})
+  var allSoft = keys.length > 0
+  var anySoft = false
+  var wifiHard = false
+  for (var i = 0; i < keys.length; i++) {
+    var radio = radios[keys[i]]
+    if (!radio.soft) allSoft = false
+    else anySoft = true
+    if (radio.type === 1 && radio.hard) wifiHard = true
+  }
+  return { allBlocked: allSoft, anyBlocked: anySoft, radios: keys.length, wifiHardBlocked: wifiHard }
+}
+
+// ---- What the panel says: hero and attention row ----------------------------
+// `s` is the combined state the panel knows:
+//   nm          NetworkManager answers on D-Bus
+//   networking  NetworkManager's networking is on (`nmcli networking`)
+//   adapter     a Wi-Fi or Ethernet device exists
+//   airplane    every radio is blocked (karchy-airplane)
+//   hardwareBlocked  the Wi-Fi radio is blocked by a hardware switch
+//   wifiRadio   a Wi-Fi device exists; wifiEnabled its software switch
+//   kind        "wifi", "ethernet" or "disconnected"
+//   name        the connected network's title ("Home-5G", "Ethernet (1gbit)")
+//   connectingTo  the network being joined, "" when none
+//   connectivity  connectivityState(); vpn  parseVpnStatus(); dns  dnsNotice()
+function vpnGuards(vpn) {
+  return !!(vpn && vpn.present && vpn.mode !== "off")
+}
+
+// { title, status, tone }: the hero's title, its caps status line (the real
+// state, in words), and "error" / "warning" / "" for their color. The status
+// is short: beside the hero's buttons a caps line holds about 22 letters, and
+// the attention row and the VPN row say the rest (the internet is blocked).
+function heroState(s, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  var state = s || {}
+  var vpn = state.vpn || {}
+  if (!state.nm || state.networking === false) return { title: t("network.networkingOff", "Networking is off"), status: "", tone: "" }
+  if (!state.adapter) return { title: t("network.noAdapter", "No network adapter"), status: "", tone: "" }
+  if (state.kind === "disconnected") {
+    if (state.airplane) return { title: t("network.airplaneMode", "Airplane mode"), status: "", tone: "" }
+    if (state.hardwareBlocked && state.wifiRadio)
+      return { title: t("network.wifiOff", "Wi-Fi is off"), status: t("network.wifiOffHardwareSwitch", "With the hardware switch"), tone: "" }
+    if (state.wifiRadio && !state.wifiEnabled) return { title: t("network.wifiOff", "Wi-Fi is off"), status: "", tone: "" }
+    if (state.connectingTo) return { title: t("network.connectingTo", "Connecting to %1…").replace("%1", state.connectingTo), status: "", tone: "" }
+    return { title: t("network.notConnectedTitle", "Not connected"), status: "", tone: "" }
+  }
+  var title = state.name || ""
+  if (state.connectivity === "portal") return { title: title, status: t("network.statusSignIn", "Sign-in required"), tone: "warning" }
+  if (vpn.present && vpn.state === "connecting") return { title: title, status: t("network.statusVpnConnecting", "VPN connecting"), tone: "warning" }
+  if (vpn.present && vpn.state === "failed") return { title: title, status: t("network.statusVpnFailed", "VPN can't connect"), tone: "error" }
+  if (vpn.present && vpn.state === "paused") return { title: title, status: t("network.statusVpnPaused", "VPN paused to sign in"), tone: "warning" }
+  if (state.connectivity === "limited" || state.connectivity === "none") return { title: title, status: t("network.statusNoInternet", "No internet"), tone: "warning" }
+  if (state.dns === "blocked") return { title: title, status: t("network.statusDnsBlocked", "DNS blocked"), tone: "warning" }
+  var status = t("network.statusConnected", "Connected")
+  if (vpn.present && vpn.state === "protecting") status = t("network.statusVpnProtecting", "VPN protecting")
+  else if (vpn.present && vpn.state === "standing-by" && vpn.reason === "trusted") status = t("network.statusTrusted", "Trusted network")
+  else if (state.airplane) status = t("network.statusAirplane", "Airplane mode")
+  return { title: title, status: status, tone: "" }
+}
+
+// The one row that asks for something, or null. Only while the person has to
+// act or know why nothing works: networking off, airplane mode, the hardware
+// switch, a sign-in page, a failed VPN, DNS blocked. `actions` are in the order
+// shown; the first is the one the row is for.
+function attention(s, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  var state = s || {}
+  var vpn = state.vpn || {}
+  if (!state.nm || state.networking === false)
+    return { id: "networking", kind: "warning",
+      text: !state.nm ? t("network.nmNotRunning", "NetworkManager isn't running, so nothing can connect.")
+                      : t("network.networkingDisabled", "All connections are turned off."),
+      actions: [{ id: "restart", label: t("network.restartNetworking", "Restart networking") }] }
+  if (!state.adapter) return null
+  if (state.airplane)
+    return { id: "airplane", kind: "info", text: t("network.airplaneOn", "Every radio is off."),
+      actions: [{ id: "airplane-off", label: t("network.airplaneOff", "Turn off airplane mode") }] }
+  if (state.hardwareBlocked && state.wifiRadio && state.kind === "disconnected")
+    return { id: "hardware", kind: "info", text: t("network.hardwareSwitchHint", "Turn Wi-Fi on with the switch or key on the computer."), actions: [] }
+  if (state.kind !== "disconnected" && state.connectivity === "portal")
+    return { id: "portal", kind: "warning", text: t("network.signInToNetwork", "Sign in to this network"),
+      actions: [{ id: "sign-in", label: vpnGuards(vpn) ? t("network.signInVpnPaused", "Sign in, VPN paused until online") : t("network.signIn", "Sign in") }] }
+  if (vpn.present && vpn.state === "failed")
+    return { id: "vpn", kind: "error", text: t("network.vpnFailedMessage", "The VPN can't connect, so the internet stays blocked."),
+      actions: [
+        { id: "vpn-retry", label: t("network.vpnRetry", "Retry") },
+        { id: "vpn-sign-in", label: t("network.vpnSignIn", "Sign in to network"), tooltip: t("network.vpnSignInTooltip", "") },
+        { id: "vpn-off", label: t("network.vpnUseWithout", "Use without VPN"), tooltip: t("network.vpnUseWithoutTooltip", "") }
+      ] }
+  if (state.kind !== "disconnected" && state.dns === "blocked")
+    return { id: "dns", kind: "warning", text: t("network.dnsBlocked", "Websites won't load: this network blocks encrypted DNS."),
+      actions: [{ id: "dns-settings", label: t("network.dnsSettings", "DNS settings…") }] }
+  return null
+}
+
+// ---- Encrypted DNS (karchy-network-dns) -------------------------------------
+// /run/karchy/dns/<device> holds the link's DNS state ("state=applied" and so
+// on): fallback means the network blocks encrypted DNS and its own DNS is used;
+// blocked means encrypted only was chosen, so nothing resolves on this link.
+function parseDnsState(raw) {
+  var match = /^state=([a-z]+)$/m.exec(String(raw || ""))
+  return match ? match[1] : ""
+}
+
+// What the panel says about it: "blocked" or "fallback" while it matters.
+// It doesn't while the VPN protects (its DNS goes through the tunnel) or
+// blocks the internet anyway (the VPN's own message says so).
+function dnsNotice(dnsState, vpn) {
+  if (vpn && vpn.present && ["protecting", "connecting", "failed"].indexOf(vpn.state) >= 0) return ""
+  if (dnsState === "blocked" || dnsState === "fallback") return dnsState
+  return ""
 }
 
 function formatHeaderSpeed(mbps, fmt) {
@@ -92,6 +316,17 @@ function headerDetail(info, fmt) {
   var value = info || {}
   if (value.type === "ethernet") return formatHeaderSpeed(value.speed || "", fmt)
   return ""
+}
+
+// What the speed test measures: the link, and the VPN when the internet goes
+// through it ("Home-5G via VPN"), since the tunnel is then what is tested.
+function speedTestConnection(info, tr) {
+  var value = info || {}
+  var name = ""
+  if (value.type === "wifi") name = value.ssid || "Wi-Fi"
+  else if (value.type === "ethernet") name = tr("network.ethernet")
+  if (name && value.vpn_full === "yes") name = tr("network.viaVpn").replace("%1", name)
+  return name
 }
 
 function bandLabel(band, tr, fmt) {
@@ -178,43 +413,6 @@ function parseKeyValue(raw) {
   return next
 }
 
-function throughputState(previous, next, now) {
-  var prev = previous || {}
-  var sample = next || {}
-  var iface = sample.iface || ""
-  var rx = parseFloat(sample.rx_bytes || "0")
-  var tx = parseFloat(sample.tx_bytes || "0")
-  var previousTime = Number(prev.prevSampleTime || 0)
-
-  if (iface !== (prev.prevIface || "") || previousTime === 0) {
-    return {
-      prevIface: iface,
-      prevRxBytes: rx,
-      prevTxBytes: tx,
-      prevSampleTime: now,
-      downloadRate: 0,
-      uploadRate: 0
-    }
-  }
-
-  var downloadRate = Number(prev.downloadRate || 0)
-  var uploadRate = Number(prev.uploadRate || 0)
-  var dt = now - previousTime
-  if (dt > 0) {
-    downloadRate = Math.max(0, (rx - Number(prev.prevRxBytes || 0)) / dt)
-    uploadRate = Math.max(0, (tx - Number(prev.prevTxBytes || 0)) / dt)
-  }
-
-  return {
-    prevIface: iface,
-    prevRxBytes: rx,
-    prevTxBytes: tx,
-    prevSampleTime: now,
-    downloadRate: downloadRate,
-    uploadRate: uploadRate
-  }
-}
-
 function pingSampleValue(raw) {
   var value = parseFloat(raw)
   if (!isFinite(value) || value < 0) return null
@@ -299,20 +497,6 @@ function pingLatencyState(previous, next, limit, averageLimit) {
   }
 }
 
-function formatBytes(bytes, fmt) {
-  var f = formatter(fmt)
-  var n = Number(bytes)
-  if (!isFinite(n) || n < 0) n = 0
-  if (n < 1024) return f(Math.round(n)) + " B"
-  if (n < 1024 * 1024) return f(n / 1024, 1) + " KB"
-  if (n < 1024 * 1024 * 1024) return f(n / (1024 * 1024), 1) + " MB"
-  return f(n / (1024 * 1024 * 1024), 2) + " GB"
-}
-
-function formatRate(bytesPerSec, fmt) {
-  return formatBytes(bytesPerSec, fmt) + "/s"
-}
-
 // `hasSamples` false means no probe has come back yet, which is different from
 // a probe that timed out. The rows stay mounted through that gap and read "--"
 // so the grid doesn't reflow a second after the panel opens.
@@ -378,18 +562,63 @@ function canForgetNetwork(network) {
   return !!(network && network.known && !network.connected)
 }
 
+// The realm of an 802.1X identity ("alice@example.edu" gives "example.edu"),
+// the domain the network's RADIUS server certificate is normally issued for.
+// "" when the identity has none (a bare name or DOMAIN\user).
+function identityRealm(identity) {
+  var value = String(identity || "").trim()
+  var at = value.lastIndexOf("@")
+  if (at < 0) return ""
+  var realm = value.substring(at + 1).toLowerCase()
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(realm) ? realm : ""
+}
+
 // The password arrives on stdin and reaches nmcli through the scriptable
 // `connection edit` editor -- argv is world-readable in /proc, so the secret
 // must never be an argument (printf is a bash builtin, so no process spawns
-// with it either).
+// with it either). $1 is the SSID, $2 the identity, $3 the domain the
+// server's certificate must be issued for. With a domain the certificate must
+// also chain to a CA the system trusts, so a fake access point with the same
+// name can't collect the password. An empty $3 skips the check; the panel
+// only passes one after the person chose that behind a warning. The profile
+// is created with autoconnect off and gets it once it connected: otherwise
+// NetworkManager starts it the moment it exists, before the password is in,
+// and that attempt fails with "no secrets" while the real one is starting.
 var enterpriseConnectScript =
-  "u=$(uuidgen); IFS= read -r pw;" +
+  "u=$(uuidgen); IFS= read -r pw; verify=();" +
+  " [ -n \"$3\" ] && verify=(802-1x.system-ca-certs yes 802-1x.domain-suffix-match \"$3\");" +
   " nmcli connection add type wifi con-name \"$1\" ssid \"$1\" connection.uuid \"$u\"" +
   " wifi-sec.key-mgmt wpa-eap 802-1x.eap peap 802-1x.phase2-auth mschapv2" +
-  " 802-1x.identity \"$2\" 802-1x.auth-timeout 8 >/dev/null" +
+  " 802-1x.identity \"$2\" \"${verify[@]}\" 802-1x.auth-timeout 8 connection.autoconnect no >/dev/null" +
   " && printf 'set 802-1x.password %s\\nsave\\nquit\\n' \"$pw\" | nmcli connection edit uuid \"$u\" >/dev/null" +
   " && nmcli connection up uuid \"$u\"" +
+  " && { nmcli connection modify uuid \"$u\" connection.autoconnect yes; true; }" +
   " || { nmcli connection delete uuid \"$u\" >/dev/null 2>&1; false; }"
+
+// What went wrong, as one of a few kinds the prompt can explain: "password"
+// (refused or missing credentials), "lost", "disconnected", "failed"; the
+// panel's own timeout adds "timeout".
+function networkFailureKind(reason, needsCredentials, reasons) {
+  var r = reasons || {}
+  if (needsCredentials && (reason === r.NoSecrets || reason === r.WifiAuthTimeout)) return "password"
+  if (reason === r.WifiNetworkLost) return "lost"
+  if (reason === r.WifiClientDisconnected) return "disconnected"
+  return "failed"
+}
+
+// What the open password prompt says after a connect from it failed, and how
+// to recover. The person has just typed the password, so missing secrets mean
+// it was refused, not that it is still to be entered. On work or school Wi-Fi
+// a refused sign-in can also be a server certificate that doesn't match the
+// domain.
+function promptFailureMessage(kind, enterprise, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  if (kind === "password" && enterprise) return t("network.promptSignInFailed", "Couldn't sign in. Check the identity, domain and password.")
+  if (kind === "password") return t("network.promptWrongPassword", "Wrong password. Check it and try again.")
+  if (kind === "lost") return t("network.promptNetworkLost", "The network went out of range. Try again.")
+  if (kind === "timeout") return t("network.promptTimedOut", "The network didn't answer in time. Try again.")
+  return t("network.promptFailed", "Couldn't connect. Try again.")
+}
 
 function networkFailureReason(reason, needsCredentials, reasons, tr) {
   var t = typeof tr === "function" ? tr : function(key, english) { return english }
@@ -417,8 +646,20 @@ function shouldRepromptPassphrase(reason, needsCredentials, reasons) {
 if (typeof module !== "undefined") {
   module.exports = {
     parseNetworkStatus: parseNetworkStatus,
+    speedTestConnection: speedTestConnection,
     wifiIconFor: wifiIconFor,
     connectionIcon: connectionIcon,
+    parseVpnStatus: parseVpnStatus,
+    vpnBlocksInternet: vpnBlocksInternet,
+    vpnTone: vpnTone,
+    vpnStatusLine: vpnStatusLine,
+    vpnTooltip: vpnTooltip,
+    applyRfkillEvent: applyRfkillEvent,
+    radioState: radioState,
+    heroState: heroState,
+    attention: attention,
+    parseDnsState: parseDnsState,
+    dnsNotice: dnsNotice,
     connectedSignalStrength: connectedSignalStrength,
     parseActiveApSignal: parseActiveApSignal,
     connectivityState: connectivityState,
@@ -432,20 +673,20 @@ if (typeof module !== "undefined") {
     parseBandStatus: parseBandStatus,
     decodeIwSsid: decodeIwSsid,
     parseKeyValue: parseKeyValue,
-    throughputState: throughputState,
     pingLatencyState: pingLatencyState,
     pingPacketLossPercent: pingPacketLossPercent,
     internetPingReadable: internetPingReadable,
     formatPacketLoss: formatPacketLoss,
-    formatBytes: formatBytes,
-    formatRate: formatRate,
     formatPingLatency: formatPingLatency,
     wifiRow: wifiRow,
     sortWifiRows: sortWifiRows,
     wifiSectionTitle: wifiSectionTitle,
     requiresCredentials: requiresCredentials,
     canForgetNetwork: canForgetNetwork,
+    identityRealm: identityRealm,
     enterpriseConnectScript: enterpriseConnectScript,
+    networkFailureKind: networkFailureKind,
+    promptFailureMessage: promptFailureMessage,
     networkFailureReason: networkFailureReason,
     shouldRepromptPassphrase: shouldRepromptPassphrase
   }

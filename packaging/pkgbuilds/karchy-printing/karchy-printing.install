@@ -1,0 +1,9 @@
+# The cups-browsed user stays, as pacman leaves every package's users; it
+# loses the CUPS administrator rights it had through sys, and the cache
+# karchy's drop-in gave it goes.
+post_remove() {
+  if usr/bin/getent group sys | grep -q '[:,]cups-browsed\(,\|$\)'; then
+    usr/bin/gpasswd -d cups-browsed sys >/dev/null
+  fi
+  rm -rf var/cache/cups-browsed
+}

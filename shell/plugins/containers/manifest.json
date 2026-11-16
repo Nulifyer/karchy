@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.containers",
+  "name": "Containers",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "Shows running Podman or Docker containers in the bar, with quick control and a window to manage them all",
+  "kinds": [
+    "bar-widget",
+    "panel"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml",
+    "panel": "Window.qml"
+  },
+  "barWidget": {
+    "displayName": "Containers",
+    "description": "Appears while containers run; click for quick control",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

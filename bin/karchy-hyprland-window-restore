@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# karchy:summary=Bring back a minimized window
+# karchy:args=[window-address | --all]
+
+# Minimized windows wait on the special workspace "special:minimized"
+# (karchy-hyprland-window-minimize). With an address, or picked from the menu
+# (the bar's minimized indicator), one comes back to the workspace in front of
+# you, focused and on top. --all (Super + Shift + M, as in Windows) brings every
+# minimized window back to the workspace it was minimized from.
+
+set -euo pipefail
+
+restore() {
+  local address=$1 workspace=${2:-} target tag
+  [[ -n $workspace ]] || workspace=$(hyprctl activeworkspace -j | jq -r '.id // empty')
+  [[ $workspace =~ ^-?[0-9]+$ ]] || exit 1
+  target="window = \"address:$address\""
+  hyprctl dispatch "hl.dsp.window.move({ workspace = \"$workspace\", $target })" >/dev/null
+  hyprctl dispatch "hl.dsp.focus({ $target })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.alter_zorder({ mode = \"top\", $target })" >/dev/null
+  # The window is no longer minimized from anywhere.
+  while read -r tag; do
+    hyprctl dispatch "hl.dsp.window.tag({ tag = \"-$tag\", $target })" >/dev/null
+  done < <(hyprctl clients -j | jq -r --arg a "$address" \
+    '.[] | select(.address == $a) | (.tags // [])[] | select(test("^karchy-minimized-from-[0-9]+$"))')
+}
+
+if [[ ${1:-} == "--all" ]]; then
+  while IFS=$'\t' read -r address origin; do
+    restore "$address" "$origin"
+  done < <(hyprctl clients -j | jq -r '.[] | select(.workspace.name == "special:minimized")
+    | [.address, ((.tags // []) | map(select(test("^karchy-minimized-from-[0-9]+$")) | sub("^karchy-minimized-from-"; ""))
+      | first // "")] | @tsv')
+  exit 0
+fi
+
+if [[ -n ${1:-} ]]; then
+  [[ $1 =~ ^0x[0-9a-fA-F]+$ ]] || { echo "karchy-hyprland-window-restore: not a window address: $1" >&2; exit 1; }
+  restore "$1"
+  exit 0
+fi
+
+# icon<TAB>app: title<TAB>address, most recently used first.
+rows=$(hyprctl clients -j | jq -r --arg icon window.minimized '
+  [.[] | select(.workspace.name == "special:minimized")]
+  | sort_by(.focusHistoryID)
+  | .[] | "\($icon)\t\(.class): \(.title | .[0:80])\t\(.address)"')
+
+if [[ -z $rows ]]; then
+  karchy-notification-send -g window.minimized "No minimized windows"
+  exit 0
+fi
+
+if (($(wc -l <<<"$rows") == 1)); then
+  restore "$(cut -f3 <<<"$rows")"
+  exit 0
+fi
+
+selection=$(karchy-menu-select "Minimized windows" <<<"$rows") || exit 0
+[[ -n $selection ]] || exit 0
+address=$(cut -f2 <<<"$selection")
+[[ $address =~ ^0x[0-9a-fA-F]+$ ]] || exit 1
+restore "$address"

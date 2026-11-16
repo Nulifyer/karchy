@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# karchy:summary=Set the default editor used by karchy-launch-editor
+# karchy:args=[code|cursor|zed|sublime_text|helix|vim|emacs|nvim]
+# karchy:examples=karchy default editor | karchy default editor code | karchy default editor helix
+
+installing=false
+if [[ ${1:-} == "--install" ]]; then
+  installing=true
+  shift
+fi
+
+editor_file="$HOME/.local/state/karchy/defaults/editor"
+
+if (($# == 0)); then
+  if [[ -f $editor_file ]]; then
+    read -r editor <"$editor_file"
+  fi
+
+  # sublime-text-4 ships `subl`; older defaults stored `sublime_text`.
+  [[ $editor == sublime_text ]] && editor=subl
+
+  [[ -n $editor ]] && echo "$editor" || echo "code"
+  exit 0
+fi
+
+case "$1" in
+code) selection="code"; editor="code"; name="VSCode"; icon=brand.vscode ;;
+cursor) selection="cursor"; editor="cursor"; name="Cursor"; icon=app.editor ;;
+zed | zeditor) selection="zed"; editor="zeditor"; name="Zed"; icon=app.editor ;;
+sublime_text | subl) selection="sublime_text"; editor="subl"; name="Sublime Text"; icon=brand.sublime ;;
+helix) selection="helix"; editor="helix"; name="Helix"; icon=app.editor ;;
+vim) selection="vim"; editor="vim"; name="Vim"; icon=brand.vim ;;
+emacs) selection="emacs"; editor="emacs"; name="Emacs"; icon=brand.emacs ;;
+nvim) selection="nvim"; editor="nvim"; name="Neovim"; icon=brand.neovim ;;
+*)
+  echo "Usage: karchy-default-editor <code|cursor|zed|sublime_text|helix|vim|emacs|nvim>"
+  exit 1
+  ;;
+esac
+
+if karchy-cmd-missing "$editor"; then
+  if [[ $installing == "false" ]]; then
+    exec karchy-launch-floating-terminal-with-presentation karchy-default-editor --install "$selection"
+  else
+    case "$selection" in
+    code) karchy-pkg-add visual-studio-code-bin ;;
+    cursor) karchy-pkg-add cursor-bin ;;
+    zed) karchy-pkg-add zed ;;
+    sublime_text) karchy-pkg-add sublime-text-4 ;;
+    helix) karchy-pkg-add helix ;;
+    vim) karchy-pkg-add vim ;;
+    emacs) karchy-pkg-add emacs-wayland ;;
+    nvim) karchy-pkg-add neovim ;;
+    esac || exit 1
+  fi
+fi
+
+mkdir -p "$(dirname "$editor_file")"
+printf '%s\n' "$editor" >"$editor_file"
+
+karchy-notification-send -g "$icon" "$(karchy-i18n default.editorSet "$name")"

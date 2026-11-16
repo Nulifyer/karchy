@@ -6,7 +6,7 @@
 
 set -o pipefail
 
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/karchy"
 IMAGE_DIR="$STATE_DIR/clipboard-images"
 mkdir -p "$IMAGE_DIR"
 
@@ -44,7 +44,7 @@ emit_image() {
     mv "$tmp" "$file"
   fi
 
-  jq -cn --arg mime "$mime" --arg path "$file" --arg captured_at "$(LC_TIME="$(omarchy-language locale 2>/dev/null)" date +'%A %H:%M')" \
+  jq -cn --arg mime "$mime" --arg path "$file" --arg captured_at "$(LC_TIME="$(karchy-language locale 2>/dev/null)" date +'%A %H:%M')" \
     '{type:"image", mime:$mime, path:$path, capturedAt:$captured_at}'
 }
 

@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# karchy:summary=Print the glyph for a karchy icon name
+# karchy:args=<name>... | --list
+# karchy:examples=karchy icon system.lock
+# karchy:hidden=true
+
+# default/karchy/icons.json is the one map from icon names to Nerd Font
+# codepoints; the shell reads it too (shell/Commons/Icons.qml). Scripts use
+# names, never glyphs: `karchy-notification-send -g system.lock` resolves the
+# name itself, and other text takes "$(karchy-icon system.lock)". The glyphs
+# are Material Design icons from the Symbols Nerd Font; any Nerd Font shows
+# them in a terminal. Several names print one glyph per line.
+
+set -euo pipefail
+
+map=${KARCHY_PATH:-/usr/share/karchy}/default/karchy/icons.json
+
+if (($# == 0)); then
+  echo "Usage: karchy-icon <name>... | --list" >&2
+  exit 1
+fi
+
+if [[ $1 == "--list" ]]; then
+  jq -r 'to_entries[] | "\(.key)\t\(.value.nf)"' "$map"
+  exit 0
+fi
+
+# One jq for all names. An unknown name fails the whole call, so a typo shows
+# up where it was made instead of as a missing icon.
+jq -nrj --slurpfile map "$map" '
+  def hex: reduce (ascii_downcase | explode[]) as $c (0; . * 16 + (if $c >= 97 then $c - 87 else $c - 48 end));
+  $ARGS.positional[] as $name
+  | ($map[0][$name].cp // error("unknown icon: \($name)"))
+  | ([hex] | implode) + "\n"
+' --args "$@" 2>/dev/null || {
+  for name in "$@"; do
+    jq -e --arg n "$name" 'has($n)' "$map" >/dev/null || echo "karchy-icon: unknown icon: $name" >&2
+  done
+  exit 1
+}

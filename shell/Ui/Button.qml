@@ -7,11 +7,22 @@ import qs.Commons as Commons
 // States compose independently and are applied in priority order:
 //
 //   pressed (mouse down)         pressed fill
-//   activeFocus (Tab focus)      focus fill + focus border token
-//   hasCursor || hover           hover-cursor fill (+ border if `bordered`)
+//   activeFocus || hasCursor     focus fill + hover-cursor border + FocusRing
+//   hover                        hover-cursor fill + hover-cursor border
 //   selected                     selected fill + optional selected border
 //   active                       selected fill
 //   idle                         transparent or normal border if `bordered`
+//
+// `variant`:
+//   "neutral"      the default; quiet, for most actions
+//   "primary"      the one action a page or dialog is for: accent fill
+//   "destructive"  deletes, removes or forces something: error-colored text
+//                  and border, an error tint under the pointer or focus. Put
+//                  it apart from the others and confirm it (ConfirmDialog).
+//
+// `enabled: false` draws the disabled text role and takes no clicks; callers
+// don't dim it themselves. `busy` keeps the label, spins a busy icon in
+// place of the icon and takes no clicks while the action runs.
 //
 // All fills/borders come from `qs.Commons.Style` tokens, so themes
 // control the look via [controls] in shell.toml.
@@ -31,6 +42,10 @@ BorderSurface {
   property bool hasCursor: false
   property bool focusable: false
   property bool bordered: false
+  property string variant: "neutral"
+  property bool busy: false
+  // What a screen reader says; the label, else the tooltip.
+  property string accessibleName: text !== "" ? text : tooltipText
 
   // Colors. Defaults track the theme; per-instance overrides are honored.
   property color foreground: Commons.Color.foreground
@@ -63,10 +78,14 @@ BorderSurface {
   signal rightClicked()
   signal hovered(bool isHovered)
 
-  activeFocusOnTab: focusable
-  Keys.onReturnPressed: if (focusable) root.clicked()
-  Keys.onEnterPressed: if (focusable) root.clicked()
-  Keys.onSpacePressed: if (focusable) root.clicked()
+  activeFocusOnTab: focusable && enabled
+  Keys.onReturnPressed: if (focusable && root._live) root.clicked()
+  Keys.onEnterPressed: if (focusable && root._live) root.clicked()
+  Keys.onSpacePressed: if (focusable && root._live) root.clicked()
+
+  Accessible.role: Accessible.Button
+  Accessible.name: root.accessibleName
+  Accessible.onPressAction: if (root._live) root.clicked()
 
   // Reserve the largest border any visual state can paint. Otherwise a
   // borderless idle button grows by a pixel per side on hover/focus and
@@ -75,56 +94,72 @@ BorderSurface {
   // narrows the label when the button is held narrower than that.
   implicitWidth: _contentNaturalWidth + horizontalPadding * 2 + _reservedBorderLeft + _reservedBorderRight
   implicitHeight: row.implicitHeight + verticalPadding * 2 + _reservedBorderTop + _reservedBorderBottom
-  radius: Style.cornerRadius
+  radius: Style.radius.control
 
-  readonly property bool hot: mouseArea.containsMouse || hasCursor
-  readonly property bool _showFocusRing: focusable && activeFocus
+  readonly property bool _live: enabled && !busy
+  readonly property bool _primary: variant === "primary"
+  readonly property bool _destructive: variant === "destructive"
+  // The color the label, icon and borders are drawn in.
+  readonly property color _ink: !enabled ? Commons.Color.disabledText(root.foreground)
+    : _primary ? Commons.Color.onAccent
+    : _destructive ? Commons.Color.status.error
+    : root.foreground
+  readonly property bool hot: enabled && (mouseArea.containsMouse || hasCursor)
+  // Where the keyboard is: Tab focus, or a panel's keyboard cursor (which the
+  // panels also move under the pointer, so it is their one highlight).
+  readonly property bool _showFocusRing: (focusable && activeFocus) || hasCursor
   readonly property color _selectedColor: Style.selectedStateColor(root.foreground, root.accent)
-  readonly property var _tooltipBorderSpec: Border.localOrSurfaceSpec("tooltip", "border", root.tooltipBorder, Commons.Color.tooltip.border, Math.max(1, Style.normalBorderWidth))
-  readonly property var _focusBorderSpec: Border.controlSpec("focus", root.foreground, root.accent)
-  readonly property var _hoverBorderSpec: Border.controlSpec("hover-cursor", root.foreground, root.accent)
+  readonly property var _hoverBorderSpec: _primary ? Border.flat(Commons.Color.accent, Style.hoverBorderWidth)
+    : Border.controlSpec("hover-cursor", root._ink, root._destructive ? root._ink : root.accent)
   readonly property var _selectedBorderSpec: Border.controlSpec("selected", root.foreground, root.accent)
-  readonly property var _normalBorderSpec: Border.controlSpec("normal", root.foreground, root.accent)
+  readonly property var _normalBorderSpec: _primary ? Border.flat(Commons.Color.accent, Style.normalBorderWidth)
+    : Border.controlSpec("normal", root._ink, root._destructive ? root._ink : root.accent)
   readonly property real _reservedBorderTop: Math.max(
-    focusable ? Border.top(_focusBorderSpec) : 0,
     Border.top(_hoverBorderSpec),
     Border.top(_selectedBorderSpec),
     bordered ? Border.top(_normalBorderSpec) : 0)
   readonly property real _reservedBorderRight: Math.max(
-    focusable ? Border.right(_focusBorderSpec) : 0,
     Border.right(_hoverBorderSpec),
     Border.right(_selectedBorderSpec),
     bordered ? Border.right(_normalBorderSpec) : 0)
   readonly property real _reservedBorderBottom: Math.max(
-    focusable ? Border.bottom(_focusBorderSpec) : 0,
     Border.bottom(_hoverBorderSpec),
     Border.bottom(_selectedBorderSpec),
     bordered ? Border.bottom(_normalBorderSpec) : 0)
   readonly property real _reservedBorderLeft: Math.max(
-    focusable ? Border.left(_focusBorderSpec) : 0,
     Border.left(_hoverBorderSpec),
     Border.left(_selectedBorderSpec),
     bordered ? Border.left(_normalBorderSpec) : 0)
   readonly property real _reservedContentLeftInset: _reservedBorderLeft + leftPadding
   // Keyed on the text, not the Texts' visible: a hidden button (a width probe)
   // reports its children invisible too, which would collapse it to padding.
-  readonly property real _iconRoom: root.iconText !== "" ? iconGlyph.implicitWidth + (root.text !== "" ? row.spacing : 0) : 0
+  readonly property bool _spinning: root.iconSpinning || root.busy
+  readonly property real _iconRoom: root.iconText !== "" || root.busy ? iconGlyph.implicitWidth + (root.text !== "" ? row.spacing : 0) : 0
   readonly property real _contentNaturalWidth: _iconRoom + (root.text !== "" ? label.implicitWidth : 0)
   // A translated label can outgrow a button laid out at a fixed width (a
   // grid of equal pills): it first spends half the padding, then shrinks to
   // fit, and elides only when even the smallest size does not.
   readonly property real _labelRoom: width - horizontalPadding - _reservedBorderLeft - _reservedBorderRight - _iconRoom
-  readonly property var _borderSpec: _showFocusRing ? _focusBorderSpec
-    : hot                      ? _hoverBorderSpec
+  readonly property var _borderSpec: hot || _showFocusRing ? _hoverBorderSpec
     : selected                 ? (Border.controlHasWidth("selected") ? _selectedBorderSpec : (bordered ? _normalBorderSpec : Border.none()))
-    : bordered                 ? _normalBorderSpec
+    : bordered || _primary || _destructive ? _normalBorderSpec
     : Border.none()
 
-  color: mouseArea.pressed ? Style.pressedFillFor(root.foreground, root.accent)
-    : _showFocusRing       ? Style.focusFillFor(root.foreground, root.accent)
-    : hot                  ? Style.hoverFillFor(root.foreground, root.accent)
-    : selected             ? Style.selectedFillFor(root.foreground, root.accent)
-    : active               ? Style.selectedFillFor(root.foreground, root.accent)
+  // A primary button keeps its accent fill and shows hover and press by
+  // mixing in its text color; the others lay the state fills over `background`.
+  readonly property color _primaryFill: !enabled ? Util.alpha(Commons.Color.accent, 0.35)
+    : mouseArea.pressed ? Util.mix(Commons.Color.onAccent, Commons.Color.accent, 0.2)
+    : hot || _showFocusRing ? Util.mix(Commons.Color.onAccent, Commons.Color.accent, 0.1)
+    : Commons.Color.accent
+  readonly property color _stateTint: _destructive ? Commons.Color.status.error : root.foreground
+
+  color: _primary              ? _primaryFill
+    : !enabled                 ? (selected ? Style.selectedFillFor(root._ink, root.accent) : background)
+    : mouseArea.pressed        ? Style.pressedFillFor(root._stateTint, root.accent)
+    : _showFocusRing           ? Style.focusFillFor(root._stateTint, root.accent)
+    : hot                      ? Style.hoverFillFor(root._stateTint, root.accent)
+    : selected                 ? Style.selectedFillFor(root.foreground, root.accent)
+    : active                   ? Style.selectedFillFor(root.foreground, root.accent)
     : background
 
   // Border follows the same state precedence as fill. Buttons stay
@@ -136,10 +171,10 @@ BorderSurface {
   // dedicated selected border.
   borderSpec: _borderSpec
 
-  Behavior on color { ColorAnimation { duration: Style.duration(120) } }
+  Behavior on color { ColorAnimation { duration: Style.duration(Style.motion.fast) } }
 
   // Held down, the button gives a little, so a click is felt as well as seen.
-  scale: mouseArea.pressed ? 0.97 : 1
+  scale: mouseArea.pressed && _live ? 0.97 : 1
   Behavior on scale {
     NumberAnimation {
       duration: Style.duration(160)
@@ -148,27 +183,27 @@ BorderSurface {
     }
   }
 
-  ToolTip {
+  FocusRing { id: focusRing; shown: root._showFocusRing }
+
+  // On the accent fill the ring's own color would vanish, so a primary
+  // button's ring gets a line of the page color just inside it.
+  BorderSurface {
+    visible: focusRing.visible && root._primary
+    anchors.fill: parent
+    anchors.margins: Style.focusBorderWidth
+    z: 100
+    color: "transparent"
+    radius: Math.max(0, root.radius - Style.focusBorderWidth)
+    borderSpec: Border.flat(Commons.Color.background, Math.max(1, Style.space(1)))
+  }
+
+  PanelToolTip {
     visible: root.tooltipText !== "" && mouseArea.containsMouse
     text: root.tooltipText
-    delay: 400
-    padding: 0
-    background: BorderSurface {
-      color: root.tooltipBackground
-      borderSpec: root._tooltipBorderSpec
-      radius: 0
-    }
-    contentItem: Text {
-      textFormat: Text.PlainText
-      text: root.tooltipText
-      color: root.tooltipForeground
-      font.family: root.fontFamily
-      font.pixelSize: Style.font.bodySmall
-      leftPadding: Border.left(root._tooltipBorderSpec) + Style.spacing.controlPaddingX
-      rightPadding: Border.right(root._tooltipBorderSpec) + Style.spacing.controlPaddingX
-      topPadding: Border.top(root._tooltipBorderSpec) + Style.spacing.controlPaddingY
-      bottomPadding: Border.bottom(root._tooltipBorderSpec) + Style.spacing.controlPaddingY
-    }
+    fontFamily: root.fontFamily
+    panelForeground: root.tooltipForeground
+    panelBackground: root.tooltipBackground
+    panelBorder: root.tooltipBorder
   }
 
   Row {
@@ -182,12 +217,12 @@ BorderSurface {
     Text {
       id: iconGlyph
       textFormat: Text.PlainText
-      visible: root.iconText !== ""
-      text: root.iconText
-      color: root.selected ? root._selectedColor : root.foreground
-      font.family: root.fontFamily
+      visible: root.iconText !== "" || root.busy
+      text: root.busy ? Icons.glyph("ui.busy") : root.iconText
+      color: root.selected && root.enabled ? root._selectedColor : root._ink
+      font.family: Icons.family
       font.pixelSize: root.iconSize
-      rotation: root.iconSpinning ? 0 : root.iconRotation
+      rotation: root._spinning ? 0 : root.iconRotation
       transformOrigin: Item.Center
       anchors.verticalCenter: parent.verticalCenter
 
@@ -196,7 +231,7 @@ BorderSurface {
         to: 360
         duration: Style.duration(900)
         loops: Animation.Infinite
-        running: root.iconSpinning && !Style.reduceMotion
+        running: root._spinning && !Style.reduceMotion
       }
     }
 
@@ -205,10 +240,10 @@ BorderSurface {
       textFormat: Text.PlainText
       visible: root.text !== ""
       text: root.text
-      color: root.selected ? root._selectedColor : root.foreground
+      color: root.selected && root.enabled ? root._selectedColor : root._ink
       font.family: root.fontFamily
       font.pixelSize: root.fontSize
-      font.bold: root.selected
+      font.bold: root.selected || root._primary
       width: Math.max(0, Math.min(implicitWidth, root._labelRoom))
       fontSizeMode: Text.HorizontalFit
       minimumPixelSize: Math.round(root.fontSize * 0.75)
@@ -224,10 +259,11 @@ BorderSurface {
     // its edge still counts as a click when it's let go there.
     scale: 1 / root.scale
     hoverEnabled: true
-    cursorShape: Qt.PointingHandCursor
+    cursorShape: root._live ? Qt.PointingHandCursor : Qt.ArrowCursor
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     onClicked: function(mouse) {
-      if (root.focusable) root.forceActiveFocus()
+      if (!root._live) return
+      if (root.focusable) root.forceActiveFocus(Qt.MouseFocusReason)
       if (mouse.button === Qt.RightButton) root.rightClicked()
       else root.clicked()
     }

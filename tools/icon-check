@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""Check that icons come from the icon map (docs/architecture.md, "Shell design foundations").
+
+Usage:
+  tools/icon-check            Check the working tree; exit 1 on any problem
+
+default/karchy/icons.json is the only place a glyph codepoint may appear.
+This fails on:
+  - a private-use character (a Nerd Font glyph), or an escape for one, in the
+    shell's QML and JS, JSON and JSONC, Lua and the bash commands, outside the
+    map
+  - a map entry that breaks the family rule: every name outside brand.* is a
+    Material Design icon (nf "md-*", U+F0001-U+F1AF0)
+  - an icon name used in code that the map doesn't have: Icons.glyph("x"),
+    "iconName": "x", karchy-icon x and karchy-notification-send -g x
+Names built at run time ("net.wifi." + level) aren't checked here; the shell
+warns about unknown names when it draws them.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MAP = "default/karchy/icons.json"
+NAME = re.compile(r"^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$")
+MD_RANGE = (0xF0001, 0xF1AF0)
+
+# Text files that can carry a glyph: the shell, data and Lua by extension,
+# commands by their place.
+EXTENSIONS = (".qml", ".js", ".json", ".jsonc", ".lua", ".sh")
+SCRIPT_DIRS = ("bin/", "install/", "migrations/", "tools/", "default/")
+
+ESCAPES = re.compile(
+    r"\\u\{([0-9a-fA-F]{4,6})\}"          # JS \u{f0001}
+    r"|\\U([0-9a-fA-F]{8})"               # bash $'\U000f0001'
+    r"|\\u([0-9a-fA-F]{4})"               # \ue900, or half of a surrogate pair
+    r"|&#x([0-9a-fA-F]{4,6});"
+)
+USES = [
+    re.compile(r"""Icons\.(?:glyph|has)\(\s*["']([^"']+)["']"""),
+    re.compile(r""""iconName"\s*:\s*"([^"]*)\""""),
+    re.compile(r"""\biconName\s*:\s*["']([^"']+)["']"""),
+    re.compile(r"""karchy-icon\s+["']?([a-z][a-z0-9.-]*)"""),
+    re.compile(r"""karchy-notification-send\b[^\n]*?\s(?:-g|--glyph)[ =]["']?([a-z][a-z0-9.-]*)"""),
+]
+
+
+def private_use(cp):
+    return 0xE000 <= cp <= 0xF8FF or 0xF0000 <= cp <= 0xFFFFD or 0x100000 <= cp <= 0x10FFFD
+
+
+def tracked_files():
+    out = subprocess.run(
+        ["git", "-C", ROOT, "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+        check=True, capture_output=True,
+    ).stdout.decode()
+    for rel in out.split("\0"):
+        if rel and os.path.isfile(os.path.join(ROOT, rel)):
+            yield rel
+
+
+def scanned(rel):
+    if rel == MAP:
+        return False
+    if rel.endswith(EXTENSIONS):
+        return True
+    if not rel.startswith(SCRIPT_DIRS) or "." in os.path.basename(rel):
+        return False
+    try:
+        with open(os.path.join(ROOT, rel), "rb") as f:
+            first = f.readline()
+    except OSError:
+        return False
+    return first.startswith(b"#!") and b"sh" in first
+
+
+def check_map(problems):
+    with open(os.path.join(ROOT, MAP), encoding="utf-8") as f:
+        entries = json.load(f)
+    for name, entry in entries.items():
+        where = f"{MAP}: {name}"
+        if not NAME.match(name):
+            problems.append(f"{where}: names are lowercase words joined by dots")
+        try:
+            cp = int(entry["cp"], 16)
+        except (KeyError, TypeError, ValueError):
+            problems.append(f"{where}: needs \"cp\", a hex codepoint")
+            continue
+        nf = str(entry.get("nf", ""))
+        if not nf:
+            problems.append(f"{where}: needs \"nf\", the Nerd Font glyph name")
+        if not private_use(cp):
+            problems.append(f"{where}: U+{cp:04X} is not a Nerd Font glyph")
+        if not name.startswith("brand.") and (
+            not nf.startswith("md-") or not MD_RANGE[0] <= cp <= MD_RANGE[1]
+        ):
+            problems.append(f"{where}: only brand.* names may leave Material Design ({nf}, U+{cp:04X})")
+    return set(entries)
+
+
+def check_file(rel, names, problems):
+    try:
+        with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
+            lines = f.read().split("\n")
+    except (OSError, UnicodeDecodeError):
+        return
+    for number, line in enumerate(lines, 1):
+        found = [ord(ch) for ch in line if private_use(ord(ch))]
+        for m in ESCAPES.finditer(line):
+            cp = int(next(g for g in m.groups() if g), 16)
+            if private_use(cp) or 0xD800 <= cp <= 0xDBFF:
+                found.append(cp)
+        for cp in found:
+            problems.append(f"{rel}:{number}: U+{cp:04X} outside the icon map; use a name from {MAP}")
+        for pattern in USES:
+            for m in pattern.finditer(line):
+                if m.group(1) not in names:
+                    problems.append(f"{rel}:{number}: no icon named \"{m.group(1)}\" in {MAP}")
+
+
+def main():
+    if len(sys.argv) > 1:
+        print(__doc__.strip())
+        return 0 if sys.argv[1] in ("-h", "--help") else 2
+    problems = []
+    names = check_map(problems)
+    files = [rel for rel in tracked_files() if scanned(rel)]
+    for rel in files:
+        check_file(rel, names, problems)
+    for p in problems:
+        print(p)
+    print(f"icon-check: {len(names)} icons, {len(files)} files, {len(problems)} problems", file=sys.stderr)
+    return 1 if problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

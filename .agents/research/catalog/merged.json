@@ -1,0 +1,15682 @@
+[
+{
+"name": "Steam",
+"cat": "Gaming",
+"pkgs": [
+"steam",
+"lib32-nvidia-utils",
+"nvidia-utils=620.70.06"
+],
+"repo": [
+"cachyos",
+"multilib"
+],
+"setup": "Enable `[multilib]`; install the driver in the same transaction as steam (not after it); optional shader-cache env file; optional ufw Steam profile on trusted networks only",
+"sources": [
+"CachyOS",
+"Fedora",
+"Flathub",
+"Linutil",
+"Mint",
+"Omarchy",
+"Pop!_OS",
+"Ubuntu",
+"You use it"
+],
+"n": 8,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GameMode",
+"cat": "Gaming",
+"pkgs": [
+"gamemode",
+"lib32-gamemode"
+],
+"repo": [
+"extra",
+"multilib"
+],
+"setup": "Add the user to the `gamemode` group (the polkit rule for its CPU/GPU helpers checks that group)",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MangoHud, GOverlay",
+"cat": "Gaming",
+"pkgs": [
+"mangohud",
+"lib32-mangohud",
+"goverlay"
+],
+"repo": [
+"extra",
+"multilib"
+],
+"setup": "none (`mangohud --dlsym %command%`)",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gamescope",
+"cat": "Gaming",
+"pkgs": [
+"gamescope"
+],
+"repo": [
+"cachyos"
+],
+"setup": "none (wrapper)",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "vkBasalt",
+"cat": "Gaming",
+"pkgs": [
+"vkbasalt",
+"lib32-vkbasalt"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "NTSync autoload",
+"cat": "Gaming",
+"pkgs": [
+"ntsync-autoload",
+"NTSYNC-MODULE"
+],
+"repo": [
+"extra"
+],
+"setup": "none; loads `ntsync` at boot. CachyOS does this through `cachyos-settings`",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Proton-CachyOS",
+"cat": "Gaming",
+"pkgs": [
+"proton-cachyos-slr"
+],
+"repo": [
+"cachyos"
+],
+"setup": "none (pick it per game in Steam)",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Proton-GE / Proton manager",
+"cat": "Gaming",
+"pkgs": [
+"protonup-qt"
+],
+"repo": [
+"aur",
+"cachyos",
+"flatpak"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Flathub",
+"Linutil",
+"Omarchy"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Wine helpers",
+"cat": "Gaming",
+"pkgs": [
+"protontricks",
+"winetricks",
+"umu-launcher",
+"wine-cachyos-opt"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "multilib",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "CachyOS gaming bundle (all of the above)",
+"cat": "Gaming",
+"pkgs": [
+"cachyos-gaming-meta"
+],
+"repo": [
+"cachyos"
+],
+"setup": "multilib plus driver first (same as Steam)",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Lutris",
+"cat": "Gaming",
+"pkgs": [
+"lutris",
+"umu-launcher",
+"wine-staging",
+"winetricks"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "multilib plus lib32 driver",
+"sources": [
+"CachyOS",
+"Flathub",
+"Linutil",
+"Omarchy",
+"Pop!_OS"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Heroic (Epic/GOG/Amazon)",
+"cat": "Gaming",
+"pkgs": [
+"heroic-games-launcher-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"omarchy"
+],
+"setup": "multilib plus lib32 driver",
+"sources": [
+"Bazzite",
+"CachyOS",
+"Flathub",
+"Linutil",
+"Omarchy"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Faugus Launcher",
+"cat": "Gaming",
+"pkgs": [
+"faugus-launcher"
+],
+"repo": [
+"cachyos"
+],
+"setup": "multilib",
+"sources": [
+"Bazzite",
+"CachyOS"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bottles",
+"cat": "Gaming",
+"pkgs": [
+"bottles"
+],
+"repo": [
+"aur",
+"flatpak"
+],
+"setup": "none (or via Flatpak)",
+"sources": [
+"CachyOS",
+"Flathub",
+"Linutil"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Battle.net",
+"cat": "Gaming",
+"pkgs": [
+"umu-launcher",
+"~/Games/battlenet"
+],
+"repo": [],
+"setup": "Download the installer and run it under umu; write a .desktop file",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "RetroArch",
+"cat": "Gaming",
+"pkgs": [
+"retroarch",
+"libretro-*"
+],
+"repo": [
+"aur",
+"extra",
+"omarchy"
+],
+"setup": "Writes `~/.config/retroarch/retroarch.cfg` paths, Vulkan, `~/Games/{roms,bios}`",
+"sources": [
+"Bazzite",
+"Flathub",
+"Linutil",
+"Omarchy"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Minecraft",
+"cat": "Gaming",
+"pkgs": [
+"prismlauncher"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GeForce NOW",
+"cat": "Gaming",
+"pkgs": [
+"GeForceNOWSetup.bin"
+],
+"repo": [
+"flatpak"
+],
+"setup": "needs Flatpak",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "needs Flatpak",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xbox Cloud Gaming",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [],
+"setup": "web app",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xbox controllers",
+"cat": "Gaming",
+"pkgs": [
+"xpadneo-dkms",
+"linux-cachyos-headers",
+"linux-cachyos-lts-headers"
+],
+"repo": [
+"cachyos",
+"omarchy"
+],
+"setup": "DKMS needs headers for both karchy kernels; blacklist `xpad`; load `hid_xpadneo`; add the user to `input`",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Controller udev rules",
+"cat": "Gaming",
+"pkgs": [
+"steam-devices"
+],
+"repo": [
+"aur"
+],
+"setup": "udev reload",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Sunshine (stream this PC)",
+"cat": "Gaming",
+"pkgs": [
+"sunshine"
+],
+"repo": [
+"cachyos",
+"omarchy"
+],
+"setup": "user service, ufw ports (LAN and tailnet only), admin web app",
+"sources": [
+"Bazzite",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Moonlight (stream client)",
+"cat": "Gaming",
+"pkgs": [
+"moonlight-qt"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gamescope session",
+"cat": "Gaming",
+"pkgs": [
+"gamescope-session-cachyos"
+],
+"repo": [
+"cachyos"
+],
+"setup": "session entry",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "karchy logs in with greetd straight into one uwsm session",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Virtual machines",
+"cat": "System features",
+"pkgs": [
+"qemu-desktop",
+"libvirt",
+"virt-manager",
+"dnsmasq",
+"edk2-ovmf",
+"swtpm"
+],
+"repo": [
+"extra"
+],
+"setup": "socket units, `libvirt` group, default network, libvirt firewall backend plus ufw route rules, a no-copy-on-write image directory outside snapper",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Boxes",
+"cat": "System features",
+"pkgs": [
+"gnome-boxes"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "none (user-session libvirt)",
+"sources": [
+"CachyOS",
+"EndeavourOS",
+"Fedora",
+"Garuda",
+"Manjaro"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "VirtualBox",
+"cat": "System features",
+"pkgs": [
+"virtualbox",
+"virtualbox-host-dkms"
+],
+"repo": [
+"extra"
+],
+"setup": "DKMS, `vboxusers` group",
+"sources": [
+"CachyOS",
+"Garuda",
+"Manjaro",
+"Mint"
+],
+"n": 4,
+"skip": "conflicts with KVM in use",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Omarchy Windows VM",
+"cat": "System features",
+"pkgs": [
+"dockurr/windows",
+"freerdp"
+],
+"repo": [],
+"setup": "Docker, root-owned compose, RDP launcher",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "WinBoat",
+"cat": "System features",
+"pkgs": [
+"winboat",
+"docker",
+"docker-compose"
+],
+"repo": [
+"cachyos"
+],
+"setup": "Docker with the user in the `docker` group, KVM",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Podman",
+"cat": "System features",
+"pkgs": [
+"podman",
+"podman-compose"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "check subuid/subgid, user `podman.socket`, short-name registry drop-in",
+"sources": [
+"CachyOS",
+"Dev surveys",
+"Linutil",
+"You use it"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Podman 11.1%; pkgstats 19.1%; Audit (111 GB of containers)"
+},
+{
+"name": "Docker",
+"cat": "System features",
+"pkgs": [
+"docker",
+"docker-compose",
+"docker-buildx",
+"ufw-docker"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra",
+"omarchy"
+],
+"setup": "`docker.socket`, group choice, ufw-docker rules, daemon.json",
+"sources": [
+"CachyOS",
+"Dev surveys",
+"Linutil",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Docker 71.1% (top tool); pkgstats docker 45%, compose 36%, buildx 18%"
+},
+{
+"name": "Distrobox",
+"cat": "System features",
+"pkgs": [
+"distrobox"
+],
+"repo": [
+"extra"
+],
+"setup": "needs Podman",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dev databases in containers",
+"cat": "Cloud & containers",
+"pkgs": [],
+"repo": [],
+"setup": "`podman run \u2026` bound to 127.0.0.1",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "lazydocker",
+"cat": "Cloud & containers",
+"pkgs": [
+"lazydocker"
+],
+"repo": [
+"extra"
+],
+"setup": "none (works with Podman through `DOCKER_HOST`)",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4.7%"
+},
+{
+"name": "GPU in containers",
+"cat": "System features",
+"pkgs": [
+"nvidia-container-toolkit"
+],
+"repo": [
+"extra"
+],
+"setup": "none now: the package enables `nvidia-cdi-refresh.path`, which writes the CDI spec under `/var/run/cdi`",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": ".NET SDK",
+"cat": "Languages",
+"pkgs": [
+"dotnet-sdk"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "none (`~/.dotnet/tools` on PATH is optional)",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 C# 27.8%, NuGet 18.9%, ASP.NET Core 19.7%; pkgstats dotnet-sdk 16.9%, -8.0 5.7%; O, Audit (dotnet-sdk installed)"
+},
+{
+"name": "Go",
+"cat": "Languages",
+"pkgs": [
+"go",
+"gopls"
+],
+"repo": [
+"extra"
+],
+"setup": "none (`~/go/bin` on PATH is optional)",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Go 16.4%; JB25 \"rising\"; pkgstats go 59%, gopls 4.9%; O, Audit"
+},
+{
+"name": "Rust",
+"cat": "Languages",
+"pkgs": [
+"rustup",
+"rust",
+"clang"
+],
+"repo": [
+"extra"
+],
+"setup": "Run `rustup default stable` as the user; optionally add `rust-analyzer` and `rust-src`",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Rust 14.8%, Cargo 14.4%; JB25 \"rising\"; pkgstats rustup 27.6%, rust 36.9%; O, Audit"
+},
+{
+"name": "Zig",
+"cat": "Languages",
+"pkgs": [
+"zig",
+"zls"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "none. Warning: the repo has `zig 0.17.1` but `zls 0.15.1`, and zls must match zig's version",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats zig 8.4%, zls 2.2%; O, Audit"
+},
+{
+"name": "Bun",
+"cat": "Languages",
+"pkgs": [
+"bun"
+],
+"repo": [
+"aur",
+"extra",
+"omarchy"
+],
+"setup": "none (`~/.bun/bin` for `bun add -g`)",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 8.3%; O, Audit"
+},
+{
+"name": "Deno",
+"cat": "Languages",
+"pkgs": [
+"deno"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 59% (inflated: dependency of other packages); O, Audit"
+},
+{
+"name": "Java/Kotlin",
+"cat": "Languages",
+"pkgs": [
+"jdk-openjdk"
+],
+"repo": [
+"extra"
+],
+"setup": "`archlinux-java` if more than one JDK",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Python",
+"cat": "Languages",
+"pkgs": [
+"uv",
+"python-pipx",
+"pypy3"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Node.js (current)",
+"cat": "Languages",
+"pkgs": [
+"nodejs",
+"npm",
+"pnpm"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "optional `npm config set prefix ~/.local` for global installs",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 JavaScript 66%, TypeScript 43.6%, Node.js 48.7%, npm 56.8%; JB25 JS 26% / TS 22% primary; pkgstats nodejs 58%, npm 63%; O, Audit"
+},
+{
+"name": "Ruby",
+"cat": "Languages",
+"pkgs": [
+"ruby",
+"libyaml",
+"gem",
+"install",
+"rails"
+],
+"repo": [
+"extra"
+],
+"setup": "user gem install",
+"sources": [
+"Dev surveys",
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Ruby 6.4%; JB25 \"declining\"; pkgstats ruby 45% (inflated); O"
+},
+{
+"name": "PHP",
+"cat": "Languages",
+"pkgs": [
+"php"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra",
+"omarchy"
+],
+"setup": "composer global bin dir",
+"sources": [
+"Dev surveys",
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 PHP 18.9%; JB25 \"stable/declining\"; pkgstats php 22%, composer 6.4%; O"
+},
+{
+"name": "Laravel",
+"cat": "Languages",
+"pkgs": [
+"composer"
+],
+"repo": [
+"aur",
+"extra",
+"omarchy"
+],
+"setup": "composer global bin dir",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Symfony",
+"cat": "Languages",
+"pkgs": [
+"symfony-cli"
+],
+"repo": [
+"aur",
+"extra",
+"omarchy"
+],
+"setup": "composer global bin dir",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Elixir",
+"cat": "Languages",
+"pkgs": [
+"elixir",
+"erlang",
+"mix",
+"local.hex",
+"phx_new"
+],
+"repo": [
+"extra"
+],
+"setup": "user mix archives",
+"sources": [
+"Dev surveys",
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "not in SO25 top 20; pkgstats elixir 2.1%; O"
+},
+{
+"name": "OCaml",
+"cat": "Languages",
+"pkgs": [
+"opam",
+"ocaml",
+"opam",
+"init"
+],
+"repo": [
+"extra"
+],
+"setup": "user init",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats ocaml 6.6%, opam 2.3%; O"
+},
+{
+"name": "Clojure",
+"cat": "Languages",
+"pkgs": [
+"clojure",
+"leiningen",
+"rlwrap"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 1.8%; O"
+},
+{
+"name": "GitHub CLI",
+"cat": "Developer tools",
+"pkgs": [
+"github-cli"
+],
+"repo": [
+"extra"
+],
+"setup": "`gh auth login` (git's credential helper on this host points at gh)",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 GitHub 81.1%; pkgstats 23.7%; O, Audit (\"day one\")"
+},
+{
+"name": "lazygit",
+"cat": "Developer tools",
+"pkgs": [
+"lazygit",
+"shellcheck",
+"actionlint",
+"cmake",
+"ninja"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 17.5%; Audit"
+},
+{
+"name": "Android SDK",
+"cat": "Languages",
+"pkgs": [
+"android-tools",
+"scrcpy"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "`/opt/android-sdk` is root-owned, so `sdkmanager` needs a group with write access to it, or the SDK lives in `~/Android/Sdk` instead. `ANDROID_HOME` is set only in `/etc/profile.d` (finding 2). `sdkmanager --licenses`. A",
+"sources": [
+"CachyOS",
+"Dev surveys",
+"Linutil",
+"You use it"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Kotlin 10.8% / Android Studio 15%; pkgstats android-tools 39%, android-udev 36%; Audit (cmdline-tools installed)"
+},
+{
+"name": "Ghidra",
+"cat": "Languages",
+"pkgs": [
+"ghidra"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Odin",
+"cat": "Languages",
+"pkgs": [
+"odin"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe (Odin: Yes for the user)",
+"pop": "pkgstats nim 2.5%, crystal 1.2%, odin 1.2%, gleam 0.7%; Audit (odin)"
+},
+{
+"name": "JetBrains Toolbox",
+"cat": "Editors & IDEs",
+"pkgs": [
+"jetbrains-toolbox"
+],
+"repo": [
+"aur"
+],
+"setup": "none. It downloads and self-updates IDEs into `~/.local/share/JetBrains`, outside pacman",
+"sources": [
+"Bazzite",
+"Dev surveys",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes (the simplest JetBrains route)",
+"pop": "JB25 (JetBrains IDEs pair with every top language); pkgstats 4.3%; N"
+},
+{
+"name": "Zed",
+"cat": "Editors & IDEs",
+"pkgs": [
+"zed"
+],
+"repo": [
+"extra"
+],
+"setup": "none (Omarchy adds its own `omazed` theme)",
+"sources": [
+"Dev surveys",
+"Garuda",
+"Linutil",
+"Omarchy",
+"You use it"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 7.3%; pkgstats 11.6%; O, Audit"
+},
+{
+"name": "Helix",
+"cat": "Editors & IDEs",
+"pkgs": [
+"helix"
+],
+"repo": [
+"extra"
+],
+"setup": "none. Arch installs the binary as `helix`, not `hx` (checked in the file list)",
+"sources": [
+"CachyOS",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 8.3%; O"
+},
+{
+"name": "Neovim",
+"cat": "Editors & IDEs",
+"pkgs": [
+"neovim"
+],
+"repo": [
+"cachyos",
+"core",
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Dev surveys",
+"Linutil",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 14%; pkgstats 44%; O"
+},
+{
+"name": "Vim",
+"cat": "Editors & IDEs",
+"pkgs": [
+"vim"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Dev surveys",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 24.3%; pkgstats 66%; O, C"
+},
+{
+"name": "Emacs",
+"cat": "Editors & IDEs",
+"pkgs": [
+"emacs"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Garuda",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats emacs 8.7%, emacs-wayland 3.2%; O, C"
+},
+{
+"name": "Sublime Text 4",
+"cat": "Editors & IDEs",
+"pkgs": [
+"sublime-text-4"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "none (paid licence, unlimited evaluation)",
+"sources": [
+"Dev surveys",
+"Linutil",
+"Mint",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 10.5%; pkgstats 2.5%; O"
+},
+{
+"name": "Cursor",
+"cat": "Editors & IDEs",
+"pkgs": [
+"cursor-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"Linutil",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 17.9%; JB-AI26 18% work use; pkgstats 2.5%; O"
+},
+{
+"name": "Code - OSS",
+"cat": "Editors & IDEs",
+"pkgs": [
+"code"
+],
+"repo": [
+"extra"
+],
+"setup": "none (VS Code proper is already in base)",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "Skip (the MS build is base)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (the MS build is base)",
+"pop": "pkgstats 15.3%; C"
+},
+{
+"name": "Meld",
+"cat": "Developer tools",
+"pkgs": [
+"meld"
+],
+"repo": [
+"extra"
+],
+"setup": "Optional: `git config merge.tool meld`",
+"sources": [
+"Linutil",
+"Pop!_OS",
+"You use it"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 27.9%; Audit"
+},
+{
+"name": "Beyond Compare",
+"cat": "Developer tools",
+"pkgs": [
+"bcompare"
+],
+"repo": [
+"aur"
+],
+"setup": "Paid licence; optional `git config diff.tool bc`",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes (the user uses it)",
+"pop": "pkgstats 0.7%; Audit"
+},
+{
+"name": "Claude Code",
+"cat": "AI",
+"pkgs": [
+"claude-code"
+],
+"repo": [
+"aur",
+"cachyos",
+"omarchy"
+],
+"setup": "none (login on first run)",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 9.7%; JB-AI26 18% in Jan 2026, about 39% by mid-2026; pkgstats 7.9%; O, Audit"
+},
+{
+"name": "Codex CLI",
+"cat": "AI",
+"pkgs": [
+"openai-codex"
+],
+"repo": [
+"aur",
+"extra",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "JB-AI26 3% (before the desktop app relaunch); pkgstats 5.8%; O, Audit"
+},
+{
+"name": "OpenCode",
+"cat": "AI",
+"pkgs": [
+"opencode"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 11.9%; O, Audit"
+},
+{
+"name": "Pi",
+"cat": "AI",
+"pkgs": [
+"pi-coding-agent-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes (the user uses it)",
+"pop": "pkgstats 0.4%; O, Audit"
+},
+{
+"name": "T3 Code",
+"cat": "AI",
+"pkgs": [
+"t3code-bin"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "none (Omarchy uses the self-updating AppImage instead)",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes (the user uses it)",
+"pop": "pkgstats 0.5%; O, Audit"
+},
+{
+"name": "Claude Desktop",
+"cat": "AI",
+"pkgs": [
+"claude-desktop"
+],
+"repo": [
+"cachyos",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 2.8%; O"
+},
+{
+"name": "Codex Desktop",
+"cat": "AI",
+"pkgs": [
+"openai-codex-desktop"
+],
+"repo": [
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 0.3%; O"
+},
+{
+"name": "LM Studio",
+"cat": "AI",
+"pkgs": [
+"lmstudio-bin"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 2%; O"
+},
+{
+"name": "Ollama",
+"cat": "AI",
+"pkgs": [
+"ollama-cuda"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "`systemctl enable --now ollama.service`",
+"sources": [
+"CachyOS",
+"Linutil",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats ollama 15.2%, cuda 3.7%; O, C"
+},
+{
+"name": "CUDA/ROCm AI SDK",
+"cat": "AI",
+"pkgs": [
+"nvidia-ai-sdk",
+"cuda",
+"cudnn",
+"nccl",
+"python-pytorch-opt-cuda",
+"\u2026"
+],
+"repo": [],
+"setup": "",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "several GB; install by hand",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Firefox",
+"cat": "Browsers",
+"pkgs": [
+"firefox"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "policies file (Omarchy)",
+"sources": [
+"CachyOS",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Omarchy",
+"Ubuntu"
+],
+"n": 8,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Chromium",
+"cat": "Browsers",
+"pkgs": [
+"chromium"
+],
+"repo": [
+"extra"
+],
+"setup": "policy dir plus theme",
+"sources": [
+"CachyOS",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Omarchy",
+"Pop!_OS",
+"Ubuntu"
+],
+"n": 9,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Google Chrome",
+"cat": "Browsers",
+"pkgs": [
+"google-chrome"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "policy dir plus theme",
+"sources": [
+"Fedora",
+"Flathub",
+"Linutil",
+"Omarchy"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Brave",
+"cat": "Browsers",
+"pkgs": [
+"brave-bin"
+],
+"repo": [
+"cachyos",
+"omarchy"
+],
+"setup": "policy dir, theme, Widevine link",
+"sources": [
+"CachyOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Omarchy",
+"You use it"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Zen",
+"cat": "Browsers",
+"pkgs": [
+"zen-browser-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"omarchy"
+],
+"setup": "policies file",
+"sources": [
+"Flathub",
+"Linutil",
+"Omarchy"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Microsoft Edge",
+"cat": "Browsers",
+"pkgs": [
+"microsoft-edge-stable-bin"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "policy dir plus theme",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Helium",
+"cat": "Browsers",
+"pkgs": [
+"helium-browser-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Linutil",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Vivaldi",
+"cat": "Browsers",
+"pkgs": [
+"vivaldi"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"EndeavourOS",
+"Garuda",
+"Linutil",
+"Manjaro"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mullvad Browser",
+"cat": "Browsers",
+"pkgs": [
+"mullvad-browser-bin"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Tor Browser",
+"cat": "Browsers",
+"pkgs": [
+"torbrowser-launcher"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"EndeavourOS",
+"Garuda",
+"Linutil"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ungoogled-chromium",
+"cat": "Browsers",
+"pkgs": [
+"ungoogled-chromium-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Floorp",
+"cat": "Browsers",
+"pkgs": [
+"floorp-bin"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "LibreWolf",
+"cat": "Browsers",
+"pkgs": [
+"librewolf-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra",
+"missing"
+],
+"setup": "\u2014",
+"sources": [
+"CachyOS",
+"Flathub",
+"Garuda",
+"Linutil"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Signal",
+"cat": "Chat & email",
+"pkgs": [
+"signal-desktop"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Garuda",
+"Linutil",
+"Mint",
+"Omarchy",
+"Pop!_OS",
+"Ubuntu"
+],
+"n": 7,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Discord / Vesktop",
+"cat": "Chat & email",
+"pkgs": [
+"discord"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"CachyOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Mint",
+"Ubuntu",
+"You use it"
+],
+"n": 7,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Telegram",
+"cat": "Chat & email",
+"pkgs": [
+"telegram-desktop"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint",
+"Pop!_OS"
+],
+"n": 8,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Element",
+"cat": "Chat & email",
+"pkgs": [
+"element-desktop"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"CachyOS",
+"Garuda",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Slack",
+"cat": "Chat & email",
+"pkgs": [
+"slack-desktop"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda",
+"Linutil",
+"Mint",
+"Omarchy",
+"Pop!_OS",
+"Ubuntu"
+],
+"n": 7,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Zoom",
+"cat": "Chat & email",
+"pkgs": [
+"zoom"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil",
+"Mint",
+"Omarchy"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Thunderbird",
+"cat": "Chat & email",
+"pkgs": [
+"thunderbird"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"CachyOS",
+"EndeavourOS",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Ubuntu"
+],
+"n": 7,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Proton Mail",
+"cat": "Chat & email",
+"pkgs": [
+"proton-mail-bin"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bridge",
+"cat": "Chat & email",
+"pkgs": [
+"protonmail-bridge"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Proton Pass",
+"cat": "Passwords & security",
+"pkgs": [
+"proton-pass"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "1Password",
+"cat": "Passwords & security",
+"pkgs": [
+"1password",
+"1password-cli"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "Chromium external-extension JSON (Omarchy)",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bitwarden",
+"cat": "Passwords & security",
+"pkgs": [
+"bitwarden"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Flathub",
+"Manjaro",
+"Mint",
+"Omarchy"
+],
+"n": 6,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KeePassXC",
+"cat": "Passwords & security",
+"pkgs": [
+"keepassxc"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Garuda",
+"Manjaro",
+"Omarchy"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Proton VPN",
+"cat": "Chat & email",
+"pkgs": [
+"proton-vpn-gtk-app"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Flathub"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mullvad VPN",
+"cat": "Chat & email",
+"pkgs": [
+"mullvad-vpn"
+],
+"repo": [
+"extra"
+],
+"setup": "enable the daemon (I could not read the unit name from the file list; check `pacman -Ql mullvad-vpn`)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "NordVPN",
+"cat": "Sync & remote",
+"pkgs": [
+"nordvpn-bin"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "`nordvpnd`, `nordvpn` group, reboot",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "WireGuard tools",
+"cat": "Chat & email",
+"pkgs": [
+"wireguard-tools"
+],
+"repo": [
+"extra"
+],
+"setup": "none (NetworkManager imports configs)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Tailscale",
+"cat": "Sync & remote",
+"pkgs": [
+"tailscale",
+"trayscale",
+"ktailctl"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "`tailscaled`, `tailscale up`, operator, ufw on `tailscale0`",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Syncthing",
+"cat": "Sync & remote",
+"pkgs": [
+"syncthing",
+"syncthingtray"
+],
+"repo": [
+"extra"
+],
+"setup": "user service, ufw profile `syncthing` on trusted networks, admin web app",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Nextcloud client",
+"cat": "Sync & remote",
+"pkgs": [
+"nextcloud-client"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dropbox",
+"cat": "Sync & remote",
+"pkgs": [
+"dropbox",
+"dropbox-cli"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "start the daemon; tray",
+"sources": [
+"Mint",
+"Omarchy"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "RustDesk",
+"cat": "Sync & remote",
+"pkgs": [
+"rustdesk"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "none (client use)",
+"sources": [
+"Bazzite",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Remmina",
+"cat": "Sync & remote",
+"pkgs": [
+"remmina"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Garuda",
+"Ubuntu"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FileZilla",
+"cat": "Sync & remote",
+"pkgs": [
+"filezilla"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"Garuda",
+"Manjaro",
+"Mint"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Backup tools",
+"cat": "Sync & remote",
+"pkgs": [
+"restic",
+"borg",
+"rclone",
+"pika-backup",
+"vorta",
+"kopia"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "none, or the planned phase-7 NAS backup feature",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenRGB",
+"cat": "Utilities",
+"pkgs": [
+"openrgb",
+"i2c-tools"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "The package ships `60-openrgb.rules`, `modules-load.d/openrgb.conf` (`i2c-dev`) and `openrgb.service`. The script reloads udev, loads `i2c-dev` now, and optionally enables the server for boot-time profiles",
+"sources": [
+"Bazzite",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ckb-next (Corsair)",
+"cat": "Utilities",
+"pkgs": [
+"ckb-next"
+],
+"repo": [
+"extra"
+],
+"setup": "`ckb-next-daemon.service`",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "CoolerControl",
+"cat": "Utilities",
+"pkgs": [
+"coolercontrol",
+"coolercontrold"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "`coolercontrold.service`",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "LACT (GPU control)",
+"cat": "Utilities",
+"pkgs": [
+"lact"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "`lactd.service`",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "liquidctl",
+"cat": "Utilities",
+"pkgs": [
+"liquidctl"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "nvtop",
+"cat": "Utilities",
+"pkgs": [
+"nvtop"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Piper (gaming mice)",
+"cat": "Utilities",
+"pkgs": [
+"piper"
+],
+"repo": [
+"extra"
+],
+"setup": "none (`ratbagd` starts on demand over D-Bus)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Solaar (Logitech)",
+"cat": "Utilities",
+"pkgs": [
+"solaar"
+],
+"repo": [
+"extra"
+],
+"setup": "none (udev rules shipped)",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenCL on NVIDIA",
+"cat": "Utilities",
+"pkgs": [
+"opencl-nvidia",
+"lib32-opencl-nvidia"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Audio mixer",
+"cat": "Utilities",
+"pkgs": [
+"pavucontrol"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Disk usage",
+"cat": "Utilities",
+"pkgs": [
+"baobab"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ananicy-cpp",
+"cat": "System features",
+"pkgs": [
+"ananicy-cpp",
+"cachyos-ananicy-rules"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "`ananicy-cpp.service`. The CachyOS wiki says not to combine it with GameMode",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Profile-sync-daemon",
+"cat": "System features",
+"pkgs": [
+"profile-sync-daemon"
+],
+"repo": [
+"extra"
+],
+"setup": "user `psd.service`; browser profiles in RAM",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "bpftune",
+"cat": "System features",
+"pkgs": [
+"bpftune-git"
+],
+"repo": [
+"cachyos"
+],
+"setup": "`bpftune.service`",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "sched-ext schedulers",
+"cat": "System features",
+"pkgs": [
+"scx-scheds",
+"scx-tools",
+"scx-manager"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "`scx_loader.service` plus `/etc/scx_loader.toml`",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "VRAM management",
+"cat": "System features",
+"pkgs": [
+"dmemcg-booster",
+"plasma-foreground-booster"
+],
+"repo": [
+"cachyos"
+],
+"setup": "service",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "experimental, and the booster half is Plasma-only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Encrypted DNS",
+"cat": "System features",
+"pkgs": [],
+"repo": [],
+"setup": "a resolved drop-in",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "`cachyos-settings`",
+"cat": "System features",
+"pkgs": [],
+"repo": [],
+"setup": "\u2014",
+"sources": [
+"CachyOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Nerd Fonts (Cascadia, Meslo, Fira Code, Victor, Bitstream Vera, Iosevka)",
+"cat": "Utilities",
+"pkgs": [
+"ttf-{cascadia-mono,meslo,firacode,victor-mono,bitstream-vera-mono,iosevka}-nerd"
+],
+"repo": [
+"extra"
+],
+"setup": "optionally `karchy-font-set`",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Liberation / MS core fonts",
+"cat": "Utilities",
+"pkgs": [
+"ttf-liberation"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"CachyOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "kitty",
+"cat": "Utilities",
+"pkgs": [
+"kitty"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "optionally set as default (`karchy-default-terminal`)",
+"sources": [
+"Linutil",
+"Omarchy",
+"You use it"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Alacritty",
+"cat": "Utilities",
+"pkgs": [
+"alacritty"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "optionally set as default (`karchy-default-terminal`)",
+"sources": [
+"Linutil",
+"Omarchy",
+"Pop!_OS",
+"You use it"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ghostty",
+"cat": "Utilities",
+"pkgs": [
+"ghostty"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "optionally set as default (`karchy-default-terminal`)",
+"sources": [
+"Linutil",
+"Omarchy",
+"You use it"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "WezTerm",
+"cat": "Utilities",
+"pkgs": [
+"wezterm"
+],
+"repo": [
+"extra"
+],
+"setup": "optionally set as default (`karchy-default-terminal`)",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Flatpak + Flathub",
+"cat": "System features",
+"pkgs": [
+"flatpak",
+"flatseal",
+"warehouse"
+],
+"repo": [
+"cachyos",
+"extra",
+"flatpak"
+],
+"setup": "Check the Flathub remote, relogin for XDG_DATA_DIRS, GTK theme override",
+"sources": [
+"Linutil",
+"Omarchy",
+"You use it"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Web apps",
+"cat": "System features",
+"pkgs": [
+"karchy-webapp-install"
+],
+"repo": [],
+"setup": "writes a `.desktop` file plus icon; remove with `karchy-webapp-remove`",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SSH server",
+"cat": "System features",
+"pkgs": [
+"karchy-setup-security-sshd"
+],
+"repo": [],
+"setup": "\u2014",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Brave Origin",
+"cat": "Browsers",
+"pkgs": [
+"brave-origin-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Lynx",
+"cat": "Browsers",
+"pkgs": [
+"lynx"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Thorium",
+"cat": "Browsers",
+"pkgs": [
+"thorium-browser-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "waterfox",
+"cat": "Browsers",
+"pkgs": [
+"waterfox-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Vesktop (Discord menu choice 2)",
+"cat": "Chat & email",
+"pkgs": [
+"vesktop-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Equibop (Discord menu choice 3)",
+"cat": "Chat & email",
+"pkgs": [
+"equibop-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Jitsi",
+"cat": "Chat & email",
+"pkgs": [
+"jitsi-meet-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ZapZap",
+"cat": "Chat & email",
+"pkgs": [
+"zapzap"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ardour",
+"cat": "Media & creative",
+"pkgs": [
+"ardour"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda",
+"Linutil"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Audacity",
+"cat": "Media & creative",
+"pkgs": [
+"audacity"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Blender",
+"cat": "Media & creative",
+"pkgs": [
+"blender"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint",
+"Ubuntu"
+],
+"n": 6,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Darktable",
+"cat": "Media & creative",
+"pkgs": [
+"darktable"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNU Image Manipulation Program (GIMP)",
+"cat": "Media & creative",
+"pkgs": [
+"gimp"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint"
+],
+"n": 7,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Handbrake",
+"cat": "Media & creative",
+"pkgs": [
+"handbrake"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Inkscape",
+"cat": "Media & creative",
+"pkgs": [
+"inkscape"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint"
+],
+"n": 6,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Krita",
+"cat": "Media & creative",
+"pkgs": [
+"krita"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Garuda",
+"Linutil",
+"Manjaro"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MyPaint",
+"cat": "Media & creative",
+"pkgs": [
+"mypaint"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Natron",
+"cat": "Media & creative",
+"pkgs": [
+"fr.natron.natron"
+],
+"repo": [
+"aur",
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OBS Studio",
+"cat": "Media & creative",
+"pkgs": [
+"obs-studio"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint"
+],
+"n": 6,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Olive",
+"cat": "Media & creative",
+"pkgs": [
+"olive"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenShot",
+"cat": "Media & creative",
+"pkgs": [
+"openshot"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Pinta",
+"cat": "Media & creative",
+"pkgs": [
+"pinta"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Linutil",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Scribus",
+"cat": "Media & creative",
+"pkgs": [
+"scribus"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Synfig Studio",
+"cat": "Media & creative",
+"pkgs": [
+"synfigstudio"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Tenacity",
+"cat": "Media & creative",
+"pkgs": [
+"tenacity"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GitHub Desktop",
+"cat": "Developer tools",
+"pkgs": [
+"github-desktop-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats -bin 1.35%, repo 0.9%"
+},
+{
+"name": "ngrok",
+"cat": "Cloud & containers",
+"pkgs": [
+"ngrok"
+],
+"repo": [
+"aur"
+],
+"setup": "`ngrok config add-authtoken`",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 2.4%"
+},
+{
+"name": "VS Code (Microsoft build)",
+"cat": "Editors & IDEs",
+"pkgs": [
+"visual-studio-code-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra",
+"omarchy"
+],
+"setup": "in base (karchy-desktop)",
+"sources": [
+"Dev surveys",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Mint",
+"Pop!_OS",
+"Ubuntu",
+"You use it"
+],
+"n": 8,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "SO25 75.9% (top IDE); pkgstats 19.4%; Audit (28 extensions)"
+},
+{
+"name": "VSCodium",
+"cat": "Editors & IDEs",
+"pkgs": [
+"vscodium-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "none (Open VSX)",
+"sources": [
+"Dev surveys",
+"Garuda",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 6.2%; pkgstats -bin 5.1%, repo 2.4%"
+},
+{
+"name": "FreeOffice",
+"cat": "Office & notes",
+"pkgs": [
+"freeoffice"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "LibreOffice",
+"cat": "Office & notes",
+"pkgs": [
+"libreoffice-fresh"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro",
+"Ubuntu"
+],
+"n": 7,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OnlyOffice",
+"cat": "Office & notes",
+"pkgs": [
+"onlyoffice-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Garuda",
+"Linutil",
+"Manjaro"
+],
+"n": 5,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "WPS Office",
+"cat": "Office & notes",
+"pkgs": [
+"wps-office"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Evince",
+"cat": "Office & notes",
+"pkgs": [
+"evince"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora",
+"Linutil",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Okular",
+"cat": "Office & notes",
+"pkgs": [
+"okular"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Linutil",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PDF Studio",
+"cat": "Office & notes",
+"pkgs": [],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PDF Studio Viewer",
+"cat": "Office & notes",
+"pkgs": [],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bash Prompt (mybash)",
+"cat": "Utilities",
+"pkgs": [
+"bash",
+"bash-completion",
+"tar",
+"bat",
+"tree",
+"unzip"
+],
+"repo": [
+"core",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dank Shell",
+"cat": "Utilities",
+"pkgs": [
+"dux-shell",
+"dms-shell"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Fastfetch",
+"cat": "Utilities",
+"pkgs": [
+"fastfetch"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Noctalia Shell",
+"cat": "Utilities",
+"pkgs": [
+"noctalia-shell",
+"noctalia-qs"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Podman-compose",
+"cat": "Utilities",
+"pkgs": [
+"podman-compose"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Rofi",
+"cat": "Utilities",
+"pkgs": [
+"rofi"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Shelly",
+"cat": "Utilities",
+"pkgs": [
+"shelly"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ZSH Prompt",
+"cat": "Utilities",
+"pkgs": [
+"zsh"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "RetroArch Cores",
+"cat": "Gaming",
+"pkgs": [
+"libretro-beetle-psx",
+"libretro-play",
+"libretro-ppsspp",
+"libretro-nestopia",
+"libretro-mesen",
+"libretro-mgba"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "bsnes",
+"cat": "Gaming",
+"pkgs": [
+"bsnes-hd"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dolphin Emulator",
+"cat": "Gaming",
+"pkgs": [
+"dolphin-emu"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Linutil"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gopher 64",
+"cat": "Gaming",
+"pkgs": [
+"gopher64"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MelonDS",
+"cat": "Gaming",
+"pkgs": [
+"melonds-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Lua",
+"cat": "Languages",
+"pkgs": [
+"lua",
+"mgba-qt"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "`~/.luarocks/bin` for `luarocks --local`",
+"sources": [
+"Bazzite",
+"Dev surveys",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Lua 9.2%; pkgstats luarocks 15%, lua-language-server 7.2%"
+},
+{
+"name": "Mupen 64 Plus",
+"cat": "Gaming",
+"pkgs": [
+"mupen64plus"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ryujinx",
+"cat": "Gaming",
+"pkgs": [
+"ryujinx"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "snes9x",
+"cat": "Gaming",
+"pkgs": [
+"snes9x-gtk"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PCSX2",
+"cat": "Gaming",
+"pkgs": [
+"pcsx2"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Play!",
+"cat": "Gaming",
+"pkgs": [
+"org.purei.Play"
+],
+"repo": [
+"aur",
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "RPCS3",
+"cat": "Gaming",
+"pkgs": [
+"rpcs3-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Blastem",
+"cat": "Gaming",
+"pkgs": [
+"blastem"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Flycast",
+"cat": "Gaming",
+"pkgs": [
+"flycast"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kronos",
+"cat": "Gaming",
+"pkgs": [
+"kronos"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "XEMU",
+"cat": "Gaming",
+"pkgs": [
+"xemu-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xenia",
+"cat": "Gaming",
+"pkgs": [
+"xenia-canary-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Auto CPU Frequency",
+"cat": "Utilities",
+"pkgs": [
+"auto-cpufreq"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ProtonPlus",
+"cat": "Gaming",
+"pkgs": [
+"protonplus",
+"protonplus-bin"
+],
+"repo": [
+"aur",
+"cachyos",
+"flatpak",
+"missing"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Linutil"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Waydroid",
+"cat": "System features",
+"pkgs": [
+"waydroid",
+"dkms",
+"<kernel>-headers",
+"binder_linux-dkms"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Linutil"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "CUPS",
+"cat": "Utilities",
+"pkgs": [
+"cups"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Epson printer drivers",
+"cat": "Utilities",
+"pkgs": [
+"epson-inkjet-printer-escpr"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "HP printer drivers",
+"cat": "Utilities",
+"pkgs": [
+"hplip"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bluetooth Manager",
+"cat": "Utilities",
+"pkgs": [
+"bluez",
+"bluez-utils"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ramalama",
+"cat": "Utilities",
+"pkgs": [
+"ramalama"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SSH Samba",
+"cat": "Utilities",
+"pkgs": [
+"openssh",
+"samba"
+],
+"repo": [
+"cachyos",
+"core",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Timeshift Backup",
+"cat": "System features",
+"pkgs": [
+"timeshift"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil",
+"Manjaro",
+"Mint"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "WiFi Manager",
+"cat": "Utilities",
+"pkgs": [
+"networkmanager"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Linutil"
+],
+"n": 1,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "VLC",
+"cat": "Media & creative",
+"pkgs": [
+"vlc"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Manjaro",
+"Mint"
+],
+"n": 6,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "qBittorrent",
+"cat": "Sync & remote",
+"pkgs": [
+"qbittorrent"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Flathub",
+"Garuda",
+"Manjaro",
+"Mint"
+],
+"n": 6,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Builder",
+"cat": "Editors & IDEs",
+"pkgs": [
+"gnome-builder"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora",
+"Garuda",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Audacious",
+"cat": "Media & creative",
+"pkgs": [
+"audacious"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Spotify",
+"cat": "Media & creative",
+"pkgs": [
+"spotify"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Mint",
+"Pop!_OS"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Strawberry",
+"cat": "Media & creative",
+"pkgs": [
+"strawberry"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Evolution",
+"cat": "Chat & email",
+"pkgs": [
+"evolution"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora",
+"Garuda",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Geary",
+"cat": "Chat & email",
+"pkgs": [
+"geary"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora",
+"Garuda",
+"Manjaro"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Virtual Machine Manager",
+"cat": "System features",
+"pkgs": [
+"virt-manager"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda",
+"Manjaro",
+"Pop!_OS"
+],
+"n": 4,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Falkon",
+"cat": "Browsers",
+"pkgs": [
+"falkon"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Fractal (Matrix)",
+"cat": "Chat & email",
+"pkgs": [
+"fractal"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Pidgin",
+"cat": "Chat & email",
+"pkgs": [
+"pidgin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"EndeavourOS",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Postman",
+"cat": "Databases & APIs",
+"pkgs": [
+"postman-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "none (account)",
+"sources": [
+"Garuda",
+"Pop!_OS",
+"Ubuntu"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes",
+"pop": "pkgstats 3.4%"
+},
+{
+"name": "GNOME Photos",
+"cat": "Media & creative",
+"pkgs": [
+"gnome-photos"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Lollypop",
+"cat": "Media & creative",
+"pkgs": [
+"lollypop"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Shotwell",
+"cat": "Media & creative",
+"pkgs": [
+"shotwell"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro",
+"Ubuntu"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SMPlayer",
+"cat": "Media & creative",
+"pkgs": [
+"smplayer"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Totem (GNOME Videos)",
+"cat": "Media & creative",
+"pkgs": [
+"totem"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KMail",
+"cat": "Chat & email",
+"pkgs": [
+"kmail"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Obsidian",
+"cat": "Office & notes",
+"pkgs": [
+"obsidian"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub",
+"Garuda"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Deluge",
+"cat": "Sync & remote",
+"pkgs": [
+"deluge-gtk"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda",
+"Manjaro"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Transmission",
+"cat": "Sync & remote",
+"pkgs": [
+"transmission-gtk"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro",
+"Ubuntu"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Deja Dup",
+"cat": "System features",
+"pkgs": [
+"deja-dup"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora",
+"Manjaro",
+"Pop!_OS"
+],
+"n": 3,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Konqueror",
+"cat": "Browsers",
+"pkgs": [
+"konqueror"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "HexChat",
+"cat": "Chat & email",
+"pkgs": [
+"hexchat"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mumble",
+"cat": "Chat & email",
+"pkgs": [
+"mumble"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "NeoChat",
+"cat": "Chat & email",
+"pkgs": [
+"neochat"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Polari",
+"cat": "Chat & email",
+"pkgs": [
+"polari"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Fedora"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Teams for Linux",
+"cat": "Chat & email",
+"pkgs": [
+"teams-for-linux"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "IntelliJ IDEA",
+"cat": "Editors & IDEs",
+"pkgs": [
+"intellij-idea-oss"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 27.1%; JB25; pkgstats community 2.9%, ultimate 1.5%"
+},
+{
+"name": "KDevelop",
+"cat": "Utilities",
+"pkgs": [
+"kdevelop"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "NetBeans",
+"cat": "Editors & IDEs",
+"pkgs": [
+"netbeans"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "Skip (low use)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (low use)",
+"pop": "pkgstats 0.9%"
+},
+{
+"name": "PyCharm",
+"cat": "Editors & IDEs",
+"pkgs": [
+"pycharm-community-edition"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 15%; pkgstats repo 2.9%, AUR 0.9%; C"
+},
+{
+"name": "Qt Creator",
+"cat": "Editors & IDEs",
+"pkgs": [
+"qtcreator"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 7%; C"
+},
+{
+"name": "FeatherPad",
+"cat": "Editors & IDEs",
+"pkgs": [
+"featherpad"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "gedit",
+"cat": "Editors & IDEs",
+"pkgs": [
+"gedit"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Vim / GVim",
+"cat": "Editors & IDEs",
+"pkgs": [
+"gvim"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xed",
+"cat": "Editors & IDEs",
+"pkgs": [
+"xed"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "0 A.D.",
+"cat": "Gaming",
+"pkgs": [
+"0ad"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Ubuntu"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "AisleRiot",
+"cat": "Gaming",
+"pkgs": [
+"aisleriot"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PPSSPP",
+"cat": "Gaming",
+"pkgs": [
+"ppsspp"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Sober (Roblox)",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub"
+],
+"n": 2,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Space Cadet Pinball",
+"cat": "Gaming",
+"pkgs": [
+"spacecadetpinball-git"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SuperTux",
+"cat": "Gaming",
+"pkgs": [
+"supertux"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SuperTuxKart",
+"cat": "Gaming",
+"pkgs": [
+"supertuxkart"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Amberol",
+"cat": "Media & creative",
+"pkgs": [
+"amberol"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Fedora"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Baka MPlayer",
+"cat": "Media & creative",
+"pkgs": [
+"baka-mplayer"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "digiKam",
+"cat": "Media & creative",
+"pkgs": [
+"digikam"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Elisa",
+"cat": "Media & creative",
+"pkgs": [
+"elisa"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Eye of GNOME",
+"cat": "Media & creative",
+"pkgs": [
+"eog"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Flowblade",
+"cat": "Media & creative",
+"pkgs": [
+"flowblade"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "gThumb",
+"cat": "Media & creative",
+"pkgs": [
+"gthumb"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kdenlive",
+"cat": "Media & creative",
+"pkgs": [
+"kdenlive"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KiCad",
+"cat": "Media & creative",
+"pkgs": [
+"kicad"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Flathub",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kodi",
+"cat": "Media & creative",
+"pkgs": [
+"kodi"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KolourPaint",
+"cat": "Media & creative",
+"pkgs": [
+"kolourpaint"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Rhythmbox",
+"cat": "Media & creative",
+"pkgs": [
+"rhythmbox"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ristretto",
+"cat": "Media & creative",
+"pkgs": [
+"ristretto"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Shortwave (radio)",
+"cat": "Media & creative",
+"pkgs": [
+"shortwave"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Shotcut",
+"cat": "Media & creative",
+"pkgs": [
+"shotcut"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "calibre",
+"cat": "Office & notes",
+"pkgs": [
+"calibre"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro",
+"Mint"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Calligra",
+"cat": "Office & notes",
+"pkgs": [
+"calligra"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Claws Mail",
+"cat": "Office & notes",
+"pkgs": [
+"claws-mail"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Calendar",
+"cat": "Office & notes",
+"pkgs": [
+"gnome-calendar"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora",
+"Ubuntu"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GnuCash",
+"cat": "Office & notes",
+"pkgs": [
+"gnucash"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gnumeric",
+"cat": "Office & notes",
+"pkgs": [
+"gnumeric"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "HomeBank",
+"cat": "Office & notes",
+"pkgs": [
+"homebank"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KMyMoney",
+"cat": "Office & notes",
+"pkgs": [
+"kmymoney"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Skrooge",
+"cat": "Office & notes",
+"pkgs": [
+"skrooge"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Todoist",
+"cat": "Office & notes",
+"pkgs": [
+"todoist-appimage"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Mint",
+"Ubuntu"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xreader",
+"cat": "Office & notes",
+"pkgs": [
+"xreader"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gufw",
+"cat": "Passwords & security",
+"pkgs": [
+"gufw"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Mint"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Syncthing GUI (syncthing-gtk / SyncThingy)",
+"cat": "Sync & remote",
+"pkgs": [
+"syncthing-gtk"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Warp",
+"cat": "Sync & remote",
+"pkgs": [
+"warp"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Fedora"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bazaar (Flatpak store)",
+"cat": "System features",
+"pkgs": [
+"bazaar"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Flathub",
+"Garuda"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GParted",
+"cat": "System features",
+"pkgs": [
+"gparted"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS",
+"Manjaro"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Boatswain (Stream Deck)",
+"cat": "Utilities",
+"pkgs": [
+"boatswain"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Fedora"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gear Lever",
+"cat": "Utilities",
+"pkgs": [
+"gearlever"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite",
+"Flathub"
+],
+"n": 2,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FireDragon",
+"cat": "Browsers",
+"pkgs": [
+"firedragon"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Firefox ESR",
+"cat": "Browsers",
+"pkgs": [
+"firefox-esr"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Web (Epiphany)",
+"cat": "Browsers",
+"pkgs": [
+"epiphany"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "qutebrowser",
+"cat": "Browsers",
+"pkgs": [
+"qutebrowser"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Halloy (IRC)",
+"cat": "Chat & email",
+"pkgs": [
+"halloy"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Jitsi Meet",
+"cat": "Chat & email",
+"pkgs": [
+"jitsi-meet-desktop"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Konversation",
+"cat": "Chat & email",
+"pkgs": [
+"konversation"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mattermost",
+"cat": "Chat & email",
+"pkgs": [
+"mattermost-desktop"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Pop!_OS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Streamlink Twitch GUI",
+"cat": "Chat & email",
+"pkgs": [
+"streamlink-twitch-gui-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "TeamSpeak",
+"cat": "Chat & email",
+"pkgs": [
+"teamspeak"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Whatsie (WhatsApp client)",
+"cat": "Chat & email",
+"pkgs": [
+"whatsie"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Mint"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Wire",
+"cat": "Chat & email",
+"pkgs": [
+"wire-desktop"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Arduino IDE 2",
+"cat": "Utilities",
+"pkgs": [
+"arduino-ide-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Commit (message editor)",
+"cat": "Utilities",
+"pkgs": [
+"commit"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "DBeaver",
+"cat": "Databases & APIs",
+"pkgs": [
+"dbeaver"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "none (pulls java-runtime>=21)",
+"sources": [
+"Pop!_OS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 7.5%"
+},
+{
+"name": "Defold",
+"cat": "Utilities",
+"pkgs": [
+"defold-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Elastic",
+"cat": "Utilities",
+"pkgs": [
+"elastic"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Emblem",
+"cat": "Utilities",
+"pkgs": [
+"emblem"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Forge Sparks",
+"cat": "Utilities",
+"pkgs": [
+"forge-sparks"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gaphor",
+"cat": "Utilities",
+"pkgs": [
+"gaphor"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Geany",
+"cat": "Utilities",
+"pkgs": [
+"geany"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GHex",
+"cat": "Utilities",
+"pkgs": [
+"ghex"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GitKraken",
+"cat": "Developer tools",
+"pkgs": [
+"gitkraken"
+],
+"repo": [
+"aur"
+],
+"setup": "none (account; private repos need a paid plan)",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.8%"
+},
+{
+"name": "Lorem",
+"cat": "Utilities",
+"pkgs": [
+"lorem"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PhpStorm",
+"cat": "Editors & IDEs",
+"pkgs": [
+"phpstorm"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "SO25 5.8%; pkgstats 0.4%"
+},
+{
+"name": "Share Preview",
+"cat": "Utilities",
+"pkgs": [
+"share-preview"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Text Pieces",
+"cat": "Utilities",
+"pkgs": [
+"textpieces"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Webfont Kit Generator",
+"cat": "Utilities",
+"pkgs": [
+"webfont-kit-generator"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Workbench",
+"cat": "Utilities",
+"pkgs": [
+"workbench"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Apostrophe (Markdown)",
+"cat": "Editors & IDEs",
+"pkgs": [
+"apostrophe"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kate",
+"cat": "Editors & IDEs",
+"pkgs": [
+"kate"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "none (pulls KDE Frameworks)",
+"sources": [
+"EndeavourOS",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 36%; Audit (text/plain default on the old machine)"
+},
+{
+"name": "L3afpad",
+"cat": "Editors & IDEs",
+"pkgs": [
+"l3afpad"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "micro",
+"cat": "Editors & IDEs",
+"pkgs": [
+"micro"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "in base",
+"sources": [
+"Dev surveys",
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "SO25 Nano 12.2% (closest analogue); pkgstats 13.2%"
+},
+{
+"name": "Mousepad",
+"cat": "Editors & IDEs",
+"pkgs": [
+"mousepad"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Pluma",
+"cat": "Editors & IDEs",
+"pkgs": [
+"pluma"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Boxflat",
+"cat": "Gaming",
+"pkgs": [
+"boxflat-git"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Boxtron",
+"cat": "Gaming",
+"pkgs": [
+"boxtron"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Cartridges",
+"cat": "Gaming",
+"pkgs": [
+"cartridges"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Cemu",
+"cat": "Gaming",
+"pkgs": [
+"cemu"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Chess Clock",
+"cat": "Gaming",
+"pkgs": [
+"chess-clock"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Decky Loader",
+"cat": "Gaming",
+"pkgs": [
+"decky-loader-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Discover Overlay",
+"cat": "Gaming",
+"pkgs": [
+"discover-overlay"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "DOSBox Staging",
+"cat": "Gaming",
+"pkgs": [
+"dosbox-staging"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "doukutsu-rs",
+"cat": "Gaming",
+"pkgs": [
+"doukutsu-rs-git"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dr. Robotnik's Ring Racers",
+"cat": "Gaming",
+"pkgs": [
+"ringracers"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "EmuDeck",
+"cat": "Gaming",
+"pkgs": [
+"emudeck-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Epic Games Launcher",
+"cat": "Gaming",
+"pkgs": [
+"epic-games-launcher-bin"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ET: Legacy",
+"cat": "Gaming",
+"pkgs": [
+"etlegacy"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Flips (patcher)",
+"cat": "Gaming",
+"pkgs": [
+"flips"
+],
+"repo": [
+"aur",
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GeForce Infinity",
+"cat": "Gaming",
+"pkgs": [
+"geforce-infinity"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Mahjongg",
+"cat": "Gaming",
+"pkgs": [
+"gnome-mahjongg"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Mines",
+"cat": "Gaming",
+"pkgs": [
+"gnome-mines"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Sudoku",
+"cat": "Gaming",
+"pkgs": [
+"gnome-sudoku"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Hedgewars",
+"cat": "Gaming",
+"pkgs": [
+"hedgewars"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "itch",
+"cat": "Gaming",
+"pkgs": [
+"itch-setup-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kapman",
+"cat": "Gaming",
+"pkgs": [
+"kapman"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KMahjongg",
+"cat": "Gaming",
+"pkgs": [
+"kmahjongg"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Knights",
+"cat": "Gaming",
+"pkgs": [
+"knights"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Limo (mod manager)",
+"cat": "Gaming",
+"pkgs": [
+"limo"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "lsfg-vk (Lossless Scaling frame gen)",
+"cat": "Gaming",
+"pkgs": [
+"lsfg-vk"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Luanti",
+"cat": "Gaming",
+"pkgs": [
+"luanti"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MAME",
+"cat": "Gaming",
+"pkgs": [
+"mame"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MangoJuice",
+"cat": "Gaming",
+"pkgs": [
+"mangojuice"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mari0",
+"cat": "Gaming",
+"pkgs": [
+"mari0"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mindustry",
+"cat": "Gaming",
+"pkgs": [
+"mindustry"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Minecraft Bedrock Launcher",
+"cat": "Gaming",
+"pkgs": [
+"mcpelauncher-ui-git"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Minecraft Launcher",
+"cat": "Gaming",
+"pkgs": [
+"minecraft-launcher"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Not Tetris 2",
+"cat": "Gaming",
+"pkgs": [
+"nottetris2"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenMW",
+"cat": "Gaming",
+"pkgs": [
+"openmw"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "osu!(lazer)",
+"cat": "Gaming",
+"pkgs": [
+"osu-lazer-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Oversteer",
+"cat": "Gaming",
+"pkgs": [
+"oversteer"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PokeMMO",
+"cat": "Gaming",
+"pkgs": [
+"pokemmo"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PrimeHack",
+"cat": "Gaming",
+"pkgs": [
+"dolphin-emu-primehack-git"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Raze",
+"cat": "Gaming",
+"pkgs": [
+"raze"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "RetroDECK",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ROTA",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ruffle",
+"cat": "Gaming",
+"pkgs": [
+"ruffle"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ScopeBuddy",
+"cat": "Gaming",
+"pkgs": [
+"scopebuddy"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ScummVM",
+"cat": "Gaming",
+"pkgs": [
+"scummvm"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Sonic Robo Blast 2",
+"cat": "Gaming",
+"pkgs": [
+"srb2"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SRB2Kart",
+"cat": "Gaming",
+"pkgs": [
+"srb2kart"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Steam Link",
+"cat": "Gaming",
+"pkgs": [
+"steamlink"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SteamCMD",
+"cat": "Gaming",
+"pkgs": [
+"steamcmd"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Stella",
+"cat": "Gaming",
+"pkgs": [
+"stella"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Supermodel",
+"cat": "Gaming",
+"pkgs": [
+"supermodel"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Teeworlds",
+"cat": "Gaming",
+"pkgs": [
+"teeworlds"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Threadbare",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "UZDoom",
+"cat": "Gaming",
+"pkgs": [
+"uzdoom"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Vintage Story",
+"cat": "Gaming",
+"pkgs": [
+"vintagestory"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Viper (Titanfall mod manager)",
+"cat": "Gaming",
+"pkgs": [
+"viper-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "WineZGUI",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Wolfenstein: Blade of Agony",
+"cat": "Gaming",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "XIVLauncher",
+"cat": "Gaming",
+"pkgs": [
+"xivlauncher"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xonotic",
+"cat": "Gaming",
+"pkgs": [
+"xonotic"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Audio Sharing",
+"cat": "Media & creative",
+"pkgs": [
+"audio-sharing"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "BirdFont",
+"cat": "Media & creative",
+"pkgs": [
+"birdfont"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bitwig Studio",
+"cat": "Media & creative",
+"pkgs": [
+"bitwig-studio"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Blanket",
+"cat": "Media & creative",
+"pkgs": [
+"blanket"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Brasero",
+"cat": "Media & creative",
+"pkgs": [
+"brasero"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Celluloid",
+"cat": "Media & creative",
+"pkgs": [
+"celluloid"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Cheese (webcam)",
+"cat": "Media & creative",
+"pkgs": [
+"cheese"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Ubuntu"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Converseen",
+"cat": "Media & creative",
+"pkgs": [
+"converseen"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Curtail",
+"cat": "Media & creative",
+"pkgs": [
+"curtail"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Decibels",
+"cat": "Media & creative",
+"pkgs": [
+"decibels"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dragon Player",
+"cat": "Media & creative",
+"pkgs": [
+"dragon"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ear Tag",
+"cat": "Media & creative",
+"pkgs": [
+"eartag"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "EasyEffects",
+"cat": "Media & creative",
+"pkgs": [
+"easyeffects"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "EasyTAG",
+"cat": "Media & creative",
+"pkgs": [
+"easytag"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Exhibit (3D viewer)",
+"cat": "Media & creative",
+"pkgs": [
+"exhibit"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FontForge",
+"cat": "Media & creative",
+"pkgs": [
+"fontforge"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FreeCAD",
+"cat": "Media & creative",
+"pkgs": [
+"freecad"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FreeTube",
+"cat": "Media & creative",
+"pkgs": [
+"freetube-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Mint"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Fretboard",
+"cat": "Media & creative",
+"pkgs": [
+"fretboard"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gapless (G4Music)",
+"cat": "Media & creative",
+"pkgs": [
+"gapless"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Geeqie",
+"cat": "Media & creative",
+"pkgs": [
+"geeqie"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Podcasts",
+"cat": "Media & creative",
+"pkgs": [
+"gnome-podcasts"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GPicView",
+"cat": "Media & creative",
+"pkgs": [
+"gpicview"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Gwenview",
+"cat": "Media & creative",
+"pkgs": [
+"gwenview"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Haruna",
+"cat": "Media & creative",
+"pkgs": [
+"haruna"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Hypnotix (IPTV)",
+"cat": "Media & creative",
+"pkgs": [
+"hypnotix"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Identity",
+"cat": "Media & creative",
+"pkgs": [
+"identity"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "JamesDSP",
+"cat": "Media & creative",
+"pkgs": [
+"jamesdsp"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Jellyfin Desktop",
+"cat": "Media & creative",
+"pkgs": [
+"jellyfin-desktop"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "K3b",
+"cat": "Media & creative",
+"pkgs": [
+"k3b"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kaffeine",
+"cat": "Media & creative",
+"pkgs": [
+"kaffeine"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kid3",
+"cat": "Media & creative",
+"pkgs": [
+"kid3-qt"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Komikku",
+"cat": "Media & creative",
+"pkgs": [
+"komikku"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Kwave",
+"cat": "Media & creative",
+"pkgs": [
+"kwave"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Letterpress",
+"cat": "Media & creative",
+"pkgs": [
+"letterpress"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "LibreCAD",
+"cat": "Media & creative",
+"pkgs": [
+"librecad"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "LMMS",
+"cat": "Media & creative",
+"pkgs": [
+"lmms"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Loupe",
+"cat": "Media & creative",
+"pkgs": [
+"loupe"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Luminance HDR",
+"cat": "Media & creative",
+"pkgs": [
+"luminancehdr"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MediaElch",
+"cat": "Media & creative",
+"pkgs": [
+"mediaelch"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mixxx",
+"cat": "Media & creative",
+"pkgs": [
+"mixxx"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mousai",
+"cat": "Media & creative",
+"pkgs": [
+"mousai"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "mpv",
+"cat": "Media & creative",
+"pkgs": [
+"mpv"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MuseScore",
+"cat": "Media & creative",
+"pkgs": [
+"musescore"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "MystiQ",
+"cat": "Media & creative",
+"pkgs": [
+"mystiq"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Nook (Animal Crossing music)",
+"cat": "Media & creative",
+"pkgs": [
+"nook-desktop-electron-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenToonz",
+"cat": "Media & creative",
+"pkgs": [
+"opentoonz"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Parole",
+"cat": "Media & creative",
+"pkgs": [
+"parole"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Peek (GIF recorder)",
+"cat": "Media & creative",
+"pkgs": [
+"peek"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Pop!_OS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Pencil2D",
+"cat": "Media & creative",
+"pkgs": [
+"pencil2d"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Photoflare",
+"cat": "Media & creative",
+"pkgs": [
+"photoflare"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Pitivi",
+"cat": "Media & creative",
+"pkgs": [
+"pitivi"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Plex Desktop",
+"cat": "Media & creative",
+"pkgs": [
+"plex-desktop"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Plexamp",
+"cat": "Media & creative",
+"pkgs": [
+"plexamp-appimage"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Qmmp",
+"cat": "Media & creative",
+"pkgs": [
+"qmmp"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Rapid Photo Downloader",
+"cat": "Media & creative",
+"pkgs": [
+"rapid-photo-downloader"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "RawTherapee",
+"cat": "Media & creative",
+"pkgs": [
+"rawtherapee"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Rosegarden",
+"cat": "Media & creative",
+"pkgs": [
+"rosegarden"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Showtime",
+"cat": "Media & creative",
+"pkgs": [
+"showtime"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SoundConverter",
+"cat": "Media & creative",
+"pkgs": [
+"soundconverter"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Stremio",
+"cat": "Media & creative",
+"pkgs": [
+"stremio"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Flathub"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Subtitle Composer",
+"cat": "Media & creative",
+"pkgs": [
+"subtitlecomposer"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Sweet Home 3D",
+"cat": "Media & creative",
+"pkgs": [
+"sweethome3d"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Switcheroo (image converter)",
+"cat": "Media & creative",
+"pkgs": [
+"switcheroo"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "TIDAL Hi-Fi",
+"cat": "Media & creative",
+"pkgs": [
+"tidal-hifi-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Transmageddon",
+"cat": "Media & creative",
+"pkgs": [
+"transmageddon"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "VacuumTube (YouTube TV)",
+"cat": "Media & creative",
+"pkgs": [
+"vacuumtube"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Video Trimmer",
+"cat": "Media & creative",
+"pkgs": [
+"video-trimmer"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "vokoscreenNG",
+"cat": "Media & creative",
+"pkgs": [
+"vokoscreen"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Wings 3D",
+"cat": "Media & creative",
+"pkgs": [
+"wings3d"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xfburn",
+"cat": "Media & creative",
+"pkgs": [
+"xfburn"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "AbiWord",
+"cat": "Office & notes",
+"pkgs": [
+"abiword"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Atril",
+"cat": "Office & notes",
+"pkgs": [
+"atril"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Bookworm",
+"cat": "Office & notes",
+"pkgs": [
+"bookworm"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Citations",
+"cat": "Office & notes",
+"pkgs": [
+"citations"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "CoolReader",
+"cat": "Office & notes",
+"pkgs": [
+"coolreader"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Endeavour (GNOME To Do)",
+"cat": "Office & notes",
+"pkgs": [
+"endeavour"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Errands",
+"cat": "Office & notes",
+"pkgs": [
+"errands"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FBReader",
+"cat": "Office & notes",
+"pkgs": [
+"fbreader"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "FeatherNotes",
+"cat": "Office & notes",
+"pkgs": [
+"feathernotes"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Foliate",
+"cat": "Office & notes",
+"pkgs": [
+"foliate"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GeoGebra",
+"cat": "Office & notes",
+"pkgs": [
+"geogebra"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Calculator",
+"cat": "Office & notes",
+"pkgs": [
+"gnome-calculator"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Contacts",
+"cat": "Office & notes",
+"pkgs": [
+"gnome-contacts"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Dictionary",
+"cat": "Office & notes",
+"pkgs": [
+"gnome-dictionary"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Notes",
+"cat": "Office & notes",
+"pkgs": [
+"gnome-notes"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNU Octave",
+"cat": "Office & notes",
+"pkgs": [
+"octave"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Graphs",
+"cat": "Office & notes",
+"pkgs": [
+"graphs"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Joplin",
+"cat": "Office & notes",
+"pkgs": [
+"joplin-desktop"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KAlgebra",
+"cat": "Office & notes",
+"pkgs": [
+"kalgebra"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KCalc",
+"cat": "Office & notes",
+"pkgs": [
+"kcalc"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Khronos (time log)",
+"cat": "Office & notes",
+"pkgs": [
+"khronos"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mailspring",
+"cat": "Office & notes",
+"pkgs": [
+"mailspring-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "NewsFlash (RSS)",
+"cat": "Office & notes",
+"pkgs": [
+"newsflash"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Papers",
+"cat": "Office & notes",
+"pkgs": [
+"papers"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Paperwork",
+"cat": "Office & notes",
+"pkgs": [
+"paperwork"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PDF Metadata Editor",
+"cat": "Office & notes",
+"pkgs": [
+"pdf-metadata-editor-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Plots",
+"cat": "Office & notes",
+"pkgs": [
+"plots"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SageMath",
+"cat": "Office & notes",
+"pkgs": [
+"sagemath"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Solanum (Pomodoro)",
+"cat": "Office & notes",
+"pkgs": [
+"solanum"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Standard Notes",
+"cat": "Office & notes",
+"pkgs": [
+"standardnotes-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Sylpheed",
+"cat": "Office & notes",
+"pkgs": [],
+"repo": [
+"missing"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "no package",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xournal++",
+"cat": "Office & notes",
+"pkgs": [
+"xournalpp"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Authenticator (2FA)",
+"cat": "Passwords & security",
+"pkgs": [
+"authenticator"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "ClamUI",
+"cat": "Passwords & security",
+"pkgs": [
+"clamui"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Enpass",
+"cat": "Passwords & security",
+"pkgs": [
+"enpass-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "firewalld (firewall-config)",
+"cat": "Passwords & security",
+"pkgs": [
+"firewalld"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KWalletManager",
+"cat": "Passwords & security",
+"pkgs": [
+"kwalletmanager"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Metadata Cleaner",
+"cat": "Passwords & security",
+"pkgs": [
+"metadata-cleaner"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Obfuscate",
+"cat": "Passwords & security",
+"pkgs": [
+"obfuscate"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Raider (file shredder)",
+"cat": "Passwords & security",
+"pkgs": [
+"raider"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Seahorse",
+"cat": "Passwords & security",
+"pkgs": [
+"seahorse"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Secrets (KeePass)",
+"cat": "Passwords & security",
+"pkgs": [
+"secrets"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Aurynk (Android mirroring)",
+"cat": "Sync & remote",
+"pkgs": [
+"aurynk"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Deskflow",
+"cat": "Sync & remote",
+"pkgs": [
+"deskflow"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Fragments",
+"cat": "Sync & remote",
+"pkgs": [
+"fragments"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Free Download Manager",
+"cat": "Sync & remote",
+"pkgs": [
+"freedownloadmanager"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KTorrent",
+"cat": "Sync & remote",
+"pkgs": [
+"ktorrent"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "LocalSend",
+"cat": "Sync & remote",
+"pkgs": [
+"localsend-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Flathub"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "NitroShare",
+"cat": "Sync & remote",
+"pkgs": [
+"nitroshare"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Parsec",
+"cat": "Sync & remote",
+"pkgs": [
+"parsec-bin"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "PuTTY",
+"cat": "Sync & remote",
+"pkgs": [
+"putty"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Resilio Sync",
+"cat": "Sync & remote",
+"pkgs": [
+"rslsync"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Trayscale (Tailscale)",
+"cat": "Sync & remote",
+"pkgs": [
+"trayscale"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Warpinator",
+"cat": "Sync & remote",
+"pkgs": [
+"warpinator"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Xtreme Download Manager",
+"cat": "Sync & remote",
+"pkgs": [
+"xdman-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "asusctl",
+"cat": "System features",
+"pkgs": [
+"asusctl"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Back In Time",
+"cat": "System features",
+"pkgs": [
+"backintime"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "bauh",
+"cat": "System features",
+"pkgs": [
+"bauh"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "BorgBackup",
+"cat": "System features",
+"pkgs": [
+"borg"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "CPU-X",
+"cat": "System features",
+"pkgs": [
+"cpu-x"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Fcitx5",
+"cat": "System features",
+"pkgs": [
+"fcitx5"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Fedora Media Writer",
+"cat": "System features",
+"pkgs": [
+"mediawriter"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Filelight",
+"cat": "System features",
+"pkgs": [
+"filelight"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Genymotion",
+"cat": "System features",
+"pkgs": [
+"genymotion"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Disks",
+"cat": "System features",
+"pkgs": [
+"gnome-disk-utility"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Firmware",
+"cat": "System features",
+"pkgs": [
+"gnome-firmware"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Software",
+"cat": "System features",
+"pkgs": [
+"gnome-software"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GPU-Viewer",
+"cat": "System features",
+"pkgs": [
+"gpu-viewer"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Grsync",
+"cat": "System features",
+"pkgs": [
+"grsync"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ignition (autostart manager)",
+"cat": "System features",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Impression (USB writer)",
+"cat": "System features",
+"pkgs": [
+"impression"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KDE Discover",
+"cat": "System features",
+"pkgs": [
+"discover"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KDE Partition Manager",
+"cat": "System features",
+"pkgs": [
+"partitionmanager"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mimic (default apps manager)",
+"cat": "System features",
+"pkgs": [],
+"repo": [
+"flatpak"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "Flatpak only",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mintstick (USB writer)",
+"cat": "System features",
+"pkgs": [
+"mintstick"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Mission Center",
+"cat": "System features",
+"pkgs": [
+"mission-center"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Flathub"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Nautilus (Files)",
+"cat": "System features",
+"pkgs": [
+"nautilus"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Octopi",
+"cat": "System features",
+"pkgs": [
+"octopi"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenRazer",
+"cat": "System features",
+"pkgs": [
+"openrazer-daemon"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "OpenTabletDriver",
+"cat": "System features",
+"pkgs": [
+"opentabletdriver"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Pika Backup",
+"cat": "System features",
+"pkgs": [
+"pika-backup"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Popsicle (USB flasher)",
+"cat": "System features",
+"pkgs": [
+"popsicle"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Raspberry Pi Imager",
+"cat": "System features",
+"pkgs": [
+"rpi-imager"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SysD Manager",
+"cat": "System features",
+"pkgs": [
+"sysd-manager"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Ventoy",
+"cat": "System features",
+"pkgs": [
+"ventoy-bin"
+],
+"repo": [
+"aur",
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Manjaro"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Catfish",
+"cat": "Utilities",
+"pkgs": [
+"catfish"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Clairvoyant",
+"cat": "Utilities",
+"pkgs": [
+"clairvoyant"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Clapgrep",
+"cat": "Utilities",
+"pkgs": [
+"clapgrep"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Collision (hashes)",
+"cat": "Utilities",
+"pkgs": [
+"collision"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Conky",
+"cat": "Utilities",
+"pkgs": [
+"conky"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Decoder (QR)",
+"cat": "Utilities",
+"pkgs": [
+"decoder"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Dialect (translator)",
+"cat": "Utilities",
+"pkgs": [
+"dialect"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "DroidCam",
+"cat": "Utilities",
+"pkgs": [
+"droidcam"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Extension Manager (GNOME)",
+"cat": "Utilities",
+"pkgs": [
+"extension-manager"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Flathub"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Eyedropper",
+"cat": "Utilities",
+"pkgs": [
+"eyedropper"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Flameshot",
+"cat": "Utilities",
+"pkgs": [
+"flameshot"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Pop!_OS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Flatseal",
+"cat": "Utilities",
+"pkgs": [
+"flatseal"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Flathub"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Clocks",
+"cat": "Utilities",
+"pkgs": [
+"gnome-clocks"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Maps",
+"cat": "Utilities",
+"pkgs": [
+"gnome-maps"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "GNOME Weather",
+"cat": "Utilities",
+"pkgs": [
+"gnome-weather"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Google Earth Pro",
+"cat": "Utilities",
+"pkgs": [
+"google-earth-pro"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Mint"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Health",
+"cat": "Utilities",
+"pkgs": [
+"health"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Junction",
+"cat": "Utilities",
+"pkgs": [
+"junction"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "KRename",
+"cat": "Utilities",
+"pkgs": [
+"krename"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"EndeavourOS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Nostalgia (wallpapers)",
+"cat": "Utilities",
+"pkgs": [
+"nostalgia"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Railway (DieBahn)",
+"cat": "Utilities",
+"pkgs": [
+"railway"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "SoundWire",
+"cat": "Utilities",
+"pkgs": [
+"soundwire"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Tangram (web apps)",
+"cat": "Utilities",
+"pkgs": [
+"tangram"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Telegraph (Morse)",
+"cat": "Utilities",
+"pkgs": [
+"telegraph"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Tilix",
+"cat": "Utilities",
+"pkgs": [
+"tilix"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Pop!_OS"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Variety",
+"cat": "Utilities",
+"pkgs": [
+"variety"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Waywallen",
+"cat": "Utilities",
+"pkgs": [
+"waywallen"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Bazzite"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Wike (Wikipedia)",
+"cat": "Utilities",
+"pkgs": [
+"wike"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Fedora"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Yakuake",
+"cat": "Utilities",
+"pkgs": [
+"yakuake"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "",
+"sources": [
+"Garuda"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "",
+"pop": ""
+},
+{
+"name": "Node.js LTS",
+"cat": "Languages",
+"pkgs": [
+"nodejs-lts-krypton"
+],
+"repo": [
+"extra"
+],
+"setup": "Conflicts with `nodejs`; pick one",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes (as a choice in the Node entry)",
+"pop": "pkgstats jod 8.9%, krypton 3.2%"
+},
+{
+"name": "pnpm",
+"cat": "Languages",
+"pkgs": [
+"pnpm"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"Omarchy"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 pnpm 13.4%; pkgstats 21%; O"
+},
+{
+"name": "Yarn",
+"cat": "Languages",
+"pkgs": [
+"yarn"
+],
+"repo": [
+"extra"
+],
+"setup": "For Yarn 2+: `corepack enable` (writes shims; needs a writable prefix)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 Yarn 21.1%; pkgstats 21%"
+},
+{
+"name": "Python tooling",
+"cat": "Languages",
+"pkgs": [
+"python",
+"uv",
+"python-pipx"
+],
+"repo": [
+"cachyos",
+"extra"
+],
+"setup": "`~/.local/bin` on PATH for `pipx` / `uv tool`. Policy option: `UV_PYTHON_DOWNLOADS=never`, so that uv uses pacman's Pythons instead of downloading its own",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Python 57.9%, pip 40.9%; JB25 Python 35% primary (top); pkgstats uv 34%, pipx 25%, poetry 14.5%; O, Audit"
+},
+{
+"name": "Older Pythons",
+"cat": "Languages",
+"pkgs": [
+"python311",
+"python313"
+],
+"repo": [
+"cachyos"
+],
+"setup": "none (uv and pipx find them as `python3.11`/`python3.13`)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.5% / 1.3%"
+},
+{
+"name": "PyPy",
+"cat": "Languages",
+"pkgs": [
+"pypy3"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.6%; O, Audit"
+},
+{
+"name": "pyenv",
+"cat": "Languages",
+"pkgs": [
+"pyenv"
+],
+"repo": [
+"extra"
+],
+"setup": "Builds interpreters into `~/.pyenv`, outside pacman",
+"sources": [],
+"n": 0,
+"skip": "Skip (against the rule; uv + `python3xx` covers it)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (against the rule; uv + `python3xx` covers it)",
+"pop": "pkgstats 9.4%"
+},
+{
+"name": "Jupyter",
+"cat": "Languages",
+"pkgs": [
+"jupyterlab"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 Jupyter 14.1% (IDE list); pkgstats 10.3%"
+},
+{
+"name": "Rust extras",
+"cat": "Languages",
+"pkgs": [
+"sccache",
+"cargo-nextest",
+"bacon",
+"cargo-watch"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats sccache 4.5%, nextest 1%, bacon 1%"
+},
+{
+"name": "Java (JDK)",
+"cat": "Languages",
+"pkgs": [
+"jdk25-openjdk",
+"jdk21-openjdk",
+"jdk17-openjdk",
+"jdk11-openjdk",
+"jdk8-openjdk"
+],
+"repo": [
+"extra"
+],
+"setup": "`archlinux-java set <version>` when several are installed",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes (offer a version choice; default jdk25)",
+"pop": "SO25 Java 29.4%, Maven 16.4%, Gradle 14.4%; JB25 Java 33% primary; pkgstats jdk-openjdk 44%, jdk21 21%, jdk17 19%, jdk25 5.6%; O, Audit"
+},
+{
+"name": "Kotlin",
+"cat": "Languages",
+"pkgs": [
+"kotlin"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"Omarchy",
+"You use it"
+],
+"n": 1,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Kotlin 10.8%; JB25 \"growing\"; pkgstats 3.1%; O, Audit"
+},
+{
+"name": "C/C++ toolchain",
+"cat": "Languages",
+"pkgs": [
+"base-devel"
+],
+"repo": [
+"core",
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys",
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 C++ 23.5%, C 22%, Make 23.2%; pkgstats cmake 74%, ninja 70%, meson 55%, lldb 13.6%; Audit (cmake kept in `~/.local/bin`)"
+},
+{
+"name": "Haskell",
+"cat": "Languages",
+"pkgs": [
+"ghc",
+"cabal-install",
+"stack",
+"haskell-language-server",
+"ghcup-hs-bin"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "Repo GHC is old and dynamically linked. From memory of the Arch wiki (unverified, the wiki was unreadable): cabal needs dynamic linking set in `~/.cabal/config`. ghcup instead puts GHC and HLS in `~/.ghcup`, the way rust",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe (decide: repo ghc or ghcup)",
+"pop": "not in SO25 top 20; pkgstats ghc 7.1%, ghcup 1.1%"
+},
+{
+"name": "Dart",
+"cat": "Languages",
+"pkgs": [
+"dart"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe (Flutter bundles its own)",
+"pop": "SO25 Dart 5.9%; pkgstats 2.6%"
+},
+{
+"name": "Flutter",
+"cat": "Languages",
+"pkgs": [
+"flutter-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "`flutter doctor`; the Android SDK for mobile targets. The AUR `flutter` (src, 152 votes) is flagged out of date since 2026-04-29 and requires `dart<3.12`, while the repo has 3.13.7, so it does not resolve",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "SO25 Dart 5.9%; pkgstats flutter-bin 0.85%, flutter 0.11%"
+},
+{
+"name": "Scala",
+"cat": "Languages",
+"pkgs": [
+"scala3"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Omarchy"
+],
+"n": 1,
+"skip": "Skip (weak packages)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (weak packages)",
+"pop": "O"
+},
+{
+"name": "Swift",
+"cat": "Languages",
+"pkgs": [
+"swift-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "SO25 Swift 5.4%; pkgstats 0.4%"
+},
+{
+"name": "Julia",
+"cat": "Languages",
+"pkgs": [
+"julia"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.2%"
+},
+{
+"name": "R",
+"cat": "Languages",
+"pkgs": [
+"r"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 10%"
+},
+{
+"name": "Gleam",
+"cat": "Languages",
+"pkgs": [
+"gleam"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe (Odin: Yes for the user)",
+"pop": "pkgstats nim 2.5%, crystal 1.2%, odin 1.2%, gleam 0.7%; Audit (odin)"
+},
+{
+"name": "Nim",
+"cat": "Languages",
+"pkgs": [
+"nim"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe (Odin: Yes for the user)",
+"pop": "pkgstats nim 2.5%, crystal 1.2%, odin 1.2%, gleam 0.7%; Audit (odin)"
+},
+{
+"name": "Crystal",
+"cat": "Languages",
+"pkgs": [
+"crystal"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe (Odin: Yes for the user)",
+"pop": "pkgstats nim 2.5%, crystal 1.2%, odin 1.2%, gleam 0.7%; Audit (odin)"
+},
+{
+"name": "Kakoune",
+"cat": "Editors & IDEs",
+"pkgs": [
+"kakoune"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 1.3%"
+},
+{
+"name": "WebStorm",
+"cat": "Editors & IDEs",
+"pkgs": [
+"webstorm"
+],
+"repo": [
+"aur"
+],
+"setup": "none (free for non-commercial use)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "SO25 7.6%; pkgstats 0.8%"
+},
+{
+"name": "Rider",
+"cat": "Editors & IDEs",
+"pkgs": [
+"rider"
+],
+"repo": [
+"aur"
+],
+"setup": "none (free for non-commercial use). It is the Linux answer to Visual Studio (SO25 29%, Windows only)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes (the user does .NET)",
+"pop": "SO25 7.1%; pkgstats 0.95%"
+},
+{
+"name": "CLion",
+"cat": "Editors & IDEs",
+"pkgs": [
+"clion"
+],
+"repo": [
+"aur"
+],
+"setup": "none (free for non-commercial use)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "JB25; pkgstats 1.35%"
+},
+{
+"name": "GoLand",
+"cat": "Editors & IDEs",
+"pkgs": [
+"goland"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.3%"
+},
+{
+"name": "RustRover",
+"cat": "Editors & IDEs",
+"pkgs": [
+"rustrover"
+],
+"repo": [
+"aur"
+],
+"setup": "none (free for non-commercial use)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.8%"
+},
+{
+"name": "DataGrip",
+"cat": "Editors & IDEs",
+"pkgs": [
+"datagrip"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.4%"
+},
+{
+"name": "Android Studio",
+"cat": "Editors & IDEs",
+"pkgs": [
+"android-studio"
+],
+"repo": [
+"aur"
+],
+"setup": "none. It bundles its own JBR, and its setup wizard downloads an SDK into `~/Android/Sdk` (an alternative to the AUR SDK packages)",
+"sources": [
+"Dev surveys",
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes",
+"pop": "SO25 15%; pkgstats 6.9%; Audit"
+},
+{
+"name": "Eclipse",
+"cat": "Editors & IDEs",
+"pkgs": [
+"eclipse-java-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "SO25 7.1%; pkgstats 0.65%"
+},
+{
+"name": "Lapce",
+"cat": "Editors & IDEs",
+"pkgs": [
+"lapce"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (stalled upstream)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (stalled upstream)",
+"pop": "pkgstats 1.6%"
+},
+{
+"name": "Windsurf",
+"cat": "Editors & IDEs",
+"pkgs": [],
+"repo": [
+"missing"
+],
+"setup": "n/a",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip; Skip (unavailable)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (unavailable)",
+"pop": "SO25 4.9%"
+},
+{
+"name": "git",
+"cat": "Developer tools",
+"pkgs": [
+"git"
+],
+"repo": [
+"extra"
+],
+"setup": "in base",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "SO25 GitHub 81.1%"
+},
+{
+"name": "GitLab CLI",
+"cat": "Developer tools",
+"pkgs": [
+"glab"
+],
+"repo": [
+"extra"
+],
+"setup": "`glab auth login`",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 GitLab 35.6%; pkgstats 3.7%"
+},
+{
+"name": "gitui",
+"cat": "Developer tools",
+"pkgs": [
+"gitui"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.2%"
+},
+{
+"name": "tig",
+"cat": "Developer tools",
+"pkgs": [
+"tig"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 5.9%"
+},
+{
+"name": "delta",
+"cat": "Developer tools",
+"pkgs": [
+"git-delta"
+],
+"repo": [
+"extra"
+],
+"setup": "Optional git config: `core.pager delta`, `interactive.diffFilter \"delta --color-only\"`",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 17.2%"
+},
+{
+"name": "difftastic",
+"cat": "Developer tools",
+"pkgs": [
+"difftastic"
+],
+"repo": [
+"extra"
+],
+"setup": "Optional: `git config diff.external difft`",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4.5%"
+},
+{
+"name": "Git LFS",
+"cat": "Developer tools",
+"pkgs": [
+"git-lfs"
+],
+"repo": [
+"extra"
+],
+"setup": "`git lfs install` as the user",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 20.8%"
+},
+{
+"name": "pre-commit",
+"cat": "Developer tools",
+"pkgs": [
+"pre-commit"
+],
+"repo": [
+"extra"
+],
+"setup": "none (per repo: `pre-commit install`)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4%"
+},
+{
+"name": "gitg",
+"cat": "Developer tools",
+"pkgs": [
+"gitg"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4.7%"
+},
+{
+"name": "SourceGit",
+"cat": "Developer tools",
+"pkgs": [
+"sourcegit-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.2%"
+},
+{
+"name": "GitButler",
+"cat": "Developer tools",
+"pkgs": [
+"gitbutler-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.2%"
+},
+{
+"name": "Bruno",
+"cat": "Databases & APIs",
+"pkgs": [
+"bruno-bin",
+"bruno"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes",
+"pop": "pkgstats -bin 1.2%"
+},
+{
+"name": "Insomnia",
+"cat": "Databases & APIs",
+"pkgs": [
+"insomnia-bin",
+"insomnia"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.6%"
+},
+{
+"name": "Yaak",
+"cat": "Databases & APIs",
+"pkgs": [
+"yaak",
+"yaak-cli"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe (the only GUI API client in the official repos)",
+"pop": "pkgstats 0.2%"
+},
+{
+"name": "Hoppscotch",
+"cat": "Databases & APIs",
+"pkgs": [
+"hoppscotch-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip",
+"pop": "n/a"
+},
+{
+"name": "Beekeeper Studio",
+"cat": "Databases & APIs",
+"pkgs": [
+"beekeeper-studio-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.5%"
+},
+{
+"name": "pgAdmin 4",
+"cat": "Databases & APIs",
+"pkgs": [
+"pgadmin4-desktop"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.3%"
+},
+{
+"name": "DbGate",
+"cat": "Databases & APIs",
+"pkgs": [
+"dbgate-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.1%"
+},
+{
+"name": "DB Browser for SQLite",
+"cat": "Databases & APIs",
+"pkgs": [
+"sqlitebrowser"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 SQLite 37.5%; pkgstats 13.7%"
+},
+{
+"name": "MongoDB Compass",
+"cat": "Databases & APIs",
+"pkgs": [
+"mongodb-compass"
+],
+"repo": [
+"cachyos"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 MongoDB 24%; pkgstats 0.5%"
+},
+{
+"name": "MySQL Workbench",
+"cat": "Databases & APIs",
+"pkgs": [
+"mysql-workbench"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 MySQL 40.5%; pkgstats 2.8%"
+},
+{
+"name": "PostgreSQL",
+"cat": "Databases & APIs",
+"pkgs": [
+"postgresql"
+],
+"repo": [
+"extra"
+],
+"setup": "`sudo -iu postgres initdb -D /var/lib/postgres/data`; `systemctl enable --now postgresql.service`; `sudo -iu postgres createuser -s $USER`. karchy is btrfs with snapper, so consider `chattr +C` on the data dir before ini",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 55.6% (top DB); JB25 \"overtook MySQL\"; pkgstats 16.3%"
+},
+{
+"name": "MariaDB",
+"cat": "Databases & APIs",
+"pkgs": [
+"mariadb"
+],
+"repo": [
+"extra"
+],
+"setup": "`mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql`; `systemctl enable --now mariadb.service`; `mariadb-secure-installation`",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 MariaDB 22.5% (MySQL 40.5%); pkgstats 22%"
+},
+{
+"name": "MySQL (Oracle)",
+"cat": "Databases & APIs",
+"pkgs": [
+"mysql"
+],
+"repo": [
+"aur"
+],
+"setup": "Same as MariaDB",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip (MariaDB covers it; or use a container)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (MariaDB covers it; or use a container)",
+"pop": "SO25 40.5%; AUR popularity 0.002"
+},
+{
+"name": "Valkey (Redis)",
+"cat": "Databases & APIs",
+"pkgs": [
+"valkey",
+"redis"
+],
+"repo": [
+"extra"
+],
+"setup": "`systemctl enable --now valkey.service`; the sysusers file creates the valkey user",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Redis 28%; pkgstats valkey 5.4%, redis (AUR src 8.10, 8 votes) 2.1%"
+},
+{
+"name": "MongoDB server",
+"cat": "Databases & APIs",
+"pkgs": [
+"mongodb-bin",
+"mongosh-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "`systemctl enable --now mongodb.service` (unit name not verified)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe (or a container)",
+"pop": "SO25 24%; pkgstats 1.1% / 1.7%"
+},
+{
+"name": "SQLite",
+"cat": "Databases & APIs",
+"pkgs": [
+"sqlite",
+"sqlite3"
+],
+"repo": [
+"core"
+],
+"setup": "none (already a dependency of the system)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base (dependency)",
+"pop": "SO25 37.5%"
+},
+{
+"name": "SQL Server",
+"cat": "Databases & APIs",
+"pkgs": [
+"mssql-server",
+"mssql-tools"
+],
+"repo": [
+"aur"
+],
+"setup": "`mssql-conf setup`",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip (container instead)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (container instead)",
+"pop": "SO25 30.1%; pkgstats 0.2%"
+},
+{
+"name": "Elasticsearch / OpenSearch",
+"cat": "Databases & APIs",
+"pkgs": [
+"opensearch"
+],
+"repo": [
+"aur",
+"extra"
+],
+"setup": "service + JVM heap configuration",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip (container instead)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (container instead)",
+"pop": "SO25 Elasticsearch 16.7%; pkgstats es 0.15%"
+},
+{
+"name": "pgcli",
+"cat": "Databases & APIs",
+"pkgs": [
+"pgcli"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 1.6%"
+},
+{
+"name": "usql",
+"cat": "Databases & APIs",
+"pkgs": [
+"usql"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.16%"
+},
+{
+"name": "lazysql",
+"cat": "Databases & APIs",
+"pkgs": [
+"lazysql"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.2%"
+},
+{
+"name": "Buildah",
+"cat": "Cloud & containers",
+"pkgs": [
+"buildah"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.7% / 4.1%"
+},
+{
+"name": "Skopeo",
+"cat": "Cloud & containers",
+"pkgs": [
+"skopeo"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.7% / 4.1%"
+},
+{
+"name": "dive",
+"cat": "Cloud & containers",
+"pkgs": [
+"dive"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.9%"
+},
+{
+"name": "Dev Containers CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"devcontainer-cli"
+],
+"repo": [
+"aur"
+],
+"setup": "Needs Docker, or Podman via `--docker-path podman`. In VS Code, the Microsoft Dev Containers extension (base VS Code) is the usual route",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.3%"
+},
+{
+"name": "kubectl",
+"cat": "Cloud & containers",
+"pkgs": [
+"kubectl"
+],
+"repo": [
+"extra"
+],
+"setup": "`~/.kube/config` from the cluster",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Kubernetes 28.5%; pkgstats 8.1%"
+},
+{
+"name": "k9s",
+"cat": "Cloud & containers",
+"pkgs": [
+"k9s"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 2.7%"
+},
+{
+"name": "Helm",
+"cat": "Cloud & containers",
+"pkgs": [
+"helm"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 4.5%"
+},
+{
+"name": "kubectx",
+"cat": "Cloud & containers",
+"pkgs": [
+"kubectx"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 1.3% / 0.4% / 1.1%"
+},
+{
+"name": "stern",
+"cat": "Cloud & containers",
+"pkgs": [
+"stern"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 1.3% / 0.4% / 1.1%"
+},
+{
+"name": "kustomize",
+"cat": "Cloud & containers",
+"pkgs": [
+"kustomize"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 1.3% / 0.4% / 1.1%"
+},
+{
+"name": "Local clusters",
+"cat": "Cloud & containers",
+"pkgs": [
+"kind",
+"minikube"
+],
+"repo": [
+"extra"
+],
+"setup": "They need Docker or Podman (rootless Podman needs cgroup delegation for kind)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats minikube 3%, kind 0.6%"
+},
+{
+"name": "k3d",
+"cat": "Cloud & containers",
+"pkgs": [
+"k3d-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "n/a",
+"sources": [],
+"n": 0,
+"skip": "Skip",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip",
+"pop": "pkgstats 0%"
+},
+{
+"name": "Argo CD CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"argocd"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.7%"
+},
+{
+"name": "Terraform",
+"cat": "Cloud & containers",
+"pkgs": [
+"terraform"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Terraform 17.8%; pkgstats 4%"
+},
+{
+"name": "OpenTofu",
+"cat": "Cloud & containers",
+"pkgs": [
+"opentofu"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 1.6%"
+},
+{
+"name": "Packer",
+"cat": "Cloud & containers",
+"pkgs": [
+"packer"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.2% / 0.3%"
+},
+{
+"name": "Pulumi",
+"cat": "Cloud & containers",
+"pkgs": [
+"pulumi"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.2% / 0.3%"
+},
+{
+"name": "Ansible",
+"cat": "Cloud & containers",
+"pkgs": [
+"ansible"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Ansible 11.7%; pkgstats 8.5%; C"
+},
+{
+"name": "AWS CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"aws-cli-v2",
+"aws-cli"
+],
+"repo": [
+"extra"
+],
+"setup": "`aws configure` or `aws configure sso`",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 AWS 43.3%; JB25 AWS leads; pkgstats v2 2.7%, v1 3.2%"
+},
+{
+"name": "Azure CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"azure-cli"
+],
+"repo": [
+"extra"
+],
+"setup": "`az login`",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "SO25 Azure 26.3%; pkgstats 1.5%"
+},
+{
+"name": "Google Cloud CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"google-cloud-cli"
+],
+"repo": [
+"aur"
+],
+"setup": "`gcloud init` (large; it updates components only through the package)",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": true,
+"pick": "Yes",
+"pop": "SO25 Google Cloud 24.6%; pkgstats 2.3%"
+},
+{
+"name": "Cloudflare",
+"cat": "Cloud & containers",
+"pkgs": [
+"wrangler",
+"cloudflared"
+],
+"repo": [
+"extra"
+],
+"setup": "`wrangler login`; cloudflared tunnels",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 Cloudflare 20.1%; pkgstats cloudflared 4.1%, wrangler 0.75%"
+},
+{
+"name": "DigitalOcean CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"doctl"
+],
+"repo": [
+"extra"
+],
+"setup": "`doctl auth init`",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 DigitalOcean 10.7%; pkgstats 0.65%"
+},
+{
+"name": "Fly.io CLI",
+"cat": "Cloud & containers",
+"pkgs": [
+"flyctl-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "`fly auth login`",
+"sources": [],
+"n": 0,
+"skip": "Skip (niche)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (niche)",
+"pop": "pkgstats 0.3%"
+},
+{
+"name": "Vercel",
+"cat": "Cloud & containers",
+"pkgs": [
+"vercel"
+],
+"repo": [
+"aur"
+],
+"setup": "login",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip (weak packages; these CLIs normally come via npm)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (weak packages; these CLIs normally come via npm)",
+"pop": "SO25 Vercel 10.6%, Firebase 13.1%, Supabase 5.4%; pkgstats near 0"
+},
+{
+"name": "Firebase",
+"cat": "Cloud & containers",
+"pkgs": [
+"firebase-tools"
+],
+"repo": [
+"aur"
+],
+"setup": "login",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip (weak packages; these CLIs normally come via npm)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (weak packages; these CLIs normally come via npm)",
+"pop": "SO25 Vercel 10.6%, Firebase 13.1%, Supabase 5.4%; pkgstats near 0"
+},
+{
+"name": "Supabase CLIs",
+"cat": "Cloud & containers",
+"pkgs": [
+"supabase-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "login",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "Skip (weak packages; these CLIs normally come via npm)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (weak packages; these CLIs normally come via npm)",
+"pop": "SO25 Vercel 10.6%, Firebase 13.1%, Supabase 5.4%; pkgstats near 0"
+},
+{
+"name": "Gemini CLI",
+"cat": "AI",
+"pkgs": [
+"gemini-cli"
+],
+"repo": [
+"extra"
+],
+"setup": "none (Google login)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 2.8%"
+},
+{
+"name": "GitHub Copilot CLI",
+"cat": "AI",
+"pkgs": [
+"github-copilot-cli",
+"copilot"
+],
+"repo": [
+"cachyos",
+"omarchy"
+],
+"setup": "none (GitHub login)",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "JB-AI26 Copilot 29% (the top tool at work); pkgstats 1%"
+},
+{
+"name": "Cursor CLI",
+"cat": "AI",
+"pkgs": [
+"cursor-cli"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "SO25 Cursor 17.9%; pkgstats 0.2%"
+},
+{
+"name": "Crush",
+"cat": "AI",
+"pkgs": [
+"crush-bin"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 0.2%"
+},
+{
+"name": "Amp",
+"cat": "AI",
+"pkgs": [
+"ampcode"
+],
+"repo": [
+"aur",
+"omarchy"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 0.03%"
+},
+{
+"name": "Aider",
+"cat": "AI",
+"pkgs": [
+"aider-chat"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [
+"Dev surveys"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "SO25 1.9%; pkgstats 0.05%"
+},
+{
+"name": "Goose",
+"cat": "AI",
+"pkgs": [
+"goose-cli"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip",
+"pop": "pkgstats 0.02%"
+},
+{
+"name": "Qwen Code",
+"cat": "AI",
+"pkgs": [
+"qwen-code-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip",
+"pop": "pkgstats 0.05%"
+},
+{
+"name": "Google Antigravity",
+"cat": "AI",
+"pkgs": [
+"antigravity",
+"antigravity-ide",
+"antigravity-cli"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 3.3% / 1.5% / 2%"
+},
+{
+"name": "Kiro",
+"cat": "AI",
+"pkgs": [
+"kiro-ide",
+"kiro-cli"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.2% / 0.07%"
+},
+{
+"name": "llama.cpp",
+"cat": "AI",
+"pkgs": [
+"llama-cpp",
+"ggml-cuda",
+"ggml-vulkan",
+"ggml-hip"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.1%"
+},
+{
+"name": "Jan",
+"cat": "AI",
+"pkgs": [
+"jan-bin"
+],
+"repo": [
+"aur"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Maybe",
+"pop": "pkgstats 0.3%"
+},
+{
+"name": "Open WebUI",
+"cat": "AI",
+"pkgs": [
+"open-webui"
+],
+"repo": [
+"aur"
+],
+"setup": "n/a",
+"sources": [],
+"n": 0,
+"skip": "Skip (run it as a Podman container)",
+"base": false,
+"rec": false,
+"aur": true,
+"pick": "Skip (run it as a Podman container)",
+"pop": "pkgstats n/a"
+},
+{
+"name": "ripgrep",
+"cat": "Developer tools",
+"pkgs": [
+"ripgrep"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 80%"
+},
+{
+"name": "fd",
+"cat": "Developer tools",
+"pkgs": [
+"fd"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 51%"
+},
+{
+"name": "jq",
+"cat": "Developer tools",
+"pkgs": [
+"jq"
+],
+"repo": [
+"extra"
+],
+"setup": "in base",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "pkgstats 77%"
+},
+{
+"name": "yq",
+"cat": "Developer tools",
+"pkgs": [
+"go-yq"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes (`go-yq`; it is the one most docs mean)",
+"pop": "pkgstats go-yq 3.9%, yq 8.4%"
+},
+{
+"name": "jaq",
+"cat": "Developer tools",
+"pkgs": [
+"jaq"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "Skip (jq is base)",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Skip (jq is base)",
+"pop": "pkgstats 0.8%"
+},
+{
+"name": "HTTPie",
+"cat": "Developer tools",
+"pkgs": [
+"httpie"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 4.3%"
+},
+{
+"name": "xh",
+"cat": "Developer tools",
+"pkgs": [
+"xh"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 1.7%"
+},
+{
+"name": "Hurl",
+"cat": "Developer tools",
+"pkgs": [
+"hurl"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 0.5%"
+},
+{
+"name": "just",
+"cat": "Developer tools",
+"pkgs": [
+"just"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 8.6%"
+},
+{
+"name": "direnv",
+"cat": "Developer tools",
+"pkgs": [
+"direnv"
+],
+"repo": [
+"extra"
+],
+"setup": "Add `direnv hook fish \\",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "pkgstats 5.5%",
+"pop": "source` to the fish config"
+},
+{
+"name": "hyperfine",
+"cat": "Developer tools",
+"pkgs": [
+"hyperfine"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 6.7%"
+},
+{
+"name": "tokei",
+"cat": "Developer tools",
+"pkgs": [
+"tokei",
+"scc"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats tokei 5.3%, scc 0.9%"
+},
+{
+"name": "ShellCheck",
+"cat": "Developer tools",
+"pkgs": [
+"shellcheck"
+],
+"repo": [
+"extra"
+],
+"setup": "none (pulls about 6 Haskell library packages)",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 19.7%; Audit"
+},
+{
+"name": "shfmt",
+"cat": "Developer tools",
+"pkgs": [
+"shfmt"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 13.2%"
+},
+{
+"name": "actionlint",
+"cat": "Developer tools",
+"pkgs": [
+"actionlint"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [
+"You use it"
+],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Maybe (Yes for the user)",
+"pop": "pkgstats 0.8%; Audit"
+},
+{
+"name": "fzf",
+"cat": "Developer tools",
+"pkgs": [
+"fzf"
+],
+"repo": [
+"extra"
+],
+"setup": "in base",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "pkgstats 58%"
+},
+{
+"name": "bat",
+"cat": "Developer tools",
+"pkgs": [
+"bat"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 47%"
+},
+{
+"name": "eza",
+"cat": "Developer tools",
+"pkgs": [
+"eza"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 35%"
+},
+{
+"name": "zoxide",
+"cat": "Developer tools",
+"pkgs": [
+"zoxide"
+],
+"repo": [
+"extra"
+],
+"setup": "`zoxide init fish \\",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "pkgstats 23%",
+"pop": "source` in the fish config"
+},
+{
+"name": "entr",
+"cat": "Developer tools",
+"pkgs": [
+"entr"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.8% / 1.6%"
+},
+{
+"name": "watchexec",
+"cat": "Developer tools",
+"pkgs": [
+"watchexec"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.8% / 1.6%"
+},
+{
+"name": "tldr pages",
+"cat": "Developer tools",
+"pkgs": [
+"tealdeer",
+"tldr"
+],
+"repo": [
+"extra"
+],
+"setup": "`tldr --update` as the user",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats tealdeer 13.4%, tldr 16.7%"
+},
+{
+"name": "strace",
+"cat": "Developer tools",
+"pkgs": [
+"strace"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes (strace)",
+"pop": "pkgstats 41% / 5.7%"
+},
+{
+"name": "ltrace",
+"cat": "Developer tools",
+"pkgs": [
+"ltrace"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes (strace)",
+"pop": "pkgstats 41% / 5.7%"
+},
+{
+"name": "tmux",
+"cat": "Developer tools",
+"pkgs": [
+"tmux"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 46%"
+},
+{
+"name": "Zellij",
+"cat": "Developer tools",
+"pkgs": [
+"zellij"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 7.8%"
+},
+{
+"name": "ast-grep",
+"cat": "Developer tools",
+"pkgs": [
+"ast-grep"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2%"
+},
+{
+"name": "glow",
+"cat": "Developer tools",
+"pkgs": [
+"glow"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 27.7%"
+},
+{
+"name": "lnav",
+"cat": "Developer tools",
+"pkgs": [
+"lnav"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 2.6%"
+},
+{
+"name": "mitmproxy",
+"cat": "Developer tools",
+"pkgs": [
+"mitmproxy"
+],
+"repo": [
+"extra"
+],
+"setup": "Trust its CA for HTTPS interception",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4.6%"
+},
+{
+"name": "Wireshark",
+"cat": "Developer tools",
+"pkgs": [
+"wireshark-qt"
+],
+"repo": [
+"extra"
+],
+"setup": "Add the user to the `wireshark` group (created by wireshark-cli's sysusers file) for non-root capture; relogin",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": true,
+"aur": false,
+"pick": "Yes",
+"pop": "pkgstats 25%"
+},
+{
+"name": "age",
+"cat": "Developer tools",
+"pkgs": [
+"age"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4.4% / 1.6%"
+},
+{
+"name": "sops",
+"cat": "Developer tools",
+"pkgs": [
+"sops"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 4.4% / 1.6%"
+},
+{
+"name": "atuin",
+"cat": "Developer tools",
+"pkgs": [
+"atuin"
+],
+"repo": [
+"extra"
+],
+"setup": "`atuin init fish \\",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "pkgstats 4.7%",
+"pop": "source`; optional sync account"
+},
+{
+"name": "hexyl",
+"cat": "Developer tools",
+"pkgs": [
+"hexyl"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.6% / 14.7%"
+},
+{
+"name": "dust",
+"cat": "Developer tools",
+"pkgs": [
+"dust"
+],
+"repo": [
+"extra"
+],
+"setup": "",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": false,
+"rec": false,
+"aur": false,
+"pick": "Maybe",
+"pop": "pkgstats 3.6% / 14.7%"
+},
+{
+"name": "btop",
+"cat": "Developer tools",
+"pkgs": [
+"btop"
+],
+"repo": [
+"extra"
+],
+"setup": "in base",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "\u2014"
+},
+{
+"name": "gum",
+"cat": "Developer tools",
+"pkgs": [
+"gum"
+],
+"repo": [
+"extra"
+],
+"setup": "in base",
+"sources": [],
+"n": 0,
+"skip": "",
+"base": true,
+"rec": false,
+"aur": false,
+"pick": "in base",
+"pop": "\u2014"
+}
+]

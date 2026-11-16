@@ -11,12 +11,12 @@ Item {
   id: root
 
   property var shell: null
-  property string omarchyPath: ""
+  property string karchyPath: ""
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string stateHome: home + "/.local/state"
   readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME")
-  readonly property string currentBackgroundLink: stateHome + "/omarchy/current/background"
+  readonly property string currentBackgroundLink: stateHome + "/karchy/current/background"
 
   property bool lockRequested: false
   property bool pendingSessionLock: false
@@ -72,6 +72,23 @@ Item {
   }
   readonly property bool authenticating: authenticatingPassword || fingerprintAuthenticating
   // A prompt clears the unavailable notice before the attempt finishes.
+  // Settings › Appearance › Lock screen; on unless turned off. The clock uses
+  // 12-hour time when the bar's clock does, so the two never disagree.
+  readonly property var lockConfig: shell && shell.shellConfig && shell.shellConfig.lock
+    ? shell.shellConfig.lock : ({})
+  readonly property bool showClock: lockConfig.clock !== false
+  readonly property bool clockTwelveHour: {
+    var layout = shell && shell.shellConfig && shell.shellConfig.bar ? shell.shellConfig.bar.layout : null
+    if (!layout) return false
+    for (var slot in layout) {
+      var entries = layout[slot]
+      if (!Array.isArray(entries)) continue
+      for (var i = 0; i < entries.length; i++)
+        if (entries[i] && entries[i].id === "karchy.clock")
+          return /(^|[^h])h/.test(String(entries[i].format || "").replace(/'[^']*'/g, ""))
+    }
+    return false
+  }
   readonly property bool fingerprintUnavailable: FingerprintModel.isUnavailable(fingerprintProbeStreak) || (fingerprintConfigured && (!fingerprintAttemptReachedDevice || fingerprintAttemptFastError) && FingerprintModel.isUnavailable(fingerprintUnreachedStreak))
 
   function realScreenCount() {
@@ -187,7 +204,7 @@ Item {
   function logEvent(event) {
     lastEvent = event
     lastEventAt = new Date().toISOString()
-    console.log("omarchy lock " + lastEventAt + " " + event)
+    console.log("karchy lock " + lastEventAt + " " + event)
   }
 
   function resetAuthenticationState() {
@@ -513,6 +530,8 @@ Item {
         backgroundVersion: root.backgroundVersion
         fingerprintConfigured: root.fingerprintConfigured || root.fingerprintUnavailable
         fingerprintUnavailable: root.fingerprintUnavailable
+        showClock: root.showClock
+        clockTwelveHour: root.clockTwelveHour
         authenticatingPassword: root.authenticatingPassword
         failureMessage: root.failureMessage
         failedAttempts: root.failedAttempts
@@ -537,7 +556,7 @@ Item {
     visible: root.previewVisible
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
-    WlrLayershell.namespace: "omarchy-lock-preview"
+    WlrLayershell.namespace: "karchy-lock-preview"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
@@ -549,6 +568,8 @@ Item {
       backgroundVersion: root.backgroundVersion
       fingerprintConfigured: root.fingerprintConfigured || root.fingerprintUnavailable
       fingerprintUnavailable: root.fingerprintUnavailable
+      showClock: root.showClock
+      clockTwelveHour: root.clockTwelveHour
       authenticatingPassword: false
       failureMessage: ""
       failedAttempts: 0
@@ -566,7 +587,7 @@ Item {
 
   PamContext {
     id: passwordPam
-    config: "omarchy-lock-password"
+    config: "karchy-lock-password"
     user: root.userName
 
     onResponseRequiredChanged: root.respondToPasswordPrompt()
@@ -588,7 +609,7 @@ Item {
 
   PamContext {
     id: fingerprintPam
-    config: "omarchy-lock-fingerprint"
+    config: "karchy-lock-fingerprint"
     user: root.userName
 
     onPamMessage: {
@@ -710,7 +731,7 @@ Item {
   Process {
     id: posterProc
     property string sourcePath: ""
-    command: ["bash", Quickshell.env("OMARCHY_PATH") + "/shell/plugins/lock/poster.sh", sourcePath]
+    command: ["bash", Quickshell.env("KARCHY_PATH") + "/shell/plugins/lock/poster.sh", sourcePath]
     stdout: StdioCollector { id: posterOutput; waitForEnd: true }
     onExited: function(exitCode) {
       if (sourcePath !== root.backgroundPath) {
@@ -724,7 +745,7 @@ Item {
   // Keep fprintd errors distinguishable from an explicit empty enrollment.
   Process {
     id: fingerprintCheckProc
-    command: ["bash", "-c", "if [[ -f /etc/pam.d/omarchy-lock-fingerprint ]] && command -v fprintd-list >/dev/null 2>&1; then LC_ALL=C fprintd-list \"$USER\" 2>&1; else echo no; fi"]
+    command: ["bash", "-c", "if [[ -f /etc/pam.d/karchy-lock-fingerprint ]] && command -v fprintd-list >/dev/null 2>&1; then LC_ALL=C fprintd-list \"$USER\" 2>&1; else echo no; fi"]
     stdout: StdioCollector { id: fingerprintCheckStdout; waitForEnd: true }
     onExited: root.applyFingerprintProbe(fingerprintCheckStdout.text)
   }
@@ -741,7 +762,7 @@ Item {
   Process {
     id: strandedLockCheckProc
     // $PPID is this shell: a crash re-execs in place, so its pid is the one to skip.
-    command: ["bash", "-c", "omarchy-hyprland-session-lock-stranded \"$PPID\""]
+    command: ["bash", "-c", "karchy-hyprland-session-lock-stranded \"$PPID\""]
     onExited: function(exitCode) {
       // No output to read the lock off yet.
       if (exitCode === 2) return
@@ -756,12 +777,12 @@ Item {
 
   Process {
     id: wakeProcess
-    command: ["bash", "-c", "omarchy-system-wake"]
+    command: ["bash", "-c", "karchy-system-wake"]
   }
 
   Process {
     id: blankProcess
-    command: ["bash", "-c", "omarchy-brightness-keyboard off; omarchy-brightness-display off"]
+    command: ["bash", "-c", "karchy-brightness-keyboard off; karchy-brightness-display off"]
   }
 
   Timer {
@@ -846,7 +867,7 @@ Item {
   }
 
   FileView {
-    path: "/etc/pam.d/omarchy-lock-password"
+    path: "/etc/pam.d/karchy-lock-password"
     watchChanges: true
     printErrors: false
     onLoaded: root.passwordPamConfigured = true
@@ -877,7 +898,7 @@ Item {
 
     function lock(): string {
       if (!root.passwordPamConfigured) return "missing-pam"
-      // omarchy-system-sleep-lock asks for the lock before every suspend.
+      // karchy-system-sleep-lock asks for the lock before every suspend.
       if (root.currentlyLocked()) root.noteSleepRequested()
       if (!root.currentlyLocked() && !root.beginLock()) return "failed"
       return "ok"

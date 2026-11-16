@@ -1,0 +1,383 @@
+#!/bin/bash
+
+# karchy:summary=Apply karchy's DNS to Wi-Fi and Ethernet on networks that aren't trusted (D-68)
+# karchy:args=apply [device] | forget <device> | status | set <key=value>...
+# karchy:hidden=true
+
+# karchy owns upstream DNS. On a network that isn't trusted, the live
+# connection gets the DNS from /etc/karchy/dns (Quad9 over TLS unless changed);
+# a trusted network keeps its own DNS, so names like nas.lan work. Saved
+# profiles are never written: the change goes to the applied connection
+# (`nmcli device modify`), which NetworkManager keeps across DHCP renewals and
+# drops when the connection goes down. A VPN's own DNS still wins while its
+# tunnel is up, through its negative dns-priority.
+#
+# Captive portals and networks that block DNS over TLS: the encrypted servers
+# are applied once NetworkManager reports full connectivity (its check uses
+# the network's DNS, so a portal is still detected), the network's DNS comes
+# back while a portal waits for sign-in, and if the encrypted servers don't
+# answer, the connection keeps the network's DNS until it next connects
+# ("fallback" in the status). With fallback=no ("encrypted only") none of
+# that happens: the encrypted servers go on at once and stay on, so a network
+# that blocks them, or a sign-in page that needs the network's own DNS, gets
+# no name lookups ("blocked" in the status) rather than unencrypted ones.
+#
+# Run as root by NetworkManager's dispatcher (95-karchy-dns) and by
+# karchy-trusted-networks after the list changes. `set` is Settings › Network
+# › DNS: run by a user it asks for a password through polkit
+# (org.karchy.network-dns) and runs itself again as root by its /usr/bin
+# path; root checks every value, writes /etc/karchy/dns and applies it to the
+# connections at once. `status` is for anyone: the
+# settings and, per connected device, its state: "applied" (karchy's DNS),
+# "network" (trusted, or provider=network), "waiting" (no connectivity
+# verdict yet), "portal" or "fallback" (both on the network's DNS), "blocked"
+# (encrypted only, and the servers don't answer on this network).
+#
+# /etc/karchy/dns (optional; the defaults are below), key=value lines:
+#   provider=quad9      quad9 | cloudflare | custom | network (the network's DNS everywhere)
+#   servers=            custom only: space-separated addresses; address#name checks the certificate
+#   encrypted=yes       DNS over TLS
+#   trusted=no          yes: use it on trusted networks too
+#   fallback=yes        no: encrypted only, never the network's DNS on untrusted networks
+
+set -euo pipefail
+
+CONFIG=/etc/karchy/dns
+STATE_DIR=/run/karchy/dns
+DEVICE_RE='^[A-Za-z0-9._@-]+$'
+SETTLING=""
+# Set by `set`: the settings changed, so every connection is decided again
+# instead of being kept as it was.
+REAPPLY=""
+
+log() { logger -t karchy-network-dns -- "$*" 2>/dev/null || true; }
+
+provider=quad9 servers="" encrypted=yes trusted=no fallback=yes
+read_config() {
+  [[ -r $CONFIG ]] || return 0
+  local key value
+  while IFS='=' read -r key value; do
+    key=${key//[[:space:]]/}
+    # A comment needs a space before its #: "9.9.9.9#dns.quad9.net" is one server.
+    value=${value%%[[:space:]]#*}
+    value=${value#"${value%%[![:space:]]*}"}
+    value=${value%"${value##*[![:space:]]}"}
+    case $key in
+      provider) [[ $value =~ ^(quad9|cloudflare|custom|network)$ ]] && provider=$value ;;
+      servers) servers=$value ;;
+      encrypted) [[ $value =~ ^(yes|no)$ ]] && encrypted=$value ;;
+      trusted) [[ $value =~ ^(yes|no)$ ]] && trusted=$value ;;
+      fallback) [[ $value =~ ^(yes|no)$ ]] && fallback=$value ;;
+    esac
+  done < <(grep -v '^[[:space:]]*#' "$CONFIG")
+}
+
+# The provider's servers as "address#name" words.
+provider_servers() {
+  case $provider in
+    quad9) echo "9.9.9.9#dns.quad9.net 149.112.112.112#dns.quad9.net 2620:fe::fe#dns.quad9.net 2620:fe::9#dns.quad9.net" ;;
+    cloudflare) echo "1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com" ;;
+    custom) echo "$servers" ;;
+  esac
+}
+
+# NetworkManager's lists for one family (4 or 6), in its URI form for TLS.
+server_list() {
+  local family=$1 server address name out=()
+  for server in $(provider_servers); do
+    [[ $server =~ ^([0-9A-Fa-f:.]+)(#([A-Za-z0-9.-]+))?$ ]] || continue
+    address=${BASH_REMATCH[1]} name=${BASH_REMATCH[3]}
+    if [[ $address == *:* ]]; then [[ $family == 6 ]] || continue; else [[ $family == 4 ]] || continue; fi
+    if [[ $encrypted == "yes" ]]; then
+      [[ $address == *:* ]] && address="[$address]"
+      out+=("dns+tls://$address${name:+#$name}")
+    else
+      out+=("$address")
+    fi
+  done
+  local IFS=,
+  echo "${out[*]}"
+}
+
+state_get() {
+  local device=$1 key=$2
+  [[ -r $STATE_DIR/$device ]] && sed -n "s/^$key=//p" "$STATE_DIR/$device" | head -n 1
+  return 0
+}
+
+state_set() {
+  local device=$1 active=$2 state=$3
+  mkdir -p "$STATE_DIR"
+  printf 'active=%s\nstate=%s\nchanged=%s\n' "$active" "$state" "$(date +%s)" >"$STATE_DIR/$device.tmp"
+  mv "$STATE_DIR/$device.tmp" "$STATE_DIR/$device"
+}
+
+# Properties for the families the profile uses: a family that is disabled
+# refuses DNS settings.
+family_enabled() {
+  local uuid=$1 family=$2 method
+  method=$(nmcli -g "ipv$family.method" connection show "$uuid" 2>/dev/null || true)
+  [[ $method != "disabled" && $method != "ignore" ]]
+}
+
+apply_encrypted() {
+  local device=$1 uuid=$2 args=()
+  if family_enabled "$uuid" 4; then
+    args+=(ipv4.ignore-auto-dns yes ipv4.dns "$(server_list 4)")
+  fi
+  if family_enabled "$uuid" 6; then
+    args+=(ipv6.ignore-auto-dns yes ipv6.dns "$(server_list 6)")
+  fi
+  args+=(connection.dns-over-tls "$([[ $encrypted == "yes" ]] && echo yes || echo default)")
+  nmcli device modify "$device" "${args[@]}" >/dev/null
+}
+
+# Puts the profile's own DNS settings back on the live connection.
+restore_network() {
+  local device=$1 uuid=$2 family value args=()
+  for family in 4 6; do
+    family_enabled "$uuid" "$family" || continue
+    value=$(nmcli -g "ipv$family.dns" connection show "$uuid" 2>/dev/null || true)
+    args+=("ipv$family.dns" "${value//\\/}")
+    value=$(nmcli -g "ipv$family.ignore-auto-dns" connection show "$uuid" 2>/dev/null || echo no)
+    args+=("ipv$family.ignore-auto-dns" "$value")
+  done
+  value=$(nmcli -g connection.dns-over-tls connection show "$uuid" 2>/dev/null || echo default)
+  [[ $value =~ ^-?[0-9]+$ ]] && value=default
+  args+=(connection.dns-over-tls "$value")
+  nmcli device modify "$device" "${args[@]}" >/dev/null
+}
+
+# The device's connectivity as NetworkManager last checked it: the better of
+# IPv4 and IPv6 (1 none, 2 portal, 3 limited, 4 full; 0 unknown). With the
+# check switched off NetworkManager can't see portals, so it counts as full.
+connectivity() {
+  local device=$1 v4 v6
+  if busctl get-property org.freedesktop.NetworkManager /org/freedesktop/NetworkManager \
+    org.freedesktop.NetworkManager ConnectivityCheckEnabled 2>/dev/null | grep -q false; then
+    echo 4; return
+  fi
+  v4=$(nmcli -g GENERAL.IP4-CONNECTIVITY device show "$device" 2>/dev/null | cut -d' ' -f1)
+  v6=$(nmcli -g GENERAL.IP6-CONNECTIVITY device show "$device" 2>/dev/null | cut -d' ' -f1)
+  v4=${v4:-0} v6=${v6:-0}
+  [[ $v4 =~ ^[0-9]+$ ]] || v4=0
+  [[ $v6 =~ ^[0-9]+$ ]] || v6=0
+  if (( v4 == 4 || v6 == 4 )); then echo 4
+  elif (( v4 == 2 || v6 == 2 )); then echo 2
+  else echo $(( v4 > v6 ? v4 : v6 ))
+  fi
+}
+
+apply_device() {
+  local device=$1 uuid=$2 is_trusted=$3 active state level want=yes
+  active=$(nmcli -g GENERAL.CON-PATH device show "$device" 2>/dev/null || true)
+  state=$(state_get "$device" state)
+  # A new activation starts from the profile's settings again.
+  [[ $(state_get "$device" active) == "$active" ]] || state=""
+
+  [[ $provider == "network" ]] && want=no
+  [[ $is_trusted == "true" && $trusted != "yes" ]] && want=no
+
+  if [[ $want == "no" ]]; then
+    if [[ $state == "applied" || $state == "blocked" ]]; then
+      restore_network "$device" "$uuid"
+      log "$device: trusted or set to the network's DNS; gave the network its DNS back"
+    fi
+    state_set "$device" "$active" network
+    return
+  fi
+
+  [[ $state == "fallback" && -z $REAPPLY ]] && return
+  # Encrypted only: on at once, kept on; the probe marks a network that
+  # blocks it.
+  if [[ $fallback == "no" && $encrypted == "yes" ]]; then
+    [[ ($state == "applied" || $state == "blocked") && -z $REAPPLY ]] && return
+    apply_encrypted "$device" "$uuid"
+    state_set "$device" "$active" applied
+    log "$device: not a trusted network; DNS is now $provider over TLS (encrypted only)"
+    background probe "$device"
+    return
+  fi
+  level=$(connectivity "$device")
+
+  if (( level == 2 )); then
+    # A portal: its sign-in page needs the network's DNS.
+    if [[ $state == "applied" || $state == "blocked" ]]; then
+      restore_network "$device" "$uuid"
+      log "$device: sign-in page waiting; using the network's DNS until it is done"
+    fi
+    state_set "$device" "$active" portal
+    return
+  fi
+
+  if [[ $state == "applied" || $state == "blocked" ]]; then
+    # Still ours unless something reapplied the profile.
+    local first
+    first=$(provider_servers | awk '{ print $1 }')
+    if [[ -z $REAPPLY ]]; then
+      nmcli -g IP4.DNS,IP6.DNS device show "$device" 2>/dev/null | tr -d "\\\\" | grep -qF -- "${first%%#*}" && return
+    fi
+  elif (( level != 4 )); then
+    # Wait for the first connectivity verdict, so a portal is found with the
+    # network's own DNS. NetworkManager reports per-device changes to the
+    # dispatcher only when the overall state changes, so ask it to check now.
+    state_set "$device" "$active" waiting
+    [[ -n $SETTLING ]] || background settle "$device"
+    return
+  fi
+
+  apply_encrypted "$device" "$uuid"
+  state_set "$device" "$active" applied
+  log "$device: not a trusted network; DNS is now $provider$([[ $encrypted == "yes" ]] && echo " over TLS")"
+  background probe "$device"
+}
+
+# Runs a follow-up as its own short-lived unit, outside the dispatcher (which
+# runs one script at a time); one per device and kind.
+background() {
+  systemd-run --no-block --quiet --collect --unit "karchy-network-dns-$1-$(systemd-escape -- "$2")" \
+    /usr/bin/karchy-network-dns "$1" "$2" >/dev/null 2>&1 || true
+}
+
+# A connection waiting for its first connectivity check: check, then decide.
+settle() {
+  local device=$1
+  [[ $device =~ $DEVICE_RE ]] || exit 1
+  timeout 20 nmcli networking connectivity check >/dev/null 2>&1 || true
+  # Once: if it is still not full, the next connectivity change decides.
+  SETTLING=1
+  [[ $(state_get "$device" state) == "waiting" ]] && apply_all "$device"
+  return 0
+}
+
+apply_all() {
+  local only=${1:-} json
+  read_config
+  json=$(/usr/bin/karchy-trusted-networks status --json 2>/dev/null) || return 0
+  while IFS=$'\t' read -r uuid device is_trusted; do
+    [[ $device =~ $DEVICE_RE ]] || continue
+    [[ -z $only || $only == "$device" ]] || continue
+    apply_device "$device" "$uuid" "$is_trusted" || log "$device: couldn't apply DNS"
+  done < <(jq -r '.active[] | [.uuid, .device, (.trusted | tostring)] | @tsv' <<<"$json")
+}
+
+# Does the link answer through the servers it was given? If not (the network
+# blocks DNS over TLS), the network's DNS comes back until it next connects.
+probe() {
+  local device=$1 uuid
+  [[ $device =~ $DEVICE_RE ]] || exit 1
+  read_config
+  [[ $(state_get "$device" state) == "applied" ]] || return 0
+  sleep 1
+  # Another connection's DNS is exclusive (a VPN): nothing goes to these.
+  resolvectl dns "$device" 2>/dev/null | grep -q ':.*[0-9a-fA-F]' || return 0
+  for _ in 1 2; do
+    timeout 6 resolvectl query --cache=no --legend=no -i "$device" archlinux.org >/dev/null 2>&1 && return 0
+  done
+  [[ $(state_get "$device" state) == "applied" ]] || return 0
+  if [[ $fallback == "no" && $encrypted == "yes" ]]; then
+    state_set "$device" "$(nmcli -g GENERAL.CON-PATH device show "$device" 2>/dev/null)" blocked
+    log "$device: the encrypted DNS servers don't answer on this network; encrypted only, so names won't resolve here"
+    return 0
+  fi
+  uuid=$(nmcli -g GENERAL.CONNECTION device show "$device" 2>/dev/null || true)
+  uuid=$(nmcli -g connection.uuid connection show "$uuid" 2>/dev/null || true)
+  [[ -n $uuid ]] || return 0
+  restore_network "$device" "$uuid"
+  state_set "$device" "$(nmcli -g GENERAL.CON-PATH device show "$device" 2>/dev/null)" fallback
+  log "$device: the DNS servers didn't answer on this network; using the network's DNS until it reconnects"
+}
+
+# Settings › Network › DNS. Every value is checked here, as root, before
+# /etc/karchy/dns is replaced; then every connection is decided again.
+#   provider=quad9|cloudflare|custom|network  servers="addr[#name] ..." (custom)
+#   encrypted=yes|no  trusted=yes|no  fallback=yes|no
+set_config() {
+  if (( EUID != 0 )); then
+    pkexec /usr/bin/karchy-network-dns set "$@" >/dev/null
+    status
+    return
+  fi
+  read_config
+  local pair key value server count=0
+  for pair in "$@"; do
+    key=${pair%%=*} value=${pair#*=}
+    [[ $pair == *=* ]] || { echo "Not a setting: $pair" >&2; exit 2; }
+    case $key in
+      provider) [[ $value =~ ^(quad9|cloudflare|custom|network)$ ]] || { echo "Unknown DNS provider: $value" >&2; exit 2; }; provider=$value ;;
+      encrypted|trusted|fallback)
+        [[ $value =~ ^(yes|no)$ ]] || { echo "$key is yes or no." >&2; exit 2; }
+        printf -v "$key" '%s' "$value"
+        ;;
+      servers)
+        for server in $value; do
+          if [[ ! $server =~ ^([0-9A-Fa-f:.]+)(#[A-Za-z0-9]([A-Za-z0-9.-]{0,252}))?$ ]]; then
+            echo "$server isn't a DNS server address. Use an IP address, optionally with #name for its certificate, like 9.9.9.9#dns.quad9.net." >&2
+            exit 2
+          fi
+          count=$(( count + 1 ))
+        done
+        (( count <= 8 )) || { echo "Use at most 8 DNS servers." >&2; exit 2; }
+        servers=$value
+        ;;
+      *) echo "Unknown setting: $key" >&2; exit 2 ;;
+    esac
+  done
+  if [[ $provider == "custom" && -z $(server_list 4)$(server_list 6) ]]; then
+    echo "Enter at least one DNS server address." >&2
+    exit 2
+  fi
+  install -d -m 755 "${CONFIG%/*}"
+  local tmp
+  tmp=$(mktemp "$CONFIG.XXXXXX")
+  {
+    echo "# karchy's DNS (D-68), written by Settings › Network › DNS (karchy-network-dns set)."
+    printf 'provider=%s\n' "$provider"
+    [[ $provider != "custom" ]] || printf 'servers=%s\n' "$servers"
+    printf 'encrypted=%s\ntrusted=%s\nfallback=%s\n' "$encrypted" "$trusted" "$fallback"
+  } >"$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$CONFIG"
+  log "settings changed: provider=$provider encrypted=$encrypted trusted=$trusted fallback=$fallback"
+  REAPPLY=1
+  apply_all
+}
+
+status() {
+  read_config
+  local entries="" file device
+  if [[ -d $STATE_DIR ]]; then
+    for file in "$STATE_DIR"/*; do
+      [[ -f $file && $file != *.tmp ]] || continue
+      device=${file##*/}
+      entries+=$(printf '%s\t%s' "$device" "$(state_get "$device" state)")$'\n'
+    done
+  fi
+  jq -n --arg provider "$provider" --arg servers "$(provider_servers)" \
+    --arg encrypted "$encrypted" --arg trusted "$trusted" --arg fallback "$fallback" --arg links "$entries" '{
+      provider: $provider,
+      servers: ($servers | split(" ") | map(select(length > 0))),
+      encrypted: ($encrypted == "yes"),
+      trusted_too: ($trusted == "yes"),
+      fallback_allowed: ($fallback == "yes"),
+      links: ($links | split("\n") | map(select(length > 0) | split("\t") | {device: .[0], state: .[1]}))
+    }'
+}
+
+case "${1:-}" in
+  apply|forget|probe|settle)
+    (( EUID == 0 )) || { echo "karchy-network-dns: run as root" >&2; exit 1; }
+    ;;
+esac
+
+case "${1:-}" in
+  apply) apply_all "${2:-}" ;;
+  forget)
+    [[ ${2:-} =~ $DEVICE_RE ]] && rm -f "$STATE_DIR/$2"
+    ;;
+  probe) probe "${2:-}" ;;
+  settle) settle "${2:-}" ;;
+  status) status ;;
+  set) shift; set_config "$@" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-network-dns /p' "$0" >&2; exit 1 ;;
+esac

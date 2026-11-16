@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# karchy:summary=Enable, disable, or toggle the touchpad
+# karchy:args=[on|off|toggle]
+
+exec karchy-toggle-input-device touchpad "${1:-toggle}"

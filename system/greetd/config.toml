@@ -1,0 +1,12 @@
+# karchy (D-13): after the disk is unlocked, log straight into the Hyprland
+# session. Logging out shows the text greeter.
+[terminal]
+vt = 1
+
+[initial_session]
+command = "uwsm start -g -1 -e -D Hyprland hyprland.desktop"
+user = "@USER@"
+
+[default_session]
+command = "agreety --cmd 'uwsm start -g -1 -e -D Hyprland hyprland.desktop'"
+user = "greeter"

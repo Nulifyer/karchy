@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.vms",
+  "name": "Virtual machines",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "Running QEMU/KVM VMs in the bar, with a panel to open, stop and start them and a window to manage them all",
+  "kinds": [
+    "bar-widget",
+    "panel"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml",
+    "panel": "Window.qml"
+  },
+  "barWidget": {
+    "displayName": "Virtual machines",
+    "description": "Shows while a VM runs; open, stop or start VMs",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

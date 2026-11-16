@@ -1,0 +1,29 @@
+# karchy-printing: printing and scanning, an optional feature (D-38, D-67),
+# installed from Quick install › System features by karchy-feature-printing,
+# which also turns on cups.socket and cups-browsed. CUPS with Omarchy's
+# hardened cups-browsed (its own user, sandboxed, queues only for driverless
+# network printers), system-config-printer to add other printers, and SANE
+# with sane-airscan and Document Scanner; ipp-usb for driverless USB printers
+# and scanners (started by its udev rule). Everything is in /usr/lib, so the
+# cups and cups-browsed packages' own files in /etc/cups stay as shipped.
+
+pkgname=karchy-printing
+pkgver=0
+pkgrel=1
+pkgdesc="karchy printers & scanners: CUPS with a hardened cups-browsed, SANE and Document Scanner"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=(
+  'cups' 'cups-browsed' 'cups-filters' 'system-config-printer' 'ipp-usb'
+  'sane' 'sane-airscan' 'simple-scan'
+)
+install=karchy-printing.install
+source=('sysusers.conf' 'cups-browsed.service.conf')
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  # pacman's systemd hooks create the user and reload units.
+  install -Dm644 sysusers.conf "$pkgdir/usr/lib/sysusers.d/karchy-cups-browsed.conf"
+  install -Dm644 cups-browsed.service.conf "$pkgdir/usr/lib/systemd/system/cups-browsed.service.d/10-karchy.conf"
+}

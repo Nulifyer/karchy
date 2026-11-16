@@ -1,0 +1,13 @@
+[Unit]
+Description=Keep this computer unannounced until a trusted network connects (karchy)
+# Nothing is trusted before NetworkManager starts, so this masks avahi for the
+# boot; the dispatcher starts it once a trusted network is up.
+Before=NetworkManager.service avahi-daemon.service
+ConditionPathExists=/usr/bin/karchy-network-privacy
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/karchy-network-privacy
+
+[Install]
+WantedBy=multi-user.target

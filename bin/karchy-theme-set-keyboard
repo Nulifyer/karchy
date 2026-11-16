@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# karchy:summary=Apply the current theme keyboard color to supported keyboards
+# karchy:hidden=true
+
+karchy-theme-set-keyboard-asus-rog
+karchy-theme-set-keyboard-f16

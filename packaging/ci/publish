@@ -1,0 +1,121 @@
+#!/bin/bash
+# Build, sign and publish one channel's [karchy] repository (D-61). Run by
+# .github/workflows/release.yml in karchy's build container
+# (packaging/container/run --writable), from the repository root.
+#
+# Usage: packaging/ci/publish <stable|rc|nightly> [--version V | --native-only]
+#
+#   --version V    the release version (CI passes it from the pushed tag, so
+#                  it never depends on which tag `git describe` prefers)
+#   --native-only  rebuild just the native packages (titlebars), from the
+#                  commit of the channel's current release, for the daily
+#                  check that follows Arch's Hyprland on stable and rc
+#
+# The channel's repository lives in the GitHub release "repo-<channel>": its
+# assets are downloaded, packaging/build adds the changed packages, and only
+# new or changed files are uploaded: packages and their signatures first, the
+# database last, so the published database never names a package that isn't
+# there yet. Packages the database no longer lists are deleted afterwards.
+# A channel already ahead of the version (rc on 3.1.0rc1 when 3.0.1 is
+# released) is left alone.
+#
+# Needs: GH_TOKEN, GH_REPO, KARCHY_SIGNING_KEY (armored private key),
+# KARCHY_SIGNING_KEY_ID.
+
+set -euo pipefail
+
+channel=${1:?channel}
+shift
+version=""
+native_only=false
+while (($#)); do
+  case "$1" in
+    --version) version=${2:?}; shift ;;
+    --native-only) native_only=true ;;
+    *) echo "publish: unknown option $1" >&2; exit 1 ;;
+  esac
+  shift
+done
+release="repo-$channel"
+repo="$PWD/out/repo-$channel"
+
+: "${KARCHY_SIGNING_KEY:?the KARCHY_SIGNING_KEY secret is not set}"
+: "${KARCHY_SIGNING_KEY_ID:?the KARCHY_SIGNING_KEY_ID variable is not set}"
+
+[[ -n ${KARCHY_BUILD_ENV:-} ]] || { echo "publish: run this in the build container (packaging/container/run)" >&2; exit 1; }
+gpg --batch --import <<<"$KARCHY_SIGNING_KEY"
+
+# The channel's current repository (none on the very first run, or after a
+# first run that failed before uploading). A pre-release, so GitHub never
+# shows it as the latest release (--latest=false alone doesn't stop that
+# while it is the only full release); its download URLs are the same.
+mkdir -p "$repo"
+if ! gh release view "$release" >/dev/null 2>&1; then
+  gh release create "$release" --title "[karchy] $channel repository" --prerelease \
+    --notes "pacman repository for the $channel channel. Use it through karchy, not directly." --latest=false
+fi
+if [[ $(gh release view "$release" --json assets --jq '.assets | length') -gt 0 ]]; then
+  gh release download "$release" --dir "$repo" --clobber
+fi
+# Uploaded copies of the database replace repo-add's symlinks; put them back.
+for db in karchy.db karchy.files; do
+  [[ -f $repo/$db.tar.gz && -f $repo/$db && ! -L $repo/$db ]] && ln -sf "$db.tar.gz" "$repo/$db"
+  [[ -f $repo/$db.tar.gz.sig && -f $repo/$db.sig && ! -L $repo/$db.sig ]] && ln -sf "$db.tar.gz.sig" "$repo/$db.sig"
+done
+current=$(sed -n 's/^VERSION=//p' "$repo/release" 2>/dev/null || true)
+
+if [[ -n $version && -n $current ]] && (($(vercmp "$current" "$version") > 0)); then
+  echo "publish: $channel is already at $current, ahead of $version; leaving it as it is"
+  exit 0
+fi
+
+# What is there now, to upload only what the build changes.
+declare -A before=()
+for file in "$repo"/*; do
+  [[ -f $file && ! -L $file ]] && before[${file##*/}]=$(sha256sum "$file" | cut -d' ' -f1)
+done
+
+args=(--channel "$channel" --repo "$repo" --native --sign "$KARCHY_SIGNING_KEY_ID")
+if [[ $native_only == "true" ]]; then
+  [[ -n $current ]] || { echo "publish: $channel has no release yet; nothing to rebuild"; exit 0; }
+  commit=$(sed -n 's/^COMMIT=//p' "$repo/release")
+  mapfile -t natives < <(grep -L "^arch=('any')" packaging/pkgbuilds/*/PKGBUILD | xargs -n1 dirname | xargs -n1 basename)
+  # The channel's released PKGBUILDs, not main's.
+  git checkout --quiet --detach "$commit"
+  packaging/build "${args[@]}" --version "$current" "${natives[@]}"
+else
+  [[ -n $version ]] && args+=(--version "$version")
+  packaging/build "${args[@]}"
+fi
+
+# Upload new and changed files: packages first, the database and release last.
+upload=$(mktemp -d)
+late=()
+for file in "$repo"/*; do
+  name=${file##*/}
+  [[ -L $file ]] && continue
+  sum=$(sha256sum "$file" | cut -d' ' -f1)
+  [[ ${before[$name]:-} == "$sum" ]] && continue
+  case "$name" in
+    karchy.db* | karchy.files* | release) late+=("$name") ;;
+    *) cp "$file" "$upload/$name" ;;
+  esac
+done
+if compgen -G "$upload/*" >/dev/null; then
+  gh release upload "$release" "$upload"/* --clobber
+fi
+if ((${#late[@]} > 0)); then
+  rm -rf "$upload" && mkdir "$upload"
+  for name in "${late[@]}"; do cp "$repo/$name" "$upload/$name"; done
+  # pacman reads karchy.db and karchy.db.sig: publish copies under those names.
+  for db in karchy.db karchy.files; do
+    [[ -f $repo/$db.tar.gz ]] && cp "$repo/$db.tar.gz" "$upload/$db"
+    [[ -f $repo/$db.tar.gz.sig ]] && cp "$repo/$db.tar.gz.sig" "$upload/$db.sig"
+  done
+  gh release upload "$release" "$upload"/* --clobber
+fi
+
+# Packages the database dropped.
+while read -r asset; do
+  [[ -e $repo/$asset ]] || gh release delete-asset "$release" "$asset" --yes
+done < <(gh release view "$release" --json assets --jq '.assets[].name')

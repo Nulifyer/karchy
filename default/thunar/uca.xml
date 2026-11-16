@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- karchy's Thunar right-click actions (D-36, D-40). karchy-thunar-actions
+     merges them into ~/.config/Thunar/uca.xml at each login, replacing only
+     actions whose unique-id starts with "karchy-", so your own are kept. An
+     action whose program isn't installed is left out.
+     Extract Here / Extract To / Create Archive come from thunar-archive-plugin;
+     Open With and Set Default Application are Thunar's own. Send To › LocalSend
+     is a Send To entry (karchy-settings), and network shares are kept from the
+     menu, Setup › Network Shares (user 2026-11-15). -->
+<actions>
+<action>
+  <icon>utilities-terminal</icon>
+  <name>Open Terminal Here</name>
+  <unique-id>karchy-terminal</unique-id>
+  <command>xdg-terminal-exec --dir=%f</command>
+  <description>Open a terminal in this folder</description>
+  <patterns>*</patterns>
+  <directories/>
+</action>
+<action>
+  <icon>com.microsoft.VSCode</icon>
+  <name>Open in VS Code</name>
+  <unique-id>karchy-vscode</unique-id>
+  <command>code %F</command>
+  <description>Open this folder in Visual Studio Code</description>
+  <patterns>*</patterns>
+  <directories/>
+</action>
+<action>
+  <icon>disktree</icon>
+  <name>Open in Disktree</name>
+  <unique-id>karchy-disktree</unique-id>
+  <command>disktree %f</command>
+  <description>See what fills this folder, and clear space</description>
+  <range>1</range>
+  <patterns>*</patterns>
+  <directories/>
+</action>
+<action>
+  <icon>edit-copy</icon>
+  <name>Copy Path</name>
+  <unique-id>karchy-copy-path</unique-id>
+  <command>karchy-file-action copy-path %F</command>
+  <description>Copy the full path to the clipboard</description>
+  <patterns>*</patterns>
+  <directories/>
+  <audio-files/>
+  <image-files/>
+  <other-files/>
+  <text-files/>
+  <video-files/>
+</action>
+<action>
+  <icon>preferences-desktop-wallpaper</icon>
+  <name>Set as Wallpaper</name>
+  <unique-id>karchy-wallpaper</unique-id>
+  <command>karchy-file-action wallpaper %f</command>
+  <description>Use this image as the background</description>
+  <range>1</range>
+  <patterns>*.jpg;*.jpeg;*.png;*.webp;*.JPG;*.JPEG;*.PNG;*.WEBP</patterns>
+  <image-files/>
+</action>
+</actions>

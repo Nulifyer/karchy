@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# karchy:summary=Mount an internal data disk at /mnt/<label> from now on, or stop asking about it (D-24)
+# karchy:args=<device> | --ignore <device>
+# karchy:hidden=true
+
+# Run from the "new disk" notification (karchy-disks-check): in a floating
+# terminal to keep a disk, since the fstab change goes through sudo; directly
+# to stop being asked about it.
+
+set -euo pipefail
+
+IGNORED="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/disks-ignored"
+
+if [[ ${1:-} == "--ignore" ]]; then
+  uuid=$(lsblk -dno UUID "${2:?}")
+  mkdir -p "$(dirname "$IGNORED")"
+  echo "$uuid" >>"$IGNORED"
+  exit 0
+fi
+
+device="${1:?Usage: karchy-disk-keep <device> | --ignore <device>}"
+# The floating terminal shows Failed and waits for a key after an error.
+line=$(karchy-disk-fstab line "$device" "$(id -u)" "$(id -g)") || exit 1
+mount=$(awk '{ print $2 }' <<<"$line")
+label=$(lsblk -dno LABEL "$device")
+size=$(lsblk -dno SIZE "$device" | tr -d " ")
+
+echo "Mount ${label:-the disk} ($size, $device) at $mount from now on."
+echo "It appears in the file manager and never delays startup if it's missing."
+echo
+# Declining closes the window (exit 130, the menu terminal's cancel).
+gum confirm "Keep it mounted?" || exit 130
+
+sudo mkdir -p "$mount"
+echo "$line" | sudo tee -a /etc/fstab >/dev/null
+sudo systemctl daemon-reload
+if ! sudo mount "$mount"; then
+  # Leave nothing behind, so the disk is offered again once it can mount
+  # (a Windows volume left hibernated by Fast Startup refuses, for one).
+  uuid=$(awk '{ print $1 }' <<<"$line")
+  sudo sed -i "\\|^$uuid $mount .*# karchy-data-disk\$|d" /etc/fstab
+  sudo systemctl daemon-reload
+  sudo rmdir "$mount" 2>/dev/null || true
+  echo "The disk did not mount, so nothing was changed. If it holds Windows, shut Windows down fully (turn off Fast Startup) and try again."
+  if [[ $(awk '{ print $3 }' <<<"$line") == ntfs3 ]]; then
+    echo "If Windows isn't installed on it any more, clear its dirty flag with: sudo ntfsfix --clear-dirty $device (from the ntfsprogs package)"
+  fi
+  exit 1
+fi
+
+# A btrfs data disk gets the same monthly scrub as the system disk.
+if [[ $(awk '{ print $3 }' <<<"$line") == btrfs ]]; then
+  sudo systemctl enable --now "btrfs-scrub@$(systemd-escape -p "$mount").timer" >/dev/null 2>&1 || true
+fi
+
+# A new Linux filesystem's top folder belongs to root, so nobody could write to
+# it. Hand an empty one to the user; one holding data keeps its owners.
+if [[ $(stat -c %u "$mount") == "0" ]]; then
+  if [[ -z $(find "$mount" -mindepth 1 -maxdepth 1 ! -name lost+found -print -quit 2>/dev/null) ]]; then
+    sudo chown "$(id -u):$(id -g)" "$mount"
+  else
+    echo "The disk's top folder belongs to root and holds files; ownership was left as it is."
+  fi
+fi
+
+karchy-notification-send -g disk "Disk mounted" "${label:-$device} is at $mount"
+echo "Done: ${label:-$device} is at $mount."

@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# karchy:summary=Open a captive portal's sign-in window and close it once online
+# karchy:group=network
+# karchy:args=<url>
+
+set -euo pipefail
+
+url=${1:?Usage: karchy-network-captive-portal <url>}
+lock=${XDG_RUNTIME_DIR:-/run/user/$UID}/karchy-network-captive-portal.lock
+
+# The portal signs in inside a floating web app window (see
+# default/hypr/apps/captive-portal.lua), named by the browser after the URL's
+# host, which closes once the internet is reachable. Launched in the
+# background: with no browser running to take the handoff, the launcher stays
+# in the foreground until the browser exits, and the wait for the sign-in
+# must start right away. Not under setsid: that would make the launcher a
+# session leader, so its own `setsid uwsm-app` would fork the browser off and
+# report success before the browser had even started.
+launcher=0
+
+open_portal_window() {
+  karchy-launch-webapp "$url" 9>&- >/dev/null 2>&1 &
+  launcher=$!
+}
+
+# A launcher that failed means there is no window to sign in with, so stop
+# instead of waiting for a sign-in that can't come. One that exited cleanly
+# handed the window to a running browser; one still running is that browser.
+portal_window_failed() {
+  if (( launcher )) && ! kill -0 "$launcher" 2>/dev/null; then
+    local status=0
+    wait "$launcher" || status=$?
+    launcher=0
+    (( status != 0 ))
+  else
+    false
+  fi
+}
+
+close_portal_window() {
+  local host=${url#*://}
+  host=${host%%/*}
+  # The class starts with the browser's name (brave-, chrome-, chromium-).
+  # [.] rather than \. so the pattern survives both jq and the Lua string.
+  local class="^.+-${host//./[.]}__.*$"
+  local seen=0
+
+  # The browser handoff can return before the window maps, so an online
+  # check that wins the race still waits a moment for it to appear.
+  for (( i = 0; i < 20; i++ )); do
+    if hyprctl clients -j | jq -e --arg class "$class" 'any(.[]; .class | test($class))' >/dev/null; then
+      seen=1
+      hyprctl dispatch "hl.dsp.window.close({ window = \"class:$class\" })" >/dev/null
+    elif (( seen )); then
+      break
+    fi
+    sleep 0.3
+  done
+}
+
+# Nothing on the machine changes when the sign-in completes, so ask
+# NetworkManager to re-check: often while a sign-in is likely, then gently
+# until it is done. Its connectivity state updates as it does, which is what
+# the panel shows. Joining any other working network ends the wait too.
+wait_until_online() {
+  local fast_until=$(( SECONDS + 300 ))
+
+  # nmcli translates its answer, so read it in the C locale.
+  until [[ $(LC_ALL=C timeout 5 nmcli networking connectivity check 2>/dev/null) == "full" ]]; do
+    if portal_window_failed; then
+      exit 1
+    fi
+    if (( SECONDS < fast_until )); then
+      sleep 2
+    else
+      sleep 15
+    fi
+  done
+}
+
+# The VPN's block while it connects also stops the sign-in page (and
+# NetworkManager's own check, so the portal may not even have been detected
+# yet). Ask the VPN for its sign-in pause: web traffic and the network's DNS
+# for at most five minutes; protection comes back by itself once online.
+pause_vpn() {
+  command -v nulifyer-vpn >/dev/null 2>&1 || return 0
+  [[ $(jq -r '.state // ""' /run/nulifyer-vpn/status 2>/dev/null) =~ ^(connecting|failed|paused)$ ]] || return 0
+  nulifyer-vpn portal-pause >/dev/null 2>&1 || true
+}
+
+exec 9>"$lock"
+if flock -n 9; then
+  pause_vpn
+  open_portal_window
+  wait_until_online
+  close_portal_window
+else
+  # An earlier click is already watching for the sign-in, so this one only
+  # brings the portal back up (and a pause that ran out starts again).
+  pause_vpn
+  open_portal_window
+fi

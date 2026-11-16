@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# Build the karchy ISO: archiso's releng profile with karchy's installer on
+# it, started on tty1 (docs/installing.md › The karchy ISO).
+#
+# Usage:
+#   packaging/iso/build [--out DIR] [--work DIR]
+#
+#   --out DIR    where the ISO goes (default: out/iso in this checkout)
+#   --work DIR   mkarchiso's scratch space, about 4 GiB (default:
+#                /var/tmp/karchy-iso in the build container)
+#
+# The build runs in a fresh container of karchy's build environment
+# (packaging/container/run), thrown away afterwards: the same archiso and
+# pacman setup on every machine, and nothing from this one. mkarchiso runs
+# without root (archiso's user-namespace mode), so nothing here needs sudo.
+# The ISO's packages come from Arch's mirrors at build time.
+#
+# The ISO carries the working tree's installer (uncommitted changes
+# included, as packaging/build packages them): install/, bin/, system/ and
+# packaging/keyring/, in /usr/share/karchy-installer. karchy's packages still
+# come from the [karchy] repository of the channel picked in the form.
+
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+PROFILE_SRC="$ROOT/packaging/iso"
+RELENG=/usr/share/archiso/configs/releng
+# The installer reads these through $KARCHY_SRC (install/karchy-install).
+INSTALLER_PATHS=(install bin system packaging/keyring logo.txt LICENSE)
+
+out="$ROOT/out/iso"
+work=/var/tmp/karchy-iso
+
+die() {
+  echo "iso: $*" >&2
+  exit 1
+}
+
+info() {
+  echo "iso: $*"
+}
+
+usage() {
+  awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"
+}
+
+while (($#)); do
+  case "$1" in
+    --out)
+      out=$(realpath -m "${2:?--out needs a directory}")
+      shift
+      ;;
+    --work)
+      work=$(realpath -m "${2:?--work needs a directory}")
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *) die "unknown option: $1 (see --help)" ;;
+  esac
+  shift
+done
+
+# The installer version the ISO carries, for /usr/share/karchy-installer/release.
+source_version() {
+  local version
+  version=$(git -C "$ROOT" describe --tags --always --dirty 2>/dev/null) || version=unknown
+  printf '%s\n' "$version"
+}
+
+build_iso() {
+  command -v mkarchiso >/dev/null || die "missing mkarchiso (pacman -S archiso)"
+  [[ -d $RELENG ]] || die "missing $RELENG (pacman -S archiso)"
+
+  local profile="$work/profile" installer path
+  rm -rf "$work"
+  mkdir -p "$work" "$out"
+
+  # releng, then karchy's files over it.
+  cp -a "$RELENG" "$profile"
+  cp -a "$PROFILE_SRC/airootfs/." "$profile/airootfs/"
+  grep -vE '^\s*(#|$)' "$PROFILE_SRC/packages.x86_64" >>"$profile/packages.x86_64"
+  cat "$PROFILE_SRC/profiledef.sh" >>"$profile/profiledef.sh"
+  # shellcheck disable=SC2016  # for zsh, at login
+  printf '\n# karchy: start the installer on the first console, once per boot.\n[[ $(tty) == /dev/tty1 ]] && /usr/local/bin/karchy-iso-start\n' \
+    >>"$profile/airootfs/root/.zlogin"
+  # Name the boot menu entries after karchy.
+  grep -rlZ 'Arch Linux install medium' "$profile/efiboot" "$profile/grub" "$profile/syslinux" |
+    xargs -0 sed -i 's/Arch Linux install medium/karchy install medium/g'
+  sed -i 's/^MENU TITLE Arch Linux$/MENU TITLE karchy/' "$profile/syslinux/archiso_head.cfg"
+
+  # The installer, as it runs from a checkout.
+  installer="$profile/airootfs/usr/share/karchy-installer"
+  mkdir -p "$installer"
+  for path in "${INSTALLER_PATHS[@]}"; do
+    mkdir -p "$installer/$(dirname "$path")"
+    cp -a "$ROOT/$path" "$installer/$path"
+  done
+  find "$installer" \( -name __pycache__ -o -name '*.local.conf' -o -name install.conf \) -prune -exec rm -rf {} +
+  printf 'version=%s\nbuilt=%s\nbuilder=%s\n' "$(source_version)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    "$KARCHY_BUILD_ENV" >"$installer/release"
+  # mkarchiso copies airootfs without modes; list each executable.
+  {
+    echo
+    echo "# The installer's executables (packaging/iso/build)."
+    find "$installer" -type f -perm -u+x -printf '%P\n' | sort |
+      awk '{ printf "file_permissions[\"/usr/share/karchy-installer/%s\"]=\"0:0:755\"\n", $0 }'
+  } >>"$profile/profiledef.sh"
+
+  # karchy's signing key in the live system's keyring: pacman-init's
+  # `pacman-key --populate` reads every keyring here, as karchy-keyring's
+  # files do on an installed system.
+  install -Dm644 -t "$profile/airootfs/usr/share/pacman/keyrings" \
+    "$ROOT/packaging/keyring/karchy.gpg" "$ROOT/packaging/keyring/karchy-trusted"
+  install -Dm644 "$ROOT/packaging/keyring/karchy-revoked" "$profile/airootfs/usr/share/pacman/keyrings/karchy-revoked"
+
+  mkarchiso -v -r -w "$work/mkarchiso" -o "$out" "$profile"
+  rm -rf "$work"
+  local iso
+  iso=$(find "$out" -maxdepth 1 -name 'karchy-*.iso' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)
+  (cd "$out" && sha256sum "$(basename "$iso")" >"$(basename "$iso").sha256")
+  info "built $iso"
+}
+
+# Outside the build container, start one and build in it.
+if [[ -z ${KARCHY_BUILD_ENV:-} ]]; then
+  ((EUID != 0)) || die "run this as your user: the build runs in a rootless container"
+  mkdir -p "$out"
+  volumes=()
+  [[ $out == "$ROOT/out" || $out == "$ROOT/out/"* ]] || volumes=(--volume "$out")
+  if [[ $work != /var/tmp/karchy-iso ]]; then
+    mkdir -p "$work"
+    volumes+=(--volume "$work")
+  fi
+  exec "$ROOT/packaging/container/run" --iso "${volumes[@]}" -- \
+    "$ROOT/packaging/iso/build" --out "$out" --work "$work"
+fi
+build_iso

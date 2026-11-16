@@ -1,0 +1,15 @@
+# karchy default apps (D-37). Your choices in ~/.config/mimeapps.list win.
+[Default Applications]
+inode/directory=thunar.desktop
+image/png=imv.desktop
+image/jpeg=imv.desktop
+image/webp=imv.desktop
+image/gif=imv.desktop
+video/mp4=mpv.desktop
+video/webm=mpv.desktop
+video/x-matroska=mpv.desktop
+audio/mpeg=mpv.desktop
+audio/flac=mpv.desktop
+audio/ogg=mpv.desktop
+text/plain=com.microsoft.VSCode.desktop
+text/markdown=omawrite.desktop

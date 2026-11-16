@@ -44,6 +44,8 @@ Item {
   // own keyCatcher so j/k inside the popup don't double-drive the panel
   // cursor.
   readonly property bool popupOpen: popup.opened
+  // Puts the keyboard on the trigger, as Tab would (a page opened at it).
+  function takeFocus() { trigger.forceActiveFocus(Qt.TabFocusReason) }
   function open() { popup.open() }
   function close() { popup.close() }
   function toggle() { popup.opened ? popup.close() : popup.open() }
@@ -75,7 +77,7 @@ Item {
       textFormat: Text.PlainText
       visible: root.showLabel && root.label !== ""
       text: root.label
-      color: Qt.darker(root.foreground, 1.4)
+      color: Commons.Color.secondaryText(root.foreground, root.background)
       font.family: root.fontFamily
       font.pixelSize: Style.font.caption
       font.bold: true
@@ -85,16 +87,18 @@ Item {
       id: trigger
       width: parent.width
       height: root.rowHeight
-      radius: Style.cornerRadius
+      radius: Style.radius.control
 
       readonly property bool _focused: trigger.activeFocus
       readonly property bool _hot: triggerHover.hovered || root.hasCursor
-      readonly property var _borderSpec: Border.controlSpec(trigger._focused ? "focus" : (trigger._hot ? "hover-cursor" : "normal"), root.foreground, root.accent)
+      readonly property var _borderSpec: Border.controlSpec(trigger._focused || trigger._hot ? "hover-cursor" : "normal", root.foreground, root.accent)
 
       color: Style.controlFill(trigger._focused, trigger._hot, root.foreground, root.accent)
       borderSpec: _borderSpec
 
       activeFocusOnTab: true
+
+      FocusRing { shown: trigger._focused || root.hasCursor }
 
       HoverHandler {
         id: triggerHover
@@ -119,7 +123,7 @@ Item {
         anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
         anchors.rightMargin: trigger.borderRight + Style.spacing.md
         text: root.currentLabel()
-        color: root.foreground
+        color: root.enabled ? root.foreground : Commons.Color.disabledText(root.foreground, root.background)
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
         elide: Text.ElideRight
@@ -130,10 +134,10 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
-        text: "󰅀"
-        color: Qt.darker(root.foreground, 1.2)
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
+        text: Icons.glyph("ui.chevron.down")
+        color: root.enabled ? Commons.Color.secondaryText(root.foreground, root.background) : Commons.Color.disabledText(root.foreground, root.background)
+        font.family: Icons.family
+        font.pixelSize: Style.font.iconSmall
       }
 
       MouseArea {
@@ -167,7 +171,7 @@ Item {
         background: BorderSurface {
           color: root.background
           borderSpec: root.popupBorderSpec
-          radius: Style.cornerRadius
+          radius: Style.radius.surface
         }
 
         onOpened: {
@@ -217,9 +221,12 @@ Item {
             required property int index
             width: optionList.width
             height: root.popupRowHeight
+            radius: Style.radius.control
             color: index === optionList.currentIndex
               ? Style.hoverFillFor(root.foreground, root.accent)
               : "transparent"
+
+            FocusRing { shown: index === optionList.currentIndex; keyboardOnly: false }
 
             Text {
               textFormat: Text.PlainText

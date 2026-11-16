@@ -21,6 +21,10 @@ Item {
 
   readonly property bool opened: panelController.open
   readonly property color barForeground: bar ? bar.barForeground : Commons.Color.foreground
+  // The panel's content sits on the popups surface, so it takes that
+  // surface's colors, never the bar's (a theme may give the bar its own).
+  readonly property color panelText: Commons.Color.popups.text
+  readonly property color panelSurface: Commons.Color.popups.background
 
   function open() { panelController.show() }
   function close() { panelController.hide() }

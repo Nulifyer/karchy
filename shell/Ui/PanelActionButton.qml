@@ -6,10 +6,10 @@ import qs.Commons as Commons
 // for inline actions — forget network, confirm passphrase, unpair device,
 // etc. Two visual modes are supported via `hoverColor`:
 //   - default: hoverColor === foreground → subtle foreground-tint hover
-//   - urgent:  hoverColor === bar.urgent → red-tint hover for destructive
-//              actions like forget/unpair
+//   - error:   hoverColor === Commons.Color.status.error → red-tint hover for
+//              destructive actions like forget/unpair
 //
-// `enabled` gates clicks and dims the icon. The component owns its own
+// `enabled` gates clicks and dims the icon to the disabled text role. The component owns its own
 // hover state visuals; mouse hover does NOT update any panel cursor state
 // here because action buttons are not cursor targets — the row they live
 // in is.
@@ -36,7 +36,7 @@ BorderSurface {
   property real fontSize: Style.font.icon
   // Whole and odd, so an icon glyph (usually an odd number of pixels wide)
   // has the same space on both sides instead of one pixel more on one side.
-  property real size: Math.round(Math.max(Style.space(22), fontSize + Style.spacing.sm * 2)) | 1
+  property real size: Math.round(Math.max(Style.spacing.actionButtonSize, fontSize + Style.spacing.sm * 2)) | 1
 
   property bool focusable: false
   property bool hasCursor: false
@@ -45,28 +45,34 @@ BorderSurface {
   signal clicked()
   signal hovered(bool isHovered)
 
-  activeFocusOnTab: focusable
+  activeFocusOnTab: focusable && enabled
+
+  // Icon-only, so its tooltip is its name.
+  Accessible.role: Accessible.Button
+  Accessible.name: root.tooltipText
+  Accessible.onPressAction: if (root.enabled) root.clicked()
+
   Keys.onReturnPressed: if (focusable) root.clicked()
   Keys.onEnterPressed: if (focusable) root.clicked()
   Keys.onSpacePressed: if (focusable) root.clicked()
 
   implicitWidth: size
   implicitHeight: size
-  radius: Style.cornerRadius
+  radius: Style.radius.control
 
-  readonly property bool _showFocusRing: focusable && activeFocus
+  readonly property bool _showFocusRing: ((focusable && activeFocus) || root.hasCursor) && root.enabled
   readonly property bool _hot: (mouse.containsMouse || root.hasCursor) && root.enabled
-  readonly property var _borderSpec: _showFocusRing
-    ? Border.controlSpec("focus", hoverColor, hoverColor)
-    : (_hot && bordered
-      ? Border.controlSpec("hover-cursor", hoverColor, hoverColor)
-      : (bordered ? Border.controlSpec("normal", foreground, Commons.Color.accent) : Border.none()))
+  readonly property var _borderSpec: (_hot || _showFocusRing) && bordered
+    ? Border.controlSpec("hover-cursor", hoverColor, hoverColor)
+    : (bordered ? Border.controlSpec("normal", foreground, Commons.Color.accent) : Border.none())
 
   color: _showFocusRing
     ? Style.focusFillFor(hoverColor, hoverColor)
     : (_hot
       ? Style.hoverFillFor(hoverColor, hoverColor)
       : "transparent")
+
+  FocusRing { shown: root._showFocusRing }
   borderSpec: _borderSpec
 
   Behavior on color { ColorAnimation { duration: Style.duration(60) } }
@@ -79,8 +85,8 @@ BorderSurface {
     text: root.iconText
     color: root.enabled
       ? (root._hot ? root.hoverColor : root.foreground)
-      : Qt.darker(root.foreground, 2.0)
-    font.family: root.fontFamily
+      : Commons.Color.disabledText(root.foreground)
+    font.family: Icons.family
     font.pixelSize: root.fontSize
   }
 
@@ -92,7 +98,7 @@ BorderSurface {
     enabled: root.enabled
     onContainsMouseChanged: root.hovered(containsMouse)
     onClicked: {
-      if (root.focusable) root.forceActiveFocus()
+      if (root.focusable) root.forceActiveFocus(Qt.MouseFocusReason)
       root.clicked()
     }
   }

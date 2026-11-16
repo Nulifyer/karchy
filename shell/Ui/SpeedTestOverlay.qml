@@ -26,7 +26,7 @@ PanelWindow {
   required property string rightLabel
   property string unit: "Mbps"
   property string title: ""
-  property string layerNamespace: "omarchy-speed-test"
+  property string layerNamespace: "karchy-speed-test"
   property string runAgainTooltip: Commons.I18n.t("speedtest.measureAgain")
   property real leftValue: 0
   property real rightValue: 0

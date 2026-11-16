@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+# karchy:summary=Read and set default applications (Settings › Default apps)
+# karchy:args=status | set <role> <app.desktop>
+# karchy:hidden=true
+"""Default applications for karchy Settings (D-37).
+
+karchy's defaults live in /etc/xdg/mimeapps.list. Choices made here go into
+~/.config/mimeapps.list through xdg-mime, the same file Thunar's "Set Default
+Application" writes, so the two always agree. The terminal is the first entry
+of ~/.config/xdg-terminals.list, which xdg-terminal-exec reads.
+
+  status                    JSON: for each role, the current default and the
+                            installed apps that can fill it
+  set <role> <app.desktop>  Make an app the default for a role
+"""
+
+import configparser
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+ROLES = {
+    "browser": ["x-scheme-handler/http", "x-scheme-handler/https", "text/html"],
+    "files": ["inode/directory"],
+    "terminal": [],
+    "editor": ["text/plain"],
+    "image": ["image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp", "image/tiff"],
+    "video": ["video/mp4", "video/x-matroska", "video/webm", "video/quicktime", "video/x-msvideo", "video/mpeg"],
+    "music": ["audio/mpeg", "audio/flac", "audio/ogg", "audio/x-wav", "audio/mp4", "audio/x-opus+ogg"],
+    "pdf": ["application/pdf"],
+    "archive": ["application/zip", "application/x-7z-compressed", "application/x-tar",
+                "application/gzip", "application/x-xz", "application/vnd.rar", "application/x-zstd-compressed-tar"],
+}
+
+HOME = Path.home()
+CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config")
+DATA_DIRS = [Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share")] + [
+    Path(d) for d in (os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share").split(":") if d
+]
+TERMINALS_LIST = CONFIG_HOME / "xdg-terminals.list"
+
+
+def desktop_files():
+    """Installed, visible apps: {desktop id: {name, mime, terminal}}. User files win."""
+    apps = {}
+    for base in DATA_DIRS:
+        folder = base / "applications"
+        if not folder.is_dir():
+            continue
+        for path in sorted(folder.rglob("*.desktop")):
+            app_id = str(path.relative_to(folder)).replace("/", "-")
+            if app_id in apps:
+                continue
+            parser = configparser.ConfigParser(interpolation=None, strict=False)
+            try:
+                parser.read(path, encoding="utf-8")
+                entry = parser["Desktop Entry"]
+            except (configparser.Error, KeyError, UnicodeDecodeError):
+                continue
+            hidden = entry.get("NoDisplay", "false") == "true" or entry.get("Hidden", "false") == "true"
+            apps[app_id] = {
+                "name": entry.get("Name", app_id),
+                "mime": {m for m in entry.get("MimeType", "").split(";") if m},
+                "terminal": "TerminalEmulator" in entry.get("Categories", "").split(";")
+                and "--server" not in entry.get("Exec", ""),
+                "editor": "TextEditor" in entry.get("Categories", "").split(";"),
+                "hidden": hidden,
+            }
+    return apps
+
+
+def query_default(mime):
+    result = subprocess.run(["xdg-mime", "query", "default", mime], capture_output=True, text=True)
+    return result.stdout.strip()
+
+
+def current_terminal(apps):
+    for path in (TERMINALS_LIST, Path("/etc/xdg/xdg-terminals.list")):
+        if path.is_file():
+            for line in path.read_text().splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and line.lstrip("+-") in apps:
+                    return line.lstrip("+-")
+    return ""
+
+
+def status():
+    apps = desktop_files()
+    roles = {}
+    for role, mimes in ROLES.items():
+        if role == "terminal":
+            # karchy-foot*.desktop are hidden copies of foot's entries that
+            # declare xdg-terminal-exec's arguments; offer them in place of
+            # the originals.
+            choices = [i for i, a in apps.items() if a["terminal"]
+                       and (not a["hidden"] or i.startswith("karchy-"))
+                       and "karchy-" + i not in apps]
+            current = current_terminal(apps)
+        else:
+            # Editors such as VS Code don't all declare text/plain, so the
+            # TextEditor category counts too.
+            choices = [i for i, a in apps.items() if not a["hidden"]
+                       and (mimes[0] in a["mime"] or (role == "editor" and a["editor"]))]
+            current = query_default(mimes[0])
+        if current and current not in choices and current in apps:
+            choices.append(current)
+        roles[role] = {
+            "current": current,
+            "choices": sorted(({"id": i, "name": apps[i]["name"]} for i in choices), key=lambda c: c["name"].lower()),
+        }
+    print(json.dumps({"roles": roles}))
+
+
+def set_default(role, app_id):
+    apps = desktop_files()
+    if role not in ROLES:
+        sys.exit(f"Unknown role '{role}'")
+    if app_id not in apps:
+        sys.exit(f"No installed app '{app_id}'")
+    if role == "terminal":
+        rest = []
+        if TERMINALS_LIST.is_file():
+            rest = [l for l in TERMINALS_LIST.read_text().splitlines() if l.strip().lstrip("+-") != app_id]
+        TERMINALS_LIST.parent.mkdir(parents=True, exist_ok=True)
+        TERMINALS_LIST.write_text("\n".join([app_id] + rest).strip() + "\n")
+    else:
+        # Only the types this app actually handles, so picking an image viewer
+        # that lacks WebP doesn't hand WebP to it.
+        mimes = [m for m in ROLES[role] if m in apps[app_id]["mime"] or m == ROLES[role][0]]
+        if role == "browser":
+            mimes = ROLES[role]
+        subprocess.run(["xdg-mime", "default", app_id, *mimes], check=True)
+    status()
+
+
+def main(argv):
+    if len(argv) == 2 and argv[1] == "status":
+        status()
+    elif len(argv) == 4 and argv[1] == "set":
+        set_default(argv[2], argv[3])
+    else:
+        print(__doc__.strip(), file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

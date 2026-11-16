@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.wifiqr",
+  "name": "Wi-Fi QR",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "Share the connected Wi-Fi network as a scannable QR code",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Panel.qml"
+  }
+}

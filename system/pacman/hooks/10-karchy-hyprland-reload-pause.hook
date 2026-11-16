@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Upgrade
+Type = Package
+Target = karchy
+
+[Action]
+Description = Pausing Hyprland config auto-reload for karchy update...
+When = PreTransaction
+Depends = karchy
+Exec = /usr/bin/karchy-hyprland-reload-guard pause

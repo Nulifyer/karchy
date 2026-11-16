@@ -9,8 +9,8 @@ import "Model.js" as Model
 
 Panel {
   id: root
-  moduleName: "omarchy.power"
-  ipcTarget: "omarchy.power"
+  moduleName: "karchy.power"
+  ipcTarget: "karchy.power"
   // manageIpc: false so this panel can own the single IpcHandler the target
   // permits — needed for the togglePercentage method below.
   manageIpc: false
@@ -50,7 +50,7 @@ Panel {
 
   function batteryIcon() {
     var device = UPower.displayDevice
-    return Model.batteryIcon(device, root.discharging, upowerStates())
+    return Icons.glyph(Model.batteryIcon(device, root.discharging, upowerStates()))
   }
 
   function modeLabel() {
@@ -59,7 +59,7 @@ Panel {
   }
 
   function profileIcon(name) {
-    return Model.profileIcon(name)
+    return Icons.glyph(Model.profileIcon(name))
   }
 
   readonly property bool fullyCharged: {
@@ -89,7 +89,7 @@ Panel {
   }
 
   readonly property color batteryFillColor: {
-    return root.bar ? root.bar.foreground : Commons.Color.foreground
+    return root.panelText
   }
 
   // Cute agent-flavored phrases shown in the hero status line, rotated on a
@@ -172,7 +172,7 @@ Panel {
 
   function setProfile(profile) {
     if (!profile || actionProc.running) return
-    actionProc.command = ["omarchy-powerprofiles-set", root.discharging ? "battery" : "ac", profile]
+    actionProc.command = ["karchy-powerprofiles-set", root.discharging ? "battery" : "ac", profile]
     actionProc.running = true
   }
 
@@ -182,7 +182,7 @@ Panel {
   }
 
   ShellIpc {
-    target: "omarchy.power"
+    target: "karchy.power"
 
     function open() { root.open() }
     function close() { root.close() }
@@ -217,19 +217,19 @@ Panel {
 
   Process {
     id: batteryProc
-    command: ["omarchy-battery-status", "--shell"]
+    command: ["karchy-battery-status", "--shell"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateKeyValue(text, "battery") }
   }
 
   Process {
     id: profilesProc
-    command: ["omarchy-powerprofiles-list", "--active-state"]
+    command: ["karchy-powerprofiles-list", "--active-state"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateProfiles(text) }
   }
 
   Process {
     id: systemProc
-    command: ["omarchy-system-stats"]
+    command: ["karchy-system-stats"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateKeyValue(text, "system") }
   }
 
@@ -255,7 +255,7 @@ Panel {
   SequentialAnimation {
     id: phraseSwap
     PropertyAnimation {
-      target: panel.loadedContent ? panel.loadedContent.heroStatus : null; property: "opacity"
+      target: panel.loadedContent ? panel.loadedContent.heroStatus : null; property: "metaOpacity"
       to: 0.0; duration: Style.duration(150); easing.type: Easing.OutCubic
     }
     ScriptAction {
@@ -265,7 +265,7 @@ Panel {
       }
     }
     PropertyAnimation {
-      target: panel.loadedContent ? panel.loadedContent.heroStatus : null; property: "opacity"
+      target: panel.loadedContent ? panel.loadedContent.heroStatus : null; property: "metaOpacity"
       to: 1.0; duration: Style.duration(200); easing.type: Easing.OutCubic
     }
   }
@@ -278,7 +278,7 @@ Panel {
     function onRotatingPhrasesChanged() {
       if (!root.rotatingPhrases) {
         phraseSwap.stop()
-        if (panel.loadedContent) panel.loadedContent.heroStatus.opacity = 1.0
+        if (panel.loadedContent) panel.loadedContent.heroStatus.metaOpacity = 1.0
       }
     }
   }
@@ -310,7 +310,7 @@ Panel {
 
     content: PanelKeyCatcher {
       id: keyCatcher
-      property alias heroStatus: heroStatus
+      property alias heroStatus: hero
       anchors.fill: parent
       implicitHeight: column.implicitHeight
       onMoveRequested: function(dx, dy) {
@@ -330,69 +330,22 @@ Panel {
         spacing: Style.space(14)
 
         // ---------- Hero: battery icon · title/status · percentage ----------
-        Item {
-          width: parent.width
-          implicitHeight: Math.max(heroIcon.implicitHeight, heroLabels.implicitHeight, heroPercent.implicitHeight)
-
-          Text {
-            id: heroIcon
-            textFormat: Text.PlainText
-            text: root.batteryIcon()
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.display
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-
-            Behavior on color { ColorAnimation { duration: Style.duration(200) } }
-          }
-
-          Column {
-            id: heroLabels
-            anchors.left: heroIcon.right
-            anchors.leftMargin: Style.space(14)
-            anchors.right: heroPercent.left
-            anchors.rightMargin: Style.space(10)
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Style.space(2)
-
+        PanelHero {
+          id: hero
+          iconText: root.batteryIcon()
+          title: Commons.I18n.t("power.battery")
+          meta: root.heroStatusText
+          fontFamily: root.bar.fontFamily
+          trailingControl: Component {
             Text {
-              text: Commons.I18n.t("power.battery")
               textFormat: Text.PlainText
-              color: root.bar.foreground
+              text: root.reading(root.batteryInfo.percentage) || "—"
+              color: root.panelText
               font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.title
+              font.pixelSize: Style.font.displayLarge
               font.bold: true
-              elide: Text.ElideRight
-              width: parent.width
+              font.features: { "tnum": 1 }
             }
-
-            Text {
-              id: heroStatus
-              textFormat: Text.PlainText
-              text: root.heroStatusText.toUpperCase()
-              color: Qt.darker(root.bar.foreground, 1.4)
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-              font.letterSpacing: 1.2
-              elide: Text.ElideRight
-              width: parent.width
-            }
-          }
-
-          Text {
-            id: heroPercent
-            textFormat: Text.PlainText
-            text: root.reading(root.batteryInfo.percentage) || "—"
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.displayLarge
-            font.bold: true
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-
-            Behavior on color { ColorAnimation { duration: Style.duration(200) } }
           }
         }
 
@@ -405,7 +358,7 @@ Panel {
             id: barTrack
             anchors.fill: parent
             radius: height / 2
-            color: Qt.rgba(root.bar.foreground.r, root.bar.foreground.g, root.bar.foreground.b, 0.12)
+            color: Qt.rgba(root.panelText.r, root.panelText.g, root.panelText.b, 0.12)
           }
 
           Rectangle {
@@ -437,35 +390,32 @@ Panel {
         // of the condition: UPower briefly reports FullyCharged on plug-in when
         // the battery sits above the charge-control start threshold, and we
         // refuse to flicker the whole panel for that ~1s window.
-        Row {
+        KeyValueGrid {
           visible: root.batteryInfo.percentage !== undefined
           width: parent.width
-          spacing: Style.space(20)
-
-          Column {
-            width: (parent.width - parent.spacing) / 2
-            spacing: Style.spacing.labelGap
-            InfoPair { label: Commons.I18n.t("power.batterySize"); value: root.reading(root.batteryInfo.size) }
-            InfoPair { label: Commons.I18n.t("power.chargeCycles"); value: root.reading(root.batteryInfo.cycles) || "—" }
-          }
-
-          Column {
-            width: (parent.width - parent.spacing) / 2
-            spacing: Style.spacing.labelGap
-            InfoPair {
-              label: root.chargeThresholdActive ? Commons.I18n.t("power.chargeLimit") : (root.discharging ? Commons.I18n.t("power.timeLeft") : Commons.I18n.t("power.timeToFull"))
+          columns: 2
+          justify: true
+          fontSize: Style.font.bodySmall
+          foreground: root.panelText
+          surface: root.panelSurface
+          fontFamily: root.bar.fontFamily
+          rows: [
+            { label: Commons.I18n.t("power.batterySize"), value: root.reading(root.batteryInfo.size) },
+            {
+              label: root.chargeThresholdActive ? Commons.I18n.t("power.chargeLimit") : (root.discharging ? Commons.I18n.t("power.timeLeft") : Commons.I18n.t("power.timeToFull")),
               value: root.chargeThresholdActive ? (root.reading(root.batteryInfo.threshold) || "-") : (root.batteryFlowIdle ? "-" : (root.batteryInfo.time || "—"))
-            }
-            InfoPair {
-              label: root.chargeThresholdActive ? Commons.I18n.t("power.batteryState") : (root.discharging ? Commons.I18n.t("power.discharging") : Commons.I18n.t("power.charging"))
+            },
+            { label: Commons.I18n.t("power.chargeCycles"), value: root.reading(root.batteryInfo.cycles) || "—" },
+            {
+              label: root.chargeThresholdActive ? Commons.I18n.t("power.batteryState") : (root.discharging ? Commons.I18n.t("power.discharging") : Commons.I18n.t("power.charging")),
               value: root.chargeThresholdActive ? Commons.I18n.t("power.holding") : (root.batteryFull ? "-" : root.reading(root.batteryInfo.rate))
             }
-          }
+          ]
         }
 
         // ---------- Power profile picker ----------
         PanelSeparator {
-          foreground: root.bar.foreground
+          foreground: root.panelText
         }
 
         Column {
@@ -474,7 +424,7 @@ Panel {
 
           PanelSectionHeader {
             text: Commons.I18n.t("power.powerProfile")
-            foreground: root.bar.foreground
+            foreground: root.panelText
             fontFamily: root.bar.fontFamily
           }
 
@@ -494,10 +444,10 @@ Panel {
                 required property int index
                 width: profileRow.cellWidth
                 iconText: root.profileIcon(String(modelData))
-                iconSize: Style.font.title
+                iconSize: Style.font.icon
                 text: Model.profileLabel(modelData, Commons.I18n.t)
                 fontSize: Style.font.bodySmall
-                foreground: root.bar.foreground
+                foreground: root.panelText
                 fontFamily: root.bar.fontFamily
                 horizontalPadding: Style.spacing.controlPaddingX
                 verticalPadding: Style.spacing.controlPaddingY + Style.space(2)
@@ -517,32 +467,5 @@ Panel {
         }
       }
     }
-  }
-
-  component InfoPair: Row {
-    property string label: ""
-    property string value: ""
-
-    width: parent.width
-    spacing: Style.space(8)
-
-    InfoLabel { text: label }
-    Item { width: Math.max(0, parent.width - parent.children[0].implicitWidth - parent.children[2].implicitWidth - parent.spacing * 2); height: 1 }
-    InfoValue { text: value }
-  }
-
-  component InfoLabel: Text {
-    textFormat: Text.PlainText
-    color: root.bar.foreground
-    opacity: 0.6
-    font.family: root.bar.fontFamily
-    font.pixelSize: Style.font.bodySmall
-  }
-
-  component InfoValue: Text {
-    textFormat: Text.PlainText
-    color: root.bar.foreground
-    font.family: root.bar.fontFamily
-    font.pixelSize: Style.font.bodySmall
   }
 }

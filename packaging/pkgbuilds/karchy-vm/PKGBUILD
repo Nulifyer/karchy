@@ -1,0 +1,13 @@
+# karchy-vm: what a virtual machine adds (detected tier). The SPICE agent lets
+# the display follow the viewer's window size and shares the clipboard; the
+# QEMU guest agent lets the host shut down and freeze the guest cleanly. Both
+# start from udev when their virtio port exists, so nothing needs enabling.
+
+pkgname=karchy-vm
+pkgver=0
+pkgrel=1
+pkgdesc="karchy virtual machine additions: SPICE and QEMU guest agents"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('karchy-desktop' 'spice-vdagent' 'qemu-guest-agent')

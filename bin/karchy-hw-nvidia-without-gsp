@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# karchy:summary=Detect whether the computer's NVIDIA GPU is a Maxwell, Pascal or Volta card without GSP firmware.
+
+# Matches exactly the cards that get the 580xx driver (karchy-nvidia-580xx):
+# the newest NVIDIA GPU present is Maxwell, Pascal or Volta. Kepler and older
+# have no current NVIDIA driver. The device ID ranges live in
+# karchy-hw-nvidia-generation, which the installer also uses.
+[[ $("$(dirname "${BASH_SOURCE[0]}")/karchy-hw-nvidia-generation") == 580xx ]]

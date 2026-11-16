@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# karchy:summary=Detect whether the computer has an NVIDIA GPU with GSP firmware (Turing or newer).
+
+# GSP firmware arrived with Turing, the generation the open kernel modules
+# need. The device ID ranges live in karchy-hw-nvidia-generation, which the
+# installer also uses to pick the driver package.
+[[ $("$(dirname "${BASH_SOURCE[0]}")/karchy-hw-nvidia-generation") == open ]]

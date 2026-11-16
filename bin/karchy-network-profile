@@ -1,0 +1,232 @@
+#!/bin/bash
+
+# karchy:summary=List and change saved Wi-Fi and Ethernet networks (Settings › Network)
+# karchy:group=network
+# karchy:args=list [--json] | set <uuid> <setting> <value...> | forget <uuid> | join-hidden <ssid> open|wpa
+# karchy:examples=karchy network profile list | karchy network profile set <uuid> metered yes
+# karchy:hidden=true
+
+# Every change goes through nmcli: NetworkManager's polkit rule lets local
+# members of wheel change saved networks without a password. No file is
+# written here. Settings:
+#   autoconnect yes|no          Connect automatically
+#   metered yes|no              Metered: apps are asked to hold back on it
+#   band auto|2.4|5|6           Wi-Fi band (on the network in use through
+#                               karchy-network-band, which reconnects and
+#                               falls back when the band doesn't answer)
+#   private-address off|stable  Private Wi-Fi address: the device's own, or
+#                               one made up for this network that stays the same
+#   ip auto                     IPv4 from the network (DHCP)
+#   ip manual <address/prefix> <gateway> [dns...]
+#                               fixed IPv4 settings, checked before saving
+# A change that only applies on connecting (IP settings, the private address)
+# reconnects the network when it is in use. join-hidden reads the password
+# from stdin, never from the command line, where every user could read it.
+#
+# Exit 2 with one sentence on stderr: the value was refused, nothing changed.
+
+set -euo pipefail
+
+UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+
+refuse() { echo "$*" >&2; exit 2; }
+
+# The fields Settings shows.
+FIELDS=connection.id,connection.type,802-11-wireless.ssid,connection.autoconnect,connection.metered,802-11-wireless.band,802-11-wireless.cloned-mac-address,ipv4.method,ipv4.addresses,ipv4.gateway,ipv4.dns,802-11-wireless-security.key-mgmt,802-11-wireless.hidden,connection.timestamp
+
+list() {
+  local rows="" uuid type device
+  declare -A active=()
+  while IFS=: read -r uuid device; do
+    [[ -n $uuid && -n $device ]] && active[$uuid]=$device
+  done < <(nmcli -t -e no -f UUID,DEVICE connection show --active 2>/dev/null)
+  while IFS=: read -r uuid type; do
+    [[ $type == "802-11-wireless" || $type == "802-3-ethernet" ]] || continue
+    device=${active[$uuid]:-}
+    # "setting.property:value" lines; a setting the profile doesn't have
+    # (Wi-Fi ones on Ethernet) is left out.
+    rows+=$(nmcli -t -e no -f "$FIELDS" connection show uuid "$uuid" 2>/dev/null |
+      jq -Rsc --arg uuid "$uuid" --arg device "$device" '
+        (split("\n") | map(select(length > 0) | capture("^(?<key>[^:]+):(?<value>.*)$")) | from_entries) as $f
+        | def get($k): $f[$k] // "";
+        def list($k): get($k) | split(",") | map(select(length > 0));
+        {
+          uuid: $uuid, name: get("connection.id"),
+          type: (if get("connection.type") == "802-11-wireless" then "wifi" else "ethernet" end),
+          ssid: get("802-11-wireless.ssid"), autoconnect: (get("connection.autoconnect") == "yes"),
+          metered: (get("connection.metered") == "yes"),
+          band: ({"bg": "2.4", "a": "5", "6GHz": "6"}[get("802-11-wireless.band")] // "auto"),
+          private_address: (get("802-11-wireless.cloned-mac-address") as $m
+            | if $m == "stable" then "stable" elif ($m == "" or $m == "permanent" or $m == "preserve") then "off" else $m end),
+          ip: {method: (if get("ipv4.method") == "manual" then "manual" else "auto" end),
+               addresses: list("ipv4.addresses"), gateway: get("ipv4.gateway"), dns: list("ipv4.dns")},
+          security: (if get("connection.type") != "802-11-wireless" then ""
+                     elif get("802-11-wireless-security.key-mgmt") == "" then "open"
+                     else get("802-11-wireless-security.key-mgmt") end),
+          hidden: (get("802-11-wireless.hidden") == "yes"),
+          last_used: (get("connection.timestamp") | tonumber? // 0),
+          active: ($device != ""), device: $device
+        }')$'\n'
+  done < <(nmcli -t -e no -f UUID,TYPE connection show 2>/dev/null)
+  jq -s 'sort_by([(.active | not), (.name | ascii_downcase)]) | {networks: .}' <<<"$rows"
+}
+
+# An IPv4 address: four numbers from 0 to 255.
+ipv4() {
+  local IFS=. octet
+  [[ $1 =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+  for octet in $1; do (( 10#$octet <= 255 )) || return 1; done
+}
+
+ipv4_number() {
+  local IFS=. a b c d
+  read -r a b c d <<<"$1"
+  echo $(( (10#$a << 24) | (10#$b << 16) | (10#$c << 8) | 10#$d ))
+}
+
+ipv6() {
+  [[ $1 =~ ^[0-9A-Fa-f:]+$ && $1 == *:* ]]
+}
+
+# Checks fixed IPv4 settings and says in words what is wrong.
+check_manual() {
+  local address=$1 gateway=$2 prefix host mask server
+  shift 2
+  [[ -n $address ]] || refuse "Enter this computer's address, like 192.168.1.20/24."
+  [[ $address == */* ]] || refuse "Add the network's size to the address, like $address/24."
+  host=${address%/*} prefix=${address#*/}
+  ipv4 "$host" || refuse "$host isn't an IPv4 address. Use four numbers from 0 to 255, like 192.168.1.20."
+  if [[ ! $prefix =~ ^[0-9]{1,2}$ ]] || (( prefix < 1 || prefix > 32 )); then
+    refuse "/$prefix isn't a network size. Use a number from 1 to 32; most home networks use /24."
+  fi
+  if [[ -n $gateway ]]; then
+    ipv4 "$gateway" || refuse "The gateway $gateway isn't an IPv4 address."
+    mask=$(( prefix == 0 ? 0 : (0xffffffff << (32 - prefix)) & 0xffffffff ))
+    (( ($(ipv4_number "$host") & mask) == ($(ipv4_number "$gateway") & mask) )) ||
+      refuse "The gateway $gateway isn't on the network $address. Check the address, its /size, or the gateway."
+    [[ $gateway != "$host" ]] || refuse "The gateway can't be this computer's own address."
+  fi
+  for server in "$@"; do
+    ipv4 "$server" || ipv6 "$server" || refuse "The DNS server $server isn't an IP address."
+  done
+}
+
+# The profile's device while it is connected, else nothing.
+active_device() {
+  nmcli -t -e no -f UUID,DEVICE connection show --active 2>/dev/null | awk -F: -v u="$1" '$1 == u { print $2; exit }'
+}
+
+# Applies a change that only takes effect on connecting.
+reconnect_if_active() {
+  [[ -n $(active_device "$1") ]] || return 0
+  nmcli connection up uuid "$1" >/dev/null || refuse "Saved, but reconnecting failed. Connect again from the network panel."
+}
+
+set_setting() {
+  local uuid=$1 setting=$2 value=${3:-} type device
+  shift 3 || true
+  type=$(nmcli -g connection.type connection show uuid "$uuid" 2>/dev/null) || refuse "That network isn't saved any more."
+  case $setting in
+    autoconnect)
+      [[ $value =~ ^(yes|no)$ ]] || refuse "Connect automatically is yes or no."
+      nmcli connection modify uuid "$uuid" connection.autoconnect "$value"
+      ;;
+    metered)
+      [[ $value =~ ^(yes|no)$ ]] || refuse "Metered is yes or no."
+      nmcli connection modify uuid "$uuid" connection.metered "$value"
+      # The network in use takes it now; a change to the live connection keeps
+      # the DNS karchy set on it (a reapply would drop it).
+      device=$(active_device "$uuid")
+      [[ -z $device ]] || nmcli device modify "$device" connection.metered "$value" >/dev/null || true
+      ;;
+    band)
+      [[ $type == "802-11-wireless" ]] || refuse "Only Wi-Fi networks have a band."
+      [[ $value =~ ^(auto|2\.4|5|6)$ ]] || refuse "The band is auto, 2.4, 5 or 6."
+      if [[ -n $(active_device "$uuid") ]]; then
+        karchy-network-band "$value" 2>&1 >/dev/null | sed 's/^Error: //' >&2
+        return "${PIPESTATUS[0]}"
+      fi
+      local nm=""
+      case $value in 2.4) nm="bg" ;; 5) nm="a" ;; 6) nm="6GHz" ;; esac
+      nmcli connection modify uuid "$uuid" 802-11-wireless.band "$nm"
+      ;;
+    private-address)
+      [[ $type == "802-11-wireless" ]] || refuse "Only Wi-Fi networks have a private address."
+      case $value in
+        off) value=permanent ;;
+        stable) ;;
+        *) refuse "The private address is off or stable." ;;
+      esac
+      nmcli connection modify uuid "$uuid" 802-11-wireless.cloned-mac-address "$value"
+      reconnect_if_active "$uuid"
+      ;;
+    ip)
+      case $value in
+        auto)
+          nmcli connection modify uuid "$uuid" ipv4.method auto ipv4.addresses "" ipv4.gateway "" ipv4.dns ""
+          ;;
+        manual)
+          local address=${1:-} gateway=${2:-}
+          shift 2 || shift $#
+          check_manual "$address" "$gateway" "$@"
+          local IFS=,
+          nmcli connection modify uuid "$uuid" ipv4.method manual ipv4.addresses "$address" \
+            ipv4.gateway "$gateway" ipv4.dns "$*"
+          ;;
+        *) refuse "IP settings are auto or manual." ;;
+      esac
+      reconnect_if_active "$uuid"
+      ;;
+    *) refuse "Unknown setting: $setting." ;;
+  esac
+}
+
+# A network that doesn't announce its name. The password arrives on stdin and
+# reaches nmcli through its editor's stdin, never argv. The profile is created
+# with autoconnect off and gets it once connected, so NetworkManager doesn't
+# try it before the password is in.
+join_hidden() {
+  local ssid=$1 security=$2 uuid pw=""
+  [[ -n $ssid ]] || refuse "Enter the network's name."
+  (( ${#ssid} <= 32 )) || refuse "A Wi-Fi name is at most 32 characters."
+  case $security in
+    open) ;;
+    wpa)
+      IFS= read -r pw || true
+      (( ${#pw} >= 8 && ${#pw} <= 63 )) || refuse "A Wi-Fi password has 8 to 63 characters."
+      ;;
+    *) refuse "Security is open or wpa." ;;
+  esac
+  uuid=$(uuidgen)
+  local args=(type wifi con-name "$ssid" ssid "$ssid" connection.uuid "$uuid" 802-11-wireless.hidden yes connection.autoconnect no)
+  [[ $security == "wpa" ]] && args+=(wifi-sec.key-mgmt wpa-psk)
+  nmcli connection add "${args[@]}" >/dev/null
+  if [[ $security == "wpa" ]]; then
+    printf 'set 802-11-wireless-security.psk %s\nsave\nquit\n' "$pw" | nmcli connection edit uuid "$uuid" >/dev/null 2>&1
+  fi
+  if ! nmcli connection up uuid "$uuid" >/dev/null 2>&1; then
+    nmcli connection delete uuid "$uuid" >/dev/null 2>&1 || true
+    refuse "Couldn't join $ssid. Check the name and the password, and that the network is in range."
+  fi
+  nmcli connection modify uuid "$uuid" connection.autoconnect yes
+  echo "$uuid"
+}
+
+check_uuid() {
+  [[ ${1:-} =~ $UUID_RE ]] || refuse "Not a connection UUID: ${1:-}"
+}
+
+case "${1:-}" in
+  list) list ;;
+  set)
+    check_uuid "${2:-}"
+    (( $# >= 4 )) || refuse "Usage: karchy-network-profile set <uuid> <setting> <value...>"
+    set_setting "${@:2}"
+    ;;
+  forget)
+    check_uuid "${2:-}"
+    nmcli connection delete uuid "$2" >/dev/null
+    ;;
+  join-hidden) join_hidden "${2:-}" "${3:-}" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-network-profile /p' "$0" >&2; exit 1 ;;
+esac

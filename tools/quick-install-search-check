@@ -1,0 +1,106 @@
+#!/usr/bin/env node
+
+// Checks the Quick install window's search against the real list
+// (default/karchy/quick-install.json). Run it from anywhere:
+// tools/quick-install-search-check
+
+"use strict"
+
+const assert = require("node:assert/strict")
+const fs = require("node:fs")
+const path = require("node:path")
+const root = path.join(__dirname, "..")
+const Search = require(path.join(root, "shell", "plugins", "quick-install", "Search.js"))
+const catalog = JSON.parse(fs.readFileSync(path.join(root, "default", "karchy", "quick-install.json"), "utf8"))
+const apps = catalog.apps
+
+const checks = []
+function check(name, fn) {
+  checks.push([name, fn])
+}
+
+function names(query, count) {
+  return Search.search(apps, query).slice(0, count).map((r) => r.app.name)
+}
+
+function rank(query, name) {
+  return Search.search(apps, query).findIndex((r) => r.app.name === name)
+}
+
+const fake = (name, extra) => Object.assign({ id: name.toLowerCase(), name: name, description: "", packages: [] }, extra || {})
+
+check("an empty query keeps every app", () => {
+  assert.equal(Search.search(apps, "").length, apps.length)
+  assert.equal(Search.search(apps, "   ").length, apps.length)
+})
+
+check("tiers: start > word start > substring > subsequence > other text", () => {
+  const list = [
+    fake("Xobs Thing"),                 // substring
+    fake("Hobs Obs"),                   // word start
+    fake("Ocean Bus Stop"),             // subsequence
+    fake("Plain", { description: "obs plugin" }),
+    fake("Obsidian")                    // start
+  ]
+  assert.deepEqual(Search.search(list, "obs").map((r) => r.app.name),
+    ["Obsidian", "Hobs Obs", "Xobs Thing", "Ocean Bus Stop", "Plain"])
+})
+
+check("obs: OBS Studio and Obsidian above names that only hold o-b-s", () => {
+  const top = names("obs", 2).sort()
+  assert.deepEqual(top, ["OBS Studio", "Obsidian"])
+})
+
+check("vsc finds VSCodium first", () => {
+  assert.equal(names("vsc", 1)[0], "VSCodium")
+})
+
+check("vs code (with a space) still finds VSCodium", () => {
+  assert.ok(rank("vs code", "VSCodium") >= 0)
+})
+
+// Names that contain "ff" (Kaffeine, OnlyOffice) come first, as a substring
+// ranks above letters in order, and FontForge's two word starts beat
+// Firefox's one; Firefox still shows on the first screen.
+check("ff finds Firefox in the first ten", () => {
+  const at = rank("ff", "Firefox")
+  assert.ok(at >= 0 && at < 10, "Firefox at " + at + ": " + names("ff", 12).join(", "))
+})
+
+check("word starts beat scattered letters: kpx finds KeePassXC", () => {
+  assert.equal(names("kpx", 1)[0], "KeePassXC")
+})
+
+check("keywords, packages and descriptions are searched", () => {
+  assert.ok(rank("podman", "Containers") >= 0)
+  assert.ok(rank("vscodium-bin", "VSCodium") >= 0)
+  assert.ok(rank("redis", "Valkey") >= 0)
+})
+
+check("case is ignored", () => {
+  assert.deepEqual(names("FIREFOX", 1), names("firefox", 1))
+})
+
+check("matched letters are the ones highlighted", () => {
+  const firefox = apps.find((a) => a.id === "firefox")
+  assert.deepEqual(Search.match(firefox, "fox").positions, [4, 5, 6])
+  assert.deepEqual(Search.match(firefox, "ff").positions, [0, 4])
+  assert.equal(Search.highlighted("A<b", [0], "#fff"), '<u><font color="#fff">A</font></u>&lt;b')
+})
+
+check("no match is no result", () => {
+  assert.equal(Search.search(apps, "zzzzqqq").length, 0)
+})
+
+let failed = 0
+for (const [name, fn] of checks) {
+  try {
+    fn()
+    console.log("ok   " + name)
+  } catch (error) {
+    failed++
+    console.log("FAIL " + name + "\n     " + String(error.message).split("\n").join("\n     "))
+  }
+}
+console.log(checks.length - failed + "/" + checks.length + " checks passed")
+process.exit(failed ? 1 : 0)

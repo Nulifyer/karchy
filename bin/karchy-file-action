@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# karchy:summary=Run a file action from Thunar's right-click menu (copy path, wallpaper)
+# karchy:args=copy-path <file>... | wallpaper <image>
+# karchy:hidden=true
+
+set -euo pipefail
+
+action="${1:-}"
+shift || true
+(($# > 0)) || { echo "Usage: karchy-file-action copy-path|wallpaper <file>..." >&2; exit 1; }
+
+case "$action" in
+  copy-path)
+    printf '%s\n' "$@" | head -c -1 | wl-copy
+    if (($# == 1)); then
+      karchy-notification-send -g copy "Path copied" "$1"
+    else
+      karchy-notification-send -g copy "$# paths copied"
+    fi
+    ;;
+  wallpaper)
+    # The background is a link to its file, so a picture from anywhere is
+    # copied into the theme's own backgrounds folder first: deleting or moving
+    # the original then leaves the background as it is, and it shows in
+    # Appearance › Background with the theme's.
+    theme=$(cat "$HOME/.local/state/karchy/current/theme.name" 2>/dev/null)
+    dir="$HOME/.config/karchy/backgrounds/${theme:-default}"
+    source=$(realpath -- "$1")
+    case $source in
+      "$dir"/* | "$HOME/.local/state/karchy/current/theme/backgrounds/"*) image=$source ;;
+      *)
+        mkdir -p "$dir"
+        image="$dir/${source##*/}"
+        if [[ -e $image ]] && ! cmp -s "$source" "$image"; then
+          image="$dir/$(date +%Y%m%d-%H%M%S)-${source##*/}"
+        fi
+        [[ -e $image ]] || cp -- "$source" "$image"
+        ;;
+    esac
+    karchy-theme-bg-set "$image"
+    ;;
+  *)
+    echo "Unknown action: $action" >&2
+    exit 1
+    ;;
+esac

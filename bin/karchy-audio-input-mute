@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# karchy:summary=Toggle microphone mute. Drives the hardware mic-mute LED on laptops that expose one.
+
+wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle >/dev/null
+
+if wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | grep -q MUTED; then
+  karchy-brightness-keyboard-mute on
+  karchy-osd -i microphone-muted -m "$(karchy-i18n audio.micMuted)"
+else
+  karchy-brightness-keyboard-mute off
+  karchy-osd -i microphone -m "$(karchy-i18n audio.micOn)"
+fi

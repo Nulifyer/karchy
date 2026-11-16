@@ -1,0 +1,46 @@
+# karchy-hyprland-titlebars: window titlebars for floating workspaces (D-16, D-60).
+# Omarchy's fork of hyprbars, built here against Arch's Hyprland: a Hyprland
+# plugin only loads in the exact Hyprland it was built with, and Omarchy's
+# package is built for Omarchy's older pinned Hyprland. The version carries the
+# Hyprland it was built against (_h<version>), and packaging/build rebuilds it
+# whenever Arch's Hyprland changes. It deliberately doesn't pin hyprland=: a
+# Hyprland update must never be held back by this package; until the rebuild
+# lands, floating windows just have no titlebars.
+#
+# Native package: packaging/build builds it only with --native, in an Arch
+# environment with the target Hyprland installed (CI's Arch container).
+
+# karchy:version-cmd=v=$(pacman -Si extra/hyprland | awk '/^Version/ { sub(/-.*/, "", $3); print $3 }') && [ -n "$v" ] && echo "0.4.0_h$v"
+
+pkgname=karchy-hyprland-titlebars
+_upstream=0.4.0
+pkgver=0
+pkgrel=1
+pkgdesc="Window titlebars for karchy's floating workspaces (Omarchy's hyprbars fork)"
+arch=('x86_64')
+url="https://github.com/omacom/omarchy-hyprland-titlebars"
+license=('BSD-3-Clause' 'MIT')
+depends=('hyprland' 'glibc' 'gcc-libs')
+makedepends=('cmake' 'pkgconf' 'hyprland' 'libdrm' 'libinput' 'systemd-libs' 'pixman' 'wayland' 'libxkbcommon')
+provides=('omarchy-hyprland-titlebars')
+conflicts=('omarchy-hyprland-titlebars')
+source=("omarchy-hyprland-titlebars-$_upstream.tar.gz::https://github.com/omacom/omarchy-hyprland-titlebars/archive/refs/tags/v$_upstream.tar.gz")
+sha256sums=('275cef436530b3cd2e665b199d8df142e78fde4c00067d99676068e2c6f40e69')
+
+build() {
+  cmake -S "omarchy-hyprland-titlebars-$_upstream" -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+  cmake --build build
+}
+
+package() {
+  # karchy loads it from this fixed path (default/hypr/workspace-modes.lua).
+  install -Dm755 build/titlebars.so "$pkgdir/usr/lib/karchy-hyprland-titlebars/titlebars.so"
+  # The Hyprland build it was made for: the config loads it only into a running
+  # Hyprland of that same commit (its instance signature starts with it).
+  sed -n 's/^#define GIT_COMMIT_HASH *"\([0-9a-f]*\)".*/\1/p' /usr/include/hyprland/src/version.h \
+    >"$pkgdir/usr/lib/karchy-hyprland-titlebars/hyprland-commit"
+  [[ -s "$pkgdir/usr/lib/karchy-hyprland-titlebars/hyprland-commit" ]]
+  cd "omarchy-hyprland-titlebars-$_upstream"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 LICENSE.MIT "$pkgdir/usr/share/licenses/$pkgname/LICENSE.MIT"
+}

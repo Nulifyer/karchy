@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# karchy:summary=Pick a shell plugin to enable, disable, clone, or remove
+# karchy:group=menu
+# karchy:name=plugin
+# karchy:args=<enable|disable|clone|remove>
+
+set -euo pipefail
+
+PLUGIN_ICON=plugin
+
+case "${1:-}" in
+  enable) filter='(.enabled | not)' ;;
+  disable) filter='.canDisable and .enabled' ;;
+  clone) filter='.firstParty and (.id as $id | ($plugins | map(.clonedFrom // "") | index($id)) == null)' ;;
+  remove) filter='(.firstParty | not)' ;;
+  *)
+    echo "Usage: karchy-menu-plugin <enable|disable|clone|remove>" >&2
+    exit 1
+    ;;
+esac
+
+# Whole sentences per verb, so a translation can inflect the verb.
+case $1 in
+  enable) title=$(karchy-i18n plugin.enableTitle) none=$(karchy-i18n plugin.noneToEnable) ;;
+  disable) title=$(karchy-i18n plugin.disableTitle) none=$(karchy-i18n plugin.noneToDisable) ;;
+  clone) title=$(karchy-i18n plugin.cloneTitle) none=$(karchy-i18n plugin.noneToClone) ;;
+  remove) title=$(karchy-i18n plugin.removeTitle) none=$(karchy-i18n plugin.noneToRemove) ;;
+esac
+
+plugins=$(karchy-plugin-list --json)
+
+# The id rides along as row subtext: it tells same-named plugins apart on
+# screen and comes back with the selection as the key to act on.
+rows=$(jq -r --arg icon "$PLUGIN_ICON" \
+  ". as \$plugins
+   | .[] | select($filter)
+   | \$icon + \"\\t\" + .name + \"\\t\" + .id" <<<"$plugins")
+[[ -n $rows ]] || { karchy-notification-send -g plugin "$none"; exit 0; }
+
+selection=$(karchy-menu-select "$title" <<<"$rows") || exit 0
+[[ -n $selection ]] || exit 0
+
+id=$(cut -f2 <<<"$selection")
+[[ -n $id ]] || exit 1
+
+if [[ $1 == "clone" ]]; then
+  karchy-launch-floating-terminal-with-presentation \
+    "karchy-plugin-clone $(printf '%q' "$id") --edit"
+elif [[ $1 == "remove" ]]; then
+  karchy-launch-floating-terminal-with-presentation "karchy-plugin-remove $(printf '%q' "$id")"
+else
+  name=$(cut -f1 <<<"$selection")
+  if error=$("karchy-plugin-$1" "$id" 2>&1 >/dev/null); then
+    karchy-notification-send -g plugin "$(karchy-i18n "plugin.${1}d" "${name:-$id}")"
+  else
+    karchy-notification-send -g plugin -u critical "${name:-$id}" "$error"
+    exit 1
+  fi
+fi

@@ -113,7 +113,7 @@ hl.config({
     on_focus_under_fullscreen = 1,
     initial_workspace_tracking = 0,
     -- Let a fresh shell re-acquire the session lock after the lock client
-    -- died, so omarchy-restart-shell can recover the LOCK failsafe.
+    -- died, so karchy-restart-shell can recover the LOCK failsafe.
     allow_session_lock_restore = true,
   },
 
@@ -123,9 +123,10 @@ hl.config({
   },
 
   render = {
-    -- Keep HDR displays in SDR when a window goes fullscreen. Auto-switching
-    -- left SDR content looking washed out on the Pro Display XDR.
-    cm_auto_hdr = 0,
+    -- An HDR monitor switches to HDR while a fullscreen app shows HDR
+    -- content, and back after (user 2026-11-16; Hyprland's default). Omarchy
+    -- turned this off for SDR looking washed out on a Pro Display XDR.
+    cm_auto_hdr = 1,
   },
 
   binds = {

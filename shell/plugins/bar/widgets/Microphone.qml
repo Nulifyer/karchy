@@ -6,7 +6,7 @@ import qs.Commons
 
 BarWidget {
   id: root
-  moduleName: "omarchy.microphone"
+  moduleName: "karchy.microphone"
 
 
   readonly property var source: Pipewire.defaultAudioSource
@@ -42,11 +42,10 @@ BarWidget {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
+  // The same command as the mic-mute key, so a click also shows the OSD and
+  // drives the laptop's mic-mute LED.
   function toggleMute() {
-    if (viaWpctl) {
-      if (UntypedInput.known) UntypedInput.setMuted(!UntypedInput.muted)
-    }
-    else if (source && source.audio) source.audio.muted = !source.audio.muted
+    Quickshell.execDetached(["karchy-audio-input-mute"])
   }
 
   PwObjectTracker { objects: root.source ? [root.source] : [] }
@@ -55,11 +54,11 @@ BarWidget {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.muted ? "󰍭" : "󰍬"
+    text: Icons.glyph(root.muted ? "audio.mic.muted" : "audio.mic")
     active: root.inUse
     tooltipText: root.muted ? I18n.t("bar.microphoneMuted") : (root.inUse ? I18n.t("bar.microphoneInUse") : I18n.t("bar.microphoneLive"))
     onPressed: function(b) {
-      if (b === Qt.MiddleButton) root.bar.run("omarchy-shell shell toggle omarchy.audio")
+      if (b === Qt.MiddleButton) root.bar.run("karchy-shell shell toggle karchy.audio")
       else root.toggleMute()
     }
     onWheelMoved: function(delta) {

@@ -18,6 +18,7 @@ source "$KARCHY_SRC/install/lib.sh"
 source "$KARCHY_SRC/install/form.sh"
 source "$KARCHY_SRC/install/disk.sh"
 source "$KARCHY_SRC/install/base.sh"
+source "$KARCHY_SRC/install/setup.sh"
 trap on_error ERR
 
 config_file=""
@@ -48,12 +49,14 @@ preflight() {
 summary() {
   cat <<EOF
 
-  Disk:      $KARCHY_DISK (will be erased)
-  User:      $KARCHY_USER
-  Computer:  $KARCHY_HOSTNAME
-  Keyboard:  $KARCHY_KEYMAP
-  Timezone:  $KARCHY_TIMEZONE
-  bees:      $KARCHY_BEES
+  Disk:         $KARCHY_DISK (will be erased)
+  User:         $KARCHY_USER
+  Computer:     $KARCHY_HOSTNAME
+  Keyboard:     $KARCHY_KEYMAP
+  Timezone:     $KARCHY_TIMEZONE
+  Channel:      $KARCHY_CHANNEL
+  Secure Boot:  $KARCHY_SECUREBOOT
+  bees:         $KARCHY_BEES
 
 EOF
 }
@@ -68,6 +71,7 @@ else
   form_run
 fi
 summary
+[[ -n $config_file ]] || form_confirm
 
 step "Partition $KARCHY_DISK" disk_partition
 step "Encrypt the root partition" disk_encrypt
@@ -81,12 +85,20 @@ step "Write fstab" base_fstab
 step "Configure repositories" base_repos_target
 step "Locale, time and hostname" base_locale
 step "Create user $KARCHY_USER" base_user
-step "Install system files" base_system_files
+step "Record install answers" base_install_conf
+step "Find data disks" base_data_disks
 step "Configure snapshots" base_snapper
 step "Install the bootloader" base_bootloader
 step "Enable services" base_services
-step "Clone karchy" base_checkout
+step "Install the desktop" setup_packages
+step "Configure the desktop for this machine" setup_system_files
+step "Enable desktop services" setup_services
+step "Set up $KARCHY_USER's desktop" setup_user
+step "Set up bees deduplication" setup_bees
 step "Git identity" base_git_identity
+# Secure Boot comes last (it enrolls keys as its final action), before only
+# the resolv.conf link, since it still downloads sbctl.
+step "Set up Secure Boot" base_secureboot
 step "Link resolv.conf" base_resolved_link
 
 unset KARCHY_PASSWORD

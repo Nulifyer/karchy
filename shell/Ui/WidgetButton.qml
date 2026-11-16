@@ -157,7 +157,7 @@ Item {
     sourceComponent: Component {
       OpticalGlyph {
         text: root.text
-        fontFamily: root.fontFamily
+        fontFamily: Icons.family
         fontSize: root.fontSize
         paintedSize: Style.bar.iconSize
         color: root.active && root.useActiveColor ? root.activeColor : root.foreground

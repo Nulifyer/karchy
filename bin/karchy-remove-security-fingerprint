@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# karchy:summary=Remove fingerprint authentication from polkit and the lock screen (and sudo, where older setups added it)
+# karchy:requires-sudo=true
+
+set -e
+
+# Resolve the invoking account before changing authentication or packages.
+if (( EUID == 0 )) && [[ -v SUDO_UID ]]; then
+  if [[ ! $SUDO_UID =~ ^[0-9]+$ ]]; then
+    echo "Cannot identify the invoking fingerprint user" >&2
+    exit 1
+  fi
+  fingerprint_user=$(/usr/bin/id -nu "+$SUDO_UID") || exit 1
+else
+  fingerprint_user=$(/usr/bin/id -un) || exit 1
+fi
+
+if [[ -z $fingerprint_user || $fingerprint_user == "." || $fingerprint_user == ".." || $fingerprint_user == */* ]]; then
+  echo "Unsafe fingerprint user name" >&2
+  exit 1
+fi
+
+
+remove_pam_config() {
+  # Remove from sudo (both the fingerprint module and its clamshell gate)
+  if grep -Eq 'pam_fprintd\.so|karchy-hw-laptop-closed' /etc/pam.d/sudo; then
+    echo "Removing fingerprint authentication from sudo..."
+    sudo sed -i -e '/pam_fprintd\.so/d' -e '/karchy-hw-laptop-closed/d' /etc/pam.d/sudo
+  fi
+
+  # Remove from polkit (both the fingerprint module and its clamshell gate)
+  if [[ -f /etc/pam.d/polkit-1 ]] && grep -Eq 'pam_fprintd\.so|karchy-hw-laptop-closed' /etc/pam.d/polkit-1; then
+    echo "Removing fingerprint authentication from polkit..."
+    sudo sed -i -e '/pam_fprintd\.so/d' -e '/karchy-hw-laptop-closed/d' /etc/pam.d/polkit-1
+  fi
+  # Setup created /etc/pam.d/polkit-1 when there was none; what's left of it
+  # now would shadow polkit's own file in /usr/lib/pam.d, so drop it when it
+  # says nothing more than that file or the stock "include system-auth" stack.
+  if [[ -f /etc/pam.d/polkit-1 ]]; then
+    local left
+    left=$(grep -Ev '^[[:space:]]*(#|$)' /etc/pam.d/polkit-1 | tr -s ' \t' ' ')
+    if cmp -s /etc/pam.d/polkit-1 /usr/lib/pam.d/polkit-1 ||
+      [[ $left == $'auth include system-auth\naccount include system-auth\npassword include system-auth\nsession include system-auth' ]]; then
+      sudo rm -f /etc/pam.d/polkit-1
+    fi
+  fi
+}
+
+remove_lock_fingerprint_pam() {
+  if [[ -f /etc/pam.d/karchy-lock-fingerprint ]]; then
+    echo "Removing lock screen fingerprint authentication..."
+    sudo rm -f /etc/pam.d/karchy-lock-fingerprint
+  fi
+}
+
+
+echo -e "\e[32mRemoving fingerprint scanner from authentication.\n\e[0m"
+
+# A match-on-chip reader (Touch ID among them) keeps the prints in the device as
+# well, so fprintd deletes them there first, while it still runs. A reader with
+# no prints, or no fprintd, leaves nothing to delete. Authenticating first keeps
+# sudo's own prompt in view, since the delete's output is not.
+if ! sudo -n true 2>/dev/null && ! sudo -v; then
+  echo -e "\e[31mRemoving fingerprint authentication needs administrator rights.\e[0m"
+  exit 1
+fi
+# fprintd finds no reader when it is off or unplugged: then nothing could be
+# deleted from it, which is said plainly rather than as a failure.
+if karchy-cmd-present fprintd-delete && ! delete_output=$(sudo fprintd-delete "$fingerprint_user" 2>&1); then
+  if [[ $delete_output == *"No devices available"* ]]; then
+    echo -e "\e[33mNo fingerprint reader is available now, so any fingerprints stored on the reader itself stay there.\e[0m"
+  else
+    echo -e "\e[33mThe reader's own copy of $fingerprint_user's fingerprints may not have been deleted: $(tail -n 1 <<<"$delete_output")\e[0m"
+  fi
+fi
+
+remove_pam_config
+remove_lock_fingerprint_pam
+
+sudo rm -rf -- "/var/lib/fprint/$fingerprint_user"
+
+echo "Removing fingerprint packages..."
+karchy-pkg-drop fprintd libfprint libfprint-git
+
+echo -e "\e[32mFingerprint authentication and $fingerprint_user's local saved fingerprints have been removed.\e[0m"

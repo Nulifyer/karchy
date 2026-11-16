@@ -1,0 +1,34 @@
+# Repository checks on every push and pull request.
+
+name: checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Icons come from the icon map (D-64)
+        run: tools/icon-check
+
+  nvidia-generation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: NVIDIA GPU generations map to the right driver
+        run: tools/nvidia-generation-check
+
+  quick-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Every Quick install app comes from a signed repo or a well-kept AUR package (D-70)
+        run: tools/catalog-check
+      - name: Quick install search ranks apps as expected
+        run: tools/quick-install-search-check

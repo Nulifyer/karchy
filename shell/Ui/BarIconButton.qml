@@ -12,7 +12,7 @@ WidgetButton {
   readonly property real visualIconSize: Style.bar.iconSize
   readonly property real canvasSize: Math.max(visualIconSize, opticalSize)
   property string labelText: ""
-  property bool debugOpticalBounds: Quickshell.env("OMARCHY_DEBUG_BAR_ICONS") === "1"
+  property bool debugOpticalBounds: Quickshell.env("KARCHY_DEBUG_BAR_ICONS") === "1"
   // A label shifts the icon within the centered group.
   readonly property real opticalCenterErrorX:
     content.x + opticalCanvas.x + (glyph.visible ? glyph.paintedCenterX : customIcon.width / 2 + customIcon.centerErrorX) - root.width / 2
@@ -73,7 +73,7 @@ WidgetButton {
         anchors.fill: parent
         visible: root.iconComponent === null
         text: root.text
-        fontFamily: root.fontFamily
+        fontFamily: Icons.family
         fontSize: root.fontSize
         paintedSize: root.visualIconSize
         color: root.active && root.useActiveColor ? root.activeColor : root.foreground

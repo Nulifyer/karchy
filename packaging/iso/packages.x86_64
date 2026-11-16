@@ -1,0 +1,3 @@
+# Added to archiso's releng package list (packaging/iso/build).
+# The installer form; without it the installer would have to download it.
+gum

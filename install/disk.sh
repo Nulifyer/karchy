@@ -42,8 +42,12 @@ disk_encrypt() {
     cryptsetup luksFormat --type luks2 --batch-mode --label karchy --key-file=- "$KARCHY_LUKS"
   KARCHY_LUKS_UUID=$(cryptsetup luksUUID "$KARCHY_LUKS")
   KARCHY_ROOT_MAPPER="luks-$KARCHY_LUKS_UUID"
+  # TRIM passes through, and dm-crypt's extra work queues are off (they only
+  # add latency on SSDs; Arch Wiki, dm-crypt/Specialties). --persistent keeps
+  # both in the LUKS2 header, so every later unlock uses them.
   printf '%s' "$KARCHY_PASSWORD" |
-    cryptsetup open --key-file=- --allow-discards "$KARCHY_LUKS" "$KARCHY_ROOT_MAPPER"
+    cryptsetup open --key-file=- --allow-discards --perf-no_read_workqueue --perf-no_write_workqueue \
+      --persistent "$KARCHY_LUKS" "$KARCHY_ROOT_MAPPER"
 }
 
 disk_filesystems() {
@@ -64,12 +68,18 @@ disk_mount() {
     name=${entry%%:*}
     target="$KARCHY_MNT${entry#*:}"
     options="$KARCHY_BTRFS_OPTIONS,subvol=/$name"
+    # The swap file isn't compressed either way (mkswapfile makes it NOCOW, and
+    # btrfs shares compression across the filesystem's mounts); noatime alone
+    # just keeps this mount plain.
     if [[ $name == "@swap" ]]; then
       options="noatime,subvol=/$name"
     fi
     mkdir -p "$target"
     mount -o "$options" "/dev/mapper/$KARCHY_ROOT_MAPPER" "$target"
   done
+  # New subvolumes are 0755; these two need their usual modes.
+  chmod 0700 "$KARCHY_MNT/root"
+  chmod 1777 "$KARCHY_MNT/var/tmp" 2>/dev/null || true
   mkdir -p "$KARCHY_MNT/boot"
   mount -o fmask=0077,dmask=0077 "$KARCHY_ESP" "$KARCHY_MNT/boot"
 }

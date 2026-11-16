@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# karchy:summary=Find internal data disks and write their fstab lines (D-24)
+# karchy:args=list | line <device> <uid> <gid>
+# karchy:hidden=true
+
+# One owner for which partitions count as internal data disks and how they are
+# mounted, used by the installer and by the login check (karchy-disks-check).
+#
+#   list                     Data partitions not yet in fstab, one per line:
+#                            device<TAB>uuid<TAB>fstype<TAB>size<TAB>mount point
+#   line <device> <uid> <gid>  The fstab line for one of them
+#
+# A data partition is on a non-removable disk, has a regular filesystem, is
+# not mounted, is not in fstab, is at least 1 GiB, and is not an EFI or
+# Windows recovery partition or an encrypted volume. It mounts at /mnt/<label>
+# with nofail and x-gvfs-show (shown in the file manager). NTFS, exFAT and FAT
+# get the user as owner; Linux filesystems keep their own ownership.
+
+set -euo pipefail
+
+MARKER="# karchy-data-disk"
+FSTAB=${KARCHY_FSTAB:-/etc/fstab}
+EFI_TYPE=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+RECOVERY_TYPE=de94bba4-06d1-4d40-a16a-bfd50179d6ac
+
+# A mount point name from the label: letters, digits, dot, dash, underscore,
+# never starting with a dot or dash (so never "." or "..").
+mount_name() {
+  local label="$1" uuid="$2" name
+  name=$(tr -c 'A-Za-z0-9._-' '-' <<<"$label" | sed 's/-*$//; s/^[-.]*//')
+  [[ -n $name ]] || name="disk-${uuid:0:8}"
+  printf '%s' "$name"
+}
+
+list() {
+  local device uuid fstype size label mount used=()
+  mapfile -t used < <(awk '!/^#/ && $2 ~ "^/mnt/" { print $2 }' "$FSTAB")
+  while IFS=$'\t' read -r device uuid fstype size label; do
+    grep -q "UUID=$uuid" "$FSTAB" && continue
+    mount="/mnt/$(mount_name "$label" "$uuid")"
+    # A second disk with the same label gets part of its UUID added.
+    if printf '%s\n' "${used[@]}" | grep -qxF "$mount"; then
+      mount="$mount-${uuid:0:8}"
+    fi
+    used+=("$mount")
+    printf '%s\t%s\t%s\t%s\t%s\n' "$device" "$uuid" "$fstype" "$size" "$mount"
+  done < <(lsblk -J -l -b -o PATH,NAME,TYPE,FSTYPE,UUID,SIZE,LABEL,PARTTYPE,MOUNTPOINTS,RM,HOTPLUG,PKNAME |
+    jq -r --arg efi "$EFI_TYPE" --arg recovery "$RECOVERY_TYPE" '
+      .blockdevices as $all
+      | ($all | map({key: .name, value: .}) | from_entries) as $by
+      | $all[]
+      | select(.type == "part" and .uuid != null)
+      | select((.mountpoints | map(select(. != null)) | length) == 0)
+      | select(.fstype as $f | ["ntfs", "exfat", "vfat", "ext4", "btrfs", "xfs"] | index($f))
+      | select(.parttype != $efi and .parttype != $recovery)
+      | select(.size >= 1073741824)
+      | select($by[.pkname] as $disk | $disk.rm == false and $disk.hotplug == false)
+      | [.path, .uuid, .fstype, (.size | tostring), (.label // "")] | @tsv')
+}
+
+line() {
+  local device="$1" uid="$2" gid="$3" entry uuid fstype mount options
+  [[ $uid =~ ^[0-9]+$ && $gid =~ ^[0-9]+$ ]] || { echo "uid and gid must be numbers" >&2; exit 1; }
+  entry=$(list | awk -F'\t' -v d="$device" '$1 == d')
+  [[ -n $entry ]] || { echo "$device is not a data partition waiting for a mount" >&2; exit 1; }
+  IFS=$'\t' read -r _ uuid fstype _ mount <<<"$entry"
+  # nofail: boot never waits on a data disk, so a slow-spinning one isn't cut
+  # off by a short device timeout either. ext4 and FAT get a boot-time check.
+  local passno=0
+  options="nofail,x-gvfs-show"
+  case "$fstype" in
+    ntfs) fstype=ntfs3; options+=",uid=$uid,gid=$gid,windows_names" ;;
+    exfat) options+=",uid=$uid,gid=$gid,umask=022" ;;
+    vfat) options+=",uid=$uid,gid=$gid,umask=022"; passno=2 ;;
+    ext4) options+=",noatime"; passno=2 ;;
+    btrfs | xfs) options+=",noatime" ;;
+  esac
+  printf 'UUID=%s %s %s %s 0 %s %s\n' "$uuid" "$mount" "$fstype" "$options" "$passno" "$MARKER"
+}
+
+case "${1:-}" in
+  list) list ;;
+  line) line "${2:-}" "${3:-}" "${4:-}" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-disk-fstab /p' "$0" >&2; exit 1 ;;
+esac

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# karchy:summary=Offer to mount internal data disks that have no mount yet (D-24)
+# karchy:hidden=true
+
+# Runs at login. For each internal data partition not in fstab and not
+# dismissed before, a notification offers to keep it mounted at /mnt/<label>.
+
+set -euo pipefail
+
+IGNORED="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/disks-ignored"
+karchy-notifications-wait || exit 0
+
+while IFS=$'\t' read -r device uuid _ _ mount; do
+  [[ -f $IGNORED ]] && grep -qxF "$uuid" "$IGNORED" && continue
+  label=$(lsblk -dno LABEL "$device")
+  size=$(lsblk -dno SIZE "$device" | tr -d " ")
+  karchy-notification-send -g disk -t 0 "New disk: ${label:-$device} ($size)" \
+    "Keep it mounted at $mount?" \
+    --action "Keep mounted" karchy-launch-floating-terminal-with-presentation karchy-disk-keep \
+    --action "Not this one" karchy-disk-keep --ignore \
+    --with "$device"
+done < <(karchy-disk-fstab list)

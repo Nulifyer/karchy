@@ -1,0 +1,277 @@
+#!/bin/bash
+
+# karchy:summary=Print active network status for the shell
+# karchy:group=network
+# karchy:args=[--verbose | --json]
+
+# Describes the link the computer is really on (Wi-Fi or Ethernet), never a
+# VPN tunnel, plus a separate VPN block while one is up. With a full-tunnel
+# VPN the route to the internet goes through the tunnel, so "the interface
+# that reaches 1.1.1.1" would be the tunnel; the link is instead the lowest
+# metric default route in the main table that isn't a tunnel. NetworkManager's
+# WireGuard, wg-quick and OpenVPN all leave that route in place and steer
+# traffic with policy rules or narrower routes.
+
+verbose=false
+json=false
+internet_probe=1.1.1.1
+
+case "${1:-}" in
+  "")
+    ;;
+  --verbose)
+    verbose=true
+    ;;
+  --json)
+    json=true
+    ;;
+  *)
+    echo "Usage: karchy-network-status [--verbose | --json]" >&2
+    exit 2
+    ;;
+esac
+
+# Interfaces that carry tunnels rather than a physical link: WireGuard, tun
+# (OpenVPN, Tailscale, NM's VPN plugins), IP-in-IP and GRE kinds, and anything
+# without a link layer.
+tunnel_ifaces() {
+  ip -j -d link show 2>/dev/null | jq -r '.[] | select(
+      (.linkinfo.info_kind // "") as $k
+      | (["wireguard", "tun", "ipip", "gre", "sit", "vti", "vti6", "ip6tnl", "ip6gre"] | any(. == $k))
+        or .link_type == "none"
+    ) | .ifname' 2>/dev/null
+}
+
+TUNNELS=$(tunnel_ifaces)
+
+is_tunnel() {
+  grep -qxF -- "$1" <<<"$TUNNELS"
+}
+
+# The underlying link's default route as "dev<TAB>gateway<TAB>prefsrc":
+# IPv4 first, IPv6 when there is no IPv4 default, lowest metric wins.
+underlying_route() {
+  local family json
+  for family in -4 -6; do
+    json=$(ip -j "$family" route show default table main 2>/dev/null) || continue
+    jq -r --arg tunnels "$TUNNELS" '
+      ($tunnels | split("\n")) as $t
+      | [.[] | select(.dev and (.dev as $d | $t | any(. == $d) | not))]
+      | sort_by(.metric // 0) | first // empty
+      | [.dev, (.gateway // ""), (.prefsrc // "")] | @tsv' <<<"$json" 2>/dev/null | grep . && return
+  done
+  # No default route outside a tunnel: fall back to whatever reaches the
+  # internet, unless that is itself a tunnel.
+  json=$(ip -j route get "$internet_probe" 2>/dev/null)
+  local dev
+  dev=$(jq -r '.[0].dev // ""' <<<"$json" 2>/dev/null)
+  [[ -n $dev ]] && ! is_tunnel "$dev" && jq -r '.[0] | [.dev, (.gateway // ""), (.prefsrc // "")] | @tsv' <<<"$json"
+}
+
+# The VPN, if one is up, as "name<TAB>iface<TAB>address<TAB>full", where full
+# is "yes" when the internet route goes through it. The tunnel carrying that
+# route wins; otherwise the first tunnel NetworkManager has active.
+vpn_block() {
+  local route_dev iface name addr full=no
+  route_dev=$(ip -j route get "$internet_probe" 2>/dev/null | jq -r '.[0].dev // ""' 2>/dev/null)
+  if [[ -n $route_dev ]] && is_tunnel "$route_dev"; then
+    iface=$route_dev
+    full=yes
+  else
+    iface=$(nmcli -t -f TYPE,DEVICE connection show --active 2>/dev/null |
+      awk -F: '$1 == "wireguard" || $1 == "vpn" || $1 == "tun" { print $2; exit }')
+    [[ -n $iface ]] || return 0
+  fi
+  name=$(nmcli -g GENERAL.CONNECTION device show "$iface" 2>/dev/null)
+  addr=$(ip -j addr show dev "$iface" 2>/dev/null |
+    jq -r '[.[0].addr_info[]? | select(.scope == "global")] | (map(select(.family == "inet")) + .) | first | .local // ""' 2>/dev/null)
+  printf '%s\t%s\t%s\t%s\n' "${name:-$iface}" "$iface" "$addr" "$full"
+}
+
+print_status() {
+  local device nm state ssid signal freq vpn_name="" vpn_full
+
+  IFS=$'\t' read -r device _ _ < <(underlying_route)
+  IFS=$'\t' read -r vpn_name _ _ vpn_full < <(vpn_block)
+  # The fifth field names the VPN only when the internet goes through it.
+  [[ $vpn_full == "yes" ]] || vpn_name=""
+
+  if [[ -z $device ]]; then
+    printf 'disconnected\t\t\t\t\n'
+    return
+  fi
+
+  if [[ ! -d /sys/class/net/$device/wireless ]]; then
+    printf 'ethernet\t%s\t\t\t%s\n' "$device" "$vpn_name"
+    return
+  fi
+
+  nm=$(nmcli -t -f GENERAL.STATE,GENERAL.CONNECTION dev show "$device" 2>/dev/null)
+  state=$(awk -F: '$1 == "GENERAL.STATE" { print $2; exit }' <<<"$nm")
+  ssid=$(awk -F: '$1 == "GENERAL.CONNECTION" { print $2; exit }' <<<"$nm")
+  signal=$(nmcli -t -f IN-USE,SIGNAL dev wifi list ifname "$device" --rescan no 2>/dev/null | awk -F: '$1 == "*" { print $2; exit }')
+  freq=$(iw dev "$device" link 2>/dev/null | awk '/freq:/ { print $2; exit }')
+
+  if [[ $state != 100* ]]; then
+    printf 'disconnected\t\t\t\t\n'
+    return
+  fi
+
+  printf 'wifi\t%s\t%s\t%s\t%s\n' "${ssid:-$device}" "$signal" "$freq" "$vpn_name"
+}
+
+ping_latency_ms() {
+  local host=$1
+
+  LC_ALL=C ping -n -c 1 -W 1 "$host" 2>/dev/null | awk -F'time[=<]' '/time[=<]/ { split($2, parts, " "); print parts[1]; exit }'
+}
+
+print_ping_samples() {
+  local gateway=$1
+  local tmpdir router_file internet_file
+  local router_pid="" internet_pid=""
+
+  karchy-cmd-present ping || return
+  tmpdir=$(mktemp -d) || return
+  router_file="$tmpdir/router"
+  internet_file="$tmpdir/internet"
+
+  if [[ -n $gateway ]]; then
+    ping_latency_ms "$gateway" >"$router_file" &
+    router_pid=$!
+  fi
+
+  ping_latency_ms "$internet_probe" >"$internet_file" &
+  internet_pid=$!
+
+  if [[ -n $router_pid ]]; then
+    wait "$router_pid"
+    printf 'router_ping_ms\t%s\n' "$(cat "$router_file")"
+  fi
+
+  wait "$internet_pid"
+  printf 'internet_ping_ms\t%s\n' "$(cat "$internet_file")"
+  rm -rf "$tmpdir"
+}
+
+print_verbose() {
+  local iface gw src prefix link addr_json vpn_name vpn_iface vpn_ip vpn_full
+
+  IFS=$'\t' read -r iface gw src < <(underlying_route)
+  [[ -z $iface ]] && return
+
+  # The route's source address when it names one, else the link's first
+  # global address; IPv4 before IPv6.
+  addr_json=$(ip -j addr show dev "$iface" 2>/dev/null)
+  if [[ -n $src ]]; then
+    prefix=$(jq -r --arg src "$src" '.[0].addr_info[]? | select(.local == $src) | .prefixlen' <<<"$addr_json" 2>/dev/null | head -n 1)
+  else
+    IFS=$'\t' read -r src prefix < <(jq -r '[.[0].addr_info[]? | select(.scope == "global")]
+      | (map(select(.family == "inet")) + .) | first // empty | [.local, .prefixlen] | @tsv' <<<"$addr_json" 2>/dev/null)
+  fi
+
+  printf 'iface\t%s\n' "$iface"
+  printf 'ip\t%s\n' "$src"
+  printf 'prefix\t%s\n' "$prefix"
+  printf 'gateway\t%s\n' "$gw"
+
+  if [[ -r /sys/class/net/$iface/statistics/rx_bytes ]]; then
+    printf 'rx_bytes\t%s\n' "$(cat "/sys/class/net/$iface/statistics/rx_bytes")"
+  fi
+  if [[ -r /sys/class/net/$iface/statistics/tx_bytes ]]; then
+    printf 'tx_bytes\t%s\n' "$(cat "/sys/class/net/$iface/statistics/tx_bytes")"
+  fi
+
+  if [[ -d /sys/class/net/$iface/wireless ]]; then
+    printf 'type\twifi\n'
+
+    if karchy-cmd-present iw; then
+      link=$(iw dev "$iface" link 2>/dev/null)
+
+      if [[ -n $link ]]; then
+        printf 'ssid\t%s\n' "$(awk '/SSID:/ { sub(/.*SSID: /, ""); print; exit }' <<<"$link")"
+        printf 'signal_dbm\t%s\n' "$(awk '/signal:/ { print $2; exit }' <<<"$link")"
+        printf 'freq\t%s\n' "$(awk '/freq:/ { print $2; exit }' <<<"$link")"
+        printf 'bitrate\t%s %s\n' "$(awk '/tx bitrate:/ { print $3; exit }' <<<"$link")" "$(awk '/tx bitrate:/ { print $4; exit }' <<<"$link")"
+      fi
+    fi
+  else
+    printf 'type\tethernet\n'
+    # Virtual and unplugged links refuse these reads (EINVAL); say nothing.
+    [[ -r /sys/class/net/$iface/speed ]] && printf 'speed\t%s\n' "$(cat "/sys/class/net/$iface/speed" 2>/dev/null)"
+    [[ -r /sys/class/net/$iface/duplex ]] && printf 'duplex\t%s\n' "$(cat "/sys/class/net/$iface/duplex" 2>/dev/null)"
+  fi
+
+  IFS=$'\t' read -r vpn_name vpn_iface vpn_ip vpn_full < <(vpn_block)
+  if [[ -n $vpn_iface ]]; then
+    printf 'vpn_name\t%s\n' "$vpn_name"
+    printf 'vpn_iface\t%s\n' "$vpn_iface"
+    printf 'vpn_ip\t%s\n' "$vpn_ip"
+    printf 'vpn_full\t%s\n' "$vpn_full"
+  fi
+
+  print_ping_samples "$gw"
+}
+
+# Every active connection in full, for Settings › Network: Wi-Fi, Ethernet
+# and VPNs, each with its addresses, router, the DNS servers resolved uses on
+# it and whether they are encrypted, its hardware address and its link (speed,
+# or band and rate). `vpn_full` says the internet goes through that VPN, so the
+# other links' DNS isn't what is used.
+print_json() {
+  local uuid kind device name rows="" full_iface
+  IFS=$'\t' read -r _ full_iface _ full < <(vpn_block)
+  [[ ${full:-} == "yes" ]] || full_iface=""
+  while IFS=: read -r uuid kind device name; do
+    [[ -n $device ]] || continue
+    case $kind in
+      802-11-wireless) kind=wifi ;;
+      802-3-ethernet) kind=ethernet ;;
+      wireguard|vpn|tun) kind=vpn ;;
+      *) continue ;;
+    esac
+    local addr gw4 gw6 dns tls mac speed="" freq="" rate="" ssid="" signal="" link
+    addr=$(ip -j addr show dev "$device" 2>/dev/null |
+      jq -c '[.[0].addr_info[]? | select(.scope == "global") | {family, address: "\(.local)/\(.prefixlen)"}]' 2>/dev/null)
+    gw4=$(nmcli -g IP4.GATEWAY device show "$device" 2>/dev/null)
+    gw6=$(nmcli -g IP6.GATEWAY device show "$device" 2>/dev/null)
+    # resolvectl wraps long lists onto more lines; one space-separated list.
+    dns=$(resolvectl dns "$device" 2>/dev/null | sed 's/^Link [^:]*://' | tr -s ' \n' ' ')
+    tls=$(resolvectl dnsovertls "$device" 2>/dev/null | sed 's/^Link [^:]*: *//' | head -n 1)
+    mac=$(cat "/sys/class/net/$device/address" 2>/dev/null || true)
+    if [[ $kind == "wifi" ]]; then
+      link=$(iw dev "$device" link 2>/dev/null)
+      ssid=$(awk '/SSID:/ { sub(/.*SSID: /, ""); print; exit }' <<<"$link")
+      freq=$(awk '/freq:/ { print $2; exit }' <<<"$link")
+      rate=$(awk '/tx bitrate:/ { print $3; exit }' <<<"$link")
+      signal=$(nmcli -t -f IN-USE,SIGNAL dev wifi list ifname "$device" --rescan no 2>/dev/null | awk -F: '$1 == "*" { print $2; exit }')
+    elif [[ $kind == "ethernet" ]]; then
+      speed=$(cat "/sys/class/net/$device/speed" 2>/dev/null || true)
+    fi
+    rows+=$(jq -cn --arg uuid "$uuid" --arg type "$kind" --arg device "$device" --arg name "$name" \
+      --argjson addresses "${addr:-[]}" --arg gw4 "${gw4//\\/}" --arg gw6 "${gw6//\\/}" \
+      --arg dns "$dns" --arg tls "$tls" --arg mac "$mac" --arg speed "$speed" --arg freq "$freq" \
+      --arg rate "$rate" --arg ssid "$ssid" --arg signal "$signal" --arg full "$full_iface" '{
+        uuid: $uuid, type: $type, device: $device, name: $name,
+        ipv4: [$addresses[] | select(.family == "inet") | .address],
+        ipv6: [$addresses[] | select(.family == "inet6") | .address],
+        gateway4: $gw4, gateway6: $gw6,
+        dns: ($dns | split(" ") | map(select(length > 0))),
+        dns_encrypted: ($tls == "yes"),
+        mac: $mac,
+        speed_mbps: (($speed | tonumber? // 0) | if . > 0 then . else null end),
+        freq_mhz: ($freq | tonumber? // null), bitrate_mbps: ($rate | tonumber? // null),
+        ssid: $ssid, signal: ($signal | tonumber? // null),
+        vpn_full: ($type == "vpn" and $device == $full)
+      }')$'\n'
+  done < <(nmcli -t -e no -f UUID,TYPE,DEVICE,NAME connection show --active 2>/dev/null)
+  jq -s --arg full "$full_iface" '{connections: ., vpn_full: ($full != "")}' <<<"$rows"
+}
+
+if [[ $json == "true" ]]; then
+  print_json
+elif [[ $verbose == "true" ]]; then
+  print_verbose
+else
+  print_status
+fi

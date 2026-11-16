@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.Commons
 import qs.Ui
 
 BarIndicator {
@@ -10,8 +11,8 @@ BarIndicator {
   property string tooltip: ""
 
   active: reminderCount > 0
-  activeText: "󰢌"
-  inactiveText: "󰢌"
+  activeText: Icons.glyph("reminder")
+  inactiveText: Icons.glyph("reminder")
   activeTooltipText: tooltip
   inactiveTooltipText: tooltip
 
@@ -20,7 +21,7 @@ BarIndicator {
   }
 
   function openReminderFlow() {
-    Quickshell.execDetached(["omarchy-reminder", "-i"])
+    Quickshell.execDetached(["karchy-reminder", "-i"])
   }
 
   function update(raw) {
@@ -39,7 +40,7 @@ BarIndicator {
 
   Process {
     id: jsonProc
-    command: ["omarchy-reminder", "show", "--json"]
+    command: ["karchy-reminder", "show", "--json"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.update(text)
@@ -53,7 +54,7 @@ BarIndicator {
   }
 
   onPressed: function() {
-    if (root.reminderCount > 0) Quickshell.execDetached(["omarchy-reminder", "show"])
+    if (root.reminderCount > 0) Quickshell.execDetached(["karchy-reminder", "show"])
     else root.openReminderFlow()
   }
 }

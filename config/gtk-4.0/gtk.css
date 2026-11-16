@@ -1,0 +1,4 @@
+/* GTK 4 styling. karchy created this file once; it is yours and updates never
+   rewrite it. The import brings in the current theme's accent color (karchy
+   theme engine, default/themed/gtk4.css.tpl); your own rules below it win. */
+@import url("../../.local/state/karchy/current/theme/gtk4.css");

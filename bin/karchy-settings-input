@@ -1,0 +1,203 @@
+#!/bin/bash
+
+# karchy:summary=Read and save keyboard, mouse and touchpad settings (Settings › Input)
+# karchy:args=status | set <setting> <value> | reset <setting>|all
+# karchy:hidden=true
+
+# Only settings changed here are saved, in ~/.config/karchy/input.json, and
+# written as Hyprland config into ~/.local/state/karchy/hypr/input.lua. That
+# loads after karchy's defaults (default/hypr/input.lua) and before
+# ~/.config/hypr/input.lua, which always wins (D-27). Anything never changed
+# keeps following karchy's defaults as they evolve.
+#
+#   status                 JSON: each setting's effective value and whether it
+#                          is saved here, plus whether a touchpad is present
+#   set <setting> <value>  compose (shift-caps, caps, ralt, menu, none)
+#                          repeatRate (10-100), repeatDelay (100-1000)
+#                          numlock, naturalScroll, touchpadNaturalScroll,
+#                          tapToClick, clickfinger, disableWhileTyping (true/false)
+#                          sensitivity (-1 to 1), accelProfile (adaptive, flat)
+#   reset <setting>        Back to karchy's default (all: every setting)
+
+set -euo pipefail
+
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/karchy/input.json"
+HYPR_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/hypr/input.lua"
+
+# setting: Hyprland option path and value type.
+declare -A OPTION=(
+  [compose]="input:kb_options str"
+  [repeatRate]="input:repeat_rate int"
+  [repeatDelay]="input:repeat_delay int"
+  [numlock]="input:numlock_by_default bool"
+  [sensitivity]="input:sensitivity float"
+  [accelProfile]="input:accel_profile str"
+  [naturalScroll]="input:natural_scroll bool"
+  [touchpadNaturalScroll]="input:touchpad:natural_scroll bool"
+  [tapToClick]="input:touchpad:tap-to-click bool"
+  [clickfinger]="input:touchpad:clickfinger_behavior bool"
+  [disableWhileTyping]="input:touchpad:disable_while_typing bool"
+)
+
+declare -A COMPOSE_OPTION=(
+  [shift-caps]="karchy:shift_caps_compose"
+  [caps]="compose:caps"
+  [ralt]="compose:ralt"
+  [menu]="compose:menu"
+  [none]=""
+)
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-settings-input /p' "$0" >&2
+  exit 1
+}
+
+saved() {
+  if [[ -f $CONFIG_FILE ]] && jq -e '.version == 1' "$CONFIG_FILE" >/dev/null 2>&1; then
+    jq -c . "$CONFIG_FILE"
+  else
+    echo '{"version":1,"settings":{}}'
+  fi
+}
+
+# The effective value of a setting, read back from Hyprland.
+effective() {
+  local option type raw
+  read -r option type <<<"${OPTION[$1]}"
+  raw=$(hyprctl -j getoption "$option" 2>/dev/null | jq -r --arg t "$type" '.[$t] // empty')
+  case "$1" in
+    compose)
+      case "$raw" in
+        *karchy:shift_caps_compose*) echo '"shift-caps"' ;;
+        *compose:caps*) echo '"caps"' ;;
+        *compose:ralt*) echo '"ralt"' ;;
+        *compose:menu*) echo '"menu"' ;;
+        *) echo '"none"' ;;
+      esac
+      ;;
+    accelProfile) jq -n --arg v "$raw" 'if $v == "" or $v == "[[EMPTY]]" then "adaptive" else $v end' ;;
+    sensitivity | repeatRate | repeatDelay) echo "${raw:-0}" ;;
+    *) [[ $raw == "true" ]] && echo true || echo false ;;
+  esac
+}
+
+status() {
+  local config setting values="{}" touchpad
+  config=$(saved)
+  for setting in "${!OPTION[@]}"; do
+    values=$(jq -c --arg k "$setting" --argjson v "$(effective "$setting")" '.[$k] = $v' <<<"$values")
+  done
+  touchpad=$(hyprctl devices -j 2>/dev/null | jq '[.mice[]? | select(.name | test("touchpad|trackpad"; "i"))] | length > 0')
+  jq -n -c --argjson values "$values" --argjson saved "$(jq -c .settings <<<"$config")" --argjson touchpad "${touchpad:-false}" \
+    '{values: $values, saved: $saved, touchpad: $touchpad}'
+}
+
+lua_value() {
+  jq -r 'if type == "string" then "\"" + gsub("\\\\"; "\\\\\\\\") + "\"" else tostring end' <<<"$1"
+}
+
+write_files() {
+  local config="$1" config_tmp hypr_tmp setting value option key touchpad_lines="" input_lines=""
+  mkdir -p "$(dirname "$CONFIG_FILE")" "$(dirname "$HYPR_FILE")"
+  config_tmp=$(mktemp "$(dirname "$CONFIG_FILE")/.input.json.XXXXXX")
+  hypr_tmp=$(mktemp "$(dirname "$HYPR_FILE")/.input.lua.XXXXXX")
+  trap 'rm -f "$config_tmp" "$hypr_tmp"' RETURN
+
+  while IFS= read -r setting; do
+    # Keys this version doesn't know (hand-edited, or from a newer karchy).
+    [[ -n ${OPTION[$setting]:-} ]] || continue
+    value=$(jq -c --arg k "$setting" '.settings[$k]' <<<"$config")
+    option=${OPTION[$setting]%% *}
+    # The compose key is one of several XKB options: rebuild the whole list
+    # through karchy's keyboard module, which keeps the layout switch that
+    # non-Latin layouts need.
+    if [[ $setting == "compose" ]]; then
+      value=$(jq -n --arg v "${COMPOSE_OPTION[$(jq -r . <<<"$value")]}" '$v')
+      input_lines+="    kb_options = require(\"default.hypr.keyboard\").xkb($(lua_value "$value")).options,"$'\n'
+      continue
+    fi
+    case "$option" in
+      # Hyprland's Lua config spells option names with underscores.
+      input:touchpad:*) key=${option#input:touchpad:}; touchpad_lines+="      ${key//-/_} = $(lua_value "$value"),"$'\n' ;;
+      *) key=${option#input:}; input_lines+="    ${key//-/_} = $(lua_value "$value"),"$'\n' ;;
+    esac
+  done < <(jq -r '.settings | keys[]' <<<"$config")
+
+  jq . <<<"$config" >"$config_tmp"
+  {
+    echo "-- Generated by karchy Settings › Input (karchy-settings-input)."
+    echo "-- Change these there. ~/.config/hypr/input.lua loads later and wins."
+    if [[ -n $input_lines || -n $touchpad_lines ]]; then
+      echo "hl.config({"
+      echo "  input = {"
+      printf '%s' "$input_lines"
+      if [[ -n $touchpad_lines ]]; then
+        echo "    touchpad = {"
+        printf '%s' "$touchpad_lines"
+        echo "    },"
+      fi
+      echo "  },"
+      echo "})"
+    fi
+  } >"$hypr_tmp"
+
+  chmod 644 "$config_tmp" "$hypr_tmp"
+  mv "$config_tmp" "$CONFIG_FILE"
+  mv "$hypr_tmp" "$HYPR_FILE"
+  trap - RETURN
+  hyprctl reload >/dev/null 2>&1 || true
+}
+
+set_value() {
+  local setting="${1:-}" value="${2:-}" json
+  [[ -n ${OPTION[$setting]:-} ]] || usage
+  case "$setting" in
+    compose)
+      [[ -n ${COMPOSE_OPTION[$value]+set} ]] || usage
+      json=$(jq -n --arg v "$value" '$v')
+      ;;
+    accelProfile)
+      [[ $value == "adaptive" || $value == "flat" ]] || usage
+      json=$(jq -n --arg v "$value" '$v')
+      ;;
+    repeatRate)
+      [[ $value =~ ^[0-9]+$ ]] || usage
+      ((value >= 10 && value <= 100)) || usage
+      json=$value
+      ;;
+    repeatDelay)
+      [[ $value =~ ^[0-9]+$ ]] || usage
+      ((value >= 100 && value <= 1000)) || usage
+      json=$value
+      ;;
+    sensitivity)
+      [[ $value =~ ^-?(0(\.[0-9]+)?|1(\.0+)?)$ ]] || usage
+      json=$value
+      ;;
+    *)
+      [[ $value == "true" || $value == "false" ]] || usage
+      json=$value
+      ;;
+  esac
+  write_files "$(saved | jq -c --arg k "$setting" --argjson v "$json" '.settings[$k] = $v')"
+  status
+}
+
+reset_value() {
+  local setting="${1:-}"
+  if [[ $setting == "all" ]]; then
+    write_files "$(saved | jq -c '.settings = {}')"
+    status
+    return
+  fi
+  [[ -n ${OPTION[$setting]:-} ]] || usage
+  write_files "$(saved | jq -c --arg k "$setting" 'del(.settings[$k])')"
+  status
+}
+
+case "${1:-}" in
+  status) status ;;
+  set) set_value "${2:-}" "${3:-}" ;;
+  reset) reset_value "${2:-}" ;;
+  *) usage ;;
+esac

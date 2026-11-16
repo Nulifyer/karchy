@@ -6,15 +6,15 @@ import qs.Commons as Commons
 
 BarWidget {
   id: root
-  moduleName: "omarchy.media"
+  moduleName: "karchy.media"
 
-  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("omarchy.media")
+  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("karchy.media")
   readonly property var activePlayer: mediaService ? mediaService.activePlayer : null
   readonly property var sourcePlayers: mediaService ? mediaService.sourcePlayers : []
 
   readonly property bool hasMedia: activePlayer !== null && (activePlayer.trackTitle || activePlayer.trackArtist)
   readonly property bool isPlaying: !!activePlayer && !!activePlayer.isPlaying
-  readonly property string playIcon: activePlayer && activePlayer.isPlaying ? "󰏤" : "󰐊"
+  readonly property string playIcon: Icons.glyph(activePlayer && activePlayer.isPlaying ? "media.pause" : "media.play")
   readonly property string title: activePlayer ? (activePlayer.trackTitle || "") : ""
   readonly property string artist: activePlayer ? (activePlayer.trackArtist || "") : ""
 
@@ -37,9 +37,9 @@ BarWidget {
       textFormat: Text.PlainText
       anchors.verticalCenter: parent.verticalCenter
       text: root.playIcon
-      color: activePlayer && activePlayer.isPlaying ? root.bar.barForeground : Qt.darker(root.bar.barForeground, 1.5)
-      font.family: root.bar.fontFamily
-      font.pixelSize: Style.font.body
+      color: activePlayer && activePlayer.isPlaying ? root.bar.barForeground : Commons.Color.secondaryText(root.bar.barForeground, Commons.Color.bar.background)
+      font.family: Icons.family
+      font.pixelSize: Style.font.iconSmall
       Behavior on color {
         enabled: !root.bar || root.bar.foregroundAnimationEnabled
         ColorAnimation { duration: Style.duration(160) }
@@ -145,9 +145,9 @@ BarWidget {
           Text {
             anchors.centerIn: parent
             visible: !root.activePlayer || !root.activePlayer.trackArtUrl
-            text: "󰝚"
+            text: Icons.glyph("media.music")
             color: root.bar.foreground
-            font.family: root.bar.fontFamily
+            font.family: Icons.family
             font.pixelSize: Style.font.displayLarge
           }
         }
@@ -170,7 +170,7 @@ BarWidget {
           Text {
             textFormat: Text.PlainText
             text: root.artist
-            color: Qt.darker(root.bar.foreground, 1.3)
+            color: Commons.Color.secondaryText(root.bar.foreground, Commons.Color.popups.background)
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.bodySmall
             elide: Text.ElideRight
@@ -181,7 +181,7 @@ BarWidget {
           Text {
             textFormat: Text.PlainText
             text: root.activePlayer && root.activePlayer.trackAlbum ? root.activePlayer.trackAlbum : ""
-            color: Qt.darker(root.bar.foreground, 1.6)
+            color: Commons.Color.secondaryText(root.bar.foreground, Commons.Color.popups.background)
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.caption
             elide: Text.ElideRight
@@ -200,7 +200,7 @@ BarWidget {
         LayoutMirroring.childrenInherit: true
 
         Button {
-          iconText: "󰒮"
+          iconText: Icons.glyph("media.previous")
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
@@ -210,7 +210,7 @@ BarWidget {
         }
 
         Button {
-          iconText: root.activePlayer && root.activePlayer.isPlaying ? "󰏤" : "󰐊"
+          iconText: Icons.glyph(root.activePlayer && root.activePlayer.isPlaying ? "media.pause" : "media.play")
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.panelGap
           verticalPadding: Style.spacing.controlPaddingY
@@ -221,7 +221,7 @@ BarWidget {
         }
 
         Button {
-          iconText: "󰒭"
+          iconText: Icons.glyph("media.next")
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
@@ -272,10 +272,10 @@ BarWidget {
 
               Text {
                 textFormat: Text.PlainText
-                text: sourceRow.player && sourceRow.player.isPlaying ? "󰏤" : "󰐊"
+                text: Icons.glyph(sourceRow.player && sourceRow.player.isPlaying ? "media.pause" : "media.play")
                 color: root.bar.foreground
-                font.family: root.bar.fontFamily
-                font.pixelSize: Style.font.body
+                font.family: Icons.family
+                font.pixelSize: Style.font.iconSmall
                 width: Style.space(18)
                 horizontalAlignment: Text.AlignHCenter
                 anchors.verticalCenter: parent.verticalCenter
@@ -300,7 +300,7 @@ BarWidget {
                 Text {
                   textFormat: Text.PlainText
                   text: sourceRow.sourceDetail
-                  color: Qt.darker(root.bar.foreground, 1.5)
+                  color: Commons.Color.secondaryText(root.bar.foreground, Commons.Color.popups.background)
                   font.family: root.bar.fontFamily
                   font.pixelSize: Style.font.caption
                   elide: Text.ElideRight

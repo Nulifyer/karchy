@@ -1,0 +1,10 @@
+# karchy (D-57): make user %i's login keyring key before their user manager
+# starts. See /usr/lib/karchy/keyring-key.
+[Unit]
+Description=karchy login keyring key for user %i
+Before=user@%i.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/karchy/keyring-key %i

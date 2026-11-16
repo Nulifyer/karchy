@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# karchy:summary=Set the default browser for Karchy and XDG handlers
+# karchy:args=[chromium|chrome|brave|brave-origin|edge|firefox|zen]
+# karchy:examples=karchy default browser firefox | karchy default browser brave
+
+if (($# == 0)); then
+  current_browser=$(karchy-cmd-default-browser)
+  case "$current_browser" in
+  chromium.desktop) echo "chromium" ;;
+  google-chrome.desktop) echo "chrome" ;;
+  brave-browser.desktop) echo "brave" ;;
+  brave-origin.desktop) echo "brave-origin" ;;
+  microsoft-edge.desktop) echo "edge" ;;
+  firefox.desktop) echo "firefox" ;;
+  zen.desktop) echo "zen" ;;
+  *) echo "$current_browser" ;;
+  esac
+  exit 0
+fi
+
+case "$1" in
+chromium) command="chromium"; desktop_id="chromium.desktop"; name="Chromium"; icon=app.browser ;;
+chrome) command="google-chrome-stable"; desktop_id="google-chrome.desktop"; name="Chrome"; icon=brand.chrome ;;
+brave) command="brave"; desktop_id="brave-browser.desktop"; name="Brave"; icon=app.browser ;;
+brave-origin) command="brave-origin"; desktop_id="brave-origin.desktop"; name="Brave Origin"; icon=app.browser ;;
+edge) command="microsoft-edge-stable"; desktop_id="microsoft-edge.desktop"; name="Edge"; icon=brand.edge ;;
+firefox) command="firefox"; desktop_id="firefox.desktop"; name="Firefox"; icon=brand.firefox ;;
+zen) command="zen-browser"; desktop_id="zen.desktop"; name="Zen"; icon=app.browser ;;
+*)
+  echo "Usage: karchy-default-browser <chromium|chrome|brave|brave-origin|edge|firefox|zen>"
+  exit 1
+  ;;
+esac
+
+# karchy has no installer catalog (D-48): install the browser first, with
+# pacman or paru.
+if karchy-cmd-missing "$command"; then
+  echo "$name is not installed. Install it first, then set it as the default." >&2
+  exit 1
+fi
+
+# xdg-settings checks what it set by reading the handler back, which the
+# desktop-specific list would answer with karchy-browser.desktop, so it must
+# only see mimeapps.list, where the browser itself is kept.
+env -u BROWSER XDG_CURRENT_DESKTOP= xdg-settings set default-web-browser "$desktop_id" || exit 1
+
+karchy-notification-send -g "$icon" "$(karchy-i18n default.browserSet "$name")"

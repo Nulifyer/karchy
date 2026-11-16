@@ -11,7 +11,7 @@ import "AppSearch.js" as AppSearch
 Item {
   id: root
 
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  property string karchyPath: Quickshell.env("KARCHY_PATH")
 
   property var configuredHiddenEntryIds: ({})
   property var desktopHiddenEntryIds: ({})
@@ -78,12 +78,12 @@ Item {
     var id = String(desktopId || "")
     if (!id) return
     root.beginLaunchFeedback(name)
-    // A terminal app goes through Omarchy's TUI launcher, which names its
-    // terminal window after the command (org.omarchy.nvim), so the dock and
+    // A terminal app goes through Karchy's TUI launcher, which names its
+    // terminal window after the command (org.karchy.nvim), so the dock and
     // titlebars can tell Neovim from the terminal it runs in.
     var command = root.terminalCommand(DesktopEntries.byId(id))
     if (command.length > 0) {
-      Util.execDetached("omarchy-launch-tui " + command.map(function(word) { return Util.shellQuote(word) }).join(" "))
+      Util.execDetached("karchy-launch-tui " + command.map(function(word) { return Util.shellQuote(word) }).join(" "))
       return
     }
     // Start gtk-launch inside a scope under app-graphical.slice so apps do not
@@ -103,7 +103,7 @@ Item {
   function remove(desktopId, name) {
     var id = String(desktopId || "")
     if (!id) return
-    Util.execDetached(Util.shellQuote(root.omarchyPath + "/bin/omarchy-remove-launcher-entry") + " " + Util.shellQuote(id) + " " + Util.shellQuote(String(name || id)))
+    Util.execDetached(Util.shellQuote(root.karchyPath + "/bin/karchy-remove-launcher-entry") + " " + Util.shellQuote(id) + " " + Util.shellQuote(String(name || id)))
   }
 
   function normalizeDesktopId(id) {
@@ -164,7 +164,7 @@ Item {
 
   function hiddenEntryScanCommand() {
     var desktop = [Quickshell.env("XDG_CURRENT_DESKTOP"), Quickshell.env("XDG_SESSION_DESKTOP"), Quickshell.env("DESKTOP_SESSION")].filter(function(v) { return String(v || "").length > 0 }).join(":")
-    var script = root.omarchyPath + "/shell/services/hidden-entries.sh"
+    var script = root.karchyPath + "/shell/services/hidden-entries.sh"
     return Util.shellQuote(script) + " " + Util.shellQuote(desktop)
   }
 
@@ -186,7 +186,7 @@ Item {
     launchDelay.stop()
     launchTimeout.stop()
     if (root.launchOsdOpen) {
-      Quickshell.execDetached(["omarchy-shell", "osd", "close"])
+      Quickshell.execDetached(["karchy-shell", "osd", "close"])
       root.launchOsdOpen = false
     }
   }
@@ -233,7 +233,7 @@ Item {
   }
 
   FileView {
-    path: root.omarchyPath + "/default/omarchy/launcher.hides"
+    path: root.karchyPath + "/default/karchy/launcher.hides"
     watchChanges: true
     printErrors: false
     onLoaded: root.loadConfiguredHides(text())
@@ -257,7 +257,7 @@ Item {
     onTriggered: {
       if (root.toplevelCount() > root.launchToplevelCount || ToplevelManager.activeToplevel !== root.launchActiveToplevel) return
       root.launchOsdOpen = true
-      Quickshell.execDetached(["omarchy-shell", "osd", "show", JSON.stringify({ icon: "󱓞", message: root.launchOsdMessage, duration: 0 })])
+      Quickshell.execDetached(["karchy-shell", "osd", "show", JSON.stringify({ icon: "app.launch", message: root.launchOsdMessage, duration: 0 })])
     }
   }
 

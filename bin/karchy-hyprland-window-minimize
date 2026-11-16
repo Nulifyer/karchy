@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# karchy:summary=Minimize a window, all windows on the workspace, or (Super + Down) restore-or-minimize
+# karchy:args=[window-address | --all | --down]
+
+# Windows' keys (D-60): Super + Down restores a maximized window and otherwise
+# minimizes it (--down); Super + M minimizes every window on the workspace
+# (--all); the titlebar's − button minimizes its window (an address); with no
+# argument, the active window. Minimized windows wait on the special workspace
+# "special:minimized", tagged with the workspace they came from; the bar's
+# minimized indicator and Super + Shift + M bring them back
+# (karchy-hyprland-window-restore).
+
+set -euo pipefail
+
+minimize() {
+  local address=$1 workspace=$2 tag
+  [[ -n $address && $workspace =~ ^[0-9]+$ ]] || return 0
+  # Only the newest origin is kept.
+  while read -r tag; do
+    hyprctl dispatch "hl.dsp.window.tag({ tag = \"-$tag\", window = \"address:$address\" })" >/dev/null
+  done < <(hyprctl clients -j | jq -r --arg a "$address" \
+    '.[] | select(.address == $a) | (.tags // [])[] | select(test("^karchy-minimized-from-[0-9]+$"))')
+  hyprctl dispatch "hl.dsp.window.tag({ tag = \"+karchy-minimized-from-$workspace\", window = \"address:$address\" })" >/dev/null
+  hyprctl dispatch "hl.dsp.window.move({ workspace = \"special:minimized\", follow = false, window = \"address:$address\" })" >/dev/null
+}
+
+case "${1:-}" in
+  --all)
+    workspace=$(hyprctl activeworkspace -j | jq -r '.id // empty')
+    while read -r address; do
+      minimize "$address" "$workspace"
+    done < <(hyprctl clients -j | jq -r --argjson ws "${workspace:-0}" '.[] | select(.workspace.id == $ws) | .address')
+    ;;
+  --down)
+    read -r address workspace fullscreen < <(hyprctl activewindow -j |
+      jq -r '"\(.address // "") \(.workspace.id // "") \(.fullscreen // 0)"')
+    [[ -n $address ]] || exit 0
+    if [[ $fullscreen != "0" ]]; then
+      hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = "maximized", action = "unset" })' >/dev/null
+      exit 0
+    fi
+    minimize "$address" "$workspace"
+    ;;
+  "")
+    read -r address workspace < <(hyprctl activewindow -j | jq -r '"\(.address // "") \(.workspace.id // "")"')
+    minimize "$address" "$workspace"
+    ;;
+  *)
+    [[ $1 =~ ^0x[0-9a-fA-F]+$ ]] || { echo "karchy-hyprland-window-minimize: not a window address: $1" >&2; exit 1; }
+    workspace=$(hyprctl clients -j | jq -r --arg a "$1" 'first(.[] | select(.address == $a) | .workspace.id) // empty')
+    minimize "$1" "$workspace"
+    ;;
+esac
+
+# Focus would otherwise stay with a minimized window, and the next window
+# opened would join it on the hidden workspace.
+active=$(hyprctl activeworkspace -j | jq -r '.id // empty')
+[[ $active =~ ^[0-9]+$ ]] && hyprctl dispatch "hl.dsp.focus({ workspace = \"$active\" })" >/dev/null
+exit 0

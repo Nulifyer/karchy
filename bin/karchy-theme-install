@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# karchy:summary=Install a theme from a git repository
+# karchy:args=[git-repo-url]
+# karchy:examples=karchy theme install https://github.com/example/omarchy-example-theme.git
+# karchy:examples=karchy theme install git@github.com:example/omarchy-example-theme.git
+
+THEMES_DIR="$HOME/.config/karchy/themes"
+
+# The theme's name, from the URL. Strip user@host: from scp-style SSH URLs so
+# basename sees just the path: git reads a URL as scp-style when a colon
+# appears before any slash, so the path after it need not hold one
+# (`git@host:omarchy-blue-theme.git` is a repo in that user's home).
+#
+# The name is joined into a path that is about to be removed, and then names a
+# directory the rest of Karchy passes around by name: Appearance > Unlock
+# builds a command line out of the one the picker returned. So it is held to
+# the characters a theme name needs rather than screened for the harm of the
+# day -- a repo called `..` would take ~/.config/karchy with it, and one called
+# `a';'id` would carry its own command into that picker. The leading character
+# is kept out of `.` and `-`, which also covers `host:-s/foo.git` leaving
+# basename with `.git`. A bracket range follows the locale's collation, not
+# ASCII (`[a-z]` takes in `é` under en_US.UTF-8), so the locale is pinned.
+theme_name_for() {
+  local path="$1" name
+  [[ $path != *"://"* && $path == *:* && ${path%%:*} != */* ]] && path="${path#*:}"
+  name=$(basename -- "$path" .git | sed -E 's/^(omarchy|karchy)-//; s/-theme$//' | tr '[:upper:]' '[:lower:]')
+  (LC_ALL=C; [[ $name =~ ^[a-z0-9_][a-z0-9._+-]*$ ]]) || return 1
+  printf '%s\n' "$name"
+}
+
+# Refuses a URL that names a git option or a transport helper before cloning
+# (karchy-git-url-check, shared with karchy-plugin-add; a missing checker
+# refuses), then clones into a new folder beside the themes and only replaces
+# an installed theme of that name once the clone worked. Prints why it can't.
+fetch_theme() {
+  local url="$1" problem new
+  if ! problem=$(karchy-git-url-check "$url" 2>&1); then
+    problem=${problem#karchy-git-url-check: }
+    echo "${problem:-"That address can't be used."}"
+    return 1
+  fi
+  THEME_NAME=$(theme_name_for "$url") || { echo "'$url' doesn't name a theme repository (like https://github.com/someone/omarchy-name-theme)."; return 1; }
+  mkdir -p "$THEMES_DIR"
+  new=$(mktemp -d "$THEMES_DIR/.$THEME_NAME.XXXXXX")
+  # Progress goes to the terminal; only the reason for a refusal is printed.
+  if ! git clone --progress -- "$url" "$new" >&2; then
+    rm -rf "$new"
+    echo "Couldn't download a theme from $url. Check the address and the network."
+    return 1
+  fi
+  rm -rf "${THEMES_DIR:?}/$THEME_NAME"
+  mv "$new" "$THEMES_DIR/$THEME_NAME"
+}
+
+if [[ -z $1 ]]; then
+  echo -e "\e[32mSee https://omarchy.org/themes/\n\e[0m"
+  # Esc closes the window (exit 130, the menu terminal's cancel); an empty or
+  # refused address is asked again, keeping it, with the reason in the header.
+  REPO_URL="" header=""
+  reason=$(mktemp)
+  trap 'rm -f "$reason"' EXIT
+  while true; do
+    REPO_URL=$(gum input --placeholder="$(karchy-i18n theme.repoPlaceholder)" --header="$header" --value "$REPO_URL") || exit 130
+    if [[ -z $REPO_URL ]]; then
+      header="Type the git address of the theme's repository."
+      continue
+    fi
+    echo "Downloading the theme…"
+    if fetch_theme "$REPO_URL" >"$reason"; then
+      break
+    fi
+    header=$(<"$reason")
+    printf '\e[1A\e[2K'
+  done
+  rm -f "$reason"
+else
+  REPO_URL="$1"
+  fetch_theme "$REPO_URL" || exit 1
+fi
+
+# Apply the new theme with karchy-theme-set, which stages only the files an
+# extra theme is allowed to contribute and names anything it dropped.
+karchy-theme-set "$THEME_NAME"

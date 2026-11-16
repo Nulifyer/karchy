@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# karchy:summary=List available themes
+# karchy:examples=karchy theme list | karchy theme set "Tokyo Night"
+
+{
+  find ~/.config/karchy/themes/ -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf '%f\n'
+  find "$KARCHY_PATH/themes/" -mindepth 1 -maxdepth 1 -type d -printf '%f\n'
+} | sort -u | sed -E 's/(^|-)([a-z])/\1\u\2/g; s/-/ /g'

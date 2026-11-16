@@ -1,0 +1,12 @@
+# karchy session environment, read by uwsm before Hyprland starts (D-51, D-55).
+# KARCHY_PATH is the packaged karchy tree. Dev mode: /etc/karchy.conf can set
+# KARCHY_PATH to a checkout so this machine runs its commands and shell first.
+KARCHY_PATH=/usr/share/karchy
+[ -r /etc/karchy.conf ] && . /etc/karchy.conf
+export KARCHY_PATH
+if [ "$KARCHY_PATH" != /usr/share/karchy ]; then
+  export PATH="$KARCHY_PATH/bin:$PATH"
+fi
+export TERMINAL=xdg-terminal-exec
+# Terminal editor for git, sudoedit and friends (D-58); your own EDITOR wins.
+export EDITOR="${EDITOR:-micro}"

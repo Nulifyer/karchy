@@ -1,0 +1,35 @@
+# karchy-nvidia-580xx: NVIDIA's 580 legacy driver for both karchy kernels, for
+# Maxwell, Pascal and Volta cards, which the open modules in karchy-nvidia
+# don't support (they need Turing's GSP firmware). The installer picks one of
+# the two with karchy-hw-nvidia-generation. The modules come prebuilt from
+# [cachyos] (D-45). nvidia-580xx-utils needs its 32-bit libraries, so the
+# installer enables [multilib] on these machines.
+
+pkgname=karchy-nvidia-580xx
+pkgver=0
+pkgrel=1
+pkgdesc="karchy NVIDIA support for Maxwell, Pascal and Volta: 580xx kernel modules, userspace, VA-API and early KMS"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('linux-cachyos-nvidia-580xx' 'linux-cachyos-lts-nvidia-580xx' 'nvidia-580xx-utils' 'libva-nvidia-driver')
+# Takes karchy-nvidia's place: anything that needs karchy's NVIDIA driver
+# resolves with either, and only one can be installed.
+provides=('karchy-nvidia')
+conflicts=('karchy-nvidia')
+backup=('etc/mkinitcpio.conf.d/karchy-nvidia.conf')
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  # The same early-KMS drop-in as karchy-nvidia: the 580xx modules have the
+  # same names. Installed with the kernel modules, so the initramfs rebuild
+  # that their install triggers already includes it.
+  install -Dm644 "$srcdir/karchy/system/nvidia/mkinitcpio.conf" \
+    "$pkgdir/etc/mkinitcpio.conf.d/karchy-nvidia.conf"
+  # No hibernation with early KMS (NVIDIA issue #1343); the lid suspends.
+  install -Dm644 "$srcdir/karchy/system/nvidia/sleep.conf" \
+    "$pkgdir/usr/lib/systemd/sleep.conf.d/karchy-nvidia.conf"
+  install -Dm644 "$srcdir/karchy/system/nvidia/logind.conf" \
+    "$pkgdir/usr/lib/systemd/logind.conf.d/karchy-nvidia.conf"
+}

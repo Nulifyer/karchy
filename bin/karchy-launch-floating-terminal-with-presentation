@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# karchy:summary=Launch a floating terminal with the Karchy presentation wrapper
+# karchy:args=<command line> | <program> <arg>...
+
+# Export the current theme's gum styling so gum widgets match the active theme
+# even after a theme switch (the inherited environment is captured at login).
+source karchy-restart-gum
+
+# One argument is a shell command line, written by the caller. Two or more
+# are a program and its arguments, quoted word by word, so a file name passed
+# through (Thunar's %f, a notification's --with) is never parsed as shell code.
+if (($# == 1)); then
+  cmd=$1
+else
+  printf -v cmd '%q ' "$@"
+fi
+# 130 is the user cancelling: Ctrl-C, or a script whose prompt was cancelled
+# (Esc) or declined, which exits 130 by karchy's convention. The window closes
+# at once; anything else gets the Done/Failed prompt.
+presentation_script="karchy-show-logo; $cmd; code=\$?; if (( code != 130 )); then karchy-show-done \$code; fi"
+
+exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.karchy.terminal --title=Karchy -e bash -c "$presentation_script"

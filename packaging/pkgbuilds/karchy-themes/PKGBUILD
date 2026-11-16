@@ -1,0 +1,17 @@
+# karchy-themes: the bundled themes and wallpapers (D-52). Omarchy's 23 themes
+# (without intro videos) and karchy's nulifyer.
+
+pkgname=karchy-themes
+pkgver=0
+pkgrel=1
+pkgdesc="karchy themes and wallpapers"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  install -d "$pkgdir/usr/share/karchy"
+  cp -a "$srcdir/karchy/themes" "$pkgdir/usr/share/karchy/"
+}

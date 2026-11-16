@@ -8,7 +8,7 @@ QtObject {
   id: registry
 
   property string home: Quickshell.env("HOME")
-  property string pluginsDir: home + "/.config/omarchy/plugins"
+  property string pluginsDir: home + "/.config/karchy/plugins"
 
   // Set by shell.qml at startup so we can also scan bundled first-party plugins.
   property string firstPartyDir: ""
@@ -91,7 +91,7 @@ QtObject {
 
   function trustedCapabilities(manifest) {
     if (!manifest || !manifest.__isFirstParty) return []
-    var metadata = Util.isPlainObject(manifest.omarchy) ? manifest.omarchy : null
+    var metadata = Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
     var declared = metadata && Array.isArray(metadata.capabilities) ? metadata.capabilities : []
     var out = []
     for (var i = 0; i < declared.length; i++) {
@@ -107,7 +107,7 @@ QtObject {
 
     for (var thirdPartyId in thirdParty) {
       var manifest = thirdParty[thirdPartyId]
-      var metadata = manifest && Util.isPlainObject(manifest.omarchy) ? manifest.omarchy : null
+      var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
       var clonedFrom = metadata ? String(metadata.clonedFrom || "") : ""
       var source = clonedFrom ? firstParty[clonedFrom] : null
       manifest.__hostCapabilities = source && Array.isArray(source.__hostCapabilities)
@@ -138,12 +138,12 @@ QtObject {
   // overlays, services).
   //
   // Special cases (implicitly always enabled, no shell.json entry needed):
-  //   - the built-in bar option (`omarchy.bar`) is active when `bar.id` is
-  //     missing or set to `omarchy.bar`.
+  //   - the built-in bar option (`karchy.bar`) is active when `bar.id` is
+  //     missing or set to `karchy.bar`.
   //   - first-party non-bar plugins are shell infrastructure (settings,
   //     image-picker, ...). Requiring users to add them to plugins[] just to
   //     summon them was a footgun: a stock shell.json with `plugins: []` would
-  //     silently make `omarchy launch bar-settings` a no-op. Turning one off
+  //     silently make `karchy launch bar-settings` a no-op. Turning one off
   //     is therefore recorded the other way round, in `disabledPlugins[]`.
   function isEnabled(id) {
     var key = String(id)
@@ -154,7 +154,7 @@ QtObject {
         var selectedBar = ""
         if (Util.isPlainObject(config) && Util.isPlainObject(config.bar))
           selectedBar = Util.canonicalWidgetId(String(config.bar.id || ""))
-        if (!selectedBar) selectedBar = "omarchy.bar"
+        if (!selectedBar) selectedBar = "karchy.bar"
         return selectedBar === key
       }
       if (isDisabled(config, key)) return false
@@ -174,7 +174,7 @@ QtObject {
     // manifest is the implementation that should receive the call.
     for (var candidate in installedPlugins) {
       var manifest = installedPlugins[candidate]
-      var metadata = manifest && Util.isPlainObject(manifest.omarchy) ? manifest.omarchy : null
+      var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
       if (metadata && String(metadata.clonedFrom || "") === key && isEnabled(candidate))
         return candidate
     }
@@ -184,7 +184,7 @@ QtObject {
   // A bar widget is on when it sits in the bar, whoever shipped it. That is a
   // different question from isEnabled(), which decides whether the widget's
   // component is loaded at all — a built-in stays loadable so it can be put
-  // back, and so a plugin that is both a widget and a menu (omarchy.menu)
+  // back, and so a plugin that is both a widget and a menu (karchy.menu)
   // cannot be locked out of the shell by taking its button off the bar.
   function inBar(id) {
     var config = shellConfigProvider ? shellConfigProvider() : null
@@ -253,8 +253,8 @@ QtObject {
   // The tray, or a clone standing in for it.
   function isTray(id) {
     var manifest = installedPlugins[id]
-    var metadata = manifest && Util.isPlainObject(manifest.omarchy) ? manifest.omarchy : null
-    return id === "omarchy.tray" || (!!metadata && Util.canonicalWidgetId(String(metadata.clonedFrom || "")) === "omarchy.tray")
+    var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
+    return id === "karchy.tray" || (!!metadata && Util.canonicalWidgetId(String(metadata.clonedFrom || "")) === "karchy.tray")
   }
 
   // The tray section is drawn inside the tray, so the tray cannot go there.
@@ -284,7 +284,7 @@ QtObject {
 
     // A section without an anchor (the tray's drawer, for one) takes a widget
     // put there at its end.
-    var anchors = { left: "omarchy.workspaces", centerEnd: "omarchy.weather", right: "omarchy.tray" }
+    var anchors = { left: "karchy.workspaces", centerEnd: "karchy.media", right: "karchy.tray" }
     if (!anchors[section]) return { section: section, index: config.bar.layout[section].length }
     var anchor = findRelativeBarLocation(config, anchors[section], section)
     return {
@@ -424,6 +424,30 @@ QtObject {
     if (config.disabledPlugins.length === 0) delete config.disabledPlugins
   }
 
+  // A bar widget switched off keeps its place and options in
+  // bar.removedWidgets, so switching it on again puts it back there rather
+  // than at its section's default spot.
+  function rememberRemovedWidget(config, id, location) {
+    if (!Util.isPlainObject(config.bar.removedWidgets)) config.bar.removedWidgets = {}
+    config.bar.removedWidgets[id] = {
+      section: location.section,
+      index: location.index,
+      entry: Util.cloneJson(config.bar.layout[location.section][location.index])
+    }
+  }
+
+  function restoreRemovedWidget(config, id) {
+    var removed = Util.isPlainObject(config.bar.removedWidgets) ? config.bar.removedWidgets[id] : null
+    if (!removed || Util.barSections.indexOf(String(removed.section)) === -1) return false
+    var list = config.bar.layout[removed.section]
+    var index = Math.min(Math.max(0, Math.floor(Number(removed.index) || 0)), list.length)
+    var entry = Util.isPlainObject(removed.entry) || typeof removed.entry === "string" ? removed.entry : { id: id }
+    list.splice(index, 0, entry)
+    delete config.bar.removedWidgets[id]
+    if (Object.keys(config.bar.removedWidgets).length === 0) delete config.bar.removedWidgets
+    return true
+  }
+
   function addDisabled(config, id) {
     if (isDisabled(config, id)) return
     if (!Array.isArray(config.disabledPlugins)) config.disabledPlugins = []
@@ -445,8 +469,8 @@ QtObject {
   function activeCloneFor(config, sourceId) {
     for (var candidate in installedPlugins) {
       var candidateManifest = installedPlugins[candidate]
-      var candidateMetadata = candidateManifest && Util.isPlainObject(candidateManifest.omarchy)
-        ? candidateManifest.omarchy : null
+      var candidateMetadata = candidateManifest && Util.isPlainObject(candidateManifest.karchy)
+        ? candidateManifest.karchy : null
       if (!candidateMetadata || String(candidateMetadata.clonedFrom || "") !== sourceId) continue
       if (Array.isArray(candidateManifest.kinds) && candidateManifest.kinds.indexOf("bar") !== -1) {
         if (Util.canonicalWidgetId(String(config.bar.id || "")) === candidate) return candidate
@@ -462,7 +486,7 @@ QtObject {
     var isBarOption = cloneManifest && Array.isArray(cloneManifest.kinds)
       && cloneManifest.kinds.indexOf("bar") !== -1
     if (isBarOption) {
-      if (sourceId === "omarchy.bar") delete config.bar.id
+      if (sourceId === "karchy.bar") delete config.bar.id
       else config.bar.id = sourceId
     } else {
       var cloneLocation = findEntryLocation(config, cloneId)
@@ -510,7 +534,7 @@ QtObject {
     var isBarWidget = manifest && Array.isArray(manifest.kinds) && manifest.kinds.indexOf("bar-widget") !== -1
     var hasNonWidgetKind = manifest && Array.isArray(manifest.kinds)
       && manifest.kinds.some(function(kind) { return kind !== "bar-widget" })
-    var metadata = manifest && Util.isPlainObject(manifest.omarchy) ? manifest.omarchy : null
+    var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
     var clonedFrom = metadata ? Util.canonicalWidgetId(String(metadata.clonedFrom || "")) : ""
     shellConfigMutator(function(config) {
       ensureConfigShape(config)
@@ -537,7 +561,7 @@ QtObject {
         if (value) {
           config.bar.id = key
         } else if (Util.canonicalWidgetId(String(config.bar.id || "")) === key) {
-          if (clonedFrom && clonedFrom !== "omarchy.bar") config.bar.id = clonedFrom
+          if (clonedFrom && clonedFrom !== "karchy.bar") config.bar.id = clonedFrom
           else delete config.bar.id
         }
         return
@@ -564,6 +588,8 @@ QtObject {
             var replacement = Util.isPlainObject(sourceEntry) ? Util.cloneJson(sourceEntry) : entry
             replacement.id = key
             config.bar.layout[sourceLocation.section][sourceLocation.index] = replacement
+          } else if (!(placement && Object.keys(placement).length) && restoreRemovedWidget(config, key)) {
+            // Back where it was when it was switched off, with its options.
           } else {
             var section = defaultBarWidgetSection(manifest)
             var target = barTarget(config, placement || {}, section, key)
@@ -585,7 +611,10 @@ QtObject {
       }
 
       if (clonedFrom) restoreCloneSource(config, key, clonedFrom)
-      else if (location.kind === "bar") config.bar.layout[location.section].splice(location.index, 1)
+      else if (location.kind === "bar") {
+        rememberRemovedWidget(config, key, location)
+        config.bar.layout[location.section].splice(location.index, 1)
+      }
       else if (location.kind === "plugin") config.plugins.splice(location.index, 1)
 
       // Dropping the layout entry is the whole story for a widget. Anything
@@ -656,12 +685,12 @@ QtObject {
     var merged = {}
     for (var fk in firstParty) merged[fk] = firstParty[fk]
     // Third-party plugins never shadow first-party ids. The whole
-    // `omarchy.*` namespace is reserved for built-ins, including bar widgets
+    // `karchy.*` namespace is reserved for built-ins, including bar widgets
     // registered outside the manifest-based plugin registry.
     for (var tk in thirdParty) {
-      if (firstParty[tk] || String(tk).indexOf("omarchy.") === 0) {
+      if (firstParty[tk] || String(tk).indexOf("karchy.") === 0) {
         console.warn("PluginRegistry: plugin " + tk
-          + " rejected: id is reserved for first-party Omarchy plugins")
+          + " rejected: id is reserved for first-party Karchy plugins")
         continue
       }
       merged[tk] = thirdParty[tk]
@@ -758,7 +787,7 @@ QtObject {
     // First-party bar widgets can also carry sibling manifests such as
     // widgets/Clock.manifest.json so multiple widgets can live in one source
     // directory without wrapper folders.
-    // Third-party plugins stay at the top level of ~/.config/omarchy/plugins.
+    // Third-party plugins stay at the top level of ~/.config/karchy/plugins.
     var script = ""
       + "emit_manifest() { local kind=\"$1\"; local manifest=\"$2\"; local sub; "
       + "  if [[ ${manifest##*/} == \"manifest.json\" ]]; then sub=\"${manifest%/manifest.json}\"; else sub=\"${manifest%/*}\"; fi; "

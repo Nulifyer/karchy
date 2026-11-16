@@ -1,0 +1,85 @@
+#!/bin/sh
+
+# SPDX-License-Identifier: ISC
+# SPDX-FileCopyrightText: 2025 Thomas Duckworth <tduck@filotimoproject.org>
+# SPDX-FileCopyrightText: 2009-2014 Red Hat, Inc.
+# SPDX-FileCopyrightText: 2025 Velocity Limitless, LLC.
+#
+# Ported from CachyOS's iw-set-regdomain
+# (https://gitlab.com/VelocityLimitless/Projects/iw-setregdomain).
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+# Sets the Wi-Fi regulatory domain (the country whose channel and power rules
+# apply) from the timezone. Without it the kernel stays in the world domain,
+# where 6 GHz is off and many 5 GHz channels are passive-only. Runs when a
+# Wi-Fi device appears and after karchy-menu-timezone. A country in
+# /etc/karchy/wifi-country (COUNTRY=XX) overrides the timezone.
+
+OVERRIDE=/etc/karchy/wifi-country
+LOGGER="/usr/bin/logger -t karchy-wifi-regdomain"
+
+getcountry() {
+	while read -r c _ z _; do
+		if [ "$z" = "$ZONE" ]; then
+			echo "$c"
+			break
+		fi
+	done </usr/share/zoneinfo/zone.tab
+}
+
+if [ -f "$OVERRIDE" ]; then
+	COUNTRY=$(sed -n 's/^COUNTRY=//p' "$OVERRIDE" | head -1)
+	if [ -n "$COUNTRY" ]; then
+		exec /usr/bin/iw reg set "$COUNTRY"
+	fi
+fi
+
+ZONE=$(timedatectl show -P Timezone 2>/dev/null)
+if [ -z "$ZONE" ]; then
+	$LOGGER -s "Could not determine the timezone; leaving the regulatory domain alone."
+	exit 0
+fi
+
+# Zones with no single country.
+case "$ZONE" in
+	UTC | UCT | Universal | Zulu | GMT | GMT[+-]0 | GMT0 | Greenwich | Factory | posixrules | \
+		CET | EET | WET | MET | EST | MST | HST | EST5EDT | CST6CDT | MST7MDT | PST8PDT | \
+		Etc/*)
+		$LOGGER "Timezone $ZONE has no country; leaving the regulatory domain alone."
+		exit 0
+		;;
+esac
+
+COUNTRY=$(getcountry)
+
+# Not in zone.tab: resolve a backward-compatible alias (US/Pacific,
+# Asia/Calcutta) to its canonical zone and retry. Only after the direct
+# lookup, since many zone.tab entries are themselves links into another
+# country's zone (Europe/Amsterdam -> Europe/Brussels).
+TZDATA_ZI=/usr/share/zoneinfo/tzdata.zi
+if [ -z "$COUNTRY" ] && [ -f "$TZDATA_ZI" ]; then
+	CANON=$(awk -v z="$ZONE" '$1=="L" && $3==z {print $2; exit}' "$TZDATA_ZI")
+	if [ -n "$CANON" ]; then
+		ZONE=$CANON
+		COUNTRY=$(getcountry)
+	fi
+fi
+
+if [ -z "$COUNTRY" ]; then
+	$LOGGER -s "No country for timezone $ZONE; leaving the regulatory domain alone."
+	exit 0
+fi
+
+$LOGGER "Setting the regulatory domain to $COUNTRY (timezone $ZONE)."
+exec /usr/bin/iw reg set "$COUNTRY"

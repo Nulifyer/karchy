@@ -1,0 +1,8 @@
+# karchy (D-61): check for karchy releases and package updates, without
+# installing anything. Results feed the bar's updates indicator.
+[Unit]
+Description=Check for karchy and system updates
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/karchy-update-check

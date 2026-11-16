@@ -1,4 +1,4 @@
-# Python bytecode (tools/vendor-sync)
+# Python bytecode (tools/rebrand, tools/upstream-review, packaging/build)
 __pycache__/
 *.py[cod]
 
@@ -22,3 +22,6 @@ install.conf
 *.qcow2
 *.iso
 *.fd
+
+# Package builds (packaging/build)
+/out/

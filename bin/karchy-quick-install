@@ -1,0 +1,345 @@
+#!/bin/bash
+
+# karchy:summary=Install or remove an app from the Quick install list
+# karchy:args=[search] | window [search] | status | info <id> | install <id> | remove <id> | open <id>
+# karchy:examples=karchy quick-install install firefox | karchy quick-install status
+
+# The list is default/karchy/quick-install.json (D-70): apps from Arch's
+# repos, [cachyos], [omarchy], and well-kept AUR packages, plus karchy's own
+# features, whose scripts answer status, install and remove themselves.
+# The Quick install window (shell plugin karchy.quick-install) runs install
+# and remove in a floating terminal, so pacman's output, paru's prompts and build, and the
+# password prompt are visible; status, info and open answer it directly.
+#
+#   [search], window [search]
+#                 open the Quick install window (the default), searching for
+#                 the given text, or at a category with `window @<category>`
+#   status        {"installed": {"<id>": "<desktop file or empty>"}}
+#   info <id>     {"download": "98 MiB", "installed": "290 MiB"} for repo apps
+#   install <id>  install the packages and apply the entry's setup:
+#                 multilib    turn on Arch's 32-bit repository first
+#                 gpu32       add the 32-bit graphics driver this machine needs
+#                 services    system units to enable and start
+#                 userServices user units to enable and start
+#                 groups      groups to add you to (applies at next login)
+#                 run         commands to run as you afterwards
+#                 A failed setup step is reported and the command fails; running
+#                 install again retries the setup (pacman skips what's there)
+#   remove <id>   remove the app's own packages (not ones another list entry
+#                 also installs), after pacman confirms nothing else needs
+#                 them; apps karchy needs (`required`) can't be removed, and
+#                 removing the default browser says where links open now
+#   open <id>     start the app
+
+set -uo pipefail
+
+# Headlines in bold in a terminal (the floating install window); plain when
+# piped or with NO_COLOR.
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then BOLD=$'\e[1m' DIM=$'\e[2m' RESET=$'\e[0m'; else BOLD="" DIM="" RESET=""; fi
+
+CATALOG=${KARCHY_PATH:-/usr/share/karchy}/default/karchy/quick-install.json
+
+die() {
+  echo "$*" >&2
+  exit 1
+}
+
+entry() {
+  jq -ce --arg id "$1" '.apps[] | select(.id == $id)' "$CATALOG" 2>/dev/null || die "No app '$1' in the Quick install list."
+}
+
+field() { jq -r "$2" <<<"$1"; }
+
+# pacman takes one lock; say so instead of failing midway in the terminal.
+pacman_free() {
+  [[ ! -e /var/lib/pacman/db.lck ]] || die "Another install or update is running. Wait for it to finish, then try again."
+}
+
+refresh_window() {
+  command -v karchy-shell >/dev/null && karchy-shell -q shell call karchy.quick-install finished "" >/dev/null 2>&1
+  # Thunar's right-click actions follow what is installed (Open in VS Code,
+  # Disktree, LocalSend).
+  command -v karchy-thunar-actions >/dev/null && karchy-thunar-actions >/dev/null 2>&1
+  return 0
+}
+
+# Each package's launcher, for Open: "<package>\t<desktop file>". Of the
+# visible desktop files a package installs, the one named after it (thunar,
+# not thunar-bulk-rename; foot, not foot-server), else the first.
+launchers() {
+  (($#)) || return 0
+  pacman -Ql "$@" 2>/dev/null |
+    awk '$2 ~ "^/usr/share/applications/[^/]+[.]desktop$" { print $1 "\t" $2 }' |
+    while IFS=$'\t' read -r pkg file; do
+      grep -qiE '^NoDisplay=true' "$file" 2>/dev/null || printf '%s\t%s\n' "$pkg" "$file"
+    done |
+    awk -F'\t' '
+      {
+        pkg = $1; base = $2; sub(/.*\//, "", base)
+        name = tolower(base); sub(/[.]desktop$/, "", name)
+        stem = pkg; sub(/-(bin|git)$/, "", stem)
+        tail = "." stem
+        named = name == stem || (length(name) > length(tail) && substr(name, length(name) - length(tail) + 1) == tail)
+        if (!(pkg in best) || (named && !won[pkg])) { best[pkg] = base; won[pkg] = named }
+        if (!(pkg in order)) order[pkg] = NR
+      }
+      END { for (p in best) print order[p] "\t" p "\t" best[p] }
+    ' | sort -n | cut -f2-
+}
+
+# The launcher of the first of these packages that has one.
+desktop_of() {
+  local found
+  found=$(launchers "$@" | awk -F'\t' -v want="$*" '
+    BEGIN { n = split(want, w, " "); for (i = 1; i <= n; i++) rank[w[i]] = i }
+    { if (!best || rank[$1] < bestrank) { best = $2; bestrank = rank[$1] } }
+    END { if (best) print best }')
+  [[ -n $found ]] || return 1
+  echo "$found"
+}
+
+status() {
+  local id main
+  # Catalog apps whose main package is installed, with all their packages;
+  # each one's launcher is the first of its packages that has one (scrcpy
+  # for Android SDK), from a single pacman -Ql.
+  local have
+  have=$(awk -F'\t' 'FILENAME == ARGV[1] { have[$1]; next } { split($2, p, " ") } p[1] in have' \
+    <(pacman -Qq) <(jq -r '.apps[] | select(.feature | not) | "\(.id)\t\(.packages | join(" "))"' "$CATALOG"))
+  {
+    if [[ -n $have ]]; then
+      local pkgs=()
+      mapfile -t pkgs < <(cut -f2 <<<"$have" | tr ' ' '\n' | sort -u)
+      awk -F'\t' '
+        FILENAME == ARGV[1] { file[$1] = $2; next }
+        {
+          n = split($2, p, " "); found = ""
+          for (i = 1; i <= n && found == ""; i++) if (p[i] in file) found = file[p[i]]
+          print $1 "\t" found
+        }
+      ' <(launchers "${pkgs[@]}") <(printf '%s\n' "$have")
+    fi
+    while IFS=$'\t' read -r id main; do
+      [[ $("$main" status 2>/dev/null) == installed ]] && printf '%s\t\n' "$id"
+    done < <(jq -r '.apps[] | select(.feature) | "\(.id)\t\(.feature)"' "$CATALOG")
+  } | jq -Rsc '{installed: (split("\n") | map(select(length > 0) | split("\t") | {(.[0]): (.[1] // "")}) | add // {})}'
+}
+
+info() {
+  local app main out
+  app=$(entry "$1") || exit 1
+  main=$(field "$app" '.packages[0]')
+  out=$(LC_ALL=C pacman -Si "$main" 2>/dev/null) || { echo '{}'; return; }
+  jq -cn --arg d "$(sed -n 's/^Download Size *: //p' <<<"$out" | head -n1)" \
+    --arg i "$(sed -n 's/^Installed Size *: //p' <<<"$out" | head -n1)" \
+    '{download: $d, installed: $i}'
+}
+
+# The 32-bit graphics driver games need, for the GPUs in this machine.
+gpu32_packages() {
+  local dev vendor
+  local nvidia
+  # pacman -Qq answers with the package that provides the name, and
+  # nvidia-580xx-utils provides nvidia-utils (D-69): compare exact names.
+  nvidia=$(pacman -Qq nvidia-utils 2>/dev/null)
+  {
+    case $nvidia in
+      nvidia-580xx-utils) echo lib32-nvidia-580xx-utils ;;
+      nvidia-utils) echo lib32-nvidia-utils ;;
+    esac
+    for dev in /sys/bus/pci/devices/*; do
+      [[ $(<"$dev/class") == 0x03* ]] 2>/dev/null || continue
+      vendor=$(<"$dev/vendor")
+      case $vendor in
+        0x1002) echo lib32-mesa lib32-vulkan-radeon ;;
+        0x8086) echo lib32-mesa lib32-vulkan-intel ;;
+      esac
+    done
+    # NVIDIA on nouveau, and virtual GPUs: Mesa's 32-bit OpenGL.
+    [[ -n $nvidia ]] || echo lib32-mesa
+  } | tr ' ' '\n' | sort -u
+}
+
+install_app() {
+  local app name feature pkgs=() extra=() sync=-S unit group cmd failed=()
+  app=$(entry "$1") || exit 1
+  name=$(field "$app" .name)
+  feature=$(field "$app" '.feature // empty')
+  if [[ -n $feature ]]; then
+    "$feature" install
+    local code=$?
+    refresh_window
+    return $code
+  fi
+  mapfile -t pkgs < <(field "$app" '.packages[]')
+  ((${#pkgs[@]})) || die "$name lists no packages."
+  pacman_free
+
+  if [[ $(field "$app" '.multilib // false') == true ]]; then
+    if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+      echo "$name needs Arch's 32-bit packages ([multilib]). Turning that repository on."
+      sudo sed -i '/^#\[multilib\]$/,/^#Include/ s/^#//' /etc/pacman.conf || die "Couldn't edit /etc/pacman.conf. Nothing was installed."
+      grep -q '^\[multilib\]' /etc/pacman.conf || die "/etc/pacman.conf has no [multilib] section to turn on. Nothing was installed."
+    fi
+    # Until its package list is downloaded, which a full update does (Arch
+    # needs that after adding a repository); also after an earlier attempt
+    # turned it on but stopped before syncing.
+    if [[ ! -e /var/lib/pacman/sync/multilib.db ]]; then
+      echo "The system is updated in the same step, as Arch requires after adding a repository."
+      echo "If you stop that update, run 'karchy update' before installing anything else."
+      sync=-Syu
+    fi
+  fi
+  if [[ $(field "$app" '.setup.gpu32 // false') == true ]]; then
+    mapfile -t extra < <(gpu32_packages)
+    ((${#extra[@]})) && echo "Adding the 32-bit graphics driver for this machine: ${extra[*]}"
+  fi
+
+  printf '%s%s%s %s\n' "$BOLD" "Installing $name" "$RESET" "${pkgs[*]} ${extra[*]}"
+  if [[ $(field "$app" .source) == aur ]]; then
+    printf '%s%s%s\n' "$DIM" "From the AUR: built on this computer from a community-maintained script." "$RESET"
+    paru --color auto "$sync" --needed "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
+  else
+    # The window's Install is the confirmation; pacman still lists what it
+    # installs (user 2026-11-15). paru keeps its own prompts for the AUR.
+    sudo pacman --color auto "$sync" --needed --noconfirm -- "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
+  fi
+
+  while read -r unit; do
+    [[ -z $unit ]] || sudo systemctl enable --now "$unit" || failed+=("turning on $unit")
+  done < <(field "$app" '.setup.services[]? // empty')
+  while read -r unit; do
+    [[ -z $unit ]] || systemctl --user enable --now "$unit" || failed+=("turning on $unit for you")
+  done < <(field "$app" '.setup.userServices[]? // empty')
+  while read -r group; do
+    [[ -n $group ]] || continue
+    getent group "$group" >/dev/null || { failed+=("adding you to the $group group (it doesn't exist)"); continue; }
+    id -nG "$USER" | tr ' ' '\n' | grep -qxF "$group" && continue
+    if sudo usermod -aG "$group" "$USER"; then
+      echo "Added you to the $group group; it applies after you sign in again."
+    else
+      failed+=("adding you to the $group group")
+    fi
+  done < <(field "$app" '.setup.groups[]? // empty')
+  while read -r cmd; do
+    [[ -z $cmd ]] || bash -c "$cmd" || failed+=("running $cmd")
+  done < <(field "$app" '.setup.run[]? // empty')
+
+  local note
+  note=$(field "$app" '.setup.note // empty')
+  [[ -n $note ]] && { echo; echo "$note"; }
+  refresh_window
+  if ((${#failed[@]})); then
+    echo
+    echo "$name is installed, but part of its setup didn't finish:"
+    printf '  - %s\n' "${failed[@]}"
+    echo "Run 'karchy quick-install install $1' to try the setup again."
+    karchy-notification-send -u critical -g quick-install "$name's setup didn't finish" "Run karchy quick-install install $1 to try again." 2>/dev/null || true
+    exit 1
+  fi
+  karchy-notification-send -g quick-install "$name installed" 2>/dev/null || true
+}
+
+remove_app() {
+  local app name feature installed=() unit stopped=() stopped_user=()
+  app=$(entry "$1") || exit 1
+  name=$(field "$app" .name)
+  local required
+  required=$(field "$app" '.required // empty')
+  [[ -z $required ]] || die "$name is part of karchy: $required. It can't be removed."
+  feature=$(field "$app" '.feature // empty')
+  if [[ -n $feature ]]; then
+    "$feature" remove
+    local code=$?
+    refresh_window
+    return $code
+  fi
+  # The app's own packages: its main one, and the others unless another
+  # entry also installs them (Lutris and Wine helpers share winetricks).
+  local pkgs=() shared p
+  shared=$(jq -r --arg id "$1" '[.apps[] | select(.id != $id) | .packages[]] | unique | .[]' "$CATALOG")
+  mapfile -t pkgs < <(field "$app" '.packages[]')
+  ((${#pkgs[@]})) || die "$name lists no packages."
+  pacman_free
+  for p in "${pkgs[@]}"; do
+    [[ $p != "${pkgs[0]}" ]] && grep -qxF -- "$p" <<<"$shared" && continue
+    # Exact names only: pacman -Q also answers for a package's provides.
+    [[ $(pacman -Qq -- "$p" 2>/dev/null) == "$p" ]] && installed+=("$p")
+  done
+  if ((${#installed[@]} == 0)); then
+    echo "$name isn't installed."
+    refresh_window
+    return 0
+  fi
+  # Ask pacman first, so a refusal leaves everything as it was.
+  if ! pacman -Rs --print "${installed[@]}" >/dev/null 2>&1; then
+    echo "Another installed package needs part of $name:"
+    pacman -Rs --print "${installed[@]}" 2>&1 | grep -i "required by\|breaks dependency" || true
+    die "Remove that package first, then try again. Nothing was changed."
+  fi
+  # Units are stopped before their files go; if the removal doesn't happen
+  # (a wrong password, a pacman error), they are turned back on.
+  while read -r unit; do
+    [[ -n $unit ]] && systemctl --user is-enabled --quiet "$unit" 2>/dev/null &&
+      systemctl --user disable --now "$unit" 2>/dev/null && stopped_user+=("$unit")
+  done < <(field "$app" '.setup.userServices[]? // empty')
+  while read -r unit; do
+    [[ -n $unit ]] && systemctl is-enabled --quiet "$unit" 2>/dev/null &&
+      sudo systemctl disable --now "$unit" 2>/dev/null && stopped+=("$unit")
+  done < <(field "$app" '.setup.services[]? // empty')
+  printf '%s%s%s %s\n' "$BOLD" "Removing $name" "$RESET" "${installed[*]}"
+  # The window asked already; pacman still lists what it removes.
+  if ! sudo pacman --color auto -Rns --noconfirm -- "${installed[@]}"; then
+    for unit in "${stopped_user[@]}"; do systemctl --user enable --now "$unit"; done
+    for unit in "${stopped[@]}"; do sudo systemctl enable --now "$unit"; done
+    die "$name wasn't removed."
+  fi
+  [[ $(field "$app" .category) == browsers ]] && browser_fallback
+  refresh_window
+  karchy-notification-send -g quick-install "$name removed" 2>/dev/null || true
+}
+
+# After a browser is removed, say where links go now. karchy-launch-browser
+# already falls back to any installed browser when the default is gone
+# (karchy-cmd-default-browser), so there is nothing to change.
+browser_fallback() {
+  local next label=""
+  next=$(karchy-cmd-default-browser 2>/dev/null)
+  if [[ -n $next ]]; then
+    [[ -r /usr/share/applications/$next ]] && label=$(sed -n 's/^Name=//p' "/usr/share/applications/$next" | head -n1)
+    echo "Links now open in ${label:-$next}."
+  else
+    echo "No web browser is installed now. Install one from Quick install's Browsers."
+  fi
+}
+
+open_app() {
+  local app desktop pkgs=()
+  app=$(entry "$1") || exit 1
+  mapfile -t pkgs < <(field "$app" '.packages[]')
+  desktop=$(desktop_of "${pkgs[@]}") || die "$(field "$app" .name) has no window to open; run it from a terminal."
+  setsid uwsm-app -- "$desktop" >/dev/null 2>&1 &
+}
+
+[[ -r $CATALOG ]] || die "The Quick install list is missing: $CATALOG"
+
+case "${1:-window}" in
+  window)
+    query=${2:-}
+    if [[ $query == @* ]]; then
+      payload=$(jq -cn --arg c "${query#@}" '{category: $c}')
+    else
+      payload=$(jq -cn --arg q "$query" '{query: $q}')
+    fi
+    karchy-shell shell summon karchy.quick-install "$payload" >/dev/null
+    ;;
+  status) status ;;
+  info) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install info <id>"; info "$2" ;;
+  install) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install install <id>"; install_app "$2" ;;
+  remove) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install remove <id>"; remove_app "$2" ;;
+  open) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install open <id>"; open_app "$2" ;;
+  -h | --help) sed -n 's/^# karchy:args=/Usage: karchy-quick-install /p' "$0" ;;
+  -*) sed -n 's/^# karchy:args=/Usage: karchy-quick-install /p' "$0" >&2; exit 1 ;;
+  # Anything else is a search: karchy quick-install steam
+  *) exec "$0" window "$*" ;;
+esac

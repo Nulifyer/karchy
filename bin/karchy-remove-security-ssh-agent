@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# karchy:summary=Turn off the SSH agent (gcr-ssh-agent) that karchy-setup-security-ssh-agent turned on.
+
+set -e
+
+ENV_FILE="$HOME/.config/environment.d/90-gcr-ssh-agent.conf"
+
+systemctl --user disable --now gcr-ssh-agent.socket
+systemctl --user stop gcr-ssh-agent.service 2>/dev/null || true
+rm -f "$ENV_FILE"
+
+echo "SSH agent has been turned off. Log out and back in so apps stop looking for it."
+echo "Passphrases remembered in the keyring stay there."

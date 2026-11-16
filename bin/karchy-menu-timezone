@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# karchy:summary=Select and set the system timezone
+# karchy:group=menu
+# karchy:name=timezone
+
+# Runs from the menu with no terminal, so nothing here may use sudo. timedated
+# asks for the password through the shell's polkit dialog; timedatectl only
+# allows that from a terminal, so the call goes through busctl with the
+# "interactive" argument set.
+
+current=$(timedatectl show -p Timezone --value 2>/dev/null || true)
+timezone=$(timedatectl list-timezones | karchy-menu-select "$(karchy-i18n timezone.setTitle)" -- --width 520 --maxheight 520 ${current:+--selected "$current"}) || exit 0
+[[ -n $timezone ]] || exit 0
+if ! busctl call --allow-interactive-authorization=yes org.freedesktop.timedate1 /org/freedesktop/timedate1 \
+  org.freedesktop.timedate1 SetTimezone sb "$timezone" true >/dev/null; then
+  karchy-notification-send -g timezone "$(karchy-i18n timezone.failed "$timezone")"
+  exit 1
+fi
+# The Wi-Fi country follows the timezone (karchy-settings). A path unit on
+# /etc/localtime misses timedatectl replacing the link, so ask directly; a
+# polkit rule lets the session start this one unit without a password, and
+# boot sets it again whenever the Wi-Fi device appears.
+systemctl start --no-block karchy-wifi-regdomain.service 2>/dev/null || true
+karchy-shell -q karchy.clock refresh
+karchy-notification-send -g timezone "$(karchy-i18n timezone.changed "$timezone")"

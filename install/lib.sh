@@ -29,6 +29,7 @@ KARCHY_STEP=""
 on_error() {
   local status=$?
   log "ERROR: step '${KARCHY_STEP:-startup}' failed (exit $status); see $KARCHY_INSTALL_LOG"
+  log "To try again, fix what the log shows, reboot the install media and run karchy-install again. It starts over and erases the disk again."
   exit "$status"
 }
 
@@ -68,6 +69,16 @@ cpu_vendor() {
   awk -F': ' '/^vendor_id/ { print $2; exit }' /proc/cpuinfo
 }
 
-has_nvidia() {
-  lspci -nn 2>/dev/null | grep -Eiq '(VGA|3D).*NVIDIA'
+# The firmware has no platform key yet, so new Secure Boot keys can be
+# enrolled from the OS (D-31).
+firmware_setup_mode() {
+  local var=/sys/firmware/efi/efivars/SetupMode-8be4df61-93ca-11d2-aa0d-00e098032b8c
+  [[ -r $var && $(od -An -t u1 -j4 -N1 "$var" | tr -d ' ') == "1" ]]
+}
+
+# The driver this machine's NVIDIA GPUs need: open (Turing or newer), 580xx
+# (Maxwell, Pascal, Volta) or unsupported (Kepler and older); nothing without
+# an NVIDIA GPU. karchy-hw-nvidia-generation holds the device ID ranges.
+nvidia_generation() {
+  "$KARCHY_SRC/bin/karchy-hw-nvidia-generation" || true
 }

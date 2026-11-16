@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# karchy:summary=Update system firmware using fwupd
+# karchy:requires-sudo=true
+
+set -e
+echo -e "\e[32mUpdate Firmware\e[0m"
+
+if karchy-cmd-missing fwupdmgr; then
+  karchy-pkg-add fwupd
+fi
+
+# fwupd puts its EFI loader on the ESP itself; under karchy's Secure Boot it
+# uses the copy karchy-secureboot signed (fwupdx64.efi.signed).
+fwupdmgr refresh --force
+sudo fwupdmgr update

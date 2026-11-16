@@ -76,7 +76,11 @@ Row {
   }
 
   onActiveFocusChanged: {
+    // The chips draw the panel-cursor ring, which follows InputMode; Tab
+    // focus is the keyboard's, a click the pointer's.
     if (activeFocus) {
+      if (focusReason === Qt.MouseFocusReason) InputMode.pointerMoved()
+      else InputMode.keyPressed()
       var idx = selectedOptionIndex()
       _focusedIndex = idx < 0 ? 0 : idx
     } else {
@@ -86,6 +90,7 @@ Row {
 
   Keys.priority: Keys.BeforeItem
   Keys.onPressed: function(event) {
+    InputMode.keyPressed()
     if (Util.readingKey(event, true) === Qt.Key_Left) {
       _focusedIndex = Math.max(0, (_focusedIndex < 0 ? 0 : _focusedIndex) - 1)
       event.accepted = true

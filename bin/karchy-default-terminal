@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# karchy:summary=Set the default terminal used by xdg-terminal-exec
+# karchy:args=[alacritty|foot|ghostty|kitty]
+# karchy:examples=karchy default terminal ghostty | karchy default terminal kitty
+
+
+if (($# == 0)); then
+  desktop_id=$(xdg-terminal-exec --print-id 2>/dev/null || true)
+  desktop_id=${desktop_id%%:*}
+  case "$desktop_id" in
+  Alacritty.desktop) echo "alacritty" ;;
+  foot.desktop | footclient.desktop | karchy-foot.desktop | karchy-footclient.desktop) echo "foot" ;;
+  com.mitchellh.ghostty.desktop) echo "ghostty" ;;
+  kitty.desktop) echo "kitty" ;;
+  *) echo "$desktop_id" ;;
+  esac
+  exit 0
+fi
+
+case "$1" in
+alacritty) terminal="alacritty"; desktop_id="Alacritty.desktop"; name="Alacritty"; icon=app.terminal ;;
+# karchy-footclient.desktop declares the arguments xdg-terminal-exec needs; foot.desktop lacks them.
+foot) terminal="foot"; desktop_id="karchy-footclient.desktop"; name="Foot"; icon=app.terminal ;;
+ghostty) terminal="ghostty"; desktop_id="com.mitchellh.ghostty.desktop"; name="Ghostty"; icon=app.terminal ;;
+kitty) terminal="kitty"; desktop_id="kitty.desktop"; name="Kitty"; icon=app.terminal ;;
+*)
+  echo "Usage: karchy-default-terminal <alacritty|foot|ghostty|kitty>"
+  exit 1
+  ;;
+esac
+
+# karchy has no installer catalog (D-48): install the terminal with pacman first.
+if karchy-cmd-missing "$terminal"; then
+  echo "$name is not installed. Install it first, for example: sudo pacman -S $terminal" >&2
+  exit 1
+fi
+
+cat >~/.config/xdg-terminals.list <<EOF
+# Terminal emulator preference order for xdg-terminal-exec
+# The first found and valid terminal will be used
+$desktop_id
+EOF
+
+karchy-notification-send -g "$icon" "$(karchy-i18n default.terminalSet "$name")"

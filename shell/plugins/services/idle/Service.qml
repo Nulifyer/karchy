@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Services.UPower
 import Quickshell.Wayland
 import "IdleModel.js" as IdleModel
 import qs.Commons
@@ -9,26 +10,36 @@ import qs.Commons
 Item {
   id: root
 
-  // Injected by omarchy-shell (the first-party service loader).
+  // Injected by karchy-shell (the first-party service loader).
   property var shell: null
 
   readonly property string home: Quickshell.env("HOME")
-  readonly property string stayAwakeStateDir: home + "/.local/state/omarchy/indicators"
+  readonly property string stayAwakeStateDir: home + "/.local/state/karchy/indicators"
   readonly property string stayAwakeStatePath: stayAwakeStateDir + "/stay-awake"
   readonly property int defaultScreensaverSeconds: 150
   readonly property int defaultLockSeconds: 300
+  // Laptops sleep after this long idle, on battery only unless idle.suspendOnAC
+  // is true (karchy). 0 turns it off.
+  readonly property int defaultSuspendSeconds: 900
   readonly property var idleConfig: shell && shell.shellConfig && shell.shellConfig.idle
     ? shell.shellConfig.idle : (shell && shell.idleConfig ? shell.idleConfig : ({}))
   readonly property int screensaverTimeoutSeconds: secondsFromConfig(idleConfig.screensaver, defaultScreensaverSeconds)
   readonly property int lockTimeoutSeconds: secondsFromConfig(idleConfig.lock, defaultLockSeconds)
+  readonly property int suspendTimeoutSeconds: secondsFromConfig(idleConfig.suspend, defaultSuspendSeconds)
+  readonly property bool suspendOnAC: idleConfig.suspendOnAC === true
+  // Only machines with a battery suspend on idle; a desktop's UPower reports
+  // no laptop battery and never "on battery".
+  readonly property bool hasBattery: UPower.displayDevice && UPower.displayDevice.isLaptopBattery
+  readonly property bool suspendNow: suspendTimeoutSeconds > 0 && hasBattery && (UPower.onBattery || suspendOnAC)
   readonly property bool screensaverEnabled: screensaverTimeoutSeconds > 0
   readonly property bool lockEnabled: lockTimeoutSeconds > 0
   readonly property bool idleTimersEnabled: screensaverEnabled || lockEnabled
   readonly property int firstIdleTimeoutSeconds: IdleModel.firstIdleTimeout(screensaverTimeoutSeconds, lockTimeoutSeconds)
   readonly property int screensaverDelaySeconds: IdleModel.delayAfterFirstIdle(screensaverTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int lockDelaySeconds: IdleModel.delayAfterFirstIdle(lockTimeoutSeconds, firstIdleTimeoutSeconds)
+  readonly property int suspendDelaySeconds: IdleModel.delayAfterFirstIdle(suspendTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property bool idleEnabled: stayAwakeStateLoaded && !stayAwake
-  readonly property string screensaverClass: "org.omarchy.screensaver"
+  readonly property string screensaverClass: "org.karchy.screensaver"
 
   property bool stayAwake: false
   property bool stayAwakeStateLoaded: false
@@ -53,7 +64,7 @@ Item {
     var suffix = details === undefined || details === null || details === "" ? "" : ": " + String(details)
     root.lastEventAt = nowIso()
     root.lastEvent = event + suffix
-    console.log("omarchy idle " + root.lastEventAt + " " + root.lastEvent)
+    console.log("karchy idle " + root.lastEventAt + " " + root.lastEvent)
   }
 
   function runProcess(process, label, command) {
@@ -70,7 +81,7 @@ Item {
   function launchScreensaver() {
     root.screensaverStartedThisCycle = true
     screensaverLaunchGraceTimer.restart()
-    runProcess(screensaverProcess, "screensaver", "[[ $(omarchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || omarchy-launch-screensaver")
+    runProcess(screensaverProcess, "screensaver", "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || karchy-launch-screensaver")
   }
 
   function lockSystem(reason) {
@@ -81,7 +92,19 @@ Item {
     root.idledThisCycle = false
     root.screensaverStartedThisCycle = false
     resetScreensaverWindows()
-    runProcess(lockProcess, "lock", "omarchy-system-lock")
+    runProcess(lockProcess, "lock", "karchy-system-lock")
+  }
+
+  // Suspend (then hibernate, where the laptop can) after the lock, unless sleep
+  // is turned off. Whether the machine is on battery is checked when the timer
+  // fires, so unplugging during the idle stretch counts. systemd refuses
+  // suspend-then-hibernate when the swap can't hold memory right now, and a
+  // plain suspend is better than staying awake.
+  function suspendSystem(reason) {
+    logEvent("suspend-system", reason || "requested")
+    runProcess(suspendProcess, "suspend",
+      "karchy-toggle-enabled suspend-off || karchy-sleep-disabled || " +
+      "{ if karchy-hibernation-available; then systemctl suspend-then-hibernate || systemctl suspend; else systemctl suspend; fi; }")
   }
 
   function startIdleCycle() {
@@ -112,15 +135,23 @@ Item {
         lockTimer.restart()
       }
     }
+
+    // The suspend deadline outlives the lock (which ends the screensaver
+    // cycle) and is cancelled by activity.
+    if (root.suspendTimeoutSeconds > 0) {
+      suspendTimer.interval = Math.max(1, root.suspendDelaySeconds) * 1000
+      suspendTimer.restart()
+    }
   }
 
   function cancelIdleCycle(reason) {
     logEvent("idle-cycle-cancel", reason || "requested")
+    suspendTimer.stop()
     screensaverTimer.stop()
     lockTimer.stop()
     screensaverLaunchGraceTimer.stop()
 
-    if (root.idledThisCycle) runProcess(wakeProcess, "wake", "omarchy-system-wake")
+    if (root.idledThisCycle) runProcess(wakeProcess, "wake", "karchy-system-wake")
 
     root.idledThisCycle = false
     root.screensaverStartedThisCycle = false
@@ -172,7 +203,14 @@ Item {
   }
 
   function handleActiveSignal() {
-    if (!root.idledThisCycle) return
+    if (!root.idledThisCycle) {
+      // Locked by the idle cycle, then woken: no sleep after all.
+      if (suspendTimer.running) {
+        suspendTimer.stop()
+        logEvent("suspend-cancel", "activity")
+      }
+      return
+    }
 
     // Starting the screensaver can make the compositor report activity. Keep
     // the lock timer running once the screensaver exists (or during its short
@@ -205,12 +243,15 @@ Item {
       screensaverStarted: root.screensaverStartedThisCycle,
       screensaver: root.screensaverTimeoutSeconds,
       lock: root.lockTimeoutSeconds,
+      suspend: root.suspendTimeoutSeconds,
+      suspendNow: root.suspendNow,
       screensaverDelay: root.screensaverDelaySeconds,
       lockDelay: root.lockDelaySeconds,
       screensaverWindows: root.screensaverWindowCount,
       timers: {
         screensaver: screensaverTimer.running,
         lock: lockTimer.running,
+        suspend: suspendTimer.running,
         screensaverLaunchGrace: screensaverLaunchGraceTimer.running
       },
       processes: {
@@ -225,8 +266,8 @@ Item {
 
   function persistStayAwake(value) {
     var command = value
-      ? "mkdir -p \"$HOME/.local/state/omarchy/indicators\" && touch \"$HOME/.local/state/omarchy/indicators/stay-awake\""
-      : "rm -f \"$HOME/.local/state/omarchy/indicators/stay-awake\""
+      ? "mkdir -p \"$HOME/.local/state/karchy/indicators\" && touch \"$HOME/.local/state/karchy/indicators/stay-awake\""
+      : "rm -f \"$HOME/.local/state/karchy/indicators/stay-awake\""
 
     if (stayAwakeStateWriter.running) {
       root.pendingStayAwakePersist = !!value
@@ -288,6 +329,15 @@ Item {
   }
 
   Timer {
+    id: suspendTimer
+    repeat: false
+    onTriggered: {
+      if (root.idleEnabled && idleMonitor.isIdle && root.suspendNow) root.suspendSystem("suspend-timeout")
+      else root.logEvent("suspend-skip", "active, stay-awake, plugged in or no battery")
+    }
+  }
+
+  Timer {
     id: screensaverLaunchGraceTimer
     interval: 3000
     repeat: false
@@ -312,13 +362,17 @@ Item {
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "lock exitCode=" + exitCode + " status=" + exitStatus) }
   }
   Process {
+    id: suspendProcess
+    onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "suspend exitCode=" + exitCode + " status=" + exitStatus) }
+  }
+  Process {
     id: wakeProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "wake exitCode=" + exitCode + " status=" + exitStatus) }
   }
 
   Process {
     id: stayAwakeStateProbe
-    command: ["bash", "-c", "mkdir -p \"$HOME/.local/state/omarchy/indicators\"; if [[ -f $HOME/.local/state/omarchy/indicators/stay-awake ]]; then echo yes; else echo no; fi"]
+    command: ["bash", "-c", "mkdir -p \"$HOME/.local/state/karchy/indicators\"; if [[ -f $HOME/.local/state/karchy/indicators/stay-awake ]]; then echo yes; else echo no; fi"]
     stdout: SplitParser {
       onRead: function(line) { root.applyStayAwake(String(line).trim() === "yes", false, "state-file") }
     }

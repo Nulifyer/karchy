@@ -1,0 +1,48 @@
+#!/bin/bash
+# Secure Boot (D-31). limine's 90-limine-enroll-config hook enrolls the
+# limine.conf hash into EFI/limine/limine_x64.efi and signs it after every
+# change. The firmware's fallback path, EFI/BOOT/BOOTX64.EFI, is a plain copy
+# of Limine: if it were signed without the enrolled hash, it would boot any
+# edited limine.conf. Keep it an exact copy of the enrolled, signed binary.
+#
+# Runs as a limine post hook, last, so its exit code is what limine reports.
+# It copies only after checking that the main binary carries limine.conf's
+# current hash and is signed, and fails loudly when it doesn't: limine's own
+# enroll hook signs the unenrolled binary when enrollment fails, and its
+# failure would otherwise be hidden behind this hook's success.
+
+set -uo pipefail
+
+# limine reads ENABLE_ENROLL_LIMINE_CONFIG only from /etc/default/limine and
+# exports it to hooks (empty when off).
+if [[ -v ENABLE_ENROLL_LIMINE_CONFIG ]]; then
+  enroll=$ENABLE_ENROLL_LIMINE_CONFIG
+else
+  enroll=$(grep -hE '^ENABLE_ENROLL_LIMINE_CONFIG=' /etc/default/limine 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d "\"'")
+fi
+[[ $enroll == "yes" ]] || exit 0
+
+esp=${ESP_PATH:-$(grep -hE '^ESP_PATH=' /etc/limine-entry-tool.conf /etc/default/limine 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d "\"'")}
+esp=${esp:-/boot}
+config=${LIMINE_CONFIG_PATH:-$esp/limine.conf}
+main="${BINARY_TARGET_PATH:-$esp/EFI/limine/limine_x64.efi}"
+fallback="$esp/EFI/BOOT/BOOTX64.EFI"
+[[ -f $main && -f $fallback && -f $config ]] || exit 0
+
+fail() {
+  echo "karchy: $*; the fallback bootloader was left as it was" >&2
+  exit 1
+}
+
+# limine enroll-config stores the hash as text inside the binary.
+hash=$(b2sum "$config" | cut -d' ' -f1)
+grep -qaF -- "$hash" "$main" || fail "$main does not carry limine.conf's current hash (enrollment failed)"
+if command -v sbctl >/dev/null; then
+  sbctl verify "$main" 2>/dev/null | grep -q 'is signed' || fail "$main is not signed"
+fi
+
+cmp -s "$main" "$fallback" && exit 0
+if ! { cp "$main" "$fallback.karchy" && mv "$fallback.karchy" "$fallback" && sync -f "$fallback"; }; then
+  fail "could not copy $main over $fallback"
+fi
+echo "karchy: fallback bootloader updated to the enrolled, signed Limine"

@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# karchy:summary=Enable, disable, toggle, or recover mirroring the internal display to an external monitor
+# karchy:args=<on|off|toggle|recover>
+
+TOGGLE="internal-monitor-mirror"
+TOGGLE_FLAG="$HOME/.local/state/karchy/toggles/hypr/$TOGGLE.lua"
+DISABLE_TOGGLE="internal-monitor-disable"
+
+INTERNAL=$(karchy-hyprland-monitor-laptop)
+# The first active external monitor
+EXTERNAL=$(hyprctl monitors -j | jq -r '.[] | select(.name | test("^(eDP|LVDS|DSI)-") | not).name' | head -n 1)
+
+on() {
+  if [[ -z $EXTERNAL ]]; then
+    karchy-notification-send -g display "$(karchy-i18n monitor.noExternalForMirror)"
+    exit 1
+  fi
+
+  if [[ -z $INTERNAL ]]; then
+    karchy-notification-send -g display "$(karchy-i18n monitor.noLaptopToMirror)"
+    exit 1
+  fi
+
+  # Both names are written into generated Lua below, so only plain connector
+  # names may pass; a user-created headless output can carry any name.
+  for output in "$INTERNAL" "$EXTERNAL"; do
+    if [[ ! $output =~ ^[A-Za-z0-9._-]+$ ]]; then
+      karchy-notification-send -g display "$(karchy-i18n monitor.unsafeName)"
+      exit 1
+    fi
+  done
+
+  karchy-hyprland-toggle $DISABLE_TOGGLE off
+
+  if karchy-hyprland-toggle-disabled $TOGGLE; then
+    printf 'hl.monitor({ output = "%s", mode = "preferred", position = "auto", scale = 1, mirror = "%s" })\n' "$EXTERNAL" "$INTERNAL" >"$TOGGLE_FLAG"
+    karchy-notification-send -g display "$(karchy-i18n monitor.mirroringEnabled "$EXTERNAL")"
+    karchy-restart-hyprctl
+  fi
+}
+
+off() {
+  if karchy-hyprland-toggle-enabled $TOGGLE; then
+    karchy-hyprland-toggle $TOGGLE off
+    karchy-notification-send -g display "$(karchy-i18n monitor.extendedRestored)"
+  fi
+}
+
+toggle() {
+  if karchy-hyprland-toggle-enabled $TOGGLE; then
+    off
+  else
+    on
+  fi
+}
+
+recover() {
+  if ! karchy-hyprland-monitor-external-active && karchy-hyprland-toggle-enabled $TOGGLE; then
+    karchy-hyprland-toggle $TOGGLE off
+  fi
+}
+
+case "$1" in
+  on) on ;;
+  off) off ;;
+  toggle) toggle ;;
+  recover) recover ;;
+  *)
+    echo "Usage: $(basename "$0") {on|off|toggle|recover}" >&2
+    exit 1
+    ;;
+esac

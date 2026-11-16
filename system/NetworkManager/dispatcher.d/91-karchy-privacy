@@ -1,0 +1,6 @@
+#!/bin/sh
+# karchy: announce this computer (avahi) only while a trusted network is up.
+[ -x /usr/bin/karchy-network-privacy ] || exit 0
+case "$2" in
+  up|down|vpn-up|vpn-down|connectivity-change) exec /usr/bin/karchy-network-privacy ;;
+esac

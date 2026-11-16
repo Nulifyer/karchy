@@ -1,4 +1,5 @@
 import QtQuick
+import qs.Commons
 
 // Drop-in key dispatcher for keyboard-driven panels. Wraps panel content
 // and emits semantic signals so each panel keeps its own state machine
@@ -49,8 +50,24 @@ Item {
   signal textKey(string text, int modifiers)
 
   focus: true
+
+  // The pointer moving over the panel hands the cursor to the mouse, so its
+  // row shows the hover look without the keyboard focus ring.
+  HoverHandler {
+    property point last: Qt.point(-1, -1)
+    onPointChanged: {
+      var p = point.scenePosition
+      if (Math.abs(p.x - last.x) > 1 || Math.abs(p.y - last.y) > 1) {
+        if (last.x >= 0) InputMode.pointerMoved()
+        last = p
+      }
+    }
+    onHoveredChanged: if (!hovered) last = Qt.point(-1, -1)
+  }
+
   Keys.priority: Keys.BeforeItem
   Keys.onPressed: function(event) {
+    InputMode.keyPressed()
     if (blocked) return
 
     if (event.key === Qt.Key_Escape) {

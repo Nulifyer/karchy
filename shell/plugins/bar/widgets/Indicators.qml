@@ -6,9 +6,9 @@ import qs.Ui
 
 BarWidget {
   id: root
-  moduleName: "omarchy.indicators"
+  moduleName: "karchy.indicators"
 
-  readonly property var defaultIndicatorEntries: [ "PasswordlessSudo", "ScreenRecording", "RemoteSession", "Reminder", "NightLight", "Dnd", "StayAwake" ]
+  readonly property var defaultIndicatorEntries: [ "Updates", "ScreenRecording", "Reminder", "Minimized" ]
   readonly property var indicatorEntries: indicatorEntriesFromSettings(settings)
   property var activeIndicatorIds: []
   property var indicatorActiveStates: ({})
@@ -200,7 +200,7 @@ BarWidget {
   implicitHeight: orientationLoader.item ? orientationLoader.item.implicitHeight : 0
 
   ShellIpc {
-    target: "omarchy.indicators"
+    target: "karchy.indicators"
 
     function refresh(): void {
       root.broadcast("refresh")

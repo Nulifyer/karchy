@@ -10,13 +10,13 @@ import "MenuModel.js" as MenuModel
 Item {
   id: root
 
-  // Injected by omarchy-shell when this plugin is summoned.
-  property string omarchyPath: Quickshell.env("OMARCHY_PATH")
+  // Injected by karchy-shell when this plugin is summoned.
+  property string karchyPath: Quickshell.env("KARCHY_PATH")
   property var shell: null
   property var manifest: null
 
   // Plugin lifecycle hooks. The host calls open(payloadJson) after
-  // `omarchy-shell shell summon omarchy.menu ...` and close() when hidden.
+  // `karchy-shell shell summon karchy.menu ...` and close() when hidden.
   property string pendingInitialMenu: "root"
 
   function open(payloadJson) {
@@ -53,16 +53,16 @@ Item {
   // JSONC menu definitions. The shell parses both at startup and merges
   // the user file on top of the defaults, so the keybind → IPC → visible
   // path doesn't have to shell out to bash + jq on every open.
-  property string defaultMenuPath: omarchyPath + "/default/omarchy/omarchy-menu.jsonc"
-  property string userMenuPath: Quickshell.env("HOME") + "/.config/omarchy/extensions/omarchy-menu.jsonc"
+  property string defaultMenuPath: karchyPath + "/default/karchy/karchy-menu.jsonc"
+  property string userMenuPath: Quickshell.env("HOME") + "/.config/karchy/extensions/karchy-menu.jsonc"
   // Display language for the shipped rows. The code lives in
-  // ~/.config/omarchy/language (omarchy-language owns it); a missing file
+  // ~/.config/karchy/language (karchy-language owns it); a missing file
   // means English. The catalog at default/i18n/<code>/menu.json is applied
   // to the default items before the user extension merges on top, so a
   // user's own rows and retitles always win.
   property string language: "en"
   property var menuCatalog: ({})
-  readonly property string languagePath: Quickshell.env("OMARCHY_LANGUAGE_FILE") || ((Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/omarchy/language")
+  readonly property string languagePath: Quickshell.env("KARCHY_LANGUAGE_FILE") || ((Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/karchy/language")
   property var defaultMenuItems: []
   property var userMenuItems: []
   // Whether each file has answered once, loaded or (the user's) missing. At
@@ -77,6 +77,7 @@ Item {
   property var dmenuOptions: []
   property bool dmenuMultiple: false
   property var dmenuSelected: []
+  property bool dmenuCursorToMarked: false
   // What the last confirmed change applied; a failed change returns the checks here.
   property var dmenuSaved: []
   property string dmenuChangeKey: ""
@@ -92,6 +93,11 @@ Item {
   // Resets of filterText reach the search line; its edits come back through setFilter.
   onFilterTextChanged: if (filterInput.text !== filterText) filterInput.text = filterText
   property int selectedIndex: 0
+  // Set on entering a menu: the cursor starts on the current choice (the
+  // font in use, the default layout) once its rows arrive, until you move it.
+  property bool cursorToCurrent: false
+  // Going back puts the cursor on the submenu just left.
+  property string cursorToId: ""
   property bool cursorActive: false
   property int requestSerial: 0
   property int applySerial: 0
@@ -135,7 +141,9 @@ Item {
   property int dividerHeight: Style.space(17)
   property bool searchDivider: false
   property int layoutSerial: 0
-  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : ((root.activeMenu === "trigger.capture.screenrecord" || root.activeMenu === "appearance.font" || root.activeMenu === "update.kernel") ? Style.space(520) : Style.space(300)), panel.width - Style.gapsOut * 2)
+  // One width for every level, so the card doesn't jump as you go deeper;
+  // it fits the longest shipped label ("Desktop + Microphone + Webcam").
+  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : Style.space(420), panel.width - Style.gapsOut * 2)
   property int visibleRowsHeight: root.dmenuActive ? dmenuRowListHeight(layoutSerial, displayModel.count, filterText) : rowListHeight(layoutSerial, displayModel.count, filterText, searchDivider)
   property int cardHeight: root.dmenuActive
     ? Math.min(contentMargin * 2 + headerHeight + (mode === "input" ? 0 : contentSpacing + visibleRowsHeight), panel.height - Style.gapsOut * 2)
@@ -322,14 +330,14 @@ Item {
   // shell started shows up without restarting it.
   readonly property var providers: ({
     "fonts": {
-      script: "current=$(omarchy-font-current 2>/dev/null); omarchy-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
-      icon: "",
+      script: "current=$(karchy-font-current 2>/dev/null); karchy-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
+      iconName: "look.font",
       volatile: true,
-      actionFor: function(value) { return "omarchy-font-set " + Util.shellQuote(value) }
+      actionFor: function(value) { return "karchy-font-set " + Util.shellQuote(value) }
     },
     "power-profiles": {
-      script: "current=$(powerprofilesctl get 2>/dev/null); omarchy-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
-      icon: "\udb81\udc0b",
+      script: "current=$(powerprofilesctl get 2>/dev/null); karchy-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
+      iconName: "power.profile",
       // Profile names are powerprofilesctl ids; only the label is translated,
       // and the id stays searchable through searchTerms.
       labelFor: function(value) {
@@ -338,23 +346,23 @@ Item {
         if (value === "performance") return Commons.I18n.t("menu.powerProfilePerformance")
         return value
       },
-      actionFor: function(value) { return "omarchy-powerprofiles-set autodetect " + Util.shellQuote(value) }
+      actionFor: function(value) { return "karchy-powerprofiles-set autodetect " + Util.shellQuote(value) }
     },
     // Kernel names are package names, the same in every language.
     "kernels": {
-      script: "current=$(omarchy-kernel get 2>/dev/null); omarchy-kernel list 2>/dev/null | while read -r k; do [[ -z $k ]] && continue; printf '%s\\t%s\\t%s\\n' \"$k\" \"$k\" \"$current\"; done",
-      icon: "\uf17c",
+      script: "current=$(karchy-kernel get 2>/dev/null); karchy-kernel list 2>/dev/null | while read -r k; do [[ -z $k ]] && continue; printf '%s\\t%s\\t%s\\n' \"$k\" \"$k\" \"$current\"; done",
+      iconName: "brand.linux",
       volatile: true,
-      actionFor: function(value) { return "omarchy-kernel set " + Util.shellQuote(value) }
+      actionFor: function(value) { return "karchy-kernel set " + Util.shellQuote(value) }
     },
     // Rows carry a fourth field (the English name) so searching "danish"
     // finds the row labeled with its native name; mergeProviderRows turns
     // it into an alias.
     "languages": {
-      script: "current=$(omarchy-language 2>/dev/null); omarchy-language list 2>/dev/null | while IFS=$'\\t' read -r name code english; do [[ -z $code ]] && continue; printf '%s\\t%s\\t%s\\t%s\\n' \"$name\" \"$code\" \"$current\" \"$english\"; done",
-      icon: "\uf1ab",
+      script: "current=$(karchy-language 2>/dev/null); karchy-language list 2>/dev/null | while IFS=$'\\t' read -r name code english; do [[ -z $code ]] && continue; printf '%s\\t%s\\t%s\\t%s\\n' \"$name\" \"$code\" \"$current\" \"$english\"; done",
+      iconName: "language",
       volatile: true,
-      actionFor: function(value) { return "omarchy-language " + Util.shellQuote(value) }
+      actionFor: function(value) { return "karchy-language " + Util.shellQuote(value) }
     }
   })
 
@@ -384,6 +392,7 @@ Item {
         parent: "apps",
         kind: "app",
         icon: "",
+        iconName: "",
         appIcon: String(entry.icon || ""),
         appId: appId,
         label: root.appLibrary.entryName(entry),
@@ -453,7 +462,11 @@ Item {
         id: rowId,
         parent: menuId,
         kind: "action",
-        icon: (value === current) ? "✓" : (spec.icon || ""),
+        icon: "",
+        iconName: spec.iconName || "",
+        // The current choice gets the same check mark on the right as a
+        // `checked:` row, and the cursor starts on it.
+        current: value === current,
         label: label,
         title: "",
         target: "",
@@ -553,10 +566,8 @@ Item {
     return MenuModel.isVisible(root.items, root.itemOrder, root.whenResults, entry)
   }
 
-  // Label with the ✓ marker baked in when `checked:` or `disabled:` evaluated
-  // truthy.
   function labelFor(entry) {
-    return MenuModel.labelFor(entry, root.checkedResults, root.disabledResults)
+    return MenuModel.labelFor(entry)
   }
 
   function searchableToken(value) {
@@ -626,6 +637,28 @@ Item {
   // A menu with nothing selectable in it -- every app in it already installed
   // -- shows no cursor at all, and grows one the moment a row can take it.
   function settleCursor() {
+    var backTo = root.cursorToId
+    root.cursorToId = ""
+    if (backTo && !root.filterText && !root.dmenuActive) {
+      for (var k = 0; k < displayModel.count; k++) {
+        var back = displayModel.get(k)
+        if (back.target !== backTo || back.disabled) continue
+        root.selectedIndex = k
+        root.cursorActive = true
+        root.cursorToCurrent = false
+        return
+      }
+    }
+    if (root.cursorToCurrent && !root.filterText && !root.dmenuActive) {
+      for (var i = 0; i < displayModel.count; i++) {
+        var row = displayModel.get(i)
+        if (!row.marked || row.disabled) continue
+        root.selectedIndex = i
+        root.cursorActive = true
+        root.cursorToCurrent = false
+        return
+      }
+    }
     var target = root.nextSelectable(root.selectedIndex, 1)
     root.selectedIndex = target >= 0 ? target : 0
     root.cursorActive = target >= 0
@@ -642,16 +675,17 @@ Item {
 
     if (root.dmenuMultiple && root.dmenuOnChange.length === 0) {
       displayModel.append({
-        itemId: "dmenu.apply", disabled: false, kind: "dmenu", icon: "", iconFont: "",
+        itemId: "dmenu.apply", disabled: false, kind: "dmenu", icon: "", iconName: "",
         appIcon: "", appId: "", label: Commons.I18n.t("common.apply"), target: "",
         detail: Commons.I18n.tn("menu.selectedCount", root.dmenuSelected.length).arg(Commons.I18n.formatNumber(root.dmenuSelected.length)), path: "", childCount: 0,
-        action: "", provider: "", score: -1, section: ""
+        action: "", provider: "", score: -1, section: "", marked: false
       })
     }
     var query = root.filterText.trim().toLowerCase()
     for (var i = 0; i < root.dmenuOptions.length; i++) {
-      // An option is "<label>", "<glyph>\t<label>", or
-      // "<glyph>\t<label>\t<subtext>". The glyph never comes back with the
+      // An option is "<label>", "<icon>\t<label>", or
+      // "<icon>\t<label>\t<subtext>", the icon a name from
+      // default/karchy/icons.json or a glyph. The icon never comes back with the
       // selection; the subtext renders under the label, filters alongside it,
       // and returns with the selection as a stable key for same-named rows.
       var parts = String(root.dmenuOptions[i] || "").split("\t")
@@ -664,8 +698,8 @@ Item {
         itemId: "dmenu." + i,
         disabled: false,
         kind: "dmenu",
-        icon: root.dmenuMultiple ? (root.dmenuSelected.indexOf(MenuModel.dmenuValue(root.dmenuOptions[i])) !== -1 ? "✓" : "○") : icon,
-        iconFont: "",
+        icon: root.dmenuMultiple ? "" : icon,
+        iconName: root.dmenuMultiple ? root.dmenuCheckIcon(root.dmenuSelected.indexOf(MenuModel.dmenuValue(root.dmenuOptions[i])) !== -1) : "",
         appIcon: "",
         appId: "",
         label: label,
@@ -676,8 +710,15 @@ Item {
         action: "",
         provider: "",
         score: i,
-        section: ""
+        section: "",
+        // A single pick shows the current value (--selected) checked, as the
+        // menu's own lists do, and opens on it.
+        marked: !root.dmenuMultiple && root.dmenuSelected.indexOf(MenuModel.dmenuValue(root.dmenuOptions[i])) !== -1
       })
+      if (root.dmenuCursorToMarked && !query && displayModel.get(displayModel.count - 1).marked) {
+        selectedIndex = displayModel.count - 1
+        root.dmenuCursorToMarked = false
+      }
     }
 
     layoutSerial += 1
@@ -691,6 +732,10 @@ Item {
     })
   }
 
+  function dmenuCheckIcon(selected) {
+    return selected ? "ui.checkbox.on" : "ui.checkbox.off"
+  }
+
   function updateDmenuChecks() {
     for (var i = 0; i < displayModel.count; i++) {
       var row = displayModel.get(i)
@@ -698,7 +743,7 @@ Item {
         displayModel.setProperty(i, "detail", Commons.I18n.tn("menu.selectedCount", root.dmenuSelected.length).arg(Commons.I18n.formatNumber(root.dmenuSelected.length)))
       } else if (row.kind === "dmenu") {
         var value = MenuModel.dmenuValue(root.dmenuOptions[Number(row.itemId.substring(6))])
-        displayModel.setProperty(i, "icon", root.dmenuSelected.indexOf(value) !== -1 ? "✓" : "○")
+        displayModel.setProperty(i, "iconName", root.dmenuCheckIcon(root.dmenuSelected.indexOf(value) !== -1))
       }
     }
   }
@@ -729,7 +774,8 @@ Item {
         if (!root.isDescendantOf(entry.id, active)) continue
         if (!root.matchesQuery(entry, query)) continue
 
-        var detail = root.parentPathFor(entry.id)
+        // Apps need no "Apps" subtitle; every other row shows where it lives.
+        var detail = entry.kind === "app" ? "" : root.parentPathFor(entry.id)
         var row = root.displayRow(entry, detail, root.searchScore(entry, query))
         if (entry.parent === active) currentRows.push(row)
         else drilldownRows.push(row)
@@ -742,11 +788,19 @@ Item {
 
       currentRows.sort(searchSort)
       drilldownRows.sort(searchSort)
-      root.searchDivider = currentRows.length > 0 && drilldownRows.length > 0
+      // This level's rows come first, unless a deeper row matches in a better
+      // tier (its name, against a row matched only by an alias or its
+      // description): "install package" puts Install Package above the
+      // Packages submenu, whose alias is "install". The second group sits
+      // below the divider ("drilldown" names that section).
+      var tier = function(rowsOf) { return rowsOf.length ? Math.floor(rowsOf[0].score / 1000) : Infinity }
+      var first = currentRows, second = drilldownRows
+      if (tier(drilldownRows) < tier(currentRows)) { first = drilldownRows; second = currentRows }
+      root.searchDivider = first.length > 0 && second.length > 0
       if (root.searchDivider) {
-        for (var d = 0; d < drilldownRows.length; d++) drilldownRows[d].section = "drilldown"
+        for (var d = 0; d < second.length; d++) second[d].section = "drilldown"
       }
-      rows = currentRows.concat(drilldownRows)
+      rows = first.concat(second)
     } else {
       for (var j = 0; j < root.itemOrder.length; j++) {
         var child = root.item(root.itemOrder[j])
@@ -805,6 +859,7 @@ Item {
   }
 
   function select(delta) {
+    root.cursorToCurrent = false
     if (displayModel.count === 0) return
 
     root.disarmPointer()
@@ -821,6 +876,7 @@ Item {
     panel.freezeCardTop()
     root.filterText = nextFilter
     root.selectedIndex = 0
+    root.cursorToCurrent = false
     root.cursorActive = root.mode !== "input"
     root.disarmPointer()
     if (!root.dmenuActive && root.filterText.trim()) root.loadProvidersForSearch()
@@ -834,6 +890,7 @@ Item {
     root.activeMenu = id
     root.filterText = ""
     root.selectedIndex = 0
+    root.cursorToCurrent = true
     root.cursorActive = true
     if (fromPointer) pointerGate.allowInitialSample()
     else root.disarmPointer()
@@ -844,6 +901,7 @@ Item {
 
   function goBack() {
     if (root.activeMenu === "root") return false
+    root.cursorToId = root.activeMenu
 
     if (root.navStack.length > 0) {
       var previous = root.navStack[root.navStack.length - 1]
@@ -907,14 +965,12 @@ Item {
     var row = displayModel.get(root.selectedIndex)
     if (!row || row.kind !== "app") return
     root.deleteTarget = { appId: row.appId, label: row.label }
-    deleteConfirm.selectedIndex = 1
     root.deleteConfirmOpen = true
   }
 
   function cancelDelete() {
     root.deleteConfirmOpen = false
     root.deleteTarget = null
-    deleteConfirm.selectedIndex = 1
     root.disarmPointer()
     Qt.callLater(function() { filterInput.forceActiveFocus() })
   }
@@ -985,6 +1041,7 @@ Item {
     dmenuChangeKey = String(payload.changeKey || JSON.stringify(dmenuOnChange))
     dmenuSelected = MenuModel.dmenuSelections(dmenuOptions, Array.isArray(payload.selected) ? payload.selected : [], dmenuOnChange.length > 0)
     dmenuSaved = dmenuSelected
+    dmenuCursorToMarked = !dmenuMultiple && dmenuSelected.length > 0
     if (dmenuOnChange.length > 0)
       dmenuSelected = MenuModel.dmenuSelections(dmenuOptions, selectionProc.requestedSelection(), true)
     selectionFile = String(payload.selectionFile || "")
@@ -1008,7 +1065,7 @@ Item {
   // ----------------------------------------------------------- route surface
   //
   // The menu is opened through the standard plugin lifecycle:
-  // `omarchy-shell shell summon omarchy.menu '{"menu":"system"}'`.
+  // `karchy-shell shell summon karchy.menu '{"menu":"system"}'`.
   // Callers may pass a real id (`system`, `setup.power`) or an alias declared
   // in JSONC (`power`, `reminder-set`). Unknown strings fall through to the
   // id-as-route behavior so misspellings still attempt to open the literal id.
@@ -1020,7 +1077,7 @@ Item {
     var id = root.resolveRoute(initialMenu)
     var entry = root.items[id]
     // If the resolved id is an action (i.e. the user invoked an alias for
-    // a leaf, e.g. `omarchy menu summon screenrecord-stop`), run it directly
+    // a leaf, e.g. `karchy menu summon screenrecord-stop`), run it directly
     // instead of opening an action with no children.
     if (entry && entry.kind === "action" && entry.action) {
       root.cancel()
@@ -1041,6 +1098,7 @@ Item {
   function selectFromPointer(index, item, mouse) {
     if (!pointerGate.moved(item, mouse)) return
     if (!root.rowSelectable(index)) return
+    root.cursorToCurrent = false
     root.cursorActive = true
     root.selectedIndex = index
   }
@@ -1144,7 +1202,7 @@ Item {
   }
 
   // The JSONC sources are watched so live edits to the default file (or the
-  // user extension at ~/.config/omarchy/extensions/omarchy-menu.jsonc) take
+  // user extension at ~/.config/karchy/extensions/karchy-menu.jsonc) take
   // effect without restarting the shell.
   FileView {
     id: defaultMenuFile
@@ -1181,7 +1239,7 @@ Item {
 
   FileView {
     id: menuCatalogFile
-    path: root.omarchyPath + "/default/i18n/" + root.language + "/menu.json"
+    path: root.karchyPath + "/default/i18n/" + root.language + "/menu.json"
     watchChanges: true
     printErrors: false
     onLoaded: { root.menuCatalog = root.parseCatalog(text()); root.rebuildItemsFromSources(true) }
@@ -1197,7 +1255,7 @@ Item {
   // never has to wait on them.
 
   property var whenResults: ({})       // id → true|false (allow visibility)
-  property var checkedResults: ({})    // id → true|false (show ✓)
+  property var checkedResults: ({})    // id → true|false (show the check icon)
   property var disabledResults: ({})   // id → true|false (dim, skip cursor)
   property bool guardsPending: false
 
@@ -1273,7 +1331,7 @@ Item {
   OverlayWindow {
     id: panel
     shown: root.opened && root.rowsLoaded
-    WlrLayershell.namespace: "omarchy-menu"
+    WlrLayershell.namespace: "karchy-menu"
 
     // The card opens centered exactly as always. The first search keystroke
     // or submenu move freezes the top line where it currently sits — from
@@ -1324,6 +1382,7 @@ Item {
 
         // Focus is on filterInput, which forwards every key here first.
         Keys.onPressed: function(event) {
+          InputMode.keyPressed()
           if (root.deleteConfirmOpen) {
             // Swallow the rest too, or it would type into the search line behind the dialog.
             deleteConfirm.handleKey(event)
@@ -1419,7 +1478,10 @@ Item {
             anchors.fill: filterInput
             verticalAlignment: Text.AlignVCenter
             visible: !root.filterText && !filterInput.preeditText
-            text: root.dmenuActive ? (root.dmenuPrompt + "…") : ((root.item(root.activeMenu) ? (root.item(root.activeMenu).title || root.item(root.activeMenu).label) : "Go") + "…")
+            // The root says what typing does; a submenu says where you are.
+            text: root.dmenuActive ? (root.dmenuPrompt + "…")
+              : (root.activeMenu !== "root" && root.item(root.activeMenu)) ? (Commons.I18n.rightToLeft ? root.pathFor(root.activeMenu).replace(/ › /g, " ‹ ") : root.pathFor(root.activeMenu))
+              : ((root.item("root") ? root.item("root").label : "Search") + "…")
             color: root.foreground
             opacity: 0.58
             font.family: root.fontFamily
@@ -1477,7 +1539,7 @@ Item {
               required property string itemId
               required property string kind
               required property string icon
-              required property string iconFont
+              required property string iconName
               required property string appIcon
               required property string appId
               required property string label
@@ -1487,10 +1549,11 @@ Item {
               required property string action
               required property int childCount
               required property bool disabled
+              required property bool marked
 
               readonly property bool hasCursor: root.cursorActive && row.index === root.selectedIndex
               readonly property bool isApp: row.kind === "app"
-              readonly property bool hasIcon: row.icon.length > 0 || row.isApp
+              readonly property bool hasIcon: row.icon.length > 0 || row.iconName.length > 0 || row.isApp
 
               width: ListView.view.width
               height: root.rowHeightForDetail(row.detail)
@@ -1500,6 +1563,9 @@ Item {
               radius: root.cornerRadius
               color: row.hasCursor ? root.selectedBackground : "transparent"
               borderSpec: row.hasCursor ? root.selectedBorderSpec : Border.none()
+
+              // The keyboard cursor, which the pointer also moves.
+              FocusRing { shown: row.hasCursor }
 
               Rectangle {
                 visible: false
@@ -1516,9 +1582,9 @@ Item {
                 id: iconText
                 textFormat: Text.PlainText
                 visible: row.hasIcon && !row.isApp
-                text: row.icon
+                text: row.icon.length > 0 ? Icons.resolve(row.icon) : Icons.glyph(row.iconName)
                 color: row.hasCursor ? root.selectedText : root.foreground
-                font.family: row.iconFont.length > 0 ? row.iconFont : root.fontFamily
+                font.family: Icons.family
                 font.pixelSize: Style.font.iconLarge
                 width: Style.space(36)
                 horizontalAlignment: Text.AlignHCenter
@@ -1582,7 +1648,7 @@ Item {
 
               Row {
                 id: trail
-                width: Style.space(14)
+                width: Math.max(Style.space(14), checkMark.visible ? checkMark.implicitWidth : 0)
                 anchors.right: parent.right
                 anchors.rightMargin: root.rowReservedBorderRight + Style.space(8)
                 y: contentColumn.y + labelText.y + (labelText.height - height) / 2
@@ -1599,11 +1665,24 @@ Item {
                   anchors.verticalCenter: parent.verticalCenter
                 }
 
+                // `checked:` is true, or the software is already installed.
+                Text {
+                  id: checkMark
+                  textFormat: Text.PlainText
+                  visible: row.marked
+                  text: Icons.glyph("ui.check")
+                  color: row.hasCursor ? root.selectedText : root.foreground
+                  font.family: Icons.family
+                  font.pixelSize: Style.font.icon
+                  anchors.verticalCenter: parent.verticalCenter
+                }
+
                 Text {
                   textFormat: Text.PlainText
+                  visible: !row.marked
                   text: row.kind === "menu" || row.kind === "link" ? (Commons.I18n.rightToLeft ? "‹" : "›") : ""
                   color: row.hasCursor ? root.selectedText : root.foreground
-                  opacity: row.kind === "menu" || row.kind === "link" ? 0.36 : 0
+                  opacity: row.kind === "menu" || row.kind === "link" ? 0.55 : 0
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.heading
                   font.weight: Font.Normal
@@ -1675,10 +1754,10 @@ Item {
             visible: displayModel.count === 0 && root.mode !== "input"
 
             Text {
-              text: "󰈉"
+              text: Icons.glyph("ui.hide")
               color: root.selectedText
               opacity: 0.8
-              font.family: root.fontFamily
+              font.family: Icons.family
               font.pixelSize: Style.font.displayLarge
               horizontalAlignment: Text.AlignHCenter
               width: Style.space(320)

@@ -1,4 +1,4 @@
--- Workspace modes for omarchy-hyprland-workspace-layout-toggle.
+-- Workspace modes for karchy-hyprland-workspace-layout-toggle.
 --
 -- Hyprland has dwindle and scrolling as tiled layouts, but nothing that floats a
 -- whole workspace: it reports a workspace's `tiledLayout` and takes an unknown
@@ -18,12 +18,13 @@
 require("default.hypr.helpers")
 local paths = require("default.hypr.paths")
 
-local FLOATED_TAG = "omarchy-mode-floated"
-local WORKSPACE_TAG = "omarchy-floating-workspace"
-local OPENED_TAG = "omarchy-mode-opened"
-local OPEN_RULE = "omarchy-floating-open-"
+local FLOATED_TAG = "karchy-mode-floated"
+local WORKSPACE_TAG = "karchy-floating-workspace"
+local OPENED_TAG = "karchy-mode-opened"
+local OPEN_RULE = "karchy-floating-open-"
 local LAST_WORKSPACE = 2147483647
-local TITLEBARS = "/usr/lib/omarchy-hyprland-titlebars/titlebars.so"
+local TITLEBARS_DIR = "/usr/lib/karchy-hyprland-titlebars"
+local TITLEBARS = TITLEBARS_DIR .. "/titlebars.so"
 
 local M = {}
 
@@ -412,9 +413,9 @@ end
 
 local function theme_colors()
   local colors = {}
-  -- omarchy-theme-set writes the current theme under ~/.local/state whatever
+  -- karchy-theme-set writes the current theme under ~/.local/state whatever
   -- XDG_STATE_HOME says, and Hyprland loads the theme's own config from there.
-  local file = io.open(paths.home .. "/.local/state/omarchy/current/theme/colors.toml", "r")
+  local file = io.open(paths.home .. "/.local/state/karchy/current/theme/colors.toml", "r")
 
   if file then
     for line in file:lines() do
@@ -443,16 +444,32 @@ local function theme_colors()
   }
 end
 
--- Titlebars come from omarchy-hyprland-titlebars, loaded once something floats.
--- The plugin reloads the config once it is in, which is the pass that finds its
--- options here. Its options reset on every load, so it draws nothing until enabled.
+-- Titlebars come from karchy-hyprland-titlebars (D-60), loaded once something
+-- floats. The plugin reloads the config once it is in, which is the pass that
+-- finds its options here. Its options reset on every load, so it draws nothing
+-- until enabled.
+--
+-- A Hyprland plugin loads only into the Hyprland build it was made for. The
+-- package records that build's commit, and the running Hyprland's instance
+-- signature starts with its own; after a Hyprland update, until karchy's
+-- rebuild arrives or the next login, floating windows go without titlebars
+-- rather than failing to load the plugin.
+local titlebars_ok = nil
+
 local function titlebars_installed()
-  local file = io.open(TITLEBARS, "r")
+  if titlebars_ok ~= nil then
+    return titlebars_ok
+  end
+  titlebars_ok = false
+  local file = io.open(TITLEBARS_DIR .. "/hyprland-commit", "r")
   if not file then
     return false
   end
+  local built_for = (file:read("l") or ""):match("^%s*(%x+)%s*$")
   file:close()
-  return true
+  local running = (os.getenv("HYPRLAND_INSTANCE_SIGNATURE") or ""):match("^(%x+)_")
+  titlebars_ok = built_for ~= nil and built_for == running
+  return titlebars_ok
 end
 
 local function titlebars()
@@ -497,8 +514,8 @@ local function titlebars()
   for _, button in ipairs({
     { icon = "×", action = "hyprctl dispatch 'hl.dsp.window.close({ " .. window .. " })'" },
     { icon = "□", action = "hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"toggle\", " .. window .. " })'" },
-    -- Minimized windows wait in the dock, which brings them back.
-    { icon = "−", action = "omarchy-hyprland-window-minimize %WINDOW%" },
+    -- Minimized windows come back from the bar's minimized indicator or Super + Shift + M.
+    { icon = "−", action = "karchy-hyprland-window-minimize %WINDOW%" },
   }) do
     hl.plugin.hyprbars.add_button({
       bg_color = colors.titlebar,
@@ -526,6 +543,10 @@ end
 -- but not for the windows, so each one is brought in line with the modes as they
 -- now stand: moving the default away from floating has to give back what it
 -- floated, even though nothing names those workspaces any more.
+-- Also used by SUPER + T: a window floated from tiling would otherwise keep
+-- its tiled size, which on a lone window is the whole screen.
+M.place = place
+
 function M.apply()
   -- A default that no longer floats can leave no saved mode at all to start the
   -- watchers, while the windows it floated still carry its tags.

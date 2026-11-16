@@ -38,11 +38,12 @@ function parseProfiles(raw, previousIndex) {
   }
 }
 
+// Icon names from default/karchy/icons.json; the QML draws them with Icons.glyph.
 function profileIcon(name) {
-  if (name === "power-saver") return "󰌪"
-  if (name === "balanced") return "󰊚"
-  if (name === "performance") return "󰓅"
-  return "󰂄"
+  if (name === "power-saver") return "power.profile.saver"
+  if (name === "balanced") return "power.profile.balanced"
+  if (name === "performance") return "power.profile.performance"
+  return "power.plugged"
 }
 
 function batteryFraction(device) {
@@ -67,15 +68,14 @@ function batteryIcon(device, onBattery, states) {
   var d = device || {}
   if (!d.isPresent) return ""
 
-  var chargingIcons = ["󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"]
-  var defaultIcons = ["󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
-  var index = Math.max(0, Math.min(9, Math.floor(d.percentage * 10)))
+  // power.battery.10 .. power.battery.100, by tenths.
+  var level = (Math.max(0, Math.min(9, Math.floor(d.percentage * 10))) + 1) * 10
   var threshold = chargeThresholdActive(d, onBattery, states)
 
-  if (threshold) return defaultIcons[index]
-  if (d.state === states.FullyCharged) return "󰂅"
-  if (!onBattery) return chargingIcons[index]
-  return defaultIcons[index]
+  if (threshold) return "power.battery." + level
+  if (d.state === states.FullyCharged) return "power.battery.charging.100"
+  if (!onBattery) return "power.battery.charging." + level
+  return "power.battery." + level
 }
 
 function modeLabel(device, onBattery, states, tr) {
@@ -90,7 +90,7 @@ function modeLabel(device, onBattery, states, tr) {
   return t("power.charging", "Charging")
 }
 
-// omarchy-battery-status --shell answers in plain digits with the unit
+// karchy-battery-status --shell answers in plain digits with the unit
 // attached ("13.1W", "75-80%"); the panel writes each number in the
 // language's digits and decimal separator, keeping its decimals and unit.
 function localizeReading(raw, fmt) {
