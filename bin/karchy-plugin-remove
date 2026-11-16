@@ -63,8 +63,8 @@ if [[ -z $id ]]; then
   id=$(find "$PLUGINS_DIR" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) \
     ! -name '.*' -printf '%f\n' 2>/dev/null |
     sort |
-    gum choose --header="$(karchy-i18n plugin.removeWhich)") || fail "cancelled"
-  [[ -n $id ]] || fail "nothing selected"
+    gum choose --header="$(karchy-i18n plugin.removeWhich)") || exit 130
+  [[ -n $id ]] || exit 130
 fi
 valid_plugin_id "$id" || fail "invalid plugin id '$id'"
 
@@ -85,11 +85,11 @@ if [[ -f $target/manifest.json ]]; then
 fi
 
 if [[ -L $target ]]; then
-  confirm "$(karchy-i18n plugin.confirmUnlink "$id" "$(readlink "$target")")" || fail "aborted"
+  confirm "$(karchy-i18n plugin.confirmUnlink "$id" "$(readlink "$target")")" || exit 130
 elif [[ -d $target/.git ]]; then
-  confirm "$(karchy-i18n plugin.confirmDelete "$id")" || fail "aborted"
+  confirm "$(karchy-i18n plugin.confirmDelete "$id")" || exit 130
 else
-  confirm "$(karchy-i18n plugin.confirmRemove "$id")" || fail "aborted"
+  confirm "$(karchy-i18n plugin.confirmRemove "$id")" || exit 130
 fi
 
 if [[ $was_enabled == "true" ]]; then

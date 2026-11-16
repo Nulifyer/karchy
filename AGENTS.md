@@ -12,6 +12,7 @@ karchy is a personal Arch-based Linux setup built from selected Omarchy v4.5.0 c
 - Code that root runs must come from the packaged, root-owned `/usr/bin` and `/usr/share/karchy`, never from `$KARCHY_PATH` in a dev checkout (D-50, D-55).
 - Where a file is installed is decided by the PKGBUILDs in `packaging/pkgbuilds/`. A new file under `system/`, `config/`, `default/systemd/` or `themes/` goes into the owning PKGBUILD in the same change.
 - Follow Omarchy's bash style for scripts: `#!/bin/bash`, `[[ ]]` for string and file tests, `(( ))` for numeric tests, two-space indent.
+- A script the menu runs in its floating terminal (`karchy-launch-floating-terminal-with-presentation`) exits 130 when a prompt is cancelled (Esc) or declined, so the window closes instead of showing Failed. A wrong answer asks again, keeping what was typed (a password is asked again empty, as login prompts do). The wrapper shows Done or Failed and waits for a key, so the script doesn't add its own "Press Enter".
 - Long-running code reacts to events instead of polling (Omarchy's rule; this applies to plugins too).
 
 ## Delivery

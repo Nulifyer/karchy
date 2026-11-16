@@ -116,7 +116,7 @@ authorize_keys_from_github() {
   echo "Fetching keys from https://github.com/$username.keys..."
   if ! keys=$(curl -fsSL "https://github.com/$username.keys") || [[ -z $keys ]]; then
     echo -e "\e[31mCould not fetch any SSH keys for GitHub user '$username'.\e[0m" >&2
-    exit 1
+    return 1
   fi
 
   while IFS= read -r key; do
@@ -126,32 +126,28 @@ authorize_keys_from_github() {
 
   if (( added == 0 )); then
     echo -e "\e[31mNo valid SSH keys found for GitHub user '$username'.\e[0m" >&2
-    exit 1
+    return 1
   fi
 }
 
+# Esc at a prompt closes the window (exit 130, the wrapper's cancel); an empty
+# answer asks again.
 prompt_for_github_user() {
-  local username
+  local username=""
 
-  username=$(gum input --prompt "$(karchy-i18n sshd.githubUserPrompt)" --placeholder "dhh") || exit 1
-  if [[ -z $username ]]; then
-    echo -e "\e[31mNo GitHub username given.\e[0m" >&2
-    exit 1
-  fi
-
-  authorize_keys_from_github "$username"
+  while true; do
+    username=$(gum input --prompt "$(karchy-i18n sshd.githubUserPrompt)" --placeholder "your-github-username" --value "$username") || exit 130
+    [[ -n $username ]] && authorize_keys_from_github "$username" && break
+  done
 }
 
 authorize_pasted_key() {
   local key
 
-  key=$(gum input --prompt "$(karchy-i18n sshd.publicKeyPrompt)" --placeholder "ssh-ed25519 AAAA... user@host") || exit 1
-  if [[ -z $key ]]; then
-    echo -e "\e[31mNo SSH key given.\e[0m" >&2
-    exit 1
-  fi
-
-  authorize_key "$key" || exit 1
+  while true; do
+    key=$(gum input --prompt "$(karchy-i18n sshd.publicKeyPrompt)" --placeholder "ssh-ed25519 AAAA... user@host" --value "${key:-}") || exit 130
+    [[ -n $key ]] && authorize_key "$key" && break
+  done
 }
 
 # Only called after a key is authorized. Disabling password authentication
@@ -204,14 +200,15 @@ echo
 if [[ -n $KEY ]]; then
   authorize_key "$KEY" || exit 1
 elif [[ -n $GITHUB_USER ]]; then
-  authorize_keys_from_github "$GITHUB_USER"
+  authorize_keys_from_github "$GITHUB_USER" || exit 1
 else
   from_github=$(karchy-i18n sshd.keyFromGithub)
   paste_key=$(karchy-i18n sshd.keyPaste)
-  case $(gum choose "$from_github" "$paste_key" --header "$(karchy-i18n sshd.howToAddKey)") in
+  how=$(gum choose "$from_github" "$paste_key" --header "$(karchy-i18n sshd.howToAddKey)") || exit 130
+  case $how in
   "$from_github") prompt_for_github_user ;;
   "$paste_key") authorize_pasted_key ;;
-  *) exit 1 ;;
+  *) exit 130 ;;
   esac
 fi
 

@@ -46,8 +46,15 @@ done
 if (( interactive )); then
   karchy-i18n gitSetup.intro
   echo
-  name=$(gum input --no-show-help --value "$name" --placeholder "$(karchy-i18n gitSetup.namePlaceholder)" --prompt "$(karchy-i18n gitSetup.namePrompt)")
-  email=$(gum input --no-show-help --value "$email" --placeholder "you@example.com" --prompt "$(karchy-i18n gitSetup.emailPrompt)")
+  # Esc closes the window without saving (exit 130, the wrapper's cancel).
+  name=$(gum input --no-show-help --value "$name" --placeholder "$(karchy-i18n gitSetup.namePlaceholder)" --prompt "$(karchy-i18n gitSetup.namePrompt)") || exit 130
+  problem=""
+  while true; do
+    email=$(gum input --no-show-help --header "$problem" --value "$email" --placeholder "you@example.com" --prompt "$(karchy-i18n gitSetup.emailPrompt)") || exit 130
+    # Empty keeps git's current email; anything else needs to look like one.
+    [[ -z ${email//[[:space:]]/} || $email =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] && break
+    problem=$(karchy-i18n gitSetup.emailInvalid)
+  done
   set_name=1 set_email=1
 fi
 
@@ -82,6 +89,8 @@ if (( set_email )) && [[ -n ${email//[[:space:]]/} ]]; then
 fi
 
 if (( interactive )); then
+  echo
+  karchy-i18n gitSetup.saved "$(git config --global user.name || true)" "$(git config --global user.email || true)"
   echo
   if karchy-cmd-missing gh; then
     karchy-i18n gitSetup.ghMissing

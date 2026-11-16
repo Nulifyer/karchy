@@ -15,10 +15,29 @@ fzf_args=(
   --color 'pointer:red,marker:red'
 )
 
-pkg_names=$(paru -Qqe | fzf "${fzf_args[@]}")
+# What the system needs to boot and to be karchy isn't offered; pacman also
+# refuses anything another installed package still needs.
+protected='^(base|linux-cachyos|linux-cachyos-lts|linux-firmware|limine|sudo|pacman|paru|networkmanager|karchy|karchy-desktop|karchy-settings|karchy-themes|karchy-keyring|karchy-laptop|karchy-nvidia|karchy-nvidia-580xx)$'
+pkg_names=$(paru -Qqe | grep -Ev "$protected" | fzf "${fzf_args[@]}")
 
-if [[ -n $pkg_names ]]; then
-  # Convert newline-separated selections to space-separated for paru
-  echo "$pkg_names" | tr '\n' ' ' | xargs sudo pacman -Rns --noconfirm
-  karchy-show-done $?
+[[ -n $pkg_names ]] || exit 0
+mapfile -t pkgs <<<"$pkg_names"
+
+# What pacman would remove: the picked packages and the dependencies nothing
+# else needs, asked without root. A refusal (another package still needs one)
+# shows its reason and Failed.
+if ! plan=$(pacman -Rs --print-format '%n %v' -- "${pkgs[@]}" 2>&1); then
+  echo "$plan"
+  karchy-show-done 1
+  exit 1
 fi
+
+# The confirmation is asked here, so "no" (or Esc) is told apart from a
+# failure: it closes the window. A wrong password or a busy pacman after it
+# shows Failed with pacman's reason.
+echo "These will be removed:"
+sed 's/^/  /' <<<"$plan"
+echo
+gum confirm "Remove $(wc -l <<<"$plan") package(s)?" --affirmative "Remove" --negative "Keep them" --default=false || exit 130
+sudo pacman -Rns --noconfirm -- "${pkgs[@]}"
+karchy-show-done $?

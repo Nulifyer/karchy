@@ -7,13 +7,22 @@
 
 if [[ -z $1 ]]; then
   echo -e "\e[32mSee https://omarchy.org/themes/\n\e[0m"
-  REPO_URL=$(gum input --placeholder="$(karchy-i18n theme.repoPlaceholder)" --header="")
+  # Esc closes the window (exit 130, the menu terminal's cancel); an empty or
+  # refused address is asked again, its reason in the header.
+  REPO_URL="" header=""
+  while true; do
+    REPO_URL=$(gum input --placeholder="$(karchy-i18n theme.repoPlaceholder)" --header="$header" --value "$REPO_URL") || exit 130
+    if [[ -z $REPO_URL ]]; then
+      header="Type the git address of the theme's repository."
+    elif problem=$(karchy-git-url-check "$REPO_URL" 2>&1); then
+      break
+    else
+      problem=${problem#karchy-git-url-check: }
+      header=${problem:-"That address can't be used."}
+    fi
+  done
 else
   REPO_URL="$1"
-fi
-
-if [[ -z $REPO_URL ]]; then
-  exit 1
 fi
 
 # Refuse a URL that names a git option or a transport helper before cloning. The

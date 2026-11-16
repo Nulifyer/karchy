@@ -6,6 +6,8 @@
 set -e
 
 ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+# For a site with no icon of its own (Papirus has it).
+GENERIC_ICON=applications-internet
 
 safe_icon_name() {
   printf '%s\n' "$1" \
@@ -137,21 +139,56 @@ desktop_exec_arg() {
 }
 
 if (( $# < 3 )); then
+  # Interactive: each answer is asked again until it works, keeping what was
+  # typed. Esc at any prompt closes the window (exit 130, the wrapper's cancel).
   echo -e "\e[32m$(karchy-i18n webapp.intro)\n\e[0m"
-  APP_NAME=$(gum input --prompt "$(karchy-i18n tui.namePrompt)" --placeholder "$(karchy-i18n webapp.namePlaceholder)")
-  require_plain_name "$APP_NAME"
-  APP_URL=$(gum input --prompt "URL> " --placeholder "https://example.com")
-  APP_URL=$(normalize_webapp_url "$APP_URL")
-  require_http_url "$APP_URL"
+  # A problem shows as the prompt's header, so it goes once fixed.
+  APP_NAME="" problem=""
+  while true; do
+    APP_NAME=$(gum input --header "$problem" --prompt "$(karchy-i18n tui.namePrompt)" --placeholder "$(karchy-i18n webapp.namePlaceholder)" --value "$APP_NAME") || exit 130
+    if [[ -z $APP_NAME ]]; then
+      problem=$(karchy-i18n webapp.nameEmpty)
+    elif [[ $APP_NAME == */* ]]; then
+      problem=$(karchy-i18n webapp.nameSlash)
+    else
+      break
+    fi
+  done
+  APP_URL="" problem=""
+  while true; do
+    APP_URL=$(gum input --header "$problem" --prompt "URL> " --placeholder "https://example.com" --value "$APP_URL") || exit 130
+    url=$(normalize_webapp_url "$APP_URL")
+    if [[ -z $APP_URL || $url =~ [[:space:]] || ! ${url,,} =~ ^https?://[^/]+ ]]; then
+      problem=$(karchy-i18n webapp.urlInvalid)
+      continue
+    fi
+    # A mistyped address would make an app that opens nothing. Esc cancels.
+    if ! curl -fsSL --max-time 8 -o /dev/null "$url" 2>/dev/null; then
+      make_anyway=$(karchy-i18n webapp.makeAnyway)
+      change=$(karchy-i18n webapp.changeAddress)
+      choice=$(gum choose --header "$(karchy-i18n webapp.unreachable "$url")" "$change" "$make_anyway") || exit 130
+      if [[ $choice != "$make_anyway" ]]; then
+        problem=$(karchy-i18n webapp.checkAddress)
+        continue
+      fi
+      unreachable=1
+    fi
+    APP_URL=$url
+    break
+  done
 
   # Try to fetch the site's icon automatically first.
   mkdir -p "$ICON_DIR"
   ICON_VALUE=$(safe_icon_name "$APP_NAME")
-  if fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png"; then
+  # A site that couldn't be reached has no icon to fetch either.
+  [[ -n ${unreachable:-} ]] || echo "$(karchy-i18n webapp.fetchingIcon)"
+  if [[ -z ${unreachable:-} ]] && fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png"; then
     gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" &>/dev/null || true
     ICON_REF="$ICON_VALUE"
   else
-    ICON_REF=$(gum input --prompt "$(karchy-i18n tui.iconPrompt)" --placeholder "$(karchy-i18n webapp.iconPlaceholder)")
+    [[ -n ${unreachable:-} ]] || echo "$(karchy-i18n webapp.iconNotFound)"
+    ICON_REF=$(gum input --prompt "$(karchy-i18n tui.iconPrompt)" --placeholder "$(karchy-i18n webapp.iconPlaceholder)") || exit 130
+    [[ -n $ICON_REF ]] || ICON_REF=$GENERIC_ICON
   fi
 
   CUSTOM_EXEC=""
@@ -178,11 +215,12 @@ require_plain_name "$APP_NAME"
 if [[ -z $ICON_REF ]]; then
   ICON_VALUE=$(safe_icon_name "$APP_NAME")
   mkdir -p "$ICON_DIR"
-  if ! fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png"; then
-    echo "Error: Failed to download icon."
-    exit 1
+  if fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png"; then
+    gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" &>/dev/null || true
+  else
+    echo "$(karchy-i18n webapp.iconNotFound)" >&2
+    ICON_VALUE=$GENERIC_ICON
   fi
-  gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" &>/dev/null || true
 elif [[ $ICON_REF =~ ^https?:// ]]; then
   ICON_VALUE=$(safe_icon_name "$APP_NAME")
   mkdir -p "$ICON_DIR"

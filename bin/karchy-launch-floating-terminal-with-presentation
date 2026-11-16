@@ -15,7 +15,9 @@ if (($# == 1)); then
 else
   printf -v cmd '%q ' "$@"
 fi
-# 130 is the user bailing with Ctrl-C; anything else gets the Done/Failed prompt.
+# 130 is the user cancelling: Ctrl-C, or a script whose prompt was cancelled
+# (Esc) or declined, which exits 130 by karchy's convention. The window closes
+# at once; anything else gets the Done/Failed prompt.
 presentation_script="karchy-show-logo; $cmd; code=\$?; if (( code != 130 )); then karchy-show-done \$code; fi"
 
 exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.karchy.terminal --title=Karchy -e bash -c "$presentation_script"

@@ -90,8 +90,20 @@ done
 if [[ -z $url ]]; then
   interactive ||
     fail "a git URL is required (e.g. karchy plugin add https://github.com/acme/omarchy-weather.git)"
-  url=$(gum input --prompt "$(karchy-i18n plugin.gitUrlPrompt)") || fail "cancelled"
-  [[ -n $url ]] || fail "a git URL is required"
+  # Esc closes the window (exit 130, the menu terminal's cancel); an empty or
+  # refused address is asked again, its reason in the header.
+  header="" problem=""
+  while true; do
+    url=$(gum input --header "$header" --value "$url" --prompt "$(karchy-i18n plugin.gitUrlPrompt)") || exit 130
+    if [[ -z $url ]]; then
+      header="Type the git address of the plugin's repository."
+    elif problem=$(karchy-git-url-check "$url" 2>&1); then
+      break
+    else
+      problem=${problem#karchy-git-url-check: }
+      header=${problem:-"That address can't be used."}
+    fi
+  done
 fi
 
 # Refuse a URL that names a git option or a transport helper before cloning, so
@@ -111,7 +123,7 @@ if (( ! ASSUME_YES )); then
       URL: $url
 
 WARN
-  confirm "$(karchy-i18n plugin.confirmAdd)" || fail "aborted"
+  confirm "$(karchy-i18n plugin.confirmAdd)" || exit 130
 fi
 
 mkdir -p "$PLUGINS_DIR"

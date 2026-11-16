@@ -20,10 +20,8 @@ if [[ ${1:-} == "--ignore" ]]; then
 fi
 
 device="${1:?Usage: karchy-disk-keep <device> | --ignore <device>}"
-line=$(karchy-disk-fstab line "$device" "$(id -u)" "$(id -g)") || {
-  read -r -p "Press Enter to close." _ || true
-  exit 1
-}
+# The floating terminal shows Failed and waits for a key after an error.
+line=$(karchy-disk-fstab line "$device" "$(id -u)" "$(id -g)") || exit 1
 mount=$(awk '{ print $2 }' <<<"$line")
 label=$(lsblk -dno LABEL "$device")
 size=$(lsblk -dno SIZE "$device" | tr -d " ")
@@ -31,7 +29,8 @@ size=$(lsblk -dno SIZE "$device" | tr -d " ")
 echo "Mount ${label:-the disk} ($size, $device) at $mount from now on."
 echo "It appears in the file manager and never delays startup if it's missing."
 echo
-gum confirm "Keep it mounted?" || exit 0
+# Declining closes the window (exit 130, the menu terminal's cancel).
+gum confirm "Keep it mounted?" || exit 130
 
 sudo mkdir -p "$mount"
 echo "$line" | sudo tee -a /etc/fstab >/dev/null
@@ -44,7 +43,6 @@ if ! sudo mount "$mount"; then
   sudo systemctl daemon-reload
   sudo rmdir "$mount" 2>/dev/null || true
   echo "The disk did not mount, so nothing was changed. If it holds Windows, shut Windows down fully (turn off Fast Startup) and try again."
-  read -r -p "Press Enter to close." _ || true
   exit 1
 fi
 
