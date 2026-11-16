@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# karchy:summary=Save or restore the key that opens your login keyring (saved passwords), for backups and reinstalls
+# karchy:args=export <file> | import <file>
+# karchy:examples=karchy keyring-key export /mnt/nas/backups/keyring-key.txt | karchy keyring-key import keyring-key.txt
+# karchy:requires-sudo=true
+
+# Your login keyring (Brave's saved logins, app passwords) is encrypted with a
+# random key that only this install has, in /etc/credstore (root only, D-57).
+# A home folder restored onto a new install can't open its keyring without
+# that key, so keep it with your backups:
+#
+#   export <file>  writes the key to <file> (only you can read it); keep it
+#                  somewhere safe, it opens every password in the keyring
+#   import <file>  makes <file>'s key this account's key, so a restored
+#                  keyring opens; takes effect at the next sign-in. The key
+#                  it replaces is kept beside it in /etc/credstore.
+#
+# The installer takes one too: KARCHY_KEYRING_KEY_FILE=<file> in an unattended
+# config (docs/installing.md).
+
+set -euo pipefail
+
+key="/etc/credstore/karchy.keyring.$(id -u)"
+
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+valid() { [[ $1 =~ ^[A-Za-z0-9+/]{43}=$ ]]; }
+
+case "${1:-}" in
+export)
+  out="${2:-}"
+  [[ -n $out ]] || fail "Usage: karchy-keyring-key export <file>"
+  [[ ! -e $out ]] || fail "$out already exists. Pick a new file name."
+  value=$(sudo cat "$key" 2>/dev/null) || fail "This account has no keyring key in /etc/credstore."
+  (umask 077 && printf '%s\n' "$value" >"$out")
+  echo "Saved your keyring key to $out (readable only by you)."
+  echo "Keep it with your backups, away from this computer: it opens every saved password."
+  ;;
+import)
+  in="${2:-}"
+  [[ -n $in && -r $in ]] || fail "Usage: karchy-keyring-key import <file>"
+  value=$(head -n 1 "$in" | tr -d '[:space:]')
+  valid "$value" || fail "$in doesn't hold a keyring key (one line from karchy-keyring-key export)."
+  current=$(sudo cat "$key" 2>/dev/null || true)
+  if [[ $current == "$value" ]]; then
+    echo "That key is already this account's keyring key."
+    exit 0
+  fi
+  echo "This replaces the key that opens your current keyring with the one in $in."
+  echo "Passwords saved since this install won't open afterwards (unless you import"
+  echo "the old key again; it's kept as $key.before-import)."
+  gum confirm --default=false "Use the key from $in?" || exit 130
+  sudo install -d -m 0700 /etc/credstore
+  [[ -z $current ]] || printf '%s' "$current" | sudo install -m 0600 /dev/stdin "$key.before-import"
+  printf '%s' "$value" | sudo install -m 0600 /dev/stdin "$key"
+  echo "Done. Sign out and back in: your keyring opens with the imported key."
+  ;;
+*)
+  sed -n 's/^# karchy:args=/Usage: karchy-keyring-key /p' "$0" >&2
+  exit 1
+  ;;
+esac

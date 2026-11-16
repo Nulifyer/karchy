@@ -3,6 +3,9 @@
 
 # System
 base
+# CachyOS's zlib replacement, installed up front so the first update doesn't
+# ask to swap zlib for it ([cachyos] first, D-45).
+zlib-ng-compat
 base-devel
 linux-cachyos
 linux-cachyos-lts
@@ -34,6 +37,9 @@ karchy-settings
 # Repository keys and mirrors
 cachyos-keyring
 cachyos-mirrorlist
+# The tuned repositories' lists (one is used when the CPU qualifies).
+cachyos-v3-mirrorlist
+cachyos-v4-mirrorlist
 omarchy-keyring
 
 # Shell and tools

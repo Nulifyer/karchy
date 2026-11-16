@@ -10,15 +10,80 @@ KARCHY_CACHYOS_KEY="882DCFE48E2051D48E2562ABF3B607488DB35A47"
 KARCHY_REPO_SERVER=${KARCHY_REPO_SERVER:-https://github.com/Nulifyer/karchy/releases/download}
 KARCHY_REPO_SIGLEVEL=${KARCHY_REPO_SIGLEVEL:-Required}
 
+# CachyOS builds its packages again for newer CPUs (user 2026-11-16, revising
+# D-45): x86-64-v3, x86-64-v4, and Zen 4/5. Its tuned repositories go before
+# its generic one, picked the way CachyOS's own installer picks them. An
+# unattended config can set KARCHY_CACHYOS_LEVEL=generic to skip them.
+cachyos_level() {
+  if [[ -n ${KARCHY_CACHYOS_LEVEL:-} ]]; then
+    echo "$KARCHY_CACHYOS_LEVEL"
+    return
+  fi
+  local isa family
+  isa=$(/lib/ld-linux-x86-64.so.2 --help 2>/dev/null)
+  if grep -q 'x86-64-v4 (supported, searched)' <<<"$isa"; then
+    # Zen 4 and Zen 5 are AMD family 0x19 with AVX-512 (v4 says it has it)
+    # and family 0x1a.
+    family=$(awk -F': ' '/^cpu family/ { print $2; exit }' /proc/cpuinfo)
+    if grep -q '^vendor_id.*AuthenticAMD' /proc/cpuinfo && [[ $family == 25 || $family == 26 ]]; then
+      echo znver4
+    else
+      echo v4
+    fi
+  elif grep -q 'x86-64-v3 (supported, searched)' <<<"$isa"; then
+    echo v3
+  else
+    echo generic
+  fi
+}
+
+# The pacman.conf lines for a level: repositories and the architectures their
+# packages carry (stock pacman needs those listed; CachyOS's also reads them).
+cachyos_tuned_repos() {
+  local level="$1" suffix mirrorlist arches
+  case "$level" in
+    v3) suffix=v3 mirrorlist=cachyos-v3-mirrorlist arches="x86_64 x86_64_v3" ;;
+    v4) suffix=v4 mirrorlist=cachyos-v4-mirrorlist arches="x86_64 x86_64_v3 x86_64_v4" ;;
+    znver4) suffix=znver4 mirrorlist=cachyos-v4-mirrorlist arches="x86_64 x86_64_v3 x86_64_v4" ;;
+    *) return 0 ;;
+  esac
+  printf '# karchy: CachyOS packages built for this CPU (%s), before the generic ones.
+' "$level"
+  printf '[cachyos-%s]
+Include = /etc/pacman.d/%s
+
+' "$suffix" "$mirrorlist"
+  printf '[cachyos-core-%s]
+Include = /etc/pacman.d/%s
+
+' "$suffix" "$mirrorlist"
+  printf '[cachyos-extra-%s]
+Include = /etc/pacman.d/%s
+
+' "$suffix" "$mirrorlist"
+  printf '#ARCHITECTURES=%s
+' "$arches"
+}
+
 # Trust the [omarchy] and [cachyos] signing keys in the live environment and
 # add the repositories: [cachyos] before Arch's (D-45), [omarchy] and [karchy]
 # after (D-03, D-51).
 # pacstrap copies this keyring into the target.
 base_repos_live() {
-  pacman-key --recv-keys "$KARCHY_OMARCHY_KEY" --keyserver hkps://keys.openpgp.org
-  pacman-key --lsign-key "$KARCHY_OMARCHY_KEY"
-  pacman-key --recv-keys "$KARCHY_CACHYOS_KEY" --keyserver hkps://keyserver.ubuntu.com
-  pacman-key --lsign-key "$KARCHY_CACHYOS_KEY"
+  # Both public keys ship with the installer (packaging/keyring), so a key
+  # server being down can't stop the install; it is only the fallback.
+  # --lsign-key trusts exactly the fingerprints above, whatever the file holds.
+  local keyfile key
+  for keyfile in omarchy:"$KARCHY_OMARCHY_KEY":hkps://keys.openpgp.org cachyos:"$KARCHY_CACHYOS_KEY":hkps://keyserver.ubuntu.com; do
+    key=${keyfile#*:}
+    key=${key%%:*}
+    if [[ -f $KARCHY_SRC/packaging/keyring/${keyfile%%:*}.gpg ]]; then
+      pacman-key --add "$KARCHY_SRC/packaging/keyring/${keyfile%%:*}.gpg"
+    else
+      pacman-key --recv-keys "$key" --keyserver "${keyfile#*:*:}"
+    fi
+    pacman-key --lsign-key "$key"
+  done
   # karchy's own signing key comes with the installer (D-61), no keyserver.
   local keyring="$KARCHY_SRC/packaging/keyring" fpr
   if [[ -f $keyring/karchy.gpg ]]; then
@@ -28,11 +93,26 @@ base_repos_live() {
     done <"$keyring/karchy-trusted"
   fi
 
-  # A bootstrap mirror until the cachyos-mirrorlist package is installed.
+  # Bootstrap mirrors until the cachyos-mirrorlist packages are installed: the
+  # CDN, then CachyOS's own server, which has new packages first (the CDN can
+  # list a package in its database before it holds the file, and pacman then
+  # tries the next server).
+  cachyos_bootstrap_mirrors() {
+    printf 'Server = https://cdn77.cachyos.org/repo/%s/$repo\nServer = https://mirror.cachyos.org/repo/%s/$repo\n' "$1" "$1"
+  }
   if [[ ! -f /etc/pacman.d/cachyos-mirrorlist ]]; then
     # shellcheck disable=SC2016  # pacman expands $arch and $repo
-    echo 'Server = https://cdn77.cachyos.org/repo/$arch/$repo' >/etc/pacman.d/cachyos-mirrorlist
+    cachyos_bootstrap_mirrors '$arch' >/etc/pacman.d/cachyos-mirrorlist
   fi
+  # ...and for the tuned repos, with the architecture spelled out: the
+  # packaged lists use $arch_v3/$arch_v4, which only CachyOS's pacman expands.
+  # shellcheck disable=SC2016  # pacman expands $repo
+  case "$(cachyos_level)" in
+    v3) [[ -f /etc/pacman.d/cachyos-v3-mirrorlist ]] ||
+      cachyos_bootstrap_mirrors x86_64_v3 >/etc/pacman.d/cachyos-v3-mirrorlist ;;
+    v4 | znver4) [[ -f /etc/pacman.d/cachyos-v4-mirrorlist ]] ||
+      cachyos_bootstrap_mirrors x86_64_v4 >/etc/pacman.d/cachyos-v4-mirrorlist ;;
+  esac
   base_add_repos /etc/pacman.conf
   pacman -Sy
   # karchy-disk-fstab (data disks) reads lsblk's JSON with jq.
@@ -102,10 +182,18 @@ base_add_repos() {
   # Applied once: a second run would add a second ILoveCandy.
   awk '!(/^ILoveCandy$/ && seen++)' "$conf" >"$conf.karchy" && mv "$conf.karchy" "$conf"
   if ! grep -q '^\[cachyos\]' "$conf"; then
-    awk -v block="$KARCHY_SRC/system/pacman/repo-cachyos.conf" '
+    local tuned arches
+    tuned=$(cachyos_tuned_repos "$(cachyos_level)")
+    arches=$(sed -n 's/^#ARCHITECTURES=//p' <<<"$tuned")
+    { grep -v '^#ARCHITECTURES=' <<<"$tuned"; cat "$KARCHY_SRC/system/pacman/repo-cachyos.conf"; } >"$conf.cachyos"
+    awk -v block="$conf.cachyos" '
       /^\[core\]/ && !done { while ((getline line < block) > 0) print line; done = 1 }
       { print }
     ' "$conf" >"$conf.karchy" && mv "$conf.karchy" "$conf"
+    rm -f "$conf.cachyos"
+    if [[ -n $arches ]]; then
+      sed -i -E "s/^#?Architecture *=.*/Architecture = $arches/" "$conf"
+    fi
   fi
   if ! grep -q '^\[omarchy\]' "$conf"; then
     cat "$KARCHY_SRC/system/pacman/repo-omarchy.conf" >>"$conf"
@@ -126,7 +214,20 @@ base_locale() {
   sed -i 's/^#\(en_US.UTF-8 UTF-8\)/\1/' "$KARCHY_MNT/etc/locale.gen"
   in_target locale-gen
   echo "LANG=en_US.UTF-8" >"$KARCHY_MNT/etc/locale.conf"
-  echo "KEYMAP=$KARCHY_KEYMAP" >"$KARCHY_MNT/etc/vconsole.conf"
+  # The desktop reads XKBLAYOUT from the same file (default/hypr/keyboard.lua),
+  # so write the layout that matches the console keymap, from the table
+  # localectl uses; otherwise the disk password typed at boot in one layout
+  # fails at the lock screen in US.
+  local xlayout="" xvariant=""
+  read -r xlayout xvariant < <(awk -v k="$KARCHY_KEYMAP" '$1 == k { print $2, $4; exit }' \
+    "$KARCHY_MNT/usr/share/systemd/kbd-model-map" 2>/dev/null) || true
+  {
+    echo "KEYMAP=$KARCHY_KEYMAP"
+    if [[ -n $xlayout ]]; then
+      echo "XKBLAYOUT=$xlayout"
+      [[ $xvariant == - || -z $xvariant ]] || echo "XKBVARIANT=$xvariant"
+    fi
+  } >"$KARCHY_MNT/etc/vconsole.conf"
   in_target ln -sf "/usr/share/zoneinfo/$KARCHY_TIMEZONE" /etc/localtime
   in_target hwclock --systohc
   echo "$KARCHY_HOSTNAME" >"$KARCHY_MNT/etc/hostname"
@@ -139,21 +240,37 @@ base_user() {
   in_target passwd --lock root
   # The sudo policy comes from karchy-settings, pacstrapped with the base.
   in_target visudo -cf /etc/sudoers.d/karchy
-  # The login keyring's key (D-57), before any snapshot is taken.
-  in_target /usr/lib/karchy/keyring-key "$(in_target id -u "$KARCHY_USER")"
+  # The login keyring's key (D-57), before any snapshot is taken. A key saved
+  # with karchy-keyring-key export (KARCHY_KEYRING_KEY_FILE in an unattended
+  # config) is used instead of a new one, so a restored home's keyring opens.
+  local uid key=""
+  uid=$(in_target id -u "$KARCHY_USER")
+  if [[ -n ${KARCHY_KEYRING_KEY_FILE:-} ]]; then
+    key=$(head -n 1 "$KARCHY_KEYRING_KEY_FILE" | tr -d '[:space:]')
+    [[ $key =~ ^[A-Za-z0-9+/]{43}=$ ]] || die "$KARCHY_KEYRING_KEY_FILE doesn't hold a keyring key (karchy-keyring-key export writes one)"
+    install -d -m 0700 "$KARCHY_MNT/etc/credstore"
+    printf '%s' "$key" | install -m 0600 /dev/stdin "$KARCHY_MNT/etc/credstore/karchy.keyring.$uid"
+  fi
+  in_target /usr/lib/karchy/keyring-key "$uid"
 }
 
 # Internal data disks already in the machine get mounts at /mnt/<label> (D-24),
 # by the same rules the login check uses for disks added later.
 base_data_disks() {
-  local uid gid device mount line
+  local uid gid device fstype mount line
   uid=$(in_target id -u "$KARCHY_USER")
   gid=$(in_target id -g "$KARCHY_USER")
-  while IFS=$'\t' read -r device _ _ _ mount; do
+  while IFS=$'\t' read -r device _ fstype _ mount; do
     line=$(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" "$KARCHY_SRC/bin/karchy-disk-fstab" line "$device" "$uid" "$gid")
     mkdir -p "$KARCHY_MNT$mount"
     echo "$line" >>"$KARCHY_MNT/etc/fstab"
     log "data disk $device mounts at $mount"
+    # A btrfs data disk gets the same monthly scrub as the system disk; NTFS
+    # gets ntfsfix, the only way to clear a dirty flag Windows left.
+    case "$fstype" in
+      btrfs) in_target systemctl enable "btrfs-scrub@$(systemd-escape -p "$mount").timer" ;;
+      ntfs) in_target pacman -S --needed --noconfirm ntfsprogs ;;
+    esac
   done < <(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" "$KARCHY_SRC/bin/karchy-disk-fstab" list)
 }
 
@@ -183,14 +300,27 @@ base_bootloader() {
   cat >"$KARCHY_MNT/etc/default/limine" <<EOF
 ESP_PATH="/boot"
 KERNEL_CMDLINE[default]="$cmdline"
-BOOT_ORDER="*, *lts, *fallback, Snapshots"
+BOOT_ORDER="*, *lts, Snapshots"
 EOF
+  # The firmware's fallback copy of Limine (EFI/BOOT/BOOTX64.EFI) is kept
+  # current by limine-update, except under Secure Boot, where karchy's own
+  # hook keeps it identical to the signed binary instead.
+  [[ $KARCHY_SECUREBOOT == "yes" ]] || echo 'ENABLE_LIMINE_FALLBACK=yes' >>"$KARCHY_MNT/etc/default/limine"
   in_target limine-install --fallback
   in_target limine-update
 }
 
 base_snapper() {
   in_target snapper --no-dbus -c root create-config --template karchy /
+  # Snapshots from a full upgrade (karchy update) and from kernel or boot
+  # changes are marked important, so the 5 plain ones that app installs
+  # make don't push the pre-update snapshot out (D-09, user 2026-11-16).
+  # snap-pac.ini is snap-pac's backup file, so pacman keeps this.
+  cat >"$KARCHY_MNT/etc/snap-pac.ini" <<'SNAPPAC'
+[root]
+important_commands = ["pacman -Syu", "pacman -Syu --noconfirm"]
+important_packages = ["linux-cachyos", "linux-cachyos-lts", "limine", "systemd", "mkinitcpio", "karchy", "karchy-settings"]
+SNAPPAC
 }
 
 base_services() {
