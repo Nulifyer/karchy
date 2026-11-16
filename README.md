@@ -79,6 +79,12 @@ requires Node.js. CI tests Python 3.10 and 3.14 with Node.js 24.
 - Enter opens the selected project in the editor. Clicking a result does the same.
 - Ctrl+E opens a terminal in the selected project.
 - Ctrl+R refreshes the list. Escape or clicking outside closes the picker.
+- **New project** is the last row: Up from the first result reaches it, and
+  it is the only row when nothing matches. Enter on it, or Ctrl+Shift+N from
+  anywhere, asks for a name (the search text, if any). Enter then creates the
+  folder in the projects root (`~/Projects`; created if missing) and opens it
+  in the editor. Escape goes back to the list. The name must be one folder
+  name, not `.`, `..` or a path, and the folder must not exist yet.
 
 Every direct child directory of `~/Projects` appears first when there is no
 search query, including hidden directories and symlinked projects. The home
@@ -127,7 +133,7 @@ Edit the plugin's entry inside the existing `plugins` array in
 }
 ```
 
-`projectsRoot` defaults to the shell process's `Z_PROJECTS_ROOT` environment
+`projectsRoot` is also where New project creates folders. It defaults to the shell process's `Z_PROJECTS_ROOT` environment
 variable, or `~/Projects`. `editor` is an argument array, so
 `["code", "--new-window"]` is valid. Use a graphical editor command or an
 explicit terminal wrapper for a terminal editor. Settings reload on save.

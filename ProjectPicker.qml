@@ -24,15 +24,19 @@ Item {
   readonly property string settingsPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config")
     + (onKarchy ? "/karchy" : "/omarchy") + "/shell.json"
   property string projectsRoot: Quickshell.env("Z_PROJECTS_ROOT") || home + "/Projects"
+  readonly property string projectsRootLabel: displayPath(projectsRoot)
   property var editor: ["code"]
+  readonly property string editorLabel: editor[0] === "code" ? "VS Code" : editor[0]
   property var projects: []
   property var scanRows: []
   property var previousProjects: []
   property var results: []
+  property int matchCount: 0
   property int selectedIndex: 0
   property string errorText: ""
   property string launchError: ""
   property bool rescanPending: false
+  property bool creating: false
   property var targetScreen: null
   readonly property int rowHeight: Style.space(48)
   readonly property int padding: Style.spacing.panelPadding
@@ -45,6 +49,14 @@ Item {
     ? Commons.Color.secondaryText(Commons.Color.menu.text, Commons.Color.menu.background)
     : Util.alpha(Commons.Color.menu.text, 0.55)
   readonly property color errorColor: Commons.Color.status ? Commons.Color.status.error : Commons.Color.urgent
+  readonly property var newProjectRow: ({ newProject: true, name: "", path: "", displayPath: "" })
+
+  function displayPath(path) {
+    var value = String(path || "")
+    if (value === root.home) return "~"
+    if (value.indexOf(root.home + "/") === 0) return "~" + value.slice(root.home.length)
+    return value
+  }
 
   function open(payloadJson) {
     var initialQuery = ""
@@ -58,6 +70,7 @@ Item {
       if (focused && screens[i].name === focused.name) { root.targetScreen = screens[i]; break }
     }
     root.opened = true
+    root.creating = false
     root.launchError = ""
     pointerGate.reset()
     search.text = initialQuery
@@ -110,7 +123,11 @@ Item {
     pointerGate.reset()
     var selectedPath = preserveSelection && root.results[root.selectedIndex]
       ? root.results[root.selectedIndex].path : ""
-    root.results = Search.rank(root.projects, search.text)
+    // "New project" is always the last row: one Up from the top reaches it,
+    // and it is the only row when nothing matches.
+    var ranked = Search.rank(root.projects, search.text)
+    root.matchCount = ranked.length
+    root.results = ranked.concat([root.newProjectRow])
     root.selectedIndex = Math.max(0, Math.min(root.selectedIndex, root.results.length - 1))
     if (selectedPath) {
       for (var i = 0; i < root.results.length; i++) {
@@ -131,17 +148,46 @@ Item {
 
   function activate(action) {
     if (launcher.running || !root.results.length) return
+    var row = root.results[root.selectedIndex]
+    if (row.newProject) { root.beginCreate(); return }
     root.launchError = ""
     launcher.command = ["python3", root.helper, "launch", "--action", action,
-      "--path", root.results[root.selectedIndex].path, "--editor-json", JSON.stringify(root.editor)]
+      "--path", row.path, "--editor-json", JSON.stringify(root.editor)]
+    launcher.running = true
+  }
+
+  // New project: ask for a name (the search text, when there is one), then
+  // create the folder in the projects root and open it in the editor.
+  function beginCreate() {
+    if (launcher.running) return
+    root.launchError = ""
+    root.creating = true
+    projectName.text = search.text.trim()
+    projectName.selectAll()
+    Qt.callLater(function() { projectName.forceActiveFocus() })
+  }
+
+  function cancelCreate() {
+    root.creating = false
+    root.launchError = ""
+    Qt.callLater(function() { search.forceActiveFocus() })
+  }
+
+  function create() {
+    if (launcher.running || !projectName.text.trim().length) return
+    root.launchError = ""
+    // One argument each, so a name that starts with "-" stays a name.
+    launcher.command = ["python3", root.helper, "create", "--root=" + root.projectsRoot,
+      "--name=" + projectName.text.trim(), "--editor-json=" + JSON.stringify(root.editor)]
     launcher.running = true
   }
 
   // Stable IPC inspection is also useful for diagnosing a failed discovery.
   function status(arg) {
+    var row = root.results[root.selectedIndex]
     return JSON.stringify({ opened: root.opened, scanning: scan.running, count: root.projects.length,
-      matches: root.results.length, query: search.text,
-      selectedPath: root.results[root.selectedIndex] ? root.results[root.selectedIndex].path : "",
+      matches: root.matchCount, query: search.text, creating: root.creating,
+      selectedPath: row && !row.newProject ? row.path : "", newProjectSelected: !!(row && row.newProject),
       error: root.launchError || root.errorText, screen: panel.screen ? panel.screen.name : "" })
   }
 
@@ -234,7 +280,10 @@ Item {
       borderSpec: Border.surfaceSpec("menu", "border", Commons.Color.menu.border, Math.max(1, Style.space(2)))
       padding: root.padding
 
-      MouseArea { anchors.fill: parent; onClicked: search.forceActiveFocus() }
+      MouseArea {
+        anchors.fill: parent
+        onClicked: (root.creating ? projectName : search).forceActiveFocus()
+      }
 
       Column {
         anchors.fill: parent
@@ -250,7 +299,7 @@ Item {
           height: Math.max(Style.space(26), title.implicitHeight, resultCount.implicitHeight)
           Text {
             id: title
-            text: "Projects"
+            text: root.creating ? "New project" : "Projects"
             textFormat: Text.PlainText
             color: Commons.Color.menu.text
             font.family: Style.font.menuFamily
@@ -260,9 +309,10 @@ Item {
           }
           Text {
             id: resultCount
+            visible: !root.creating
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            text: scan.running ? "Searching…" : root.results.length + " / " + root.projects.length
+            text: scan.running ? "Searching…" : root.matchCount + " / " + root.projects.length
             textFormat: Text.PlainText
             color: root.quietText
             font.family: Style.font.menuFamily
@@ -272,8 +322,9 @@ Item {
 
         TextField {
           id: search
+          visible: !root.creating
           width: parent.width
-          height: Math.max(Style.space(40), implicitHeight)
+          height: visible ? Math.max(Style.space(40), implicitHeight) : 0
           foreground: Commons.Color.menu.text
           font.family: Style.font.menuFamily
           font.pixelSize: Style.font.body
@@ -284,7 +335,9 @@ Item {
           Keys.priority: Keys.BeforeItem
           Keys.onPressed: function(event) {
             var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+            var shift = (event.modifiers & Qt.ShiftModifier) !== 0
             if (event.key === Qt.Key_Escape) root.dismiss()
+            else if (ctrl && shift && event.key === Qt.Key_N) { filterDelay.stop(); root.beginCreate() }
             else if (ctrl && event.key === Qt.Key_E) { filterDelay.stop(); root.rebuild(false); root.activate("terminal") }
             else if (ctrl && event.key === Qt.Key_R) root.refresh()
             else if (event.key === Qt.Key_Down || (ctrl && event.key === Qt.Key_N)) { filterDelay.stop(); root.rebuild(true); root.select(1) }
@@ -297,11 +350,51 @@ Item {
           }
         }
 
+        TextField {
+          id: projectName
+          visible: root.creating
+          width: parent.width
+          height: visible ? Math.max(Style.space(40), implicitHeight) : 0
+          foreground: Commons.Color.menu.text
+          font.family: Style.font.menuFamily
+          font.pixelSize: Style.font.body
+          placeholderText: "Project name"
+          selectByMouse: true
+          onTextChanged: root.launchError = ""
+          Keys.priority: Keys.BeforeItem
+          Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Escape) root.cancelCreate()
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) root.create()
+            else return
+            event.accepted = true
+          }
+        }
+
+        Item {
+          id: createHint
+          visible: root.creating
+          width: parent.width
+          height: visible ? list.height : 0
+
+          Text {
+            width: parent.width
+            text: projectName.text.trim().length
+              ? "Creates " + root.projectsRootLabel + "/" + projectName.text.trim() + " and opens it in " + root.editorLabel + "."
+              : "Type a name for the new folder in " + root.projectsRootLabel + "."
+            textFormat: Text.PlainText
+            color: root.quietText
+            font.family: Style.font.menuFamily
+            font.pixelSize: Style.font.body
+            wrapMode: Text.Wrap
+          }
+        }
+
         ListView {
           id: list
+          visible: !root.creating
           width: parent.width
           height: Math.max(0, card.height - card.contentTopInset - card.contentBottomInset
-            - header.height - search.height - footer.height
+            - header.height - Math.max(search.height, projectName.height) - footer.height
             - (errorLabel.visible ? errorLabel.implicitHeight + parent.spacing : 0) - parent.spacing * 3)
           clip: true
           model: root.results
@@ -311,6 +404,8 @@ Item {
             id: row
             required property var modelData
             required property int index
+            readonly property bool isNew: modelData.newProject === true
+            readonly property string query: search.text.trim()
             width: list.width
             height: Math.max(root.rowHeight, rowContent.implicitHeight + Style.spacing.controlPaddingY * 2
               + Border.top(root.selectedBorderSpec) + Border.bottom(root.selectedBorderSpec))
@@ -329,7 +424,9 @@ Item {
               spacing: Style.spacing.xxs
               Text {
                 width: parent.width
-                text: Search.plainLabel(row.modelData.name)
+                text: row.isNew
+                  ? (row.query.length ? "+  New project “" + row.query + "”" : "+  New project…")
+                  : Search.plainLabel(row.modelData.name)
                 textFormat: Text.PlainText
                 elide: Text.ElideRight
                 color: row.index === root.selectedIndex ? Commons.Color.menu.selectedText : Commons.Color.menu.text
@@ -339,7 +436,9 @@ Item {
               }
               Text {
                 width: parent.width
-                text: Search.plainLabel(row.modelData.displayPath)
+                text: row.isNew
+                  ? "Create a folder in " + root.projectsRootLabel + " and open it in " + root.editorLabel
+                  : Search.plainLabel(row.modelData.displayPath)
                 textFormat: Text.PlainText
                 elide: Text.ElideMiddle
                 color: root.quietText
@@ -359,8 +458,8 @@ Item {
 
           Text {
             anchors.centerIn: parent
-            visible: root.results.length === 0
-            text: scan.running ? "Looking for projects…" : search.text.length ? "No matching projects" : "Add a folder to ~/Projects to get started"
+            visible: root.matchCount === 0 && !scan.running
+            text: search.text.length ? "No matching projects" : "No projects in " + root.projectsRootLabel + " yet"
             textFormat: Text.PlainText
             color: root.quietText
             font.family: Style.font.menuFamily
@@ -390,7 +489,9 @@ Item {
         Text {
           id: footer
           width: parent.width
-          text: "Enter  editor     Ctrl+E  terminal     Ctrl+R  refresh     Esc  close"
+          text: root.creating
+            ? "Enter  create and open     Esc  back"
+            : "Enter  editor     Ctrl+E  terminal     Ctrl+Shift+N  new project     Ctrl+R  refresh     Esc  close"
           textFormat: Text.PlainText
           color: root.quietText
           font.family: Style.font.menuFamily

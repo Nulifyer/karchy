@@ -78,5 +78,33 @@ class DiscoveryTest(unittest.TestCase):
             self.assertIn("Command not found", result.stderr)
 
 
+class CreateTest(unittest.TestCase):
+    def test_creates_folder_in_root_and_refuses_existing(self):
+        with tempfile.TemporaryDirectory() as fixture:
+            root = Path(fixture) / "Projects"
+            path = projects.create_project(str(root), "  new idea  ", ["sh"])
+            self.assertEqual(path, str(root / "new idea"))
+            self.assertTrue((root / "new idea").is_dir())
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                projects.create_project(str(root), "new idea", ["sh"])
+
+    def test_rejects_names_that_are_not_one_folder(self):
+        with tempfile.TemporaryDirectory() as fixture:
+            for name in ["", "   ", ".", "..", "a/b", "../escape", "x" * 256]:
+                with self.assertRaises(ValueError, msg=name):
+                    projects.create_project(fixture, name, ["sh"])
+            self.assertEqual(list(Path(fixture).iterdir()), [])
+
+    def test_missing_editor_creates_nothing(self):
+        with tempfile.TemporaryDirectory() as fixture:
+            result = subprocess.run(
+                [sys.executable, str(SOURCE), "create", "--root=" + fixture, "--name=-dash",
+                 "--editor-json", '["nulifyer-picker-nonexistent-editor"]'],
+                capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Command not found", result.stderr)
+            self.assertEqual(list(Path(fixture).iterdir()), [])
+
+
 if __name__ == "__main__":
     unittest.main()

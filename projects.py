@@ -93,15 +93,66 @@ def discover(home, projects_root):
             stack.extend(children)
 
 
+def check_editor(editor):
+    if not isinstance(editor, list) or not editor or any(
+            not isinstance(arg, str) or not arg or "\0" in arg for arg in editor):
+        raise ValueError("Editor must be a nonempty array of command arguments.")
+
+
 def launch_command(action, path, editor):
     if not os.path.isdir(path):
         raise ValueError("Project directory no longer exists: " + path)
     if action == "terminal":
         return ["uwsm-app", "--", "xdg-terminal-exec", "--dir=" + path]
-    if not isinstance(editor, list) or not editor or any(
-            not isinstance(arg, str) or not arg or "\0" in arg for arg in editor):
-        raise ValueError("Editor must be a nonempty array of command arguments.")
+    check_editor(editor)
     return ["uwsm-app", "--", *editor, path]
+
+
+def project_folder(projects_root, name):
+    """The new project's folder: one plain name directly inside the root."""
+    name = name.strip()
+    if not name:
+        raise ValueError("Type a name for the project.")
+    if name in {".", ".."} or "/" in name or "\0" in name:
+        raise ValueError("A project name can't be . or .. or contain a slash.")
+    if len(os.fsencode(name)) > 255:
+        raise ValueError("That name is too long for a folder.")
+    root = os.path.abspath(os.path.expanduser(projects_root))
+    return os.path.join(root, name)
+
+
+def create_project(projects_root, name, editor):
+    """Create the folder and return it; refuse one that already exists.
+
+    The editor is checked first, so a missing editor leaves nothing behind.
+    """
+    path = project_folder(projects_root, name)
+    check_editor(editor)
+    require_command(editor[0])
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    try:
+        os.mkdir(path)
+    except FileExistsError:
+        raise ValueError(display(path) + " already exists. Pick it from the list instead.") from None
+    return path
+
+
+def display(path):
+    home = os.path.expanduser("~")
+    return "~" + path[len(home):] if path.startswith(home + os.sep) else path
+
+
+def require_command(executable):
+    if shutil.which(executable) is None:
+        raise ValueError("Command not found: " + executable)
+
+
+def start(command, cwd):
+    # Keep the application independent of the shell's plugin lifecycle.
+    # exec errors in the launcher itself remain visible to the caller.
+    subprocess.Popen(command, cwd=cwd, start_new_session=True,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                     stderr=subprocess.DEVNULL)
 
 
 def main():
@@ -114,6 +165,10 @@ def main():
     launch.add_argument("--action", choices=["editor", "terminal"], required=True)
     launch.add_argument("--path", required=True)
     launch.add_argument("--editor-json", default='["code"]')
+    create = commands.add_parser("create", help="create a project folder and open it in the editor")
+    create.add_argument("--root", default=os.environ.get("Z_PROJECTS_ROOT") or "~/Projects")
+    create.add_argument("--name", required=True)
+    create.add_argument("--editor-json", default='["code"]')
     args = parser.parse_args()
     try:
         if args.command == "scan":
@@ -121,16 +176,15 @@ def main():
                 raise ValueError("Home directory does not exist: " + args.home)
             for row in discover(args.home, args.root):
                 print(json.dumps(row, ensure_ascii=True), flush=True)
+        elif args.command == "create":
+            editor = json.loads(args.editor_json)
+            path = create_project(args.root, args.name, editor)
+            start(launch_command("editor", path, editor), path)
+            print(path)
         else:
             command = launch_command(args.action, args.path, json.loads(args.editor_json))
-            executable = "xdg-terminal-exec" if args.action == "terminal" else json.loads(args.editor_json)[0]
-            if shutil.which(executable) is None:
-                raise ValueError("Command not found: " + executable)
-            # Keep the application independent of the shell's plugin lifecycle.
-            # exec errors in the launcher itself remain visible to the caller.
-            subprocess.Popen(command, cwd=args.path, start_new_session=True,
-                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL)
+            require_command("xdg-terminal-exec" if args.action == "terminal" else json.loads(args.editor_json)[0])
+            start(command, args.path)
     except (OSError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 1
