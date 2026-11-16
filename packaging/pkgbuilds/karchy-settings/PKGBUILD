@@ -59,6 +59,11 @@ package() {
     "$pkgdir/usr/lib/systemd/system/karchy-localsend-firewall.service"
   # karchy's DNS on networks that aren't trusted, the network's own on trusted
   # ones (D-68; karchy-network-dns is in karchy).
+  # avahi only on trusted networks (karchy-network-privacy).
+  install -Dm755 NetworkManager/dispatcher.d/91-karchy-privacy \
+    "$pkgdir/usr/lib/NetworkManager/dispatcher.d/91-karchy-privacy"
+  install -Dm644 systemd/system/karchy-network-privacy.service \
+    "$pkgdir/usr/lib/systemd/system/karchy-network-privacy.service"
   install -Dm755 NetworkManager/dispatcher.d/95-karchy-dns \
     "$pkgdir/usr/lib/NetworkManager/dispatcher.d/95-karchy-dns"
   # Network tuning: Wi-Fi power save off, ARP, MTU probing, BBR + fq, and

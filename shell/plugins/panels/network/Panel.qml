@@ -699,12 +699,23 @@ Panel {
   onVpnChanged: if (vpn.mode !== "off") vpnTurnedOff = false
 
   FileView {
+    id: vpnStatusFile
     path: "/run/nulifyer-vpn/status"
     watchChanges: true
     printErrors: false
-    onLoaded: root.vpn = Model.parseVpnStatus(text())
-    onLoadFailed: root.vpn = Model.parseVpnStatus("")
+    onLoaded: { root.vpn = Model.parseVpnStatus(text()); vpnStatusRetry.stop() }
+    onLoadFailed: { root.vpn = Model.parseVpnStatus(""); vpnStatusRetry.restart() }
     onFileChanged: reload()
+  }
+
+  // A watch can't see the file appear when its folder is created after the
+  // shell started (the VPN package installed in a running session), so look
+  // again every 30 seconds while it is missing.
+  Timer {
+    id: vpnStatusRetry
+    interval: 30000
+    repeat: true
+    onTriggered: vpnStatusFile.reload()
   }
 
   function setVpnMode(mode) {

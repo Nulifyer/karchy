@@ -260,6 +260,7 @@ set_trusted() {
   # Everything that follows trust re-checks now rather than at the next
   # connection change.
   /usr/bin/karchy-localsend-firewall || true
+  [[ ! -x /usr/bin/karchy-network-privacy ]] || /usr/bin/karchy-network-privacy || true
   [[ ! -x /usr/bin/karchy-network-dns ]] || /usr/bin/karchy-network-dns apply || true
   # The VPN package (nulifyer-vpn) asks this command too; tell it to ask again.
   [[ ! -x /usr/lib/nulifyer-vpn/control ]] || /usr/lib/nulifyer-vpn/control refresh || true

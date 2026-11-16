@@ -111,6 +111,18 @@ keep() {
   if [[ $share == "." || $share == ".." || $share =~ [/,=\\\"\'] || $share =~ [[:cntrl:]] ]]; then
     die "The share name '$share' has characters karchy won't put in /etc/fstab."
   fi
+  # The mount finds the server through the system's name lookup, which, unlike
+  # the file manager, doesn't know Windows (NetBIOS) names: use the .local name
+  # avahi answers when the plain one doesn't resolve, rather than failing as if
+  # the password were wrong.
+  if ! getent hosts "$server" >/dev/null 2>&1; then
+    if [[ $server != *.* ]] && getent hosts "$server.local" >/dev/null 2>&1; then
+      echo "Using $server.local, the name this computer finds the server by."
+      server="$server.local"
+    else
+      die "This computer can't find a server named $server. Use its .local name or its IP address, like smb://$server.local/$share or smb://192.168.1.10/$share."
+    fi
+  fi
 
   # A share kept already: ask for new sign-in details for it instead.
   local kept

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# karchy:summary=Announce this computer on the local network only while a trusted network is connected
+# karchy:args=[status]
+# karchy:hidden=true
+
+# avahi answers .local names and announces this computer (its name, and
+# services such as printers shared from it) to everyone on the network. On a
+# trusted network (home) that is what lets the NAS, printers and other
+# computers find each other; on a café's Wi-Fi it tells strangers the
+# computer's name (user 2026-11-16). So avahi runs only while a trusted
+# network is connected, and is masked otherwise, which also stops D-Bus and
+# .local lookups from starting it.
+#
+# Run as root by NetworkManager's dispatcher on every connection change, by
+# karchy-trusted-networks after the list changes, and once at boot before
+# NetworkManager starts (karchy-network-privacy.service), when nothing is
+# trusted yet. Whether a connection is trusted comes from
+# `karchy-trusted-networks status --json` (D-68).
+#
+#   status  "announcing" or "quiet"
+
+set -euo pipefail
+
+UNITS=(avahi-daemon.service avahi-daemon.socket)
+
+if [[ ${1:-} == "status" ]]; then
+  if systemctl -q is-active avahi-daemon.service; then echo announcing; else echo quiet; fi
+  exit 0
+fi
+
+((EUID == 0)) || { echo "karchy-network-privacy runs as root (NetworkManager's dispatcher)" >&2; exit 1; }
+[[ -f /usr/lib/systemd/system/avahi-daemon.service ]] || exit 0
+
+trusted=0
+if status=$(/usr/bin/karchy-trusted-networks status --json 2>/dev/null); then
+  trusted=$(jq '[.active[]? | select(.trusted)] | length' <<<"$status" 2>/dev/null || echo 0)
+fi
+
+if ((trusted > 0)); then
+  systemctl unmask --runtime "${UNITS[@]}" >/dev/null 2>&1 || true
+  systemctl start avahi-daemon.service
+else
+  systemctl mask --runtime "${UNITS[@]}" >/dev/null 2>&1 || true
+  systemctl stop "${UNITS[@]}" 2>/dev/null || true
+fi
