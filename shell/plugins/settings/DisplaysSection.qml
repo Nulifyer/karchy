@@ -27,6 +27,32 @@ ColumnLayout {
     setProc.running = true
   }
 
+  // What undoes the change in flight, asked about once it has applied.
+  property var undoArgs: null
+
+  // Resolution, refresh rate, scale and rotation can leave a screen unusable,
+  // so each is undone after 15 seconds unless kept. The undo puts back what
+  // was saved for the monitor, or forgets it if nothing was.
+  function applyAndAsk(monitor, setting, value, fallback) {
+    root.undoArgs = monitor.saved === null
+      ? ["forget", monitor.name]
+      : ["set", monitor.name, setting, String(root.savedValue(monitor, setting, fallback))]
+    root.apply(["set", monitor.name, setting, String(value)])
+  }
+
+  function askToKeep() {
+    var undo = root.undoArgs
+    root.undoArgs = null
+    if (!undo || !root.settings) return
+    root.settings.askToKeep(function(n) {
+      return "Keep these display settings? They go back in " + n + (n === 1 ? " second." : " seconds.")
+    }, "Keep", "Go back", 15, function() {
+      // Detached: closing Settings also undoes, and unloads this page with
+      // its processes; the page reloads from Hyprland's monitor event.
+      Quickshell.execDetached(["karchy-settings-displays"].concat(undo))
+    })
+  }
+
   function load(text) {
     try {
       root.monitors = JSON.parse(text).monitors || []
@@ -89,6 +115,10 @@ ColumnLayout {
     id: setProc
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: if (text.trim() !== "") root.load(text) }
     stderr: StdioCollector { waitForEnd: true; onStreamFinished: root.error = text.trim() }
+    onExited: function(exitCode) {
+      if (exitCode === 0) root.askToKeep()
+      else root.undoArgs = null
+    }
   }
 
   PageHeader {
@@ -159,10 +189,15 @@ ColumnLayout {
       required property var modelData
       readonly property var monitor: modelData
       readonly property string mode: root.currentMode(monitor)
+      // The only monitor that is on can't be turned off; the subtitle says so.
+      // With one monitor there is nothing to switch, so no switch.
+      readonly property bool lastOn: card.monitor.enabled && arrangement.enabled.length === 1
       title: monitor.name
-      subtitle: monitor.key || monitor.description
+      subtitle: (monitor.key || monitor.description) + (lastOn && root.monitors.length > 1 ? ", the only monitor on" : "")
       trailing: ToggleSwitch {
+        visible: root.monitors.length > 1
         checked: card.monitor.enabled
+        enabled: !card.lastOn
         busy: setProc.running
         accessibleName: card.monitor.name
         onToggled: root.apply(["set", card.monitor.name, "enabled", card.monitor.enabled ? "false" : "true"])
@@ -183,7 +218,7 @@ ColumnLayout {
             options: root.resolutions(card.monitor)
             onChanged: function(value) {
               var choices = root.rates(card.monitor, value)
-              if (choices.length > 0) root.apply(["set", card.monitor.name, "mode", choices[0].value])
+              if (choices.length > 0) root.applyAndAsk(card.monitor, "mode", choices[0].value, "preferred")
             }
           }
 
@@ -193,7 +228,7 @@ ColumnLayout {
             showLabel: false
             value: card.mode
             options: root.rates(card.monitor, root.resolution(card.mode))
-            onChanged: function(value) { root.apply(["set", card.monitor.name, "mode", value]) }
+            onChanged: function(value) { root.applyAndAsk(card.monitor, "mode", value, "preferred") }
           }
 
           SettingsLabel { text: "Scale" }
@@ -209,7 +244,7 @@ ColumnLayout {
               : presets[MonitorModel.matchingScaleIndex(presets, card.monitor.scale, card.monitor.width, card.monitor.height)] || ""
             onChanged: function(value) {
               var scale = value === "auto" ? "auto" : MonitorModel.cleanScale(Number(value), card.monitor.width, card.monitor.height)
-              root.apply(["set", card.monitor.name, "scale", String(scale)])
+              root.applyAndAsk(card.monitor, "scale", scale, "auto")
             }
           }
 
@@ -239,7 +274,7 @@ ColumnLayout {
               { value: "2", label: "180°" },
               { value: "3", label: "270°" }
             ]
-            onChanged: function(value) { root.apply(["set", card.monitor.name, "transform", value]) }
+            onChanged: function(value) { root.applyAndAsk(card.monitor, "transform", value, "0") }
           }
         }
 

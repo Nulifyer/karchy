@@ -30,6 +30,18 @@ ColumnLayout {
 
   Process { id: actionProc }
 
+  // The theme in use, named as the theme picker names it ("tokyo-night" is
+  // Tokyo Night), and followed while the window is open.
+  property string themeName: ""
+  FileView {
+    path: Quickshell.env("HOME") + "/.local/state/karchy/current/theme.name"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.themeName = text().trim()
+      .replace(/(^|-)([a-z])/g, function(m, dash, letter) { return dash + letter.toUpperCase() })
+      .replace(/-/g, " ")
+  }
+
   Process {
     id: fontListProc
     command: ["karchy-font-list"]
@@ -63,7 +75,7 @@ ColumnLayout {
     SettingsLabel { text: "Theme" }
     Button {
       focusable: true
-      text: "Choose theme…"
+      text: root.themeName !== "" ? root.themeName + "…" : "Choose theme…"
       bordered: true
       onClicked: root.run("karchy-shell shell summon karchy.image-picker '{\"source\":\"themes\"}'")
     }

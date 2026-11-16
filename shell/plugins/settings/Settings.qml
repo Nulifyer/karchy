@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
@@ -57,6 +58,9 @@ Item {
   function close() {
     // shell.hide() calls back into close(); stop the second time round.
     if (!root.opened) return
+    // Closing while a change waits to be kept counts as "Go back", as the
+    // timer would.
+    if (confirmDialog.opened && typeof confirmDialog.onNo === "function") confirmDialog.canceled()
     root.opened = false
     if (root.shell && root.manifest) root.shell.hide(root.manifest.id)
   }
@@ -72,9 +76,40 @@ Item {
     function onRawEvent(event) {
       if (!root.opened) return
       var name = String(event.name)
-      if (name.indexOf("monitor") === 0 || name === "configreloaded") root.refresh()
+      if (name.indexOf("monitor") === 0 || name === "configreloaded") {
+        root.refresh()
+        Hyprland.refreshMonitors()
+        refitTimer.restart()
+      }
     }
   }
+
+  // A new scale or resolution changes the screen's logical size, and a
+  // floating window keeps its old size and place, so it could end up off the
+  // screen with the controls that undo the change. Size it to the screen
+  // again and center it, once Hyprland has reported the new monitor size.
+  function fitSize() {
+    var m = Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
+    var w = m ? m.width / m.scale : 1280
+    var h = m ? m.height / m.scale : 800
+    if (m && (m.transform || 0) % 2 === 1) { var t = w; w = h; h = t }
+    return { width: Math.round(Math.min(Style.space(900), w * 0.85)), height: Math.round(Math.min(Style.space(640), h * 0.85)) }
+  }
+
+  Timer {
+    id: refitTimer
+    interval: 400
+    onTriggered: {
+      var size = root.fitSize()
+      var target = '"title:^karchy Settings$"'
+      refitProc.command = ["sh", "-c",
+        "hyprctl dispatch 'hl.dsp.window.resize({ x = " + size.width + ", y = " + size.height + ", relative = false, window = " + target + " })' >/dev/null && " +
+        "hyprctl dispatch 'hl.dsp.window.center({ window = " + target + " })' >/dev/null"]
+      refitProc.running = true
+    }
+  }
+
+  Process { id: refitProc }
 
   function toggle() {
     if (root.opened) root.close()
@@ -89,8 +124,28 @@ Item {
     confirmDialog.returnFocus = frame.Window.activeFocusItem
     confirmDialog.message = message
     confirmDialog.confirmText = confirmText
+    confirmDialog.cancelText = Commons.I18n.t("common.cancel")
     confirmDialog.destructive = destructive !== false
     confirmDialog.onYes = action
+    confirmDialog.onNo = null
+    confirmDialog.countdown = 0
+    confirmDialog.opened = true
+  }
+
+  // Asks to keep a change that could leave the screen unusable, and undoes it
+  // unless kept within `seconds`: Escape, the undo button and the timer all
+  // undo it. `messageFor(n)` gives the question with n seconds left. Opens on
+  // the undo button, so a stray Enter undoes.
+  function askToKeep(messageFor, keepText, undoText, seconds, onUndo) {
+    confirmDialog.returnFocus = frame.Window.activeFocusItem
+    confirmDialog.messageFor = messageFor
+    confirmDialog.countdown = seconds
+    confirmDialog.message = messageFor(seconds)
+    confirmDialog.confirmText = keepText
+    confirmDialog.cancelText = undoText
+    confirmDialog.destructive = false
+    confirmDialog.onYes = null
+    confirmDialog.onNo = onUndo
     confirmDialog.opened = true
   }
 
@@ -152,7 +207,12 @@ Item {
       onFocusedItemChanged: root.revealFocused(focusedItem)
       // Keys the focused control leaves unhandled end up here. An open
       // dropdown's list sits in its own popup and takes Escape first.
-      Keys.onEscapePressed: root.close()
+      // A held or late-repeating Escape that just answered the dialog (a
+      // display change can delay its release) doesn't also close the window.
+      Keys.onEscapePressed: function(event) {
+        if (event.isAutoRepeat || Date.now() - confirmDialog.closedAt < 500) return
+        root.close()
+      }
 
       // Section list
       Rectangle {
@@ -247,18 +307,41 @@ Item {
       ownsKeys: true
       defaultIndex: 0
       property var onYes: null
+      property var onNo: null
       property Item returnFocus: null
+      // askToKeep: seconds left, and the question for that many.
+      property int countdown: 0
+      property var messageFor: null
+      property real closedAt: 0
       function finish() {
+        closedAt = Date.now()
         opened = false
         onYes = null
+        onNo = null
+        countdown = 0
+        messageFor = null
         if (returnFocus) returnFocus.forceActiveFocus()
         returnFocus = null
       }
-      onCanceled: finish()
+      onCanceled: {
+        var action = onNo
+        finish()
+        if (typeof action === "function") action()
+      }
       onConfirmed: {
         var action = onYes
         finish()
         if (typeof action === "function") action()
+      }
+      Timer {
+        interval: 1000
+        repeat: true
+        running: confirmDialog.opened && confirmDialog.countdown > 0
+        onTriggered: {
+          confirmDialog.countdown -= 1
+          if (confirmDialog.countdown <= 0) confirmDialog.canceled()
+          else if (confirmDialog.messageFor) confirmDialog.message = confirmDialog.messageFor(confirmDialog.countdown)
+        }
       }
     }
   }

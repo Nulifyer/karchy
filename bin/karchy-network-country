@@ -47,8 +47,13 @@ status() {
   local now set tz
   now=$(effective) set=$(override) tz=$(from_timezone)
   if [[ ${1:-} == "--json" ]]; then
-    jq -n --arg now "$now" --arg nowName "$(name_of "$now")" --arg set "$set" \
+    # Whether this machine has a Wi-Fi radio at all, for Settings to leave
+    # the country out where it means nothing.
+    local wifi=false
+    compgen -G "/sys/class/ieee80211/*" >/dev/null && wifi=true
+    jq -n --arg now "$now" --arg nowName "$(name_of "$now")" --arg set "$set" --argjson wifi "$wifi" \
       --arg tz "$tz" --arg tzName "$(name_of "$tz")" --rawfile countries "$COUNTRIES" '{
+        wifi: $wifi,
         effective: (if $now == "" or $now == "00" then null else {code: $now, name: $nowName} end),
         override: (if $set == "" then null else $set end),
         timezone: (if $tz == "" then null else {code: $tz, name: $tzName} end),

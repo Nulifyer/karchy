@@ -424,6 +424,30 @@ QtObject {
     if (config.disabledPlugins.length === 0) delete config.disabledPlugins
   }
 
+  // A bar widget switched off keeps its place and options in
+  // bar.removedWidgets, so switching it on again puts it back there rather
+  // than at its section's default spot.
+  function rememberRemovedWidget(config, id, location) {
+    if (!Util.isPlainObject(config.bar.removedWidgets)) config.bar.removedWidgets = {}
+    config.bar.removedWidgets[id] = {
+      section: location.section,
+      index: location.index,
+      entry: Util.cloneJson(config.bar.layout[location.section][location.index])
+    }
+  }
+
+  function restoreRemovedWidget(config, id) {
+    var removed = Util.isPlainObject(config.bar.removedWidgets) ? config.bar.removedWidgets[id] : null
+    if (!removed || Util.barSections.indexOf(String(removed.section)) === -1) return false
+    var list = config.bar.layout[removed.section]
+    var index = Math.min(Math.max(0, Math.floor(Number(removed.index) || 0)), list.length)
+    var entry = Util.isPlainObject(removed.entry) || typeof removed.entry === "string" ? removed.entry : { id: id }
+    list.splice(index, 0, entry)
+    delete config.bar.removedWidgets[id]
+    if (Object.keys(config.bar.removedWidgets).length === 0) delete config.bar.removedWidgets
+    return true
+  }
+
   function addDisabled(config, id) {
     if (isDisabled(config, id)) return
     if (!Array.isArray(config.disabledPlugins)) config.disabledPlugins = []
@@ -564,6 +588,8 @@ QtObject {
             var replacement = Util.isPlainObject(sourceEntry) ? Util.cloneJson(sourceEntry) : entry
             replacement.id = key
             config.bar.layout[sourceLocation.section][sourceLocation.index] = replacement
+          } else if (!(placement && Object.keys(placement).length) && restoreRemovedWidget(config, key)) {
+            // Back where it was when it was switched off, with its options.
           } else {
             var section = defaultBarWidgetSection(manifest)
             var target = barTarget(config, placement || {}, section, key)
@@ -585,7 +611,10 @@ QtObject {
       }
 
       if (clonedFrom) restoreCloneSource(config, key, clonedFrom)
-      else if (location.kind === "bar") config.bar.layout[location.section].splice(location.index, 1)
+      else if (location.kind === "bar") {
+        rememberRemovedWidget(config, key, location)
+        config.bar.layout[location.section].splice(location.index, 1)
+      }
       else if (location.kind === "plugin") config.plugins.splice(location.index, 1)
 
       // Dropping the layout entry is the whole story for a widget. Anything

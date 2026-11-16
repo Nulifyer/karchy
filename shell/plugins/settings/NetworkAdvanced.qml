@@ -25,7 +25,7 @@ ColumnLayout {
     if (!countryQuery.running) countryQuery.running = true
     if (!checkQuery.running) checkQuery.running = true
   }
-  function focusFirst() { countryBox.takeFocus() }
+  function focusFirst() { if (root.hasWifi) countryBox.takeFocus() }
 
   readonly property var countryOptions: {
     var auto = "Automatic, from the timezone" + (country.timezone ? ": " + country.timezone.name : "")
@@ -34,6 +34,8 @@ ColumnLayout {
     }))
   }
 
+  // No Wi-Fi radio, no country to choose (an unknown answer shows it).
+  readonly property bool hasWifi: country.wifi !== false
   readonly property string inForce: country.effective
     ? "In force now: " + country.effective.name + " (" + country.effective.code + ")"
     : "In force now: none, so Wi-Fi follows the strictest rules (no 6 GHz)"
@@ -71,9 +73,10 @@ ColumnLayout {
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
-    SettingsLabel { text: "Wi-Fi country" }
+    SettingsLabel { text: "Wi-Fi country"; visible: root.hasWifi }
     SearchableDropdown {
       id: countryBox
+      visible: root.hasWifi
       Layout.fillWidth: true
       showLabel: false
       enabled: !countryAct.running
@@ -92,6 +95,7 @@ ColumnLayout {
   Timer { id: countryLater; interval: 1500; onTriggered: root.refresh() }
 
   Text {
+    visible: root.hasWifi
     Layout.fillWidth: true
     wrapMode: Text.Wrap
     textFormat: Text.PlainText

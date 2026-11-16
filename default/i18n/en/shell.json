@@ -179,7 +179,7 @@
   "clock.nextMonth": "Next month",
   "clock.previousMonth": "Previous month",
   "clock.startWeeksOn": "Start weeks on %1",
-  "clock.toggleFormat": "Right-click to toggle format",
+  "clock.toggleFormat": "Right-click for the next clock format",
   "clock.weekShort": "W",
   "clock.year": "year",
   "common.apply": "Apply",

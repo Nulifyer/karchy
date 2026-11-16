@@ -42,11 +42,10 @@ BarWidget {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
+  // The same command as the mic-mute key, so a click also shows the OSD and
+  // drives the laptop's mic-mute LED.
   function toggleMute() {
-    if (viaWpctl) {
-      if (UntypedInput.known) UntypedInput.setMuted(!UntypedInput.muted)
-    }
-    else if (source && source.audio) source.audio.muted = !source.audio.muted
+    Quickshell.execDetached(["karchy-audio-input-mute"])
   }
 
   PwObjectTracker { objects: root.source ? [root.source] : [] }

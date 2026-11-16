@@ -48,8 +48,7 @@ ColumnLayout {
       "printf 'Processor\\t%s\\n' \"$(sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo | head -n1)\"",
       "printf 'Memory\\t%s\\n' \"$(free -h --si | awk '/^Mem:/ { print $2 }')\"",
       "printf 'Graphics\\t%s\\n' \"$(lspci 2>/dev/null | sed -n 's/.*\\(VGA\\|3D\\)[^:]*: //p' | head -n1)\"",
-      "printf 'karchy\\t%s\\n' \"$(sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null)\"",
-      "pacman -Q karchy-settings karchy-themes karchy-desktop karchy-hyprland-titlebars 2>/dev/null | tr ' ' '\\t'"
+      "printf 'karchy\\t%s\\n' \"$(v=$(sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null); echo \"${v:-unknown version}\")\""
     ].join("; ")]
     stdout: StdioCollector {
       waitForEnd: true
@@ -129,7 +128,7 @@ ColumnLayout {
   Button {
     focusable: true
     variant: "primary"
-    text: "Update karchy and the system…"
+    text: "Update System…"
     onClicked: {
       // Detached: the update restarts the shell, which ends its own child processes.
       Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-update"])

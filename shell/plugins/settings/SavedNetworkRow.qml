@@ -239,7 +239,7 @@ ColumnLayout {
     Toggle {
       Layout.fillWidth: true
       label: "Connect automatically"
-      description: "Joins this network whenever it's in range."
+      description: root.wifi ? "Joins this network whenever it's in range." : "Connects whenever the cable is plugged in."
       checked: !!root.profile.autoconnect
       busy: act.running && act.tag === "autoconnect"
       onClicked: { act.tag = "autoconnect"; root.set(["autoconnect", checked ? "no" : "yes"]) }
