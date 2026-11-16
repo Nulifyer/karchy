@@ -1,0 +1,265 @@
+#!/bin/bash
+
+# Build the karchy ISO: archiso's releng profile with karchy's installer on
+# it, started on tty1 (docs/installing.md › The karchy ISO).
+#
+# Usage:
+#   packaging/iso/build [--out DIR] [--work DIR]   as root on Arch, with archiso
+#   packaging/iso/build --vm [NAME] [--out DIR]    as a normal user: builds in
+#                                                  the tools/vm VM NAME
+#
+#   --out DIR    where the ISO goes (default: out/iso in this checkout)
+#   --work DIR   mkarchiso's scratch space, about 4 GiB (default:
+#                /var/tmp/karchy-iso); removed after a good build
+#   --vm [NAME]  build inside a libvirt VM from tools/vm (default name
+#                isobuild; created with a 20 GiB disk when missing), booted
+#                from the stock Arch ISO (tools/vm fetch). Its disk keeps an
+#                Arch build root with archiso and the package cache, so later
+#                builds only update it. The ISO comes back to the host over
+#                HTTP on the host's loopback (10.0.2.2:8091 in the guest).
+#
+# The ISO carries the working tree's installer (uncommitted changes
+# included, as packaging/build packages them): install/, bin/, system/ and
+# packaging/keyring/, in /usr/share/karchy-installer. karchy's packages still
+# come from the [karchy] repository of the channel picked in the form.
+
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+PROFILE_SRC="$ROOT/packaging/iso"
+RELENG=/usr/share/archiso/configs/releng
+# The installer reads these through $KARCHY_SRC (install/karchy-install).
+INSTALLER_PATHS=(install bin system packaging/keyring logo.txt LICENSE)
+
+out="$ROOT/out/iso"
+work=/var/tmp/karchy-iso
+vm=""
+
+die() {
+  echo "iso: $*" >&2
+  exit 1
+}
+
+info() {
+  echo "iso: $*"
+}
+
+usage() {
+  awk 'NR > 2 && /^#/ { sub(/^# ?/, ""); print; next } NR > 2 { exit }' "${BASH_SOURCE[0]}"
+}
+
+while (($#)); do
+  case "$1" in
+    --out)
+      out=$(realpath -m "${2:?--out needs a directory}")
+      shift
+      ;;
+    --work)
+      work=$(realpath -m "${2:?--work needs a directory}")
+      shift
+      ;;
+    --vm)
+      vm=isobuild
+      if [[ ${2:-} =~ ^[A-Za-z0-9_-]+$ ]]; then
+        vm=$2
+        shift
+      fi
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *) die "unknown option: $1 (see --help)" ;;
+  esac
+  shift
+done
+
+# The installer version the ISO carries, for /usr/share/karchy-installer/release.
+source_version() {
+  local version
+  version=$(git -C "$ROOT" describe --tags --always --dirty 2>/dev/null) || version=unknown
+  printf '%s\n' "$version"
+}
+
+# ---- Build (as root, on Arch) ----
+
+build_iso() {
+  ((EUID == 0)) || die "mkarchiso needs root; run this as root on Arch, or use --vm"
+  command -v mkarchiso >/dev/null || die "missing mkarchiso (pacman -S archiso)"
+  [[ -d $RELENG ]] || die "missing $RELENG (pacman -S archiso)"
+
+  local profile="$work/profile" installer path
+  rm -rf "$work"
+  mkdir -p "$work" "$out"
+
+  # releng, then karchy's files over it.
+  cp -a "$RELENG" "$profile"
+  cp -a "$PROFILE_SRC/airootfs/." "$profile/airootfs/"
+  grep -vE '^\s*(#|$)' "$PROFILE_SRC/packages.x86_64" >>"$profile/packages.x86_64"
+  cat "$PROFILE_SRC/profiledef.sh" >>"$profile/profiledef.sh"
+  # shellcheck disable=SC2016  # for zsh, at login
+  printf '\n# karchy: start the installer on the first console, once per boot.\n[[ $(tty) == /dev/tty1 ]] && /usr/local/bin/karchy-iso-start\n' \
+    >>"$profile/airootfs/root/.zlogin"
+  # Name the boot menu entries after karchy.
+  grep -rlZ 'Arch Linux install medium' "$profile/efiboot" "$profile/grub" "$profile/syslinux" |
+    xargs -0 sed -i 's/Arch Linux install medium/karchy install medium/g'
+  sed -i 's/^MENU TITLE Arch Linux$/MENU TITLE karchy/' "$profile/syslinux/archiso_head.cfg"
+
+  # The installer, as it runs from a checkout.
+  installer="$profile/airootfs/usr/share/karchy-installer"
+  mkdir -p "$installer"
+  for path in "${INSTALLER_PATHS[@]}"; do
+    mkdir -p "$installer/$(dirname "$path")"
+    cp -a "$ROOT/$path" "$installer/$path"
+  done
+  find "$installer" \( -name __pycache__ -o -name '*.local.conf' -o -name install.conf \) -prune -exec rm -rf {} +
+  printf 'version=%s\nbuilt=%s\n' "${KARCHY_ISO_VERSION:-$(source_version)}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    >"$installer/release"
+  # mkarchiso copies airootfs without modes; list each executable.
+  {
+    echo
+    echo "# The installer's executables (packaging/iso/build)."
+    find "$installer" -type f -perm -u+x -printf '%P\n' | sort |
+      awk '{ printf "file_permissions[\"/usr/share/karchy-installer/%s\"]=\"0:0:755\"\n", $0 }'
+  } >>"$profile/profiledef.sh"
+
+  # karchy's signing key in the live system's keyring: pacman-init's
+  # `pacman-key --populate` reads every keyring here, as karchy-keyring's
+  # files do on an installed system.
+  install -Dm644 -t "$profile/airootfs/usr/share/pacman/keyrings" \
+    "$ROOT/packaging/keyring/karchy.gpg" "$ROOT/packaging/keyring/karchy-trusted"
+  install -Dm644 "$ROOT/packaging/keyring/karchy-revoked" "$profile/airootfs/usr/share/pacman/keyrings/karchy-revoked"
+
+  mkarchiso -v -r -w "$work/mkarchiso" -o "$out" "$profile"
+  rm -rf "$work"
+  local iso
+  iso=$(find "$out" -maxdepth 1 -name 'karchy-*.iso' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2-)
+  (cd "$out" && sha256sum "$(basename "$iso")" >"$(basename "$iso").sha256")
+  info "built $iso"
+}
+
+# ---- Build in a tools/vm VM ----
+
+vm_tool() {
+  "$ROOT/tools/vm" --name "$vm" "$@"
+}
+
+# The guest side: a build root on the VM's disk, updated, then the build.
+# The checkout is the VM's read-only 9p share, mounted into the build root.
+guest_build_script() {
+  cat <<GUEST
+set -euo pipefail
+exec >>/var/log/karchy-iso-build.log 2>&1
+mount -o remount,size=75% /run/archiso/cowspace
+if ! mountpoint -q /work; then
+  [[ \$(blkid -o value -s LABEL /dev/vda 2>/dev/null) == karchy-isobuild ]] || mkfs.ext4 -q -L karchy-isobuild /dev/vda
+  mkdir -p /work
+  mount /dev/vda /work
+fi
+mkdir -p /work/pkg /work/root
+# arch-chroot and pacstrap want the build root to be a mount point.
+mountpoint -q /work/root || mount --bind /work/root /work/root
+mountpoint -q /var/cache/pacman/pkg || mount --bind /work/pkg /var/cache/pacman/pkg
+systemctl start pacman-init.service
+if [[ -x /work/root/usr/bin/mkarchiso ]]; then
+  arch-chroot /work/root pacman -Syu --noconfirm
+else
+  pacstrap -K -c /work/root base archiso
+fi
+mkdir -p /work/root/src
+if ! mountpoint -q /work/root/src; then
+  # The share mounts once; reuse a mount made by hand (docs/installing.md).
+  shared=\$(findmnt -rn -t 9p -S karchy -o TARGET | head -n 1 || true)
+  if [[ -n \$shared ]]; then
+    mount --bind -o ro "\$shared" /work/root/src
+  else
+    mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /work/root/src
+  fi
+fi
+rm -rf /work/root/var/tmp/karchy-iso-out
+KARCHY_ISO_VERSION=$(printf '%q' "$(source_version)") arch-chroot /work/root \
+  /src/packaging/iso/build --work /var/tmp/karchy-iso --out /var/tmp/karchy-iso-out
+GUEST
+}
+
+# Receive one HTTP PUT into a directory, on the host's loopback.
+receive_upload() {
+  exec python3 -I -c '
+import http.server, os, sys
+out = sys.argv[1]
+class Upload(http.server.BaseHTTPRequestHandler):
+    def do_PUT(self):
+        name = os.path.basename(self.path)
+        left = int(self.headers["Content-Length"])
+        with open(os.path.join(out, name + ".part"), "wb") as f:
+            while left > 0:
+                chunk = self.rfile.read(min(left, 1 << 20))
+                if not chunk:
+                    break
+                f.write(chunk)
+                left -= len(chunk)
+        if left:
+            self.send_response(400)
+        else:
+            os.replace(os.path.join(out, name + ".part"), os.path.join(out, name))
+            self.send_response(201)
+        self.end_headers()
+    def log_message(self, *args):
+        pass
+http.server.HTTPServer(("127.0.0.1", 8091), Upload).serve_forever()
+' "$1"
+}
+
+build_in_vm() {
+  ((EUID != 0)) || die "--vm runs as your user (tools/vm drives libvirt)"
+  local started=false status
+  status=$(vm_tool status)
+  if [[ $status == *$'\nfiles:    not created'* ]]; then
+    info "creating the build VM '$vm'"
+    vm_tool new --size 20G
+  fi
+  status=$(vm_tool status)
+  if [[ $status != *$'\nstate:    running'* ]]; then
+    vm_tool run --iso --headless
+    started=true
+  fi
+  info "waiting for the guest agent"
+  local i
+  for ((i = 0; i < 60; i++)); do
+    vm_tool exec true >/dev/null 2>&1 && break
+    sleep 5
+  done
+  vm_tool exec true >/dev/null || die "the guest agent of VM '$vm' did not answer"
+
+  info "building in VM '$vm' (log: /var/log/karchy-iso-build.log in the guest)"
+  if ! vm_tool exec "$(guest_build_script)"; then
+    vm_tool exec 'tail -n 40 /var/log/karchy-iso-build.log' || true
+    die "the build in VM '$vm' failed"
+  fi
+
+  mkdir -p "$out"
+  receive_upload "$out" &
+  RECEIVER=$!
+  trap 'kill "$RECEIVER" 2>/dev/null || true' EXIT
+  sleep 1
+  local iso
+  iso=$(vm_tool exec 'cd /work/root/var/tmp/karchy-iso-out && ls karchy-*.iso')
+  [[ -n $iso ]] || die "no ISO in the guest's /work/root/var/tmp/karchy-iso-out"
+  info "copying $iso to $out"
+  vm_tool exec "cd /work/root/var/tmp/karchy-iso-out && curl -fsS -T $iso.sha256 http://10.0.2.2:8091/$iso.sha256 && curl -fsS -T $iso http://10.0.2.2:8091/$iso"
+  kill "$RECEIVER" 2>/dev/null || true
+  (cd "$out" && sha256sum -c "$iso.sha256") || die "the copied ISO does not match the guest's checksum"
+  # Give the build's space back to the host; the build root and the package
+  # cache stay for the next build.
+  vm_tool exec 'rm -rf /work/root/var/tmp/karchy-iso-out && fstrim /work' || true
+  if [[ $started == "true" ]]; then
+    vm_tool stop || true
+  fi
+  info "built $out/$iso"
+}
+
+if [[ -n $vm ]]; then
+  build_in_vm
+else
+  build_iso
+fi

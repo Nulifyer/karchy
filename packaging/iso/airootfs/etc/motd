@@ -1,0 +1,7 @@
+This is the karchy install medium, built on the Arch Linux ISO.
+
+  karchy-install                 start the installer form again
+  karchy-install --config FILE   install unattended with answers from FILE
+                                 (docs/installing.md lists the KARCHY_* answers)
+
+For Wi-Fi, connect with iwctl first; wired networks connect by themselves.

@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# Start the karchy installer on the karchy ISO's first console, once per
+# boot (root's .zlogin runs this on tty1). Leaving the installer, by Esc or
+# Ctrl-C at a question, by finishing or by an error, leaves the root shell;
+# `karchy-install` starts it again.
+#
+# Boot parameter karchy.config=<file or http(s) URL>: an unattended install
+# with that answer file, as `karchy-install --config FILE`.
+
+set -uo pipefail
+
+marker=/run/karchy-iso-started
+[[ -e $marker ]] && exit 0
+: >"$marker"
+
+boot_param() {
+  local param
+  for param in $(</proc/cmdline); do
+    [[ $param == "$1="* ]] && { printf '%s\n' "${param#*=}"; return 0; }
+  done
+  return 1
+}
+
+# The check the installer's preflight makes.
+online() {
+  curl -fsS --max-time 5 -o /dev/null https://archlinux.org
+}
+
+# The installer needs the network for packages. Wired networks connect by
+# themselves, so wait a little before asking.
+wait_for_network() {
+  local i
+  echo "Waiting for the network..."
+  for ((i = 0; i < 15; i++)); do
+    online && return 0
+    sleep 2
+  done
+  while ! online; do
+    echo
+    echo "No network connection. Plug in a cable, or connect to Wi-Fi with iwctl:"
+    echo "  station wlan0 scan, station wlan0 get-networks, station wlan0 connect <name>, exit"
+    case "$(gum choose --header "The installer downloads karchy's packages." \
+      "Try again" "Connect to Wi-Fi (iwctl)" "Open a shell")" in
+      "Try again") ;;
+      "Connect to Wi-Fi (iwctl)") iwctl || true ;;
+      *) return 1 ;;
+    esac
+  done
+}
+
+clear
+cat /usr/share/karchy-installer/logo.txt 2>/dev/null
+echo
+echo "Esc or Ctrl-C at a question stops the installer and leaves a root shell;"
+echo "run karchy-install to start it again. Alt+F2 opens another console."
+echo
+
+# The live system's pacman keyring (karchy's key included) must be ready
+# before the installer adds keys to it.
+systemctl start pacman-init.service
+
+wait_for_network || { echo "Run karchy-install when the network is up."; exit 0; }
+
+args=()
+if config=$(boot_param karchy.config); then
+  file=$config
+  if [[ $config =~ ^https?:// ]]; then
+    file=/run/karchy-install.conf
+    (umask 077 && curl -fsSL --retry 5 -o "$file" "$config") ||
+      { echo "Could not download $config"; exit 0; }
+  fi
+  args=(--config "$file")
+  # Let mirror ranking (reflector) finish first; the form gives it time on
+  # an interactive install.
+  timeout 120 systemctl is-system-running --wait >/dev/null 2>&1 || true
+fi
+
+karchy-install "${args[@]}" || true

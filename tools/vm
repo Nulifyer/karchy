@@ -40,7 +40,9 @@
 #   mount -t 9p -o trans=virtio,version=9p2000.L,ro karchy /root/karchy
 # Guests use QEMU's user network, where 10.0.2.2 is the host's loopback, so
 # `repo` needs no firewall change. KARCHY_VM_GL=1 turns on 3D (virgl);
-# KARCHY_VM_CPUS and KARCHY_VM_MEMORY (GiB) size the VM.
+# KARCHY_VM_CPUS and KARCHY_VM_MEMORY (GiB) size the VM. KARCHY_VM_ISO=<file>
+# makes `run --iso` boot that ISO (a karchy ISO from packaging/iso/build)
+# instead of the fetched Arch ISO.
 #
 # Proxmox VE: --pve <ssh-target> (or KARCHY_VM_PVE=<ssh-target>) runs the
 # commands on a Proxmox host instead, for 3D tests on the host's real GPU
@@ -87,6 +89,8 @@ VM_ROOT=${KARCHY_VM_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/karchy-vm}
 ISO_DIR="$VM_ROOT/iso"
 ISO_MIRROR=${KARCHY_ISO_MIRROR:-https://geo.mirror.pkgbuild.com/iso/latest}
 ISO_NAME="archlinux-x86_64.iso"
+# What `run --iso` boots (libvirt only): the fetched Arch ISO, or another one.
+RUN_ISO=${KARCHY_VM_ISO:-$ISO_DIR/$ISO_NAME}
 OVMF_DIR=/usr/share/edk2/x64
 ARCH_KEYRING=/usr/share/pacman/keyrings/archlinux.gpg
 LIBVIRT_URI=${KARCHY_VM_URI:-qemu:///system}
@@ -377,7 +381,8 @@ cmd_run() {
   need virsh
   require_vm
   require_stopped
-  [[ $with_iso == "false" || -r "$ISO_DIR/$ISO_NAME" ]] || die "no ISO; run: tools/vm fetch"
+  [[ $with_iso == "false" || -r $RUN_ISO ]] || die "no ISO at $RUN_ISO; run: tools/vm fetch"
+  [[ $with_iso == "false" ]] || RUN_ISO=$(realpath "$RUN_ISO")
   # Define it once; after that the domain is yours to change in virt-manager
   # (memory, extra disks…), and a run never rewrites it.
   if domain_defined; then
@@ -386,6 +391,7 @@ cmd_run() {
   else
     define_domain
   fi
+  [[ $with_iso == "false" ]] || grant_qemu_access r "$RUN_ISO"
 
   # The CD drive boots first and is saved empty, so a start from anywhere,
   # virt-manager included, boots the disk. --iso loads the ISO for this boot
@@ -393,7 +399,7 @@ cmd_run() {
   # out, while the running VM keeps it until it powers off.
   info "booting $(domain) (iso=$with_iso)"
   if [[ $with_iso == "true" ]]; then
-    virsh_ change-media "$(domain)" sda "$ISO_DIR/$ISO_NAME" --update --config >/dev/null
+    virsh_ change-media "$(domain)" sda "$RUN_ISO" --update --config >/dev/null
     virsh_ start "$(domain)" >/dev/null
     virsh_ change-media "$(domain)" sda --eject --config >/dev/null
   else
