@@ -1,31 +1,19 @@
 # Project status
 
-Updated: 2026-11-16
-State: phase 1 done in the VM (evidence not filed); phase 2 nearly done: everything buildable without the user's decisions or real hardware is built and checked
+Updated: 2026-11-17
+State: phase 2 done in VMs; `v0.1.0-rc.5` released with its ISO; what remains needs real hardware (phases 4–5) or the user's decisions
 
 ## Project state
 
-On `main` (merged PRs #1–#6):
-- the architecture
-- `tools/vm`
-- `tools/vendor-sync` and Omarchy v4.5.0 vendored
-- the installer (disk and base system, `[cachyos]` first per D-45)
-- `.gitattributes` and `.gitignore`
+On `main`: PRs #1–#14. Releases `v0.1.0-rc.1` to `-rc.5` on GitHub, each published by the release workflow in the build container (D-80) and signed; channel repositories `repo-rc` and `repo-nightly` are pre-releases, so they never show as Latest.
 
-The base install is verified in a QEMU VM: Limine, the LUKS prompt, login, linux-cachyos 7.3.3, the swap file with zswap, `/tmp` sized to RAM, snapshots appearing in the boot menu, and CachyOS's `pacman`.
+The rc.5 page (https://github.com/Nulifyer/karchy/releases/tag/v0.1.0-rc.5) carries the install and update steps, hand-written highlights, and the ISO with its checksum. Every `v*` tag now does the same by itself (PR #11): `.github/release-notes.md` fills the page, `.github/workflows/iso.yml` builds and attaches the ISO and removes the "still being built" line. `iso.yml` also runs by hand for an existing tag, using that tag's scripts (so tags before rc.5 can't build an ISO). rc.4's page points to rc.5.
+
+Verified in VMs: installs from GitHub on the rc channel, updates rc.1 → rc.4, the Updates window, and the rc.5 ISO from CI (checksum OK, boots to the installer; release file `version=v0.1.0-rc.5`, `builder=localhost/karchy-build:908342b4bcef`). Nothing yet on real hardware (`.agents/TESTING.md`).
 
 ## Current batch
 
-Uncommitted in the checkout on branch `desktop-setup`:
-- Desktop setup: `karchy/hypr/`, `karchy/shell.json`, `default/karchy/karchy-menu.jsonc`, `themes/nulifyer`, `config/` starter files, `system/` files.
-- Ownership: full rebrand (D-47, `tools/rebrand`), trims (D-48, `docs/ownership-audit.md`), English only (D-49), `vendor/upstream.tsv` for the future review helper (D-46).
-- Package model: the installer installs karchy's packages instead of cloning a checkout (`install/base.sh`, `install/setup.sh`); `karchy-settings` is pacstrapped with the base so `/etc/skel` and the system drop-ins exist before the user. `install/packages/desktop.txt` is gone: its contents are the `karchy` and `karchy-desktop` depends.
-- `LICENSE`: karchy is MIT (user decision 2026-11-14), with Omarchy's copyright line kept in it (MIT's one condition) instead of a separate NOTICE.
-- Fixes found in the VM: the Wi-Fi QR panel and `karchy-network-password` restored (kept in the audit but never brought over); `install/helpers/as-root.sh` restored; the browser-theme sudo rule; theme-set dereferences links so nulifyer's wallpapers show; the shell's default-config path; foot's Shift+Insert conflict; the router's descriptions for dropped groups; `tools/vm key`.
-- `tools/vm` now runs VMs as libvirt domains (`karchy-<vm>` on `qemu:///system`) so they show in virt-manager; `run` opens the console there. Checked: boot from disk and from the ISO, screenshot, type, key, 9p share, the guest reaching `tools/vm repo` at 10.0.2.2, snapshots after shutdown. Not yet checked: the virt-manager window itself, `--secureboot`, `--tpm`.
-- Docs updated for the package model: `AGENTS.md`, `docs/architecture.md`, `docs/installing.md`, `.agents/TESTING.md`.
-
-- `packaging/`: PKGBUILDs for karchy, karchy-settings, karchy-themes, ttf-omarchy-icons, karchy-desktop, karchy-laptop, karchy-nvidia; `packaging/build` builds every package, versions only those whose content hash changed (D-53), runs repo-add into `out/repo` (ignored). The separate karchy-pkgs repo was folded in (D-51 revised).
+None: everything is merged.
 
 ## In progress
 
@@ -112,12 +100,16 @@ Phase 2, Settings window and display control (D-56). Owner: coordinating agent.
 
 - Updates window (D-81) 2026-11-16, checked in VM `fresh` (rc3, files copied into /usr/share/karchy, shell restarted): opens from `karchy updates` and Settings › About (Settings closes so the window isn't behind it); with a real pending update (karchy-settings downgraded to rc1) it showed Arch news first and the karchy card; with a fixture plan, the release card with Release notes, apps by name, system with Linux kernel and Mesa first marked Restart and Show all, AUR; up to date, the empty state and Check now only; the channel card offers rc and nightly with the stable note, and nightly asks before switching (canceled). Install closed the window and opened `karchy update` in the floating terminal, which updated and reloaded the desktop. Found on the way: the terminal's summary listed nothing when only karchy-settings changed (it looked for the `karchy` package alone), now "karchy: 1 package updated"; "0B to download" when everything is cached, now left out. The `fq` sysctl message during updates comes from pacman running the sysctl hook in its own network namespace, where the global default_qdisc doesn't exist; harmless.
 
+- 2026-11-17: the rc.5 release (above); web-app icons from the site, then Dashboard Icons, Google's favicon service dropped (D-82, PR #12); bees soak-tested on 7.x now instead of waiting for upstream (D-83, PR #14); from the dotfiles repo, karchy took the eza listings and the prompt's format, and fish's greeting is off (D-84, PR #13). Checked: the icon lookup against the live CDN; the prompt in each state locally and, with eza, in VM `fresh` (foot, nulifyer theme).
+
 ## Next action
 
 Owner: coordinating agent. Phase 2 work left that needs no decision: none of substance. What remains needs the user (below) or hardware (phase 4: suspend, hibernation resume, fingerprint, bees on AC/battery). After the user's resize check: if Hyprland doesn't follow the new preferred mode, add a watcher. Not yet done in the VM: booting a snapshot entry from the Limine menu under Secure Boot.
 
 ## Open work
 
+- Thunar's Keep This Mount / Remove Kept Mount (D-24) is not built.
+- Not yet checked in a VM: booting a snapshot under Secure Boot; `tools/vm --secureboot` and `--tpm`; display mirroring, FIDO2 with a real key, screen recording, a full snapshot restore.
 - The shell's plugin API still accepts the `karchy.nightlight` and `karchy.remote-session` service IDs; with those services gone the calls do nothing, and they stay in case a ported plugin uses them.
 - The first `karchy update` after an install asks to replace zlib with CachyOS's zlib-ng-compat (a `[cachyos]`-first effect, D-45); pacstrap could take CachyOS's replacements up front.
 
@@ -126,9 +118,8 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 - The Omarchy `etc/` tuning list in `docs/ownership-audit.md` (keep or skip each; recommendations given).
 - Try resizing the `karchy-disp` window in virt-manager (View › Scale Display › Auto resize VM with window) and say whether the desktop follows.
 
-- Publishing (D-61): signing key made 2026-11-14 (`70BC96FE…081A7977`), its secret and id set on GitHub at the user's request; backup on the NAS at `/mnt/truenas/homelab/backups/karchy/` (local copy removed). Left: commit and push, then tag the first release; the workflow's first run is its first real test.
-
-- The signing key for `[karchy]` and `karchy-keyring`. Until then only the VM test config can use the repo (`SigLevel = Optional TrustAll`); the installer's default is `Required`.
+- How the dotfiles user layer is set up on a karchy machine (open decision; recommended: you run `./dotfiles` yourself after installing). D-84 lists what karchy took from it.
+- Hardware: the checklist in `.agents/TESTING.md` › On the real machines, including the bees soak test (D-83); then tag stable `v0.1.0`.
 - Plugins port.
 - The narrow passwordless sudo rule for the browser theme color (`karchy-theme-browser`, Omarchy's rule) was added so theme switches don't ask for a password; the user may want to review it.
 
