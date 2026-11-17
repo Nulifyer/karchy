@@ -17,7 +17,6 @@ ColumnLayout {
 
   Component.onCompleted: {
     factsProc.running = true
-    channelProc.running = true
     rendererProc.running = true
   }
 
@@ -48,7 +47,9 @@ ColumnLayout {
       "printf 'Processor\\t%s\\n' \"$(sed -n 's/^model name[[:space:]]*: //p' /proc/cpuinfo | head -n1)\"",
       "printf 'Memory\\t%s\\n' \"$(free -h --si | awk '/^Mem:/ { print $2 }')\"",
       "printf 'Graphics\\t%s\\n' \"$(lspci 2>/dev/null | sed -n 's/.*\\(VGA\\|3D\\)[^:]*: //p' | head -n1)\"",
-      "printf 'karchy\\t%s\\n' \"$(v=$(sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null); echo \"${v:-unknown version}\")\""
+      "printf 'karchy\\t%s\\n' \"$(v=$(sed -n 's/^VERSION=//p' /usr/share/karchy/release 2>/dev/null); echo \"${v:-unknown version}\")\"",
+      // The release channel (D-61), changed in the Updates window.
+      "c=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n1); [ -n \"$c\" ] && printf 'Release channel\\t%s\\n' \"$c\"; true"
     ].join("; ")]
     stdout: StdioCollector {
       waitForEnd: true
@@ -59,17 +60,8 @@ ColumnLayout {
   }
 
 
-  // The release channel (D-61), from the [karchy] server file.
-  property string channel: ""
-  Process {
-    id: channelProc
-    command: ["bash", "-c", "sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1"]
-    stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.channel = text.trim() }
-  }
-
   PageHeader {
     title: "About"
-    explanation: "Release channels: stable gets releases; rc gets release candidates as well, a few days ahead; nightly gets every change to karchy's main branch, for testing. Only karchy's own parts follow the channel; Arch and AUR packages update as usual."
   }
 
   KeyValueGrid {
@@ -100,38 +92,15 @@ ColumnLayout {
     }
   }
 
-  RowLayout {
-    spacing: Style.spacing.xxl
-    SettingsLabel { text: "Release channel" }
-    ButtonGroup {
-      options: ["stable", "rc", "nightly"]
-      value: root.channel
-      // Switching installs that channel's karchy packages (older ones too, when
-      // leaving nightly), in a terminal so the password prompt and progress
-      // show. It changes what is installed, so it asks first; until then the
-      // group keeps showing the channel in use.
-      onChanged: function(value) {
-        if (value === root.channel || !root.settings) return
-        var leavingNightly = root.channel === "nightly"
-        root.settings.ask("Switch karchy to the " + value + " channel? Its packages are installed now"
-          + (leavingNightly ? ", replacing newer nightly ones with older releases." : ".")
-          + " The shell restarts when it's done.", "Switch to " + value, function() {
-            // Detached: the switch restarts the shell, which ends its own child processes.
-            Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-channel", "set", value])
-          }, false)
-        // The group keeps showing the channel in use: it changes once the
-        // switch succeeds, and the shell restarts then.
-      }
-    }
-  }
-
   Button {
     focusable: true
     variant: "primary"
-    text: "Update System…"
+    text: "Updates and Channel…"
+    // The Updates window: what's waiting, Install, and the release channel.
+    // Settings floats above it, so Settings steps aside.
     onClicked: {
-      // Detached: the update restarts the shell, which ends its own child processes.
-      Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-update"])
+      Quickshell.execDetached(["karchy-updates"])
+      if (root.settings) root.settings.close()
     }
   }
 }

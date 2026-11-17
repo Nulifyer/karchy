@@ -1,0 +1,454 @@
+import Quickshell
+import Quickshell.Hyprland
+import Quickshell.Io
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import qs.Commons
+import qs.Commons as Commons
+import qs.Ui
+import "Model.js" as Model
+
+// The Updates window: what `karchy update` would install, read before it
+// runs, and the release channel. Opened by the bar's updates indicator, the
+// menu (Update › Update System), Settings › About and `karchy updates`.
+//
+// It checks with `karchy-update --plan` (no root, nothing installed) when it
+// opens and on Check now (F5). Install runs `karchy update` in the floating
+// terminal, which keeps the password prompt, AUR build review, config merges
+// and the restart question where they work today; the window closes then.
+// Switching channel runs `karchy channel set` the same way, after asking.
+//
+// Page: a PageHeader with the release, channel and check time, Check now and
+// the one primary action; then Arch news (read before updating), karchy,
+// apps, system components (the ones that need a restart first) and AUR
+// packages, each a Card; the channel last.
+Item {
+  id: root
+
+  property var shell: null
+  property var manifest: null
+  property bool opened: false
+
+  property var plan: null
+  property bool checking: false
+  property double now: Date.now()
+  // Channels with a release, from `karchy channel available`.
+  property var channels: []
+  property bool showAllSystem: false
+  // System rows shown before "Show all".
+  readonly property int systemShown: 8
+  property var pendingConfirm: null
+
+  readonly property string channel: plan && plan.channel ? plan.channel : ""
+  readonly property bool hasError: plan !== null && !!plan.error
+  readonly property int total: Model.count(plan)
+  readonly property var karchyChanges: Model.ofKind(plan, "karchy")
+  readonly property var appChanges: Model.apps(plan)
+  readonly property var systemChanges: Model.system(plan)
+  readonly property var aurChanges: Model.ofKind(plan, "aur")
+  readonly property var restartParts: Model.restartParts(plan)
+
+  function open(payloadJson) {
+    root.opened = true
+    root.showAllSystem = false
+    // A check a minute old is still the answer; otherwise check again.
+    if (!root.plan || root.hasError || Date.now() - Date.parse(root.plan.checked || "") > 60000) root.check()
+    if (root.channels.length === 0) channelsProc.running = true
+  }
+
+  function close() {
+    // shell.hide() calls back into close(); stop the second time round.
+    if (!root.opened) return
+    root.opened = false
+    root.pendingConfirm = null
+    if (root.shell && root.manifest) root.shell.hide(root.manifest.id)
+  }
+
+  function check() {
+    if (planProc.running) return
+    root.checking = true
+    planProc.running = true
+  }
+
+  function install() {
+    if (root.total === 0) return
+    // Detached: the update reloads the shell, which ends its own children.
+    Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-update"])
+    root.close()
+  }
+
+  function askSwitch(to) {
+    if (to === root.channel) return
+    root.pendingConfirm = {
+      message: Model.switchMessage(root.channel, to),
+      confirmText: "Switch to " + to,
+      channel: to
+    }
+  }
+
+  Process {
+    id: planProc
+    command: ["karchy-update", "--plan"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.plan = Model.parse(text)
+        root.checking = false
+        root.now = Date.now()
+      }
+    }
+    onExited: function(code) {
+      if (code !== 0 && root.checking) {
+        root.plan = { error: "The update check stopped before it finished.", changes: [], news: [], release: {} }
+        root.checking = false
+      }
+    }
+  }
+
+  Process {
+    id: channelsProc
+    command: ["karchy-channel", "available"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.channels = text.split("\n").filter(function(c) { return c !== "" })
+    }
+  }
+
+  // "Checked 5 min ago" stays true while the window is open.
+  Timer {
+    interval: 30000
+    repeat: true
+    running: root.opened
+    onTriggered: root.now = Date.now()
+  }
+
+  // One row of a list: the name (and, quieter, the package behind a friendly
+  // name), then old → new (or `detail`, such as a news post's date), and a
+  // restart note.
+  component ChangeRow: RowLayout {
+    property string name: ""
+    property string secondary: ""
+    property string oldVersion: ""
+    property string newVersion: ""
+    property string detail: ""
+    property bool restart: false
+    Layout.fillWidth: true
+    spacing: Style.spacing.lg
+    Text {
+      id: nameText
+      text: parent.name
+      color: Commons.Color.foreground
+      font.family: Style.font.family
+      font.pixelSize: Style.font.body
+      elide: Text.ElideRight
+      // Long names (a news title) give way before the version column does.
+      Layout.maximumWidth: Math.round(parent.width * 0.65)
+    }
+    Text {
+      visible: parent.secondary !== ""
+      text: parent.secondary
+      color: Commons.Color.textSecondary
+      font.family: Style.font.family
+      font.pixelSize: Style.font.body
+      elide: Text.ElideRight
+    }
+    Item { Layout.fillWidth: true }
+    Text {
+      visible: parent.restart
+      text: "Restart"
+      color: Commons.Color.status.warning
+      font.family: Style.font.family
+      font.pixelSize: Style.font.caption
+      font.bold: true
+    }
+    Text {
+      text: parent.detail !== "" ? parent.detail
+        : (parent.oldVersion !== "" ? parent.oldVersion : "new") + "  →  " + parent.newVersion
+      color: Commons.Color.textSecondary
+      font.family: Style.font.family
+      font.pixelSize: Style.font.body
+      font.features: { "tnum": 1 }
+      Layout.maximumWidth: Style.space(320)
+      elide: Text.ElideMiddle
+    }
+  }
+
+  FloatingWindow {
+    id: window
+    visible: root.opened
+    title: "Updates"
+    color: Commons.Color.background
+    readonly property var fitScreen: Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
+      ? Hyprland.focusedMonitor.lastIpcObject : null
+    readonly property real screenWidth: fitScreen ? fitScreen.width / fitScreen.scale : 1280
+    readonly property real screenHeight: fitScreen ? fitScreen.height / fitScreen.scale : 800
+    implicitWidth: Math.round(Math.min(Style.space(760), screenWidth * 0.85))
+    implicitHeight: Math.round(Math.min(Style.space(640), screenHeight * 0.85))
+
+    onVisibleChanged: {
+      if (!visible && root.opened) root.close()
+      if (visible) Qt.callLater(function() { (primaryButton.visible ? primaryButton : checkButton).forceActiveFocus() })
+    }
+
+    Shortcut {
+      sequence: "F5"
+      enabled: root.opened && !confirmDialog.opened
+      onActivated: root.check()
+    }
+
+    ColumnLayout {
+      id: frame
+      anchors.fill: parent
+      spacing: 0
+      Keys.onEscapePressed: root.close()
+
+      // The header stays put while the lists scroll: the action is always in reach.
+      PageHeader {
+        Layout.fillWidth: true
+        Layout.leftMargin: Style.spacing.panelPadding * 2
+        Layout.rightMargin: Style.spacing.panelPadding * 2
+        Layout.topMargin: Style.spacing.panelPadding
+        Layout.bottomMargin: Style.spacing.lg
+        iconName: "update"
+        title: "Updates"
+        status: {
+          var parts = []
+          if (root.plan && root.plan.release.installed) parts.push("karchy " + root.plan.release.installed)
+          if (root.channel !== "") parts.push(root.channel + " channel")
+          if (root.checking) parts.push("checking…")
+          else if (root.plan && root.plan.checked) parts.push("checked " + Model.ago(root.plan.checked, root.now))
+          return parts.join(" · ")
+        }
+        explanation: "Install runs karchy update in a terminal: it asks for your password once, takes a snapshot before and after (both appear in the boot menu), lets you review AUR build files, and offers a restart when the kernel or drivers changed."
+
+        Button {
+          id: checkButton
+          focusable: true
+          text: "Check now"
+          tooltipText: "Check for updates again (F5)"
+          busy: root.checking
+          enabled: !root.checking
+          onClicked: root.check()
+        }
+        Button {
+          id: primaryButton
+          // Nothing to install: the page says so instead.
+          visible: root.total > 0
+          focusable: true
+          variant: "primary"
+          text: Model.installLabel(root.plan)
+          enabled: !root.checking
+          onClicked: root.install()
+        }
+      }
+
+      Flickable {
+        id: content
+        Layout.fillWidth: true
+        Layout.fillHeight: true
+        clip: true
+        contentWidth: width
+        contentHeight: page.implicitHeight + Style.spacing.panelPadding * 2
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+        ColumnLayout {
+          id: page
+          x: Style.spacing.panelPadding * 2
+          y: Style.spacing.lg
+          width: content.width - Style.spacing.panelPadding * 4
+          spacing: Style.spacing.xxl
+
+          InlineMessage {
+            Layout.fillWidth: true
+            kind: "error"
+            text: root.hasError ? root.plan.error : ""
+            details: root.hasError && root.plan.details ? root.plan.details : ""
+            actionText: "Try again"
+            onAction: root.check()
+          }
+
+          // First check, nothing to show yet.
+          EmptyState {
+            Layout.fillWidth: true
+            Layout.topMargin: Style.space(60)
+            visible: root.plan === null
+            centered: true
+            iconName: "update"
+            title: "Checking for updates"
+            body: "Reading karchy's, Arch's and CachyOS's repositories and the AUR."
+          }
+
+          EmptyState {
+            Layout.fillWidth: true
+            Layout.topMargin: Style.space(40)
+            visible: root.plan !== null && !root.hasError && root.total === 0
+            centered: true
+            iconName: "update"
+            title: "Everything is up to date"
+            body: root.plan && root.plan.checked ? "Checked " + Model.ago(root.plan.checked, root.now) + ". karchy checks by itself every 6 hours." : ""
+          }
+
+          // Arch's own announcements: some ask for a manual step before or
+          // after updating, so they come first.
+          Card {
+            Layout.fillWidth: true
+            visible: root.total > 0 && root.plan.news.length > 0
+            iconName: "info"
+            iconColor: Commons.Color.status.warning
+            title: "Arch news since your last update"
+            subtitle: "Read these before installing; some need a step by hand."
+            trailing: Button {
+              focusable: true
+              text: "Open Arch news"
+              onClicked: Quickshell.execDetached(["xdg-open", "https://archlinux.org/news/"])
+            }
+            Repeater {
+              model: root.plan ? root.plan.news : []
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData.title
+                detail: modelData.date
+              }
+            }
+          }
+
+          Card {
+            Layout.fillWidth: true
+            visible: root.karchyChanges.length > 0
+            iconName: "update.system"
+            title: root.plan && root.plan.release.available
+              ? "karchy " + root.plan.release.installed + " → " + root.plan.release.available
+              : "karchy"
+            subtitle: Model.plural(root.karchyChanges.length, "package", "packages")
+              + (root.plan && root.plan.release.available ? ": a new release" : ": updated parts of this release")
+            trailing: Button {
+              focusable: true
+              visible: !!(root.plan && root.plan.release.notes)
+              text: "Release notes"
+              onClicked: Quickshell.execDetached(["xdg-open", root.plan.release.notes])
+            }
+            Repeater {
+              model: root.karchyChanges
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData.name
+                oldVersion: modelData.old
+                newVersion: modelData.new
+              }
+            }
+          }
+
+          Card {
+            Layout.fillWidth: true
+            visible: root.appChanges.length > 0
+            title: "Apps"
+            subtitle: Model.plural(root.appChanges.length, "app", "apps")
+            Repeater {
+              model: root.appChanges
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData.app
+                oldVersion: modelData.old
+                newVersion: modelData.new
+              }
+            }
+          }
+
+          // Usually the longest list: the restart ones show, the rest one click away.
+          Card {
+            Layout.fillWidth: true
+            visible: root.systemChanges.length > 0
+            title: "System"
+            subtitle: Model.plural(root.systemChanges.length, "component", "components")
+              + (root.restartParts.length > 0 ? ". Restart afterwards: " + root.restartParts.join(", ") + "." : "")
+            trailing: Button {
+              focusable: true
+              visible: root.systemChanges.length > root.systemShown
+              text: root.showAllSystem ? "Show fewer" : "Show all " + root.systemChanges.length
+              onClicked: root.showAllSystem = !root.showAllSystem
+            }
+            Repeater {
+              model: root.showAllSystem ? root.systemChanges : root.systemChanges.slice(0, root.systemShown)
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData.label
+                secondary: modelData.label !== modelData.name ? modelData.name : ""
+                oldVersion: modelData.old
+                newVersion: modelData.new
+                restart: modelData.restart
+              }
+            }
+          }
+
+          Card {
+            Layout.fillWidth: true
+            visible: root.aurChanges.length > 0
+            title: "AUR"
+            subtitle: "Built on this computer. The terminal shows each package's build files to review first."
+            Repeater {
+              model: root.aurChanges
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData.name
+                oldVersion: modelData.old
+                newVersion: modelData.new
+              }
+            }
+          }
+
+          Text {
+            visible: root.total > 0 && !!(root.plan && root.plan.size)
+            text: root.plan && root.plan.size ? root.plan.size + " to download" : ""
+            color: Commons.Color.textSecondary
+            font.family: Style.font.family
+            font.pixelSize: Style.font.body
+          }
+
+          // Not on a dev checkout, which has no channel.
+          Card {
+            Layout.fillWidth: true
+            visible: root.channel !== ""
+            title: "Release channel"
+            subtitle: (Model.channelText[root.channel] || "") + ". Only karchy's own parts follow the channel; Arch, CachyOS and AUR packages update as usual."
+            ButtonGroup {
+              options: root.channels.length > 0 ? root.channels : [root.channel]
+              value: root.channel
+              // The group keeps showing the channel in use until a switch succeeds.
+              onChanged: function(value) { root.askSwitch(value) }
+            }
+            Text {
+              Layout.fillWidth: true
+              visible: root.channels.length > 0 && root.channels.indexOf("stable") < 0
+              text: "Stable appears here from karchy's first release."
+              color: Commons.Color.textSecondary
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              wrapMode: Text.WordWrap
+            }
+          }
+        }
+      }
+    }
+
+    ConfirmDialog {
+      id: confirmDialog
+      anchors.fill: parent
+      ownsKeys: true
+      destructive: false
+      opened: root.pendingConfirm !== null
+      message: root.pendingConfirm ? root.pendingConfirm.message : ""
+      confirmText: root.pendingConfirm ? root.pendingConfirm.confirmText : ""
+      onCanceled: root.pendingConfirm = null
+      onConfirmed: {
+        var to = root.pendingConfirm ? root.pendingConfirm.channel : ""
+        root.pendingConfirm = null
+        if (to === "") return
+        // Detached: the switch reloads the shell, which ends its own children.
+        Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-channel", "set", to])
+        root.close()
+      }
+    }
+  }
+}

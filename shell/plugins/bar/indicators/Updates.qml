@@ -5,7 +5,7 @@ import qs.Commons
 import qs.Ui
 
 // Shows while updates are waiting (karchy-update-check writes the state every
-// few hours); clicking runs karchy update in a floating terminal.
+// few hours); clicking opens the Updates window.
 BarIndicator {
   id: root
 
@@ -45,6 +45,6 @@ BarIndicator {
   }
 
   onPressed: function() {
-    Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-update"])
+    Quickshell.execDetached(["karchy-updates"])
   }
 }

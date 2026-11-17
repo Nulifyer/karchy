@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Show or change the karchy release channel: stable, rc or nightly (D-61)
-# karchy:args=[status | set <stable|rc|nightly>]
+# karchy:args=[status | available | set <stable|rc|nightly>]
 # karchy:examples=karchy channel | karchy channel set rc
 
 # karchy's own packages come from the [karchy] repository of one channel:
@@ -34,6 +34,19 @@ status() {
   version=$(release_field VERSION)
   echo "channel: ${channel:-unknown}"
   echo "release: ${version:-unknown} ($(release_field COMMIT))"
+}
+
+# The channels that have a release (a published repository database), one per
+# line in CHANNELS order; stable has none before karchy's first release.
+# Nothing when the repositories can't be reached.
+available() {
+  local base channel
+  base=$(sed -n 's|^Server *= *\(.*\)/repo-[a-z]*$|\1|p' "$SERVER_FILE" | head -n 1)
+  [[ -n $base ]] || return 0
+  for channel in $CHANNELS; do
+    curl -fsL --max-time 15 -o /dev/null "$base/repo-$channel/karchy.db" && echo "$channel"
+  done
+  return 0
 }
 
 # Root: point [karchy] at CHANNEL and sync karchy's packages to it.
@@ -84,6 +97,7 @@ apply() {
 
 case "${1:-status}" in
   status) status ;;
+  available) available ;;
   set)
     channel=${2:-}
     [[ " $CHANNELS " == *" $channel "* ]] || { echo "Usage: karchy-channel set <stable|rc|nightly>" >&2; exit 1; }
