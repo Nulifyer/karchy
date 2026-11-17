@@ -130,15 +130,18 @@ setup_user() {
 }
 
 # bees (D-39), chosen in the form: deduplicates the system's btrfs filesystem
-# in the background through the upstream beesd@ unit (idle CPU and I/O
-# priority). karchy-laptop holds it to AC power on laptops.
+# in the background through the beesd@ unit (idle CPU and I/O priority).
+# karchy-bees is karchy's fork (D-85). Its options: never rewrite snapper's
+# read-only snapshots, keep preallocated space, and log no file names.
+# karchy-laptop holds it to AC power on laptops.
 setup_bees() {
   [[ $KARCHY_BEES == "yes" ]] || return 0
   local uuid
   uuid=$(findmnt -no UUID "$KARCHY_MNT")
-  in_target pacman -S --needed --noconfirm bees
+  in_target pacman -S --needed --noconfirm karchy-bees
   install -d -m 0755 "$KARCHY_MNT/etc/bees"
-  printf '# bees for the system filesystem (D-39). DB_SIZE: hash table size in bytes.\nUUID=%s\nDB_SIZE=%s\n' \
-    "$uuid" "$((256 * 1024 * 1024))" >"$KARCHY_MNT/etc/bees/$uuid.conf"
+  printf '# bees for the system filesystem (D-39, D-85). DB_SIZE: hash table size in bytes.\nUUID=%s\nDB_SIZE=%s\nOPTIONS="%s"\n' \
+    "$uuid" "$((256 * 1024 * 1024))" "--strip-paths --verbose 5 --workaround-btrfs-send --keep-prealloc" \
+    >"$KARCHY_MNT/etc/bees/$uuid.conf"
   in_target systemctl enable "beesd@$uuid.service"
 }
