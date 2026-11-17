@@ -26,7 +26,7 @@ Layout revised 2026-11-15 from a menu audit (D-73): every row says what it does,
   - Keybindings: the keybinding viewer (Super+K) [O]
   - Config Files: Edit Hyprland Config, Edit Keybindings, Edit Input Config, opened in the editor; Settings has the same choices as controls [O]
 - **Update**
-  - Update System: `karchy update` [New]
+  - Update System: the Updates window (`karchy updates`; D-81) [New]
   - Update Firmware (fwupd) [O]
   - Restart: Restart Shell, Reload Hyprland, Restart Audio, Restart Wi-Fi, Restart Bluetooth (with an adapter), Restart Trackpad (with a touchpad) [O]
   - Passwords: Change User Password, Change Drive Password (LUKS) [O]

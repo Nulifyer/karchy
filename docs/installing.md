@@ -120,7 +120,7 @@ The session then runs the shell, Hyprland layer and commands from the checkout a
 
 ## Known limitations
 
-- There is no stable release yet, so the installer offers rc and nightly only. Install on rc, then switch to stable (Settings › About, or `karchy channel set stable`) once 0.1.0 is released.
+- There is no stable release yet, so the installer offers rc and nightly only. Install on rc, then switch to stable (in the Updates window, or `karchy channel set stable`) once 0.1.0 is released.
 - The ISO is built locally (`packaging/iso/build`), not downloaded.
 
 ## Secure Boot
@@ -136,7 +136,9 @@ If a firmware update clears the keys, the machine still boots, without Secure Bo
 
 ## Updates and release channels
 
-`karchy update` (or the bar's updates indicator, or Settings › About) updates everything in one pass: karchy's own packages from `[karchy]`, and Arch, CachyOS and AUR packages through paru, with snapper snapshots before and after. It then reloads the desktop and shows the karchy release change with a link to its release notes.
+`karchy update` updates everything in one pass: karchy's own packages from `[karchy]`, and Arch, CachyOS and AUR packages through paru, with snapper snapshots before and after. It then reloads the desktop and shows the karchy release change with a link to its release notes.
+
+The Updates window (the bar's updates indicator, Update › Update System in the menu, Settings › About, or `karchy updates`) shows what an update would install before it runs, with Arch's news since the last update first, and holds the release channel. Its Install button runs `karchy update` in a terminal.
 
 karchy's packages come from one release channel (D-61):
 
@@ -146,4 +148,4 @@ karchy's packages come from one release channel (D-61):
 | rc | release candidates (3.1.0-rc.1) as well as releases |
 | nightly | every change to karchy's main branch |
 
-Pick one in the installer, change it in Settings › About or with `karchy channel set <channel>`. Moving to an older channel (nightly back to stable) installs that channel's versions even though they are older. `karchy channel` shows the channel and the installed release.
+Pick one in the installer, change it in the Updates window or with `karchy channel set <channel>`. Moving to an older channel (nightly back to stable) installs that channel's versions even though they are older. `karchy channel` shows the channel and the installed release.
