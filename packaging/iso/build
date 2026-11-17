@@ -4,9 +4,11 @@
 # it, started on tty1 (docs/installing.md › The karchy ISO).
 #
 # Usage:
-#   packaging/iso/build [--out DIR] [--work DIR]
+#   packaging/iso/build [--out DIR] [--work DIR] [--version V]
 #
 #   --out DIR    where the ISO goes (default: out/iso in this checkout)
+#   --version V  name the ISO karchy-V-x86_64.iso (a release: 0.1.0-rc.4)
+#                instead of after the build date
 #   --work DIR   mkarchiso's scratch space, about 4 GiB (default:
 #                /var/tmp/karchy-iso in the build container)
 #
@@ -31,6 +33,7 @@ INSTALLER_PATHS=(install bin system packaging/keyring logo.txt LICENSE)
 
 out="$ROOT/out/iso"
 work=/var/tmp/karchy-iso
+version=""
 
 die() {
   echo "iso: $*" >&2
@@ -53,6 +56,11 @@ while (($#)); do
       ;;
     --work)
       work=$(realpath -m "${2:?--work needs a directory}")
+      shift
+      ;;
+    --version)
+      version=${2:?--version needs a version}
+      [[ $version =~ ^[0-9A-Za-z._-]+$ ]] || die "--version: letters, digits, '.', '_' and '-' only"
       shift
       ;;
     -h | --help)
@@ -84,6 +92,7 @@ build_iso() {
   cp -a "$PROFILE_SRC/airootfs/." "$profile/airootfs/"
   grep -vE '^\s*(#|$)' "$PROFILE_SRC/packages.x86_64" >>"$profile/packages.x86_64"
   cat "$PROFILE_SRC/profiledef.sh" >>"$profile/profiledef.sh"
+  [[ -z $version ]] || printf '\n# The release this ISO belongs to (--version).\niso_version="%s"\n' "$version" >>"$profile/profiledef.sh"
   # shellcheck disable=SC2016  # for zsh, at login
   printf '\n# karchy: start the installer on the first console, once per boot.\n[[ $(tty) == /dev/tty1 ]] && /usr/local/bin/karchy-iso-start\n' \
     >>"$profile/airootfs/root/.zlogin"
@@ -136,6 +145,6 @@ if [[ -z ${KARCHY_BUILD_ENV:-} ]]; then
     volumes+=(--volume "$work")
   fi
   exec "$ROOT/packaging/container/run" --iso "${volumes[@]}" -- \
-    "$ROOT/packaging/iso/build" --out "$out" --work "$work"
+    "$ROOT/packaging/iso/build" --out "$out" --work "$work" ${version:+--version "$version"}
 fi
 build_iso

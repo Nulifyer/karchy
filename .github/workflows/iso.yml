@@ -1,0 +1,60 @@
+# Build the karchy ISO of a release and attach it, with its checksum, to the
+# release's page: karchy-<version>-x86_64.iso and .sha256. The build runs in
+# karchy's build container (packaging/iso/build), as it does locally.
+#
+# release.yml calls this after a tag's release page exists. To build an
+# existing release's ISO again: Actions › iso › Run workflow, with its tag.
+
+name: iso
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, like v0.1.0-rc.4"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  iso:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag }}
+    steps:
+      - name: Check the tag
+        run: |
+          [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]] || { echo "not a release tag: $TAG" >&2; exit 1; }
+          gh release view "$TAG" >/dev/null
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      # Ubuntu's AppArmor stops unprivileged user namespaces, which rootless
+      # podman and mkarchiso's user-namespace mode both need.
+      - name: Allow user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: Build the ISO
+        run: packaging/iso/build --version "${TAG#v}"
+      - name: Attach it to the release
+        run: |
+          iso="out/iso/karchy-${TAG#v}-x86_64.iso"
+          (cd out/iso && sha256sum -c "${iso##*/}.sha256")
+          gh release upload "$TAG" "$iso" "$iso.sha256" --clobber
+      # The notes say the ISO is on its way until it is here.
+      - name: Drop the "still being built" line
+        run: |
+          gh release view "$TAG" --json body --jq .body >notes.md
+          if grep -q 'iso-pending' notes.md; then
+            grep -v 'iso-pending' notes.md | cat -s >notes-done.md
+            gh release edit "$TAG" --notes-file notes-done.md
+          fi

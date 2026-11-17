@@ -1,7 +1,8 @@
 # Build, sign and publish karchy's [karchy] pacman repositories (D-61).
 #
-#   tag vX.Y.Z         -> stable and rc, plus a GitHub release with notes
-#   tag vX.Y.Z-rc.N    -> rc, plus a pre-release with notes
+#   tag vX.Y.Z         -> stable and rc, plus a GitHub release with notes and
+#                         the ISO (iso.yml)
+#   tag vX.Y.Z-rc.N    -> rc, plus a pre-release with notes and the ISO
 #   push to main       -> nightly
 #   daily              -> each channel's native packages (the titlebars), so
 #                         they follow Arch's Hyprland updates
@@ -92,8 +93,26 @@ jobs:
     needs: [rc]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: .github }
+      # .github/release-notes.md (install and update steps for this version),
+      # then GitHub's list of changes. Highlights are added by hand.
       - name: Release notes
         run: |
-          prerelease=""
-          [[ $GITHUB_REF_NAME == *-rc.* ]] && prerelease=--prerelease
-          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes $prerelease --title "karchy ${GITHUB_REF_NAME#v}"
+          version=${GITHUB_REF_NAME#v} prerelease="" kind=release channel=stable
+          if [[ $GITHUB_REF_NAME == *-rc.* ]]; then
+            prerelease=--prerelease kind="release candidate" channel=rc
+          fi
+          sed -e "s/{{VERSION}}/$version/g" -e "s/{{TAG}}/$GITHUB_REF_NAME/g" \
+            -e "s/{{KIND}}/$kind/g" -e "s/{{CHANNEL}}/$channel/g" .github/release-notes.md >notes.md
+          gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file notes.md --generate-notes $prerelease \
+            --title "karchy ${GITHUB_REF_NAME#v}"
+
+  iso:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [notes]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/iso.yml
+    with:
+      tag: ${{ github.ref_name }}
