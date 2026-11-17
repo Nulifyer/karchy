@@ -84,13 +84,32 @@ require_http_url() {
   fi
 }
 
+# Dashboard Icons (github.com/homarr-labs/dashboard-icons), the curated set
+# Omarchy's web apps use: 256 px PNGs named by a slug. Try the app's name as a
+# slug, then without its dashes, then the site's domain name ("github" for
+# www.github.com).
+fetch_dashboard_icon() {
+  local name="$1" site_url="$2" dest="$3"
+  local host labels slug
+  host=$(sed -E 's|^https?://([^/:?#]+).*|\1|' <<<"${site_url,,}")
+  IFS=. read -ra labels <<<"$host"
+  local -a slugs=("$(safe_icon_name "$name")")
+  slugs+=("${slugs[0]//-/}")
+  [[ $host =~ [a-z] && ${#labels[@]} -ge 2 ]] && slugs+=("${labels[-2]}")
+  for slug in "${slugs[@]}"; do
+    [[ $slug =~ ^[a-z0-9][a-z0-9._-]*$ ]] || continue
+    download_icon "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/$slug.png" "$dest" && return 0
+  done
+  return 1
+}
+
 fetch_site_icon() {
-  local site_url="$1" dest="$2"
+  local site_url="$1" dest="$2" name="$3"
   local origin page icon_url
   origin=$(sed -E 's|^(https?://[^/]+).*|\1|' <<<"$site_url")
 
   # Prefer the site's own high-res icon (apple-touch-icon is typically 180px+),
-  # then the well-known path, then Google's favicon service as a last resort.
+  # then the well-known path, then Dashboard Icons by the app's name.
   page=$(curl -fsSL --max-time 5 "$site_url" 2>/dev/null | head -c 100000 | tr '\n' ' ')
   icon_url=$(grep -oiE "<link[^>]*rel=[\"'][^\"']*apple-touch-icon[^\"']*[\"'][^>]*>" <<<"$page" |
     grep -oiE "href=[\"'][^\"']+" | head -1 | sed -E "s/^href=[\"']//")
@@ -104,7 +123,7 @@ fetch_site_icon() {
 
   { [[ -n $icon_url ]] && download_icon "$icon_url" "$dest"; } ||
     download_icon "$origin/apple-touch-icon.png" "$dest" ||
-    download_icon "https://www.google.com/s2/favicons?domain=${site_url}&sz=256" "$dest"
+    fetch_dashboard_icon "$name" "$site_url" "$dest"
 }
 
 desktop_string_escape() {
@@ -182,7 +201,7 @@ if (( $# < 3 )); then
   ICON_VALUE=$(safe_icon_name "$APP_NAME")
   # A site that couldn't be reached has no icon to fetch either.
   [[ -n ${unreachable:-} ]] || echo "$(karchy-i18n webapp.fetchingIcon)"
-  if [[ -z ${unreachable:-} ]] && fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png"; then
+  if [[ -z ${unreachable:-} ]] && fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png" "$APP_NAME"; then
     gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" &>/dev/null || true
     ICON_REF="$ICON_VALUE"
   else
@@ -215,7 +234,7 @@ require_plain_name "$APP_NAME"
 if [[ -z $ICON_REF ]]; then
   ICON_VALUE=$(safe_icon_name "$APP_NAME")
   mkdir -p "$ICON_DIR"
-  if fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png"; then
+  if fetch_site_icon "$APP_URL" "$ICON_DIR/$ICON_VALUE.png" "$APP_NAME"; then
     gtk-update-icon-cache "$HOME/.local/share/icons/hicolor" &>/dev/null || true
   else
     echo "$(karchy-i18n webapp.iconNotFound)" >&2

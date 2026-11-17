@@ -369,7 +369,7 @@
   "webapp.changeAddress": "Change the address",
   "webapp.checkAddress": "Check the address and type it again.",
   "webapp.fetchingIcon": "Fetching the site's icon…",
-  "webapp.iconNotFound": "The site has no icon karchy could fetch.",
+  "webapp.iconNotFound": "Neither the site nor Dashboard Icons has an icon for it.",
   "webapp.iconPlaceholder": "Icon URL, image file or icon name; Enter for a generic icon",
   "webapp.intro": "Let's create a new web app you can start with the app launcher.",
   "webapp.makeAnyway": "Make the app anyway",

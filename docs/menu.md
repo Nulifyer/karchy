@@ -10,7 +10,7 @@ Layout revised 2026-11-15 from a menu audit (D-73): every row says what it does,
   - Install Package: fzf over repo packages, `pacman -Sii` preview, multi-select [O]
   - Install AUR Package: the same flow through paru [O]
   - Remove Package [O]
-  - Install Web App, Remove Web App (once one exists): fixed icons [O] + [New]
+  - Install Web App, Remove Web App (once one exists): icons from the site, then Dashboard Icons (D-82) [O] + [New]
 - **Record Screen:** Stop Recording while one runs; No Audio, Desktop Audio, Desktop + Microphone, Desktop + Microphone + Webcam (only when a webcam is present). Then pick a region, window or monitor [O] + [New]
 - **Appearance**
   - Theme: opens the picker [O]
