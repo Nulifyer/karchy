@@ -11,3 +11,19 @@ if test (id -u) -ne 0; and test -r /etc/karchy.conf
         fish_add_path --global --path $KARCHY_PATH/bin
     end
 end
+
+# No "Welcome to fish" greeting; a fish_greeting you set yourself still shows.
+set -q fish_greeting; or set -g fish_greeting ''
+
+# Listings with eza (a karchy-settings dependency): hidden files, folders
+# first, icons. `command ls` is the plain one.
+if status is-interactive; and type -q eza
+    alias ls='eza -al --color=always --group-directories-first --icons=always'
+    alias la='eza -a --color=always --group-directories-first --icons=always'
+    alias ll='eza -l --color=always --group-directories-first --icons=always'
+    alias lt='eza -aT --color=always --group-directories-first --icons=always'
+    alias tree='eza -aT --git-ignore --color=always --group-directories-first --icons=always'
+    function l. --description 'List hidden files'
+        eza -a | grep -e '^\.'
+    end
+end
