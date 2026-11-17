@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Preview and install all updates: karchy, system packages and AUR, with one password
-# karchy:args=[-y]
+# karchy:args=[-y | --plan]
 
 # karchy is delivered as pacman packages (D-51, D-61). An update:
 #   1. checks without root (a copy of pacman's databases, paru for AUR, the
@@ -22,15 +22,32 @@
 # and NO_COLOR turns them off. Holds /run/lock/karchy-update so mirror ranking
 # never runs alongside (D-29). In dev mode (/etc/karchy.conf) the checkout is
 # yours: pull it yourself.
+#
+# --plan runs step 1 only and prints what it found as JSON, for the Updates
+# window (shell plugin karchy.updates): the channel, the installed and
+# available karchy release, every change with its kind (karchy, app, system,
+# aur) and whether it needs a restart, the download size, and Arch news since
+# the last update. It installs nothing and takes no lock. When the
+# repositories can't be reached, the JSON's "error" says so.
 
 set -euo pipefail
 
 assume_yes=false
-[[ ${1:-} == "-y" ]] && assume_yes=true
+plan_only=false
+case ${1:-} in
+  -y) assume_yes=true ;;
+  --plan) plan_only=true ;;
+esac
 
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy"
 migrations_dir="$KARCHY_PATH/migrations"
 mkdir -p "$state_dir"
+
+# --plan: the JSON goes to the caller's stdout (fd 3); the terminal's report
+# goes nowhere.
+if [[ $plan_only == "true" ]]; then
+  exec 3>&1 1>/dev/null
+fi
 
 # ---------------------------------------------------------------- output style
 if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
@@ -51,11 +68,13 @@ trap 'fail "The update stopped: this step failed: $BASH_COMMAND. Fix the cause a
 # ---------------------------------------------------------------------- lock
 # /run/lock/karchy-update is created world-writable at boot (tmpfiles.d) and
 # shared with the weekly mirror ranking; the state-dir lock is a fallback.
-{ exec {lock_fd}>"/run/lock/karchy-update"; } 2>/dev/null || exec {lock_fd}>"$state_dir/update.lock"
-flock -n "$lock_fd" || {
-  fail "Another update is running."
-  exit 1
-}
+if [[ $plan_only != "true" ]]; then
+  { exec {lock_fd}>"/run/lock/karchy-update"; } 2>/dev/null || exec {lock_fd}>"$state_dir/update.lock"
+  flock -n "$lock_fd" || {
+    fail "Another update is running."
+    exit 1
+  }
+fi
 
 # A missing file (a dev checkout has no release file) reads as unknown.
 release_version() {
@@ -65,18 +84,67 @@ before=$(release_version)
 channel=$(sed -n 's/^# channel=//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1 || true)
 server=$(sed -n 's/^Server *= *//p' /etc/pacman.d/karchy-server 2>/dev/null | head -n 1 || true)
 
+# Releases and release candidates have notes on GitHub; nightly and dev
+# builds don't. 0.1.0rc3 -> .../releases/tag/v0.1.0-rc.3
+notes_url() {
+  local version=$1 tag
+  [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]] || return 0
+  tag="v${version%%rc*}"
+  [[ $version == *rc* ]] && tag+="-rc.${version##*rc}"
+  printf 'https://github.com/Nulifyer/karchy/releases/tag/%s\n' "$tag"
+}
+
+# --plan's output. Globals: before, latest, channel, size, changes (name, new,
+# old), news_tsv (date, title), and the classifiers below.
+emit_plan() {
+  local error=${1:-} items
+  items=$(
+    while IFS=$'\t' read -r name new old; do
+      [[ -n $name ]] || continue
+      local kind=system app="" restart=0
+      if [[ -n ${aur_names[$name]:-} ]]; then
+        kind=aur
+      elif is_karchy "$name"; then
+        kind=karchy
+      elif [[ -n ${app_name[$name]:-} ]]; then
+        kind=app app=${app_name[$name]}
+      fi
+      [[ $kind != aur && $name =~ $restart_pattern ]] && restart=1
+      printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$name" "$new" "$old" "$kind" "$app" "$restart" "$(friendly "$name")"
+    done <<<"${changes:-}" |
+      jq -Rn '[inputs | split("\t") | {name: .[0], new: .[1], old: .[2], kind: .[3], app: .[4],
+        restart: (.[5] == "1"), label: .[6]}]'
+  )
+  jq -n --arg channel "$channel" --arg installed "$before" --arg available "$latest" \
+    --arg notes "$(notes_url "$latest")" --arg size "${size:-}" --arg error "$error" \
+    --arg checked "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson changes "${items:-[]}" \
+    --argjson news "$(jq -Rn '[inputs | select(length > 0) | split("\t") | {date: .[0], title: .[1]}]' <<<"${news_tsv:-}")" \
+    '{checked: $checked, channel: $channel, release: {installed: $installed, available: $available, notes: $notes},
+      size: $size, error: $error, changes: $changes, news: $news,
+      restart: ($changes | any(.restart))}' >&3
+}
+
 printf '%skarchy update%s  %s%s, %s channel%s\n' "$bold" "$reset" "$dim" "${before:-unknown}" "${channel:-unknown}" "$reset"
 
 # ------------------------------------------------------------ 1. check, no root
 step 1 "Checking for updates"
 db="${TMPDIR:-/tmp}/karchy-update-db-$UID"
+# A plan reads its own copy, so it never races an update's.
+[[ $plan_only == "true" ]] && db+="-plan"
+latest="" size="" changes="" news_tsv=""
 rc=0
 repo_updates=$(CHECKUPDATES_DB="$db" checkupdates 2>/dev/null) || rc=$?
 if ((rc != 0 && rc != 2)); then
+  if [[ $plan_only == "true" ]]; then
+    emit_plan "Couldn't reach the package repositories. Check the network and try again."
+    exit 0
+  fi
   fail "Couldn't reach the package repositories. Check the network and try again."
   exit 1
 fi
 aur_updates=$(paru -Qua 2>/dev/null || true)
+declare -A aur_names=()
+while read -r name _; do [[ -n $name ]] && aur_names[$name]=1; done <<<"$aur_updates"
 
 latest=""
 if [[ -n $server ]] && remote=$(curl -fsSL --max-time 15 "$server/release" 2>/dev/null); then
@@ -85,6 +153,13 @@ if [[ -n $server ]] && remote=$(curl -fsSL --max-time 15 "$server/release" 2>/de
 fi
 
 if [[ -z $repo_updates && -z $aur_updates ]]; then
+  if [[ $plan_only == "true" ]]; then
+    is_karchy() { return 1; }
+    friendly() { echo "$1"; }
+    emit_plan
+    karchy-update-check --quiet >/dev/null 2>&1 || true
+    exit 0
+  fi
   good "Everything is up to date."
   karchy-update-check --quiet >/dev/null 2>&1 || true
   exit 0
@@ -98,7 +173,8 @@ size=""
 if [[ -n $repo_updates ]]; then
   plan=$(pacman -Sup --dbpath "$db" --logfile /dev/null --print-format '%n	%v	%s' 2>/dev/null || true)
   bytes=$(awk -F'\t' '{ s += $3 } END { print s + 0 }' <<<"$plan")
-  size=$(numfmt --to=iec --suffix=B "${bytes:-0}" 2>/dev/null || true)
+  # Nothing to say when everything is already in pacman's cache.
+  if ((bytes > 0)); then size=$(numfmt --to=iec --suffix=B "$bytes" 2>/dev/null || true); fi
 fi
 
 mapfile -t karchy_names < <(pacman -Slq karchy 2>/dev/null)
@@ -151,9 +227,13 @@ changes=$(
     while read -r name old _ new; do printf '%s\t%s\t%s\n' "$name" "$new" "$old"; done <<<"$aur_updates"
   fi
 )
+karchy_count=0
 while IFS=$'\t' read -r name new old; do
   [[ -n $name ]] || continue
-  is_karchy "$name" && continue
+  if is_karchy "$name"; then
+    karchy_count=$((karchy_count + 1))
+    continue
+  fi
   if [[ $name =~ $restart_pattern ]]; then
     needs_restart=true
     notable[$(friendly "$name")]=1
@@ -168,8 +248,9 @@ done <<<"$changes"
 show_summary() {
   if [[ -n $latest ]]; then
     printf '\n      %skarchy %s → %s%s\n' "$bold" "$before" "$latest" "$reset"
-  elif awk -F'\t' '{ print $1 }' <<<"$changes" | grep -qxF karchy; then
-    printf '\n      %skarchy%s updates\n' "$bold" "$reset"
+  elif ((karchy_count > 0)); then
+    # Parts of the installed release (karchy-settings, karchy-themes…).
+    printf '\n      %skarchy%s: %s updated\n' "$bold" "$reset" "$( ((karchy_count == 1)) && echo "1 package" || echo "$karchy_count packages")"
   fi
   if ((${#apps[@]} > 0)); then
     printf '\n      %sApps%s\n' "$bold" "$reset"
@@ -212,7 +293,8 @@ since=$(cat "$state_dir/last-update" 2>/dev/null || true)
 if [[ ! $since =~ ^[0-9]+$ ]]; then
   since=$(date -d "$(sed -n 's/^KARCHY_INSTALLED=//p' /etc/karchy/install.conf 2>/dev/null)" +%s 2>/dev/null || date -d '30 days ago' +%s)
 fi
-news=$(curl -fsSL --max-time 10 https://archlinux.org/feeds/news/ 2>/dev/null |
+# date<TAB>title, newest first.
+news_tsv=$(curl -fsSL --max-time 10 https://archlinux.org/feeds/news/ 2>/dev/null |
   awk 'BEGIN { RS = "<item>" } NR > 1 {
     t = $0; sub(/.*<title>/, "", t); sub(/<\/title>.*/, "", t)
     d = $0; sub(/.*<pubDate>/, "", d); sub(/<\/pubDate>.*/, "", d)
@@ -222,11 +304,15 @@ news=$(curl -fsSL --max-time 10 https://archlinux.org/feeds/news/ 2>/dev/null |
     ((when > since)) || continue
     title=${title//&amp;/&}; title=${title//&lt;/<}; title=${title//&gt;/>}
     title=${title//&quot;/\"}; title=${title//&#39;/\'}
-    printf '        %s  %s\n' "$(date -d "@$when" +%Y-%m-%d)" "$title"
+    printf '%s\t%s\n' "$(date -d "@$when" +%Y-%m-%d)" "$title"
   done) || true
-if [[ -n $news ]]; then
+if [[ $plan_only == "true" ]]; then
+  emit_plan
+  exit 0
+fi
+if [[ -n $news_tsv ]]; then
   printf '\n      %sArch news since your last update%s (read before updating: https://archlinux.org/news/)\n' "$yellow$bold" "$reset"
-  printf '%s\n' "$news"
+  while IFS=$'\t' read -r date title; do printf '        %s  %s\n' "$date" "$title"; done <<<"$news_tsv"
 fi
 
 # --------------------------------------------------- 2. approve, password once
@@ -350,12 +436,8 @@ echo
 printf '%s✓ Update complete%s\n' "$green$bold" "$reset"
 if [[ -n $after && $after != "$before" ]]; then
   printf '  karchy %s → %s\n' "$before" "$after"
-  # Releases and release candidates have notes; nightly and dev builds don't.
-  if [[ $after =~ ^[0-9]+\.[0-9]+\.[0-9]+(rc[0-9]+)?$ ]]; then
-    tag="v${after%%rc*}"
-    [[ $after == *rc* ]] && tag+="-rc.${after##*rc}"
-    printf '  %sRelease notes: https://github.com/Nulifyer/karchy/releases/tag/%s%s\n' "$dim" "$tag" "$reset"
-  fi
+  notes=$(notes_url "$after")
+  [[ -z $notes ]] || printf '  %sRelease notes: %s%s\n' "$dim" "$notes" "$reset"
 fi
 # The running kernel's modules are gone once its package was replaced.
 if [[ ! -d /usr/lib/modules/$(uname -r) ]] || [[ $needs_restart == "true" ]]; then
