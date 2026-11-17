@@ -14,6 +14,7 @@
 | `karchy-nvidia` | Meta: NVIDIA drivers for both kernels |
 | `karchy-nvidia-580xx` | Meta: NVIDIA's 580 legacy driver for both kernels (Maxwell, Pascal, Volta); provides and conflicts with `karchy-nvidia` |
 | `karchy-vm` | Meta: SPICE and QEMU guest agents, for a VM |
+| `karchy-bees` | Native: bees, the btrfs deduplicator, built from a pinned tag of karchy's fork Nulifyer/bees (D-85); provides and conflicts with Arch's `bees`; installed only when bees is chosen in the installer |
 | `nulifyer-vpn` | The VPN's system half (D-68): policy service, kill switch, sign-in pause, polkit rule. Built from a pinned tag of Nulifyer/omarchy-vpn-plugin, not from this repository; optional, controlled from the network panel |
 
 ## Channels and versions (D-61)
@@ -40,6 +41,8 @@ NULIFYER_VPN_GIT=/path/to/omarchy-vpn-plugin NULIFYER_VPN_REF=my-branch \
 ```
 
 Releasing the VPN: tag `vX.Y.Z` in Nulifyer/omarchy-vpn-plugin and push it, then in `pkgbuilds/nulifyer-vpn/PKGBUILD` set `pkgver=X.Y.Z` and `_commit` to the tag's commit (`git rev-parse vX.Y.Z^{commit}`); `prepare()` refuses a tag that points elsewhere.
+
+Releasing bees: tag `v<version>` on the fork's `karchy` branch (Nulifyer/bees) and push it, then in `pkgbuilds/karchy-bees/PKGBUILD` set `pkgver` and `_commit` the same way. Versions use `_` where a tag would use `-` (`0.11_karchy1`). It is a native package: `packaging/build --native karchy-bees`.
 
 `tools/vm repo` serves `out/` so test VMs reach `http://10.0.2.2:8090/repo-<channel>`; `tests/vm-install.conf` installs from `dev`.
 
