@@ -68,7 +68,9 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 | GTK | `adw-gtk-theme`; GTK 3 and GTK 4 (libadwaita) apps get the theme's full palette (`default/themed/gtk.css.tpl`, `gtk4.css.tpl`) and follow a switch live in open apps; checked with Thunar, GNOME Disks and Mission Center | [New] |
 | Qt | Qt's GTK 3 platform theme (`QT_QPA_PLATFORMTHEME=gtk3`), so Qt apps take the generated GTK 3 colors and follow a theme switch live; checked with qpwgraph. No separate Qt template | [O] |
 | VS Code | Generated theme extension; `settings.json` never edited. Pick "Karchy" once in the color theme picker | [New] |
-| fish prompt | Native prompt + theme-color template, fast git status, command duration and exit code | [New] |
+| fish prompt | Native prompt + theme-color template: Arch logo, user@host, folder, git branch, a › that turns red on failure; earlier prompts collapse to › | [New] |
+| fish listings | `ls`, `la`, `ll`, `lt`, `tree` and `l.` through eza (folders first, icons) | [New] |
+| fish greeting | None (fish's "Welcome to fish" is turned off; your own `fish_greeting` still shows) | [New] |
 | Terminal | foot include line. Starter configs for Ghostty, kitty and Alacritty (in `/etc/skel`) include the theme file the same way, so one installed later follows the theme; `karchy-restart-terminal` reloads open windows on a switch | [O] |
 | Optional apps | Not in the base install; each follows the theme once installed, and nothing is written for an app that isn't. The app's own config is never edited: the user picks the karchy theme once. All retint open windows on a switch. Checked in the VM under nulifyer and flexoki-light, switching with each app open (2026-11-14) | |
 | — Neovim | Plain color scheme from the theme (`default/themed/neovim-colors.lua.tpl`, VS Code's syntax colors, treesitter and LSP groups), linked to `~/.local/share/nvim/site/colors/karchy.lua`; select once with `:colorscheme karchy` (or `vim.cmd.colorscheme("karchy")` in your init.lua). LazyVim users can use `neovim.lua` in the current theme instead | [New] |

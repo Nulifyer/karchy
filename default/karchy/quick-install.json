@@ -3656,17 +3656,6 @@
       "source": "arch"
     },
     {
-      "id": "eza",
-      "name": "Eza",
-      "category": "devtools",
-      "description": "A modern replacement for ls (community fork of exa)",
-      "icon": "",
-      "packages": [
-        "eza"
-      ],
-      "source": "arch"
-    },
-    {
       "id": "fd",
       "name": "Fd",
       "category": "devtools",

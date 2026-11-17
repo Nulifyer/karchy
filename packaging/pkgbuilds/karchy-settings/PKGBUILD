@@ -9,7 +9,7 @@ pkgdesc="karchy system defaults, starter configs, lock-screen PAM and session un
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
-depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb')
+depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza')
 backup=(
   'etc/sudoers.d/karchy'
   'etc/sudoers.d/karchy-theme-browser'
