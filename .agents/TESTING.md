@@ -83,6 +83,7 @@ Desktop (RTX 5080, Ryzen 7 3700X):
 - Suspend and resume work; Hibernate is not offered. To check NVIDIA issue #1343 once a driver says it's fixed: save everything, then follow the test in .agents/research/docs-audit/nvidia-hibernation.md (resume keeps the session, `boot_id` unchanged, no `nv_pmops_freeze -5`).
 - Idle VRAM use (`nvidia-smi`) with the desktop running; only act if it's gigabytes.
 - If the CPU's integrated GPU is enabled, Hyprland draws on the NVIDIA card.
+- bees soak test (D-83), after a snapshot and a NAS backup: install with bees on, use the machine normally for a week on linux-cachyos 7.x; `journalctl -k` shows no btrfs warnings or hung tasks, `btrfs scrub` is clean, and `beesd@` keeps running.
 
 Framework 13 AMD:
 - `pacman -Q linux-cachyos` comes from `cachyos-znver4` (Ryzen 7040).
