@@ -33,7 +33,7 @@ Every step is logged to `/var/log/karchy-install.log`, which is copied into the 
 
 ## From the karchy ISO
 
-> The ISO isn't published for download yet: build it as in [Building the ISO](#building-the-iso).
+> Each release and release candidate has the ISO and its checksum attached on its [GitHub release page](https://github.com/Nulifyer/karchy/releases). To make one from a checkout, see [Building the ISO](#building-the-iso).
 
 The karchy ISO is the Arch Linux ISO (archiso's `releng` profile) with the installer on it, so it doesn't fetch the installer first. It still downloads the packages, from the same repositories: `[karchy]` for the channel picked in the form, Arch's, and `[cachyos]` and `[omarchy]`, which the installer adds as it does on the Arch ISO. karchy's signing key is in the live system's keyring from boot.
 
@@ -121,7 +121,7 @@ The session then runs the shell, Hyprland layer and commands from the checkout a
 ## Known limitations
 
 - There is no stable release yet, so the installer offers rc and nightly only. Install on rc, then switch to stable (in the Updates window, or `karchy channel set stable`) once 0.1.0 is released.
-- The ISO is built locally (`packaging/iso/build`), not downloaded.
+- Nothing has been checked on real hardware yet (`.agents/TESTING.md` has the list).
 
 ## Secure Boot
 
