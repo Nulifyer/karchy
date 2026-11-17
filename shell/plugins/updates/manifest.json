@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.updates",
+  "name": "Updates",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "Updates window: what karchy update would install, Arch news, and the release channel; the update itself runs in a terminal",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Window.qml"
+  }
+}

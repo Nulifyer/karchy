@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# karchy:summary=Open the Updates window: what karchy update would install, Arch news and the release channel
+# karchy:args=
+# karchy:examples=karchy updates
+
+# The window (shell plugin karchy.updates) checks with `karchy-update --plan`
+# and runs the update itself in a terminal.
+exec karchy-shell shell summon karchy.updates

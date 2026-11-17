@@ -38,6 +38,7 @@ User-installed plugins live alongside these conceptually but on disk under
 | Idle | `karchy.idle` | `service` | `services/idle/Service.qml` |
 | Media | `karchy.media` | `service`, `bar-widget` | `services/media/Service.qml`, `services/media/BarWidget.qml` |
 | Settings | `karchy.settings` | `panel` | `settings/Settings.qml` |
+| Updates | `karchy.updates` | `panel` | `updates/Window.qml` |
 | Virtual machines | `karchy.vms` | `bar-widget`, `panel` | `vms/Panel.qml`, `vms/Window.qml` |
 
 First-party bar-only widgets also carry manifests next to their QML files,

@@ -85,7 +85,7 @@
   "setup.config.input": {"iconName":"input.mouse","label":"Edit Input Config","when":"[[ -f ~/.config/hypr/input.lua ]]","action":"karchy-launch-config-editor \"$HOME/.config/hypr/input.lua\""},
 
   // Update
-  "update.system": {"iconName":"update.system","label":"Update System","aliases":["upgrade","karchy update"],"action":"karchy-launch-floating-terminal-with-presentation karchy-update"},
+  "update.system": {"iconName":"update.system","label":"Update System","aliases":["upgrade","karchy update","updates","channel"],"action":"karchy-updates"},
   "update.firmware": {"iconName":"firmware","label":"Update Firmware","aliases":["fwupd","bios"],"action":"karchy-launch-floating-terminal-with-presentation karchy-update-firmware"},
   "update.restart": {"iconName":"restart","label":"Restart","aliases":["reload"]},
   "update.restart.shell": {"iconName":"restart.shell","label":"Restart Shell","aliases":["bar","quickshell"],"action":"karchy-restart-shell"},
