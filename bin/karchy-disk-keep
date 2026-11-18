@@ -1,12 +1,14 @@
 #!/bin/bash
 
-# karchy:summary=Mount an internal data disk at /mnt/<label> from now on, or stop asking about it (D-24)
-# karchy:args=<device> | --ignore <device>
+# karchy:summary=Mount an internal data disk at /mnt/<label> from now on, stop doing so, or stop asking about it (D-24)
+# karchy:args=<device> | --remove [--yes] <device> | --ignore <device>
 # karchy:hidden=true
 
-# Run from the "new disk" notification (karchy-disks-check): in a floating
-# terminal to keep a disk, since the fstab change goes through sudo; directly
-# to stop being asked about it.
+# Run from the "new disk" notification (karchy-disks-check) and from Settings ›
+# Storage: in a floating terminal to keep a disk or stop keeping it, since the
+# fstab change goes through sudo; directly to stop being asked about it.
+# --remove unmounts the disk and takes its line back out of /etc/fstab; --yes
+# skips its question for a caller that has asked already.
 
 set -euo pipefail
 
@@ -19,7 +21,49 @@ if [[ ${1:-} == "--ignore" ]]; then
   exit 0
 fi
 
-device="${1:?Usage: karchy-disk-keep <device> | --ignore <device>}"
+if [[ ${1:-} == "--remove" ]]; then
+  shift
+  confirmed=""
+  if [[ ${1:-} == "--yes" ]]; then
+    confirmed=1
+    shift
+  fi
+  device="${1:?Usage: karchy-disk-keep --remove [--yes] <device>}"
+  uuid=$(lsblk -dno UUID "$device")
+  line=$(grep -F "# karchy-data-disk" /etc/fstab | awk -v source="UUID=$uuid" '$1 == source' | head -n 1 || true)
+  if [[ -z $uuid || -z $line ]]; then
+    echo "$device is not a disk karchy keeps mounted." >&2
+    exit 1
+  fi
+  mount=$(awk '{ print $2 }' <<<"$line")
+  label=$(lsblk -dno LABEL "$device")
+  size=$(lsblk -dno SIZE "$device" | tr -d " ")
+
+  echo "Stop keeping ${label:-the disk} ($size, $device) mounted at $mount."
+  echo "It is unmounted now and no longer mounts at startup. The files on it are not touched."
+  echo
+  [[ -n $confirmed ]] || gum confirm "Stop keeping it mounted?" || exit 130
+  sudo -v -p "Your password, to change /etc/fstab: " || exit 130
+
+  # Unmounted first: while something holds it open, nothing is changed.
+  if mountpoint -q "$mount" && ! sudo umount "$mount"; then
+    echo "$mount is in use, probably open in an app or a terminal. Close it and try again; nothing was changed."
+    exit 1
+  fi
+  sudo sed -i "\\|^UUID=$uuid $mount .*# karchy-data-disk\$|d" /etc/fstab
+  sudo systemctl daemon-reload
+  if [[ $(awk '{ print $3 }' <<<"$line") == btrfs ]]; then
+    sudo systemctl disable --now "btrfs-scrub@$(systemd-escape -p "$mount").timer" >/dev/null 2>&1 || true
+  fi
+  # The mount folder goes when it is empty; one that isn't was never the disk's.
+  sudo rmdir "$mount" 2>/dev/null || true
+
+  karchy-notification-send -g disk "Disk no longer kept" "${label:-$device} was at $mount"
+  echo "Done: ${label:-$device} is no longer kept at $mount."
+  exit 0
+fi
+
+device="${1:?Usage: karchy-disk-keep <device> | --remove [--yes] <device> | --ignore <device>}"
 # The floating terminal shows Failed and waits for a key after an error.
 line=$(karchy-disk-fstab line "$device" "$(id -u)" "$(id -g)") || exit 1
 mount=$(awk '{ print $2 }' <<<"$line")

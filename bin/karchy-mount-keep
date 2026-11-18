@@ -1,12 +1,14 @@
 #!/bin/bash
 
 # karchy:summary=Keep a network share mounted at /mnt, or remove a kept one (D-24)
-# karchy:args=[smb://server/share | folder on an open share] | --remove [kept mount folder]
+# karchy:args=[smb://server/share | folder on an open share] | --remove [--yes] [kept mount folder]
 # karchy:hidden=true
 
 # The menu's Setup › Network Shares runs this in a floating terminal. With no
 # share named, it offers the shares open in the file manager or asks for an
-# address; --remove with no folder offers the kept ones. Keeping a share writes:
+# address; --remove with no folder offers the kept ones, and --remove --yes
+# skips its question for a caller that has asked already (Settings › Storage).
+# Keeping a share writes:
 #   /etc/karchy/smb/<server>-<share>.cred   username and password, root only
 #   an fstab line tagged "# karchy-kept-mount" that automounts the share at
 #   /mnt/<share> on first use (nofail, _netdev, idle timeout), so boot never
@@ -351,7 +353,7 @@ remove() {
   local source
   source=$(fstab_unescape "$(awk '{ print $1 }' <<<"$line")")
   echo "Stop keeping $source mounted at $target"
-  gum confirm "Stop keeping it? Files on the server are not touched." || exit 130
+  [[ -n $confirmed ]] || gum confirm "Stop keeping it? Files on the server are not touched." || exit 130
   sudo -v -p "Your password for this computer, to remove the share: " || exit 1
 
   # Unmounted first: while something holds it open, nothing is changed.
@@ -390,8 +392,13 @@ flock -n "$lock_fd" || die "Another window is keeping or removing a network shar
 # The pickers run in a subshell, so an empty answer means cancelled, which
 # closes the window (exit 130, the menu terminal's cancel); for --remove with
 # nothing kept, pick_kept has said so and failed.
+confirmed=""
 case "${1:-}" in
   --remove)
+    if [[ ${2:-} == --yes ]]; then
+      confirmed=1
+      set -- "$1" "${@:3}"
+    fi
     folder=${2:-$(pick_kept)} || exit 1
     [[ -n $folder ]] || exit 130
     remove "$folder"
