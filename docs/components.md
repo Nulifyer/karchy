@@ -24,7 +24,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Audio | PipeWire + WirePlumber | [O+C] |
 | Laptop power | power-profiles-daemon (Arch) with amd-pstate; suspend on idle; suspend-then-hibernate after 2 h | [New] |
 | Mirrors | rate-mirrors weekly with safety checks (D-29) | [C] tool, [New] safety |
-| Dedup | bees on btrfs: an installer choice, off by default; 256 MB table; AC power only on laptops (D-39) | [New] |
+| Dedup | bees on btrfs, from karchy's fork (`karchy-bees`, D-85): an installer choice, off by default; 256 MB table; never rewrites snapper's snapshots, keeps preallocated space, logs no file names; AC power only on laptops (D-39) | [New] |
 | Secure Boot | sbctl + Microsoft keys, signed Limine, config hash enrollment (installer step) | [C] |
 | Firmware | fwupd (menu entry) | [O] |
 | AUR helper | paru (from `[cachyos]`) | [C] |

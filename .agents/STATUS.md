@@ -101,6 +101,7 @@ Phase 2, Settings window and display control (D-56). Owner: coordinating agent.
 - Updates window (D-81) 2026-11-16, checked in VM `fresh` (rc3, files copied into /usr/share/karchy, shell restarted): opens from `karchy updates` and Settings › About (Settings closes so the window isn't behind it); with a real pending update (karchy-settings downgraded to rc1) it showed Arch news first and the karchy card; with a fixture plan, the release card with Release notes, apps by name, system with Linux kernel and Mesa first marked Restart and Show all, AUR; up to date, the empty state and Check now only; the channel card offers rc and nightly with the stable note, and nightly asks before switching (canceled). Install closed the window and opened `karchy update` in the floating terminal, which updated and reloaded the desktop. Found on the way: the terminal's summary listed nothing when only karchy-settings changed (it looked for the `karchy` package alone), now "karchy: 1 package updated"; "0B to download" when everything is cached, now left out. The `fq` sysctl message during updates comes from pacman running the sysctl hook in its own network namespace, where the global default_qdisc doesn't exist; harmless.
 
 - 2026-11-17: the rc.5 release (above); web-app icons from the site, then Dashboard Icons, Google's favicon service dropped (D-82, PR #12); bees soak-tested on 7.x now instead of waiting for upstream (D-83, PR #14); from the dotfiles repo, karchy took the eza listings and the prompt's format, and fish's greeting is off (D-84, PR #13). Checked: the icon lookup against the live CDN; the prompt in each state locally and, with eza, in VM `fresh` (foot, nulifyer theme).
+- 2026-11-17, bees fork (D-85): `karchy-bees` 0.11_karchy1 built from Nulifyer/bees tag `v0.11_karchy1`; `setup_bees` installs it and writes the options. Checked in VM `fresh` on 7.3.4 (package installed with pacman, config written as `setup_bees` writes it, started through `beesd@`): corpus deduplicated in 5.5 min, all 288,140 files hash-identical, preallocated file kept, 13 journal lines with no file names, stop in 1 s, clean shutdown with bees running, running again after reboot. Not rerun: a full install through the installer with bees chosen. Lab scripts and results are in the fork checkout (`~/Projects/bees/lab`, untracked).
 
 ## Next action
 
@@ -119,7 +120,7 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 - Try resizing the `karchy-disp` window in virt-manager (View › Scale Display › Auto resize VM with window) and say whether the desktop follows.
 
 - How the dotfiles user layer is set up on a karchy machine (open decision; recommended: you run `./dotfiles` yourself after installing). D-84 lists what karchy took from it.
-- Hardware: the checklist in `.agents/TESTING.md` › On the real machines, including the bees soak test (D-83); then tag stable `v0.1.0`.
+- Hardware: the checklist in `.agents/TESTING.md` › On the real machines, including the bees soak and hibernation tests (D-83, D-85); then tag stable `v0.1.0`.
 - Plugins port.
 - The narrow passwordless sudo rule for the browser theme color (`karchy-theme-browser`, Omarchy's rule) was added so theme switches don't ask for a password; the user may want to review it.
 
