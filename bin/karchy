@@ -1111,6 +1111,11 @@ dispatch_or_help() {
   return 127
 }
 
+# Whether $1 is a section of the Settings window. karchy-settings owns the list.
+settings_section() {
+  "$KARCHY_BIN_DIR/karchy-settings" --sections 2>/dev/null | grep -qxF -- "$1"
+}
+
 main() {
   if (( $# == 0 )); then
     show_main_help
@@ -1127,6 +1132,16 @@ main() {
   commands)
     load_commands
     parse_commands_args "$@"
+    ;;
+  settings)
+    # `karchy settings <section> [item]` opens the Settings window there. A
+    # section can share its name with a karchy-settings-<section> command,
+    # which reads and saves those settings and would otherwise take the route;
+    # such a command runs under its own name.
+    if (( $# >= 2 )) && ! remaining_has_help_flag "${@:2}" && settings_section "$2"; then
+      exec "$KARCHY_BIN_DIR/karchy-settings" "${@:2}"
+    fi
+    dispatch_fast_or_help "$@"
     ;;
   *)
     dispatch_fast_or_help "$@"

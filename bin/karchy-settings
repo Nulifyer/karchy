@@ -4,11 +4,50 @@
 # karchy:args=[displays|input|power|network|ssh|appearance|apps|about] [item]
 # karchy:examples=karchy settings | karchy settings displays | karchy settings power | karchy settings network Home-5G
 
+# `karchy settings <section>` runs this for every section, also where a
+# karchy-settings-<section> command exists (see bin/karchy). Those commands
+# read and save the settings for the window and run under their own names:
+# `karchy-settings-input status`.
+#
 # The item opens the section at one thing in it: for network, a saved network
 # (its name, SSID or UUID), a device (wlan0) or a part of the page (dns, vpn).
+#
+#   --sections   Print the section names, one per line
+
+# The window's sections, as listed in shell/plugins/settings/Settings.qml.
+sections=(displays input power network ssh appearance apps about)
+
+if [[ ${1:-} == --sections ]]; then
+  printf '%s\n' "${sections[@]}"
+  exit 0
+fi
+
+usage() {
+  local IFS='|'
+  echo "Usage: karchy settings [${sections[*]}] [item]" >&2
+  # $1 is a section here when it is set.
+  if [[ -n ${1:-} ]] && command -v "karchy-settings-$1" >/dev/null; then
+    echo "To read or change these settings from a terminal, run karchy-settings-$1." >&2
+  fi
+  exit 1
+}
+
 section="${1:-displays}"
-[[ $section =~ ^[a-z-]+$ ]] || { echo "Usage: karchy-settings [section] [item]" >&2; exit 1; }
+
 # Optional features moved to the Quick install window (D-70).
 [[ $section == features ]] && exec karchy-quick-install window @system
+
+if [[ $section == *" "* || " ${sections[*]} " != *" $section "* ]]; then
+  echo "karchy settings: there is no \"$section\" section." >&2
+  usage
+fi
+(( $# <= 2 )) || usage "$section"
+# An item where the section's own command would have taken a subcommand
+# (`karchy settings power status`): the window opens, and this says where
+# the subcommands are.
+if [[ -n ${2:-} ]] && command -v "karchy-settings-$section" >/dev/null; then
+  echo "Opening Settings. To read or change these settings from a terminal, run karchy-settings-$section." >&2
+fi
+
 karchy-shell shell summon karchy.settings "$(jq -cn --arg section "$section" --arg item "${2:-}" \
   '{section: $section} + (if $item == "" then {} else {item: $item} end)')" >/dev/null
