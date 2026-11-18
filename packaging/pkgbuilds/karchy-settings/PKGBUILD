@@ -95,6 +95,10 @@ package() {
   install -Dm644 mpv/mpv.conf "$pkgdir/etc/mpv/mpv.conf"
   install -Dm644 gnupg/dirmngr.conf "$pkgdir/etc/gnupg/dirmngr.conf"
   install -Dm755 systemd/system-sleep/fprintd-resume "$pkgdir/usr/lib/systemd/system-sleep/fprintd-resume"
+  # PipeWire and JACK clients ask rtkit for realtime themselves, not through
+  # the portal (Omarchy #16824). In /usr/share, so files in /etc/pipewire win.
+  install -Dm644 -t "$pkgdir/usr/share/pipewire/client.conf.d" pipewire/client.conf.d/50-karchy-rtkit.conf
+  install -Dm644 -t "$pkgdir/usr/share/pipewire/jack.conf.d" pipewire/jack.conf.d/50-karchy-rtkit.conf
   install -Dm644 uwsm/env "$pkgdir/etc/xdg/uwsm/env"
   install -Dm644 profile.d/karchy.sh "$pkgdir/etc/profile.d/karchy.sh"
   install -Dm644 fish/karchy.fish "$pkgdir/etc/fish/conf.d/karchy.fish"
