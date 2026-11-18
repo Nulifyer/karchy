@@ -116,6 +116,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 
 - **USB:** udisks2 + udiskie automount with a notification [O].
 - **Sleep with shares open:** network locations opened in the file manager (gvfs) are disconnected just before sleep, because a file being read from one makes suspend fail; they reconnect when opened again (`karchy-sleep-shares`, D-99). Kept NAS mounts are kernel mounts and are left alone.
+- **Screen sharing:** when an app asks to share (a call in the browser, OBS), karchy's menu lists the screens, the windows and "A region…" (`karchy-share-picker`, the picker xdg-desktop-portal-hyprland runs; D-102).
 - **Booted a snapshot:** a notification names the snapshot (number, date, what changed) and offers "Restore this snapshot" (`karchy-snapshot-boot`, D-100).
 - **Internal data disks:** fstab at `/mnt/<label>`, with `nofail` and `x-gvfs-show`, owned by the user, NTFS via `ntfs3`. The installer sets up existing ones; a notification offers new ones [New]. Built: `karchy-disk-fstab`, `karchy-disks-check`, `karchy-disk-keep`.
 - **NAS:** browse via gvfs-smb. The menu's Setup › Network Shares › Keep a Share Mounted writes an fstab systemd automount (`nofail,_netdev,x-systemd.idle-timeout`) with root-only credentials; Remove a Kept Share undoes it (D-76) [New]. Built: `karchy-mount-keep`.
