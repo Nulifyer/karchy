@@ -1,9 +1,9 @@
 # karchy-bees: bees, the btrfs deduplication daemon, built from karchy's fork
 # (D-85): upstream bees plus fixes that were tested in a VM on linux-cachyos
 # 7.x (the fork's lab/RESULTS.md), and the --keep-prealloc option. It provides
-# and conflicts with Arch's bees, and ships the same beesd wrapper and
-# beesd@.service, so /etc/bees/<uuid>.conf and karchy-laptop's AC rule work
-# unchanged. Installed only when bees is chosen in the installer (D-39).
+# and conflicts with Arch's bees. karchy-settings depends on it and runs it
+# through karchy-bees.service (D-86); upstream's beesd wrapper and
+# beesd@.service are still included, for other filesystems.
 #
 # Native package: packaging/build builds it only with --native.
 #

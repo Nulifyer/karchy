@@ -1,0 +1,72 @@
+#!/bin/bash
+# karchy-bees.service runs this as root (D-86): bees for the btrfs filesystem
+# that holds /. It reads karchy's defaults and then /etc/karchy/bees.conf,
+# mounts the filesystem's top level privately for bees, creates bees' state
+# (the .beeshome subvolume and its hash table) on first use, and becomes bees.
+# No per-machine config is needed, so the installer only enables the service.
+
+set -euo pipefail
+
+ENABLED=yes
+DB_SIZE=auto
+OPTIONS=""
+# shellcheck disable=SC1091
+source /usr/share/karchy/bees.conf
+# shellcheck disable=SC1091
+[[ -r /etc/karchy/bees.conf ]] && source /etc/karchy/bees.conf
+
+if [[ $ENABLED != "yes" ]]; then
+  echo "bees is switched off (ENABLED=$ENABLED)"
+  exit 0
+fi
+if [[ $(findmnt -no FSTYPE /) != "btrfs" ]]; then
+  echo "/ is not on btrfs; nothing to deduplicate"
+  exit 0
+fi
+
+device=$(findmnt -no SOURCE /)
+device=${device%%\[*}
+mnt=${RUNTIME_DIRECTORY:?run from karchy-bees.service}/mnt
+mkdir -p "$mnt"
+mount --make-private -o subvolid=5,nodev,noexec "$device" "$mnt"
+
+home=$mnt/.beeshome
+[[ -d $home ]] || btrfs subvolume create "$home" >/dev/null
+table=$home/beeshash.dat
+block=$((128 * 1024))
+
+auto_size() {
+  local disk memory size
+  disk=$(findmnt -bno SIZE /)
+  memory=$(($(awk '/^MemTotal:/ { print $2 }' /proc/meminfo) * 1024))
+  size=$((disk / 4096))
+  ((size > 1024 * 1024 * 1024)) && size=$((1024 * 1024 * 1024))
+  ((size > memory / 16)) && size=$((memory / 16))
+  ((size < 64 * 1024 * 1024)) && size=$((64 * 1024 * 1024))
+  echo $((size / block * block))
+}
+
+current=0
+[[ -f $table ]] && current=$(stat -c %s "$table")
+if [[ $DB_SIZE == "auto" ]]; then
+  wanted=$current
+  ((current == 0)) && wanted=$(auto_size)
+else
+  wanted=$DB_SIZE
+  if ! [[ $wanted =~ ^[0-9]+$ ]] || ((wanted == 0 || wanted % block != 0)); then
+    echo "DB_SIZE must be auto or a multiple of $block bytes, not '$DB_SIZE'" >&2
+    exit 1
+  fi
+fi
+if ((wanted != current)); then
+  echo "hash table: $current -> $wanted bytes"
+  # A table of another size makes the saved scan position meaningless.
+  rm -f "$home/beescrawl.dat"
+  truncate -s "$wanted" "$table"
+fi
+chmod 700 "$table"
+
+export BEESHOME=$home BEESSTATUS=$RUNTIME_DIRECTORY/status
+cd "$mnt"
+# shellcheck disable=SC2086  # OPTIONS is a list of options
+exec /usr/lib/bees/bees --no-timestamps $OPTIONS "$mnt"

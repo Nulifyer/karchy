@@ -9,7 +9,7 @@ pkgdesc="karchy system defaults, starter configs, lock-screen PAM and session un
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
-depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza')
+depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza' 'karchy-bees')
 backup=(
   'etc/sudoers.d/karchy'
   'etc/sudoers.d/karchy-theme-browser'
@@ -75,6 +75,11 @@ package() {
   # Weekly mirror ranking (D-29) and the lock it shares with karchy update.
   install -Dm644 -t "$pkgdir/usr/lib/systemd/system" systemd/system/karchy-mirrors.service systemd/system/karchy-mirrors.timer
   install -Dm644 tmpfiles.d/karchy.conf "$pkgdir/usr/lib/tmpfiles.d/karchy.conf"
+  # bees, the background deduplicator of the system disk (D-86): the service,
+  # its runner and karchy's defaults; the installer enables the service.
+  install -Dm644 bees/karchy-bees.service "$pkgdir/usr/lib/systemd/system/karchy-bees.service"
+  install -Dm755 bees/bees-run "$pkgdir/usr/lib/karchy/bees-run"
+  install -Dm644 bees/bees.conf "$pkgdir/usr/share/karchy/bees.conf"
   # logind: the power key opens karchy's menu; lock before sleep may take 15 s.
   install -Dm644 -t "$pkgdir/usr/lib/systemd/logind.conf.d" systemd/logind.conf.d/*.conf
   # System tuning (docs/ownership-audit.md): stop timeouts, open-file and
