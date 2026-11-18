@@ -229,7 +229,7 @@ require("default.hypr.toggles")
 
 ## Installer
 
-The **form** is a gum TUI in Omarchy's style (D-08), run from the stock Arch ISO. It asks for: disk (with typed confirmation), keyboard, username, one password, name and email, hostname, timezone, Secure Boot when the firmware is in Setup Mode (default yes), and bees (off by default).
+The **form** is a gum TUI in Omarchy's style (D-08), run from the stock Arch ISO. It asks for: disk (with typed confirmation), keyboard, username, one password, name and email, hostname, timezone, Secure Boot when the firmware is in Setup Mode (default yes), and bees (on by default).
 
 **Disk and base (D-41).** archinstall is not used. archinstall 4.5 replaces `systemd`/`sd-encrypt` with udev/busybox `encrypt` unless the disk uses a hardware security key (`archinstall/lib/installer.py:125`), and its only swap option is zram. Both conflict with D-12 and D-10. karchy's own `install/disk.sh` + `install/base.sh` do:
 

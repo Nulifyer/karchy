@@ -25,7 +25,7 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
    karchy/install/karchy-install
    ```
 
-3. Answer the form: keyboard, disk (typed confirmation), username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; only channels with a published release are offered, so stable appears from karchy's first release on), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees (off by default). The keyboard layout applies as soon as it's picked, so the password is typed in the layout the disk prompt will use. Esc or Ctrl-C at a question that asks for an answer stops the installer with nothing changed; at a yes/no question Esc means No.
+3. Answer the form: keyboard, disk (typed confirmation), username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; only channels with a published release are offered, so stable appears from karchy's first release on), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees background deduplication (on by default; answer No to leave it off). The keyboard layout applies as soon as it's picked, so the password is typed in the layout the disk prompt will use. Esc or Ctrl-C at a question that asks for an answer stops the installer with nothing changed; at a yes/no question Esc means No.
 4. Check the summary, then confirm "Erase and install". Nothing is written to the disk before this.
 5. When it says it's done, remove the install media and reboot. At boot, type the password at the disk prompt.
 
