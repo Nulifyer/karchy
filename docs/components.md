@@ -42,7 +42,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Special workspace | Drop-down terminal (no AI agent auto-start) | [O] |
 | Opacity | Omarchy default (terminals 0.985/0.96) | [O] |
 | Window rules | Omarchy tag system, pruned to installed apps | [O] |
-| Idle | Shell screensaver + lock + screen off [O]; laptops on battery also suspend (then hibernate) after 15 minutes idle: `idle.suspend` (seconds, 0 = off) and `idle.suspendOnAC` in `~/.config/karchy/shell.json` [New] | [O] + [New] |
+| Idle | Shell screensaver + lock + screen off [O]; laptops on battery also suspend (then hibernate) after 15 minutes idle: `idle.suspend` (seconds, 0 = off) and `idle.suspendOnAC` in `~/.config/karchy/shell.json` [New]. A playing video, a call or a game holds all of it off: besides Wayland's idle inhibitor, karchy answers `org.freedesktop.ScreenSaver` and `org.freedesktop.PowerManagement` on D-Bus and follows logind's idle and sleep inhibitors (D-94); `karchy system idle-inhibit` lists who is holding it [New] | [O] + [New] |
 | Gestures | 3-finger swipe left/right = workspace | [O] |
 
 ## Shell (Omarchy Quickshell)

@@ -41,6 +41,56 @@ Item {
   readonly property bool idleEnabled: stayAwakeStateLoaded && !stayAwake
   readonly property string screensaverClass: "org.karchy.screensaver"
 
+  // Inhibitors that never reach the compositor: org.freedesktop.ScreenSaver
+  // cookies (games, Electron, the portal) and logind locks, as reported by
+  // karchy-system-idle-inhibit. Wayland idle inhibitors and Hyprland's
+  // idle_inhibit rules are honoured by the IdleMonitor itself. An "idle" hold
+  // stops the whole cycle, as a Wayland inhibitor does; a "sleep" hold only
+  // makes the idle suspend wait.
+  property var inhibitors: []
+  readonly property bool idleInhibited: IdleModel.inhibits(inhibitors, "idle")
+  readonly property bool sleepInhibited: IdleModel.inhibits(inhibitors, "sleep")
+  // The suspend deadline passed while something held sleep.
+  property bool suspendWaiting: false
+
+  function applyInhibitors(line) {
+    var next = IdleModel.parseInhibitors(line)
+    if (next === null) return
+    var before = IdleModel.describeInhibitors(root.inhibitors)
+    var after = IdleModel.describeInhibitors(next)
+    root.inhibitors = next
+    if (before !== after) logEvent("inhibitors", after || "none")
+  }
+
+  onIdleInhibitedChanged: {
+    if (!idleInhibited) return
+    // The monitor stops while idle is held; end what an idle stretch started.
+    if (root.idledThisCycle || suspendTimer.running || root.suspendWaiting) cancelIdleCycle("inhibited")
+  }
+
+  onSleepInhibitedChanged: {
+    if (sleepInhibited || !root.suspendWaiting) return
+    root.suspendWaiting = false
+    if (root.idleEnabled && idleMonitor.isIdle && root.suspendNow) suspendSystem("suspend-after-inhibitor")
+  }
+
+  // A retimed IdleMonitor can reuse its notification's address and never
+  // rebind isIdle, so idle is never reported again; pulsing it off sends the
+  // pointer through null. While idle that pulse would read as the user coming
+  // back, so retiming waits until they have.
+  function retimeIdleMonitor() {
+    var timeout = Math.max(1, root.firstIdleTimeoutSeconds)
+    if (idleMonitor.isIdle || idleMonitor.timeout === timeout) return
+
+    idleMonitor.timeout = timeout
+    if (root.idleEnabled) {
+      root.logEvent("idle-monitor-rearm", "timeout=" + timeout)
+      idleMonitorRearmTimer.restart()
+    }
+  }
+
+  onFirstIdleTimeoutSecondsChanged: retimeIdleMonitor()
+
   property bool stayAwake: false
   property bool stayAwakeStateLoaded: false
   property bool hasPendingStayAwakePersist: false
@@ -147,6 +197,7 @@ Item {
   function cancelIdleCycle(reason) {
     logEvent("idle-cycle-cancel", reason || "requested")
     suspendTimer.stop()
+    root.suspendWaiting = false
     screensaverTimer.stop()
     lockTimer.stop()
     screensaverLaunchGraceTimer.stop()
@@ -205,8 +256,9 @@ Item {
   function handleActiveSignal() {
     if (!root.idledThisCycle) {
       // Locked by the idle cycle, then woken: no sleep after all.
-      if (suspendTimer.running) {
+      if (suspendTimer.running || root.suspendWaiting) {
         suspendTimer.stop()
+        root.suspendWaiting = false
         logEvent("suspend-cancel", "activity")
       }
       return
@@ -245,10 +297,15 @@ Item {
       lock: root.lockTimeoutSeconds,
       suspend: root.suspendTimeoutSeconds,
       suspendNow: root.suspendNow,
+      suspendWaiting: root.suspendWaiting,
+      idleInhibited: root.idleInhibited,
+      sleepInhibited: root.sleepInhibited,
+      inhibitors: root.inhibitors,
       screensaverDelay: root.screensaverDelaySeconds,
       lockDelay: root.lockDelaySeconds,
       screensaverWindows: root.screensaverWindowCount,
       timers: {
+        idleMonitorRearm: idleMonitorRearmTimer.running,
         screensaver: screensaverTimer.running,
         lock: lockTimer.running,
         suspend: suspendTimer.running,
@@ -308,12 +365,23 @@ Item {
   // With both timeouts at 0 the monitor stops reporting, so nothing else would end a running cycle.
   onIdleTimersEnabledChanged: if (!idleTimersEnabled) cancelIdleCycle("idle-timers-disabled")
 
+  // The timeout is set by retimeIdleMonitor, never bound. Disabled while a
+  // D-Bus or logind inhibitor holds idle, so the countdown starts afresh when
+  // the last one is released, as it does after a Wayland inhibitor.
   IdleMonitor {
     id: idleMonitor
-    enabled: root.idleEnabled && root.idleTimersEnabled
-    timeout: Math.max(1, root.firstIdleTimeoutSeconds)
+    enabled: root.idleEnabled && root.idleTimersEnabled && !root.idleInhibited && !idleMonitorRearmTimer.running
     respectInhibitors: true
-    onIsIdleChanged: root.handleIdleChanged()
+    onIsIdleChanged: {
+      root.handleIdleChanged()
+      if (!isIdle) root.retimeIdleMonitor()
+    }
+  }
+
+  Timer {
+    id: idleMonitorRearmTimer
+    interval: 150
+    repeat: false
   }
 
   Timer {
@@ -332,8 +400,15 @@ Item {
     id: suspendTimer
     repeat: false
     onTriggered: {
-      if (root.idleEnabled && idleMonitor.isIdle && root.suspendNow) root.suspendSystem("suspend-timeout")
-      else root.logEvent("suspend-skip", "active, stay-awake, plugged in or no battery")
+      if (!(root.idleEnabled && idleMonitor.isIdle && root.suspendNow)) {
+        root.logEvent("suspend-skip", "active, stay-awake, plugged in or no battery")
+      } else if (root.sleepInhibited) {
+        // systemd would refuse; sleep once the holder lets go, if still idle.
+        root.suspendWaiting = true
+        root.logEvent("suspend-wait", IdleModel.describeInhibitors(root.inhibitors))
+      } else {
+        root.suspendSystem("suspend-timeout")
+      }
     }
   }
 
@@ -370,6 +445,39 @@ Item {
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "wake exitCode=" + exitCode + " status=" + exitStatus) }
   }
 
+  // Prints the D-Bus and logind inhibitors, one JSON line per change, and
+  // starts their service when it is missing. No line means none are known.
+  Process {
+    id: inhibitWatchProcess
+    command: ["karchy-system-idle-inhibit", "watch"]
+    running: true
+    stdout: SplitParser {
+      onRead: function(line) {
+        inhibitWatchRestartTimer.interval = inhibitWatchRestartTimer.firstDelayMs
+        root.applyInhibitors(line)
+      }
+    }
+    onExited: function(exitCode, exitStatus) {
+      root.logEvent("process-exit", "inhibit-watch exitCode=" + exitCode + " status=" + exitStatus)
+      root.applyInhibitors("[]")
+      inhibitWatchRestartTimer.restart()
+    }
+  }
+
+  // A watcher that died is started again after a pause, which doubles each
+  // time it dies without printing anything, so a broken one cannot spin.
+  Timer {
+    id: inhibitWatchRestartTimer
+    readonly property int firstDelayMs: 5000
+    readonly property int longestDelayMs: 600000
+    interval: firstDelayMs
+    repeat: false
+    onTriggered: {
+      interval = Math.min(interval * 2, longestDelayMs)
+      inhibitWatchProcess.running = true
+    }
+  }
+
   Process {
     id: stayAwakeStateProbe
     command: ["bash", "-c", "mkdir -p \"$HOME/.local/state/karchy/indicators\"; if [[ -f $HOME/.local/state/karchy/indicators/stay-awake ]]; then echo yes; else echo no; fi"]
@@ -403,6 +511,7 @@ Item {
 
   Component.onCompleted: {
     logEvent("service-ready")
+    retimeIdleMonitor()
     refreshStayAwakeState()
   }
 

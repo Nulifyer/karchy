@@ -63,8 +63,53 @@ function screensaverWindowsAfter(windows, address, visible) {
   }
 }
 
+// One line from `karchy-system-idle-inhibit watch`: {"inhibitors": [...]}.
+// Returns the list, or null for a line that is not one (which changes nothing).
+function parseInhibitors(line) {
+  var text = String(line || "").trim()
+  if (!text) return null
+  try {
+    var parsed = JSON.parse(text)
+    var list = Array.isArray(parsed) ? parsed : (parsed && parsed.inhibitors)
+    if (!Array.isArray(list)) return null
+    var out = []
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && typeof list[i] === "object") out.push(list[i])
+    }
+    return out
+  } catch (error) {
+    return null
+  }
+}
+
+// Whether any inhibitor holds `kind` ("idle" or "sleep"). logind joins the
+// kinds it holds with colons: "idle:sleep".
+function inhibits(inhibitors, kind) {
+  var list = inhibitors || []
+  for (var i = 0; i < list.length; i++) {
+    if (String(list[i].what || "").split(":").indexOf(kind) !== -1) return true
+  }
+  return false
+}
+
+function describeInhibitors(inhibitors) {
+  var list = inhibitors || []
+  var parts = []
+  for (var i = 0; i < list.length; i++) {
+    var held = list[i]
+    var name = String(held.who || held.process || "?")
+    var process = held.process && held.process !== name ? " " + held.process : ""
+    parts.push(name + " (" + String(held.source || "?") + " " + String(held.what || "?") + process
+      + " pid " + String(held.pid || 0) + ")")
+  }
+  return parts.join("; ")
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
+    parseInhibitors: parseInhibitors,
+    inhibits: inhibits,
+    describeInhibitors: describeInhibitors,
     secondsFromConfig: secondsFromConfig,
     firstIdleTimeout: firstIdleTimeout,
     delayAfterFirstIdle: delayAfterFirstIdle,

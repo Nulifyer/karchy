@@ -1,0 +1,464 @@
+#!/usr/bin/env python3
+# karchy:summary=Show what is keeping the screen from locking and the computer from sleeping
+# karchy:group=system
+# karchy:name=idle-inhibit
+# karchy:args=[list [--json] | serve | watch]
+# karchy:examples=karchy system idle-inhibit
+"""Idle inhibitors that do not reach the compositor (D-Bus and logind).
+
+The shell's idle service learns of idleness from Hyprland, which already
+honours the Wayland idle-inhibit protocol (mpv, a browser's focused video) and
+its own idle_inhibit window rules. Three other routes never reach Hyprland:
+
+- org.freedesktop.ScreenSaver on the session bus (Inhibit/UnInhibit): holds
+  idle, so no screensaver, lock, screen-off or idle suspend. Chromium, Brave
+  and Electron use it for video and video calls once the name has an owner;
+  so do SDL games under XWayland, Steam, VLC, and xdg-desktop-portal's Inhibit
+  (its GTK backend forwards here).
+- org.freedesktop.PowerManagement.Inhibit on the session bus: holds sleep
+  only. Chromium, Brave and Electron take it while audio plays or a call is
+  up, so the screen may lock but the idle suspend waits.
+- logind inhibitor locks: `systemd-inhibit --what=idle` holds idle, what=sleep
+  holds the idle suspend.
+
+`serve` is the service: it owns the two names (ScreenSaver at both
+/org/freedesktop/ScreenSaver and /ScreenSaver), follows logind's inhibitors,
+and publishes the combined list as org.karchy.IdleInhibit (List, Changed). It
+runs as a transient user unit of its own, so the cookies apps hold outlive a
+shell restart. Chromium looks for the names when it starts, so the service
+has to be up before the browser is; the shell starts it at login. `watch` is what the shell's idle service runs: it starts the
+service when it is missing and prints the list, one JSON line per change.
+`list` (the default) prints who is holding idle right now, the Wayland
+inhibitors included, for a person to read.
+
+Everything here reacts to D-Bus signals; nothing polls.
+"""
+
+import json
+import os
+import random
+import signal
+import subprocess
+import sys
+import time
+
+import gi
+
+gi.require_version("Gio", "2.0")
+from gi.repository import Gio, GLib  # noqa: E402
+
+UNIT = "karchy-idle-inhibit.service"
+OWN_NAME = "org.karchy.IdleInhibit"
+OWN_PATH = "/org/karchy/IdleInhibit"
+SCREENSAVER_NAME = "org.freedesktop.ScreenSaver"
+SCREENSAVER_PATHS = ("/org/freedesktop/ScreenSaver", "/ScreenSaver")
+POWER_NAME = "org.freedesktop.PowerManagement"
+POWER_PATH = "/org/freedesktop/PowerManagement/Inhibit"
+LOGIN_NAME = "org.freedesktop.login1"
+LOGIN_PATH = "/org/freedesktop/login1"
+LOGIN_MANAGER = "org.freedesktop.login1.Manager"
+
+SCREENSAVER_XML = """
+<node>
+  <interface name="org.freedesktop.ScreenSaver">
+    <method name="Inhibit">
+      <arg name="application_name" type="s" direction="in"/>
+      <arg name="reason_for_inhibit" type="s" direction="in"/>
+      <arg name="cookie" type="u" direction="out"/>
+    </method>
+    <method name="UnInhibit">
+      <arg name="cookie" type="u" direction="in"/>
+    </method>
+    <method name="SimulateUserActivity"/>
+    <method name="GetActive">
+      <arg name="active" type="b" direction="out"/>
+    </method>
+  </interface>
+</node>
+"""
+
+POWER_XML = """
+<node>
+  <interface name="org.freedesktop.PowerManagement.Inhibit">
+    <method name="Inhibit">
+      <arg name="application" type="s" direction="in"/>
+      <arg name="reason" type="s" direction="in"/>
+      <arg name="cookie" type="u" direction="out"/>
+    </method>
+    <method name="UnInhibit">
+      <arg name="cookie" type="u" direction="in"/>
+    </method>
+    <method name="HasInhibit">
+      <arg name="has_inhibit" type="b" direction="out"/>
+    </method>
+    <signal name="HasInhibitChanged">
+      <arg name="has_inhibit" type="b"/>
+    </signal>
+  </interface>
+</node>
+"""
+
+OWN_XML = """
+<node>
+  <interface name="org.karchy.IdleInhibit">
+    <method name="List">
+      <arg name="state" type="s" direction="out"/>
+    </method>
+    <signal name="Changed">
+      <arg name="state" type="s"/>
+    </signal>
+  </interface>
+</node>
+"""
+
+
+def log(message):
+    print(f"karchy-system-idle-inhibit: {message}", file=sys.stderr, flush=True)
+
+
+def process_name(pid):
+    try:
+        with open(f"/proc/{pid}/comm", encoding="utf-8") as comm:
+            return comm.read().strip()
+    except OSError:
+        return ""
+
+
+class Service:
+    """Owns the ScreenSaver name and tells the listeners who holds idle."""
+
+    def __init__(self):
+        self.loop = GLib.MainLoop()
+        self.session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        self.cookies = {}  # cookie -> inhibitor
+        self.watches = {}  # bus name -> watch id
+        self.logind = []
+        self.owns_screensaver = False
+        self.owns_power = False
+        self.published = None
+        self.sleep_held = False
+
+        own = Gio.DBusNodeInfo.new_for_xml(OWN_XML).interfaces[0]
+        self.session.register_object(OWN_PATH, own, self.on_own_call, None, None)
+        screensaver = Gio.DBusNodeInfo.new_for_xml(SCREENSAVER_XML).interfaces[0]
+        for path in SCREENSAVER_PATHS:
+            self.session.register_object(path, screensaver, self.on_screensaver_call, None, None)
+        power = Gio.DBusNodeInfo.new_for_xml(POWER_XML).interfaces[0]
+        self.session.register_object(POWER_PATH, power, self.on_power_call, None, None)
+
+        # Another idle or power daemon may own one of the names; the rest
+        # still works then, so that is logged, not fatal.
+        Gio.bus_own_name_on_connection(
+            self.session, SCREENSAVER_NAME, Gio.BusNameOwnerFlags.NONE,
+            self.on_screensaver_acquired, self.on_screensaver_lost)
+        Gio.bus_own_name_on_connection(
+            self.session, POWER_NAME, Gio.BusNameOwnerFlags.NONE,
+            self.on_power_acquired, self.on_power_lost)
+        Gio.bus_own_name_on_connection(
+            self.session, OWN_NAME, Gio.BusNameOwnerFlags.NONE, None, self.on_own_lost)
+
+        self.system = None
+        try:
+            self.system = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            self.system.signal_subscribe(
+                LOGIN_NAME, "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                LOGIN_PATH, None, Gio.DBusSignalFlags.NONE, self.on_logind_changed)
+            self.read_logind()
+        except GLib.Error as error:
+            log(f"logind inhibitors are not followed: {error.message}")
+
+    # ------------------------------------------- ScreenSaver, PowerManagement
+
+    def on_screensaver_acquired(self, _connection, _name):
+        self.owns_screensaver = True
+        self.publish()
+
+    def on_screensaver_lost(self, _connection, _name):
+        log(f"{SCREENSAVER_NAME} belongs to another program; its inhibitors are not seen here")
+        self.owns_screensaver = False
+        self.publish()
+
+    def on_power_acquired(self, _connection, _name):
+        self.owns_power = True
+        self.publish()
+
+    def on_power_lost(self, _connection, _name):
+        log(f"{POWER_NAME} belongs to another program; its inhibitors are not seen here")
+        self.owns_power = False
+        self.publish()
+
+    def on_own_lost(self, _connection, _name):
+        log(f"{OWN_NAME} is already owned; another copy is running")
+        self.loop.quit()
+
+    def sender_pid(self, sender):
+        try:
+            reply = self.session.call_sync(
+                "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
+                "GetConnectionUnixProcessID", GLib.Variant("(s)", (sender,)),
+                GLib.VariantType("(u)"), Gio.DBusCallFlags.NONE, 500, None)
+            return reply.unpack()[0]
+        except GLib.Error:
+            return 0
+
+    def new_cookie(self):
+        while True:
+            cookie = random.randint(1, 0x7FFFFFFF)
+            if cookie not in self.cookies:
+                return cookie
+
+    def hold(self, sender, what, who, why):
+        pid = self.sender_pid(sender)
+        cookie = self.new_cookie()
+        self.cookies[cookie] = {
+            "source": "dbus", "what": what, "who": who, "why": why, "pid": pid,
+            "process": process_name(pid), "cookie": cookie, "sender": sender,
+            "since": int(time.time()),
+        }
+        # An app that crashes or quits never calls UnInhibit; its inhibitors go
+        # when it leaves the bus.
+        if sender not in self.watches:
+            self.watches[sender] = Gio.bus_watch_name_on_connection(
+                self.session, sender, Gio.BusNameWatcherFlags.NONE, None, self.on_sender_gone)
+        self.publish()
+        return cookie
+
+    def release(self, cookie, sender=None, what=None):
+        """Drop a cookie; a caller may only drop one of its own, of that kind."""
+        held = self.cookies.get(cookie)
+        if not held or (sender and held["sender"] != sender) or (what and held["what"] != what):
+            return False
+        del self.cookies[cookie]
+        sender = held["sender"]
+        if not any(other["sender"] == sender for other in self.cookies.values()):
+            watch = self.watches.pop(sender, None)
+            if watch:
+                Gio.bus_unwatch_name(watch)
+        self.publish()
+        return True
+
+    def on_sender_gone(self, _connection, sender):
+        for cookie in [c for c, held in self.cookies.items() if held["sender"] == sender]:
+            self.release(cookie)
+
+    def on_screensaver_call(self, _connection, sender, _path, _interface, method, parameters, invocation):
+        if method == "Inhibit":
+            who, why = parameters.unpack()
+            cookie = self.hold(sender, "idle", str(who), str(why))
+            invocation.return_value(GLib.Variant("(u)", (cookie,)))
+        elif method == "UnInhibit":
+            self.release(parameters.unpack()[0], sender, "idle")
+            invocation.return_value(None)
+        elif method == "SimulateUserActivity":
+            # Holding idle for a moment restarts the shell's idle countdown,
+            # which is what user activity would do.
+            cookie = self.hold(sender, "idle", "activity", "SimulateUserActivity")
+            GLib.timeout_add_seconds(1, lambda: self.release(cookie) and False)
+            invocation.return_value(None)
+        elif method == "GetActive":
+            invocation.return_value(GLib.Variant("(b)", (False,)))
+
+    def on_power_call(self, _connection, sender, _path, _interface, method, parameters, invocation):
+        if method == "Inhibit":
+            who, why = parameters.unpack()
+            cookie = self.hold(sender, "sleep", str(who), str(why))
+            invocation.return_value(GLib.Variant("(u)", (cookie,)))
+        elif method == "UnInhibit":
+            self.release(parameters.unpack()[0], sender, "sleep")
+            invocation.return_value(None)
+        elif method == "HasInhibit":
+            invocation.return_value(GLib.Variant("(b)", (self.sleep_held,)))
+
+    # ---------------------------------------------------------------- logind
+
+    def on_logind_changed(self, _connection, _sender, _path, _interface, _signal, parameters):
+        interface, changed, invalidated = parameters.unpack()
+        if interface != LOGIN_MANAGER:
+            return
+        if "BlockInhibited" in changed or "BlockInhibited" in invalidated:
+            self.read_logind()
+
+    def read_logind(self):
+        self.system.call(
+            LOGIN_NAME, LOGIN_PATH, LOGIN_MANAGER, "ListInhibitors", None,
+            GLib.VariantType("(a(ssssuu))"), Gio.DBusCallFlags.NONE, -1, None,
+            self.on_logind_list)
+
+    def on_logind_list(self, connection, result):
+        try:
+            rows = connection.call_finish(result).unpack()[0]
+        except GLib.Error as error:
+            log(f"could not list logind inhibitors: {error.message}")
+            return
+        held = []
+        for what, who, why, mode, uid, pid in rows:
+            kinds = [kind for kind in what.split(":") if kind in ("idle", "sleep")]
+            # Delay locks only postpone a sleep that is already under way.
+            if mode != "block" or not kinds:
+                continue
+            held.append({
+                "source": "logind", "what": ":".join(kinds), "who": who, "why": why,
+                "pid": pid, "process": process_name(pid), "uid": uid,
+            })
+        self.logind = held
+        self.publish()
+
+    # ------------------------------------------------------------- publishing
+
+    def state(self):
+        inhibitors = sorted(self.cookies.values(), key=lambda held: held["since"]) + self.logind
+        return json.dumps(
+            {"service": True, "screensaver": self.owns_screensaver, "power": self.owns_power,
+             "inhibitors": inhibitors},
+            separators=(",", ":"))
+
+    def publish(self):
+        state = self.state()
+        if state == self.published:
+            return
+        self.published = state
+        holders = json.loads(state)["inhibitors"]
+        log("held by " + describe(holders) if holders else "nothing holds idle")
+        self.session.emit_signal(None, OWN_PATH, OWN_NAME, "Changed", GLib.Variant("(s)", (state,)))
+        sleep_held = any(held["what"] == "sleep" for held in self.cookies.values())
+        if sleep_held != self.sleep_held:
+            self.sleep_held = sleep_held
+            self.session.emit_signal(
+                None, POWER_PATH, "org.freedesktop.PowerManagement.Inhibit", "HasInhibitChanged",
+                GLib.Variant("(b)", (sleep_held,)))
+
+    def on_own_call(self, _connection, _sender, _path, _interface, method, _parameters, invocation):
+        if method == "List":
+            invocation.return_value(GLib.Variant("(s)", (self.state(),)))
+
+    def run(self):
+        self.loop.run()
+
+
+def describe(inhibitors):
+    parts = []
+    for held in inhibitors:
+        name = held.get("who") or held.get("process") or "?"
+        parts.append(f"{name} ({held['source']} {held['what']}, pid {held.get('pid', 0)})")
+    return "; ".join(parts)
+
+
+NO_SERVICE = json.dumps(
+    {"service": False, "screensaver": False, "power": False, "inhibitors": []}, separators=(",", ":"))
+
+
+def read_state(session):
+    reply = session.call_sync(
+        OWN_NAME, OWN_PATH, OWN_NAME, "List", None, GLib.VariantType("(s)"),
+        Gio.DBusCallFlags.NO_AUTO_START, 2000, None)
+    return reply.unpack()[0]
+
+
+def start_service():
+    """Run `serve` as a user unit of its own, ending with the session."""
+    command = [
+        "systemd-run", "--user", "--quiet", "--collect", f"--unit={UNIT}",
+        "--description=Karchy idle inhibitors (org.freedesktop.ScreenSaver, PowerManagement)",
+        "--property=PartOf=graphical-session.target",
+        "--property=Restart=on-failure", "--property=RestartSec=2",
+        os.path.abspath(sys.argv[0]), "serve",
+    ]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=False)
+    except OSError as error:
+        log(f"could not start {UNIT}: {error}")
+        return
+    if result.returncode != 0:
+        # Already loaded is fine: the name appears once it is up.
+        log(f"systemd-run: {result.stderr.strip()}")
+
+
+def watch():
+    """Print the service's state, one JSON line per change, for the shell."""
+    session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    loop = GLib.MainLoop()
+
+    def emit(state):
+        print(state, flush=True)
+
+    def on_changed(_connection, _sender, _path, _interface, _signal, parameters):
+        emit(parameters.unpack()[0])
+
+    def on_appeared(_connection, _name, _owner):
+        try:
+            emit(read_state(session))
+        except GLib.Error as error:
+            log(f"could not read the inhibitors: {error.message}")
+
+    def on_vanished(_connection, _name):
+        # Nothing is known without the service, and unknown must not hold idle.
+        emit(NO_SERVICE)
+        start_service()
+
+    session.signal_subscribe(
+        OWN_NAME, OWN_NAME, "Changed", OWN_PATH, None, Gio.DBusSignalFlags.NONE, on_changed)
+    Gio.bus_watch_name_on_connection(
+        session, OWN_NAME, Gio.BusNameWatcherFlags.NONE, on_appeared, on_vanished)
+    loop.run()
+
+
+def wayland_inhibitors():
+    """Windows Hyprland counts as holding idle (idle-inhibit protocol or a window rule)."""
+    try:
+        result = subprocess.run(["hyprctl", "clients", "-j"], capture_output=True, text=True, check=False, timeout=3)
+        clients = json.loads(result.stdout)
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return []
+    return [
+        {"source": "wayland", "what": "idle", "who": client.get("class", ""), "why": client.get("title", ""),
+         "pid": client.get("pid", 0), "process": process_name(client.get("pid", 0))}
+        for client in clients if client.get("inhibitingIdle")
+    ]
+
+
+def list_inhibitors(as_json):
+    try:
+        state = json.loads(read_state(Gio.bus_get_sync(Gio.BusType.SESSION, None)))
+    except GLib.Error:
+        state = json.loads(NO_SERVICE)
+    state["inhibitors"] = state["inhibitors"] + wayland_inhibitors()
+
+    if as_json:
+        print(json.dumps(state))
+        return 0
+
+    if not state["service"]:
+        print("The idle inhibitor service is not running; D-Bus and logind inhibitors are not seen.")
+    else:
+        for owned, name in (("screensaver", SCREENSAVER_NAME), ("power", POWER_NAME)):
+            if not state.get(owned):
+                print(f"{name} belongs to another program; its inhibitors are not seen.")
+    if not state["inhibitors"]:
+        print("Nothing is holding idle.")
+        return 0
+    for held in state["inhibitors"]:
+        who = held.get("who") or held.get("process") or "?"
+        process = held.get("process") or "?"
+        why = f": {held['why']}" if held.get("why") else ""
+        print(f"{held['source']:<8}{held['what']:<11}{who} ({process}, pid {held.get('pid', 0)}){why}")
+    return 0
+
+
+def main(argv):
+    # Ctrl+C ends serve and watch quietly; there is nothing to clean up.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    command = argv[1] if len(argv) > 1 else "list"
+    if command == "serve":
+        Service().run()
+        return 0
+    if command == "watch":
+        watch()
+        return 0
+    if command == "list":
+        return list_inhibitors("--json" in argv[2:])
+    print("Usage: karchy-system-idle-inhibit [list [--json] | serve | watch]", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
