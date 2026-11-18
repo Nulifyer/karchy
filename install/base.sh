@@ -311,7 +311,16 @@ base_bootloader() {
   # file's offset inside it, read by the systemd initramfs (D-32).
   resume_uuid=$(findmnt -no UUID "$KARCHY_MNT")
   resume_offset=$(btrfs inspect-internal map-swapfile -r "$KARCHY_MNT/swap/swapfile")
-  cmdline="rw rootflags=subvol=/@ rd.luks.uuid=$KARCHY_LUKS_UUID rd.luks.options=discard"
+  # A quiet console (D-12: no Plymouth, the disk password is asked in text):
+  # without these, kernel and unit messages scroll over the password prompt.
+  # quiet hides unit status, loglevel=3 kernel messages below "critical"
+  # (quiet alone still prints kernel errors, which firmware and drivers
+  # produce on a healthy boot), and systemd.show_status=auto brings status
+  # back when a unit fails or a job has waited 25 s (a missing disk), so a
+  # boot that hangs says what it waits for. Every entry gets this line: the
+  # LTS kernel and the snapshots (limine-snapper-sync copies it).
+  cmdline="quiet loglevel=3 systemd.show_status=auto"
+  cmdline+=" rw rootflags=subvol=/@ rd.luks.uuid=$KARCHY_LUKS_UUID rd.luks.options=discard"
   cmdline+=" root=/dev/mapper/$KARCHY_ROOT_MAPPER zswap.enabled=1 zswap.compressor=zstd"
   cmdline+=" resume=UUID=$resume_uuid resume_offset=$resume_offset"
   cat >"$KARCHY_MNT/etc/default/limine" <<EOF
