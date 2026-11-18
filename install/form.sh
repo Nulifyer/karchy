@@ -133,7 +133,7 @@ form_run() {
   fi
 
   KARCHY_BEES=yes
-  if ! form_yes_no --default=true "Deduplicate the disk in the background (bees)? It stores identical data once, which saves space with worktrees, caches and copied VM disks; it uses idle CPU and some memory."; then
+  if ! form_yes_no --default=true "Deduplicate the disk in the background (bees)? Saves space with worktrees, caches and copied VM disks."; then
     KARCHY_BEES=no
   fi
 }
