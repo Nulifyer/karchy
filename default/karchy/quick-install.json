@@ -4825,7 +4825,7 @@
       ],
       "setup": {
         "firewall": true,
-        "note": "Open KDE Connect from the launcher to pair a phone (the phone needs the KDE Connect app). The firewall lets phones reach this computer (ports 1714-1764) only on networks you trust: Settings > Network. A tray icon comes from KDE Connect Indicator in the launcher, and shows while a phone is connected."
+        "note": "Open KDE Connect from the launcher to pair a phone (the phone needs the KDE Connect app). The firewall lets phones reach this computer (ports 1714-1764) only on networks you trust: Settings > Network. A tray icon comes from KDE Connect Indicator in the launcher; it sits behind the tray arrow until you pin it."
       }
     },
     {
