@@ -54,7 +54,8 @@ Builds run in a fresh container of `container/Containerfile`, removed when the b
 - The image is built the first time and tagged with the Containerfile's hash, so a changed Containerfile builds a new one. `--refresh` rebuilds it with the current tools.
 - Downloaded packages stay in the podman volume `karchy-build-pkg-cache`.
 - Native builds (`--native`) upgrade the container's packages first, so they build against Arch as it is that day.
-- To move the base image forward, put a new digest in the Containerfile (its comment says how).
+- The image build, native builds and the ISO build each install Arch's current keyring before any other package, so the pinned base keeps verifying packages signed by newer packagers.
+- To move the base image forward, put a new digest in the Containerfile (its comment says how). That is rarely needed (docs/maintenance.md, item 7).
 
 ## Publishing
 

@@ -228,7 +228,9 @@ def main():
     if args.native:
         # Native packages build against Arch as it is now (the titlebars
         # follow Arch's Hyprland), not as it was when the image was built.
-        run(["sudo", "pacman", "-Syu", "--noconfirm"], stdout=subprocess.DEVNULL)
+        # Arch's keyring first, so packages signed by newer packagers verify.
+        run(["sudo", "pacman", "-Sy", "--noconfirm", "--needed", "archlinux-keyring"], stdout=subprocess.DEVNULL)
+        run(["sudo", "pacman", "-Su", "--noconfirm"], stdout=subprocess.DEVNULL)
 
     version = args.version or release_version(args.ref)
     if args.channel == "dev" and not args.version:

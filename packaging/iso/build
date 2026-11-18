@@ -87,6 +87,10 @@ build_iso() {
   rm -rf "$work"
   mkdir -p "$work" "$out"
 
+  # mkarchiso checks the ISO's packages against this container's keyring;
+  # Arch's current one, so packages signed by newer packagers verify.
+  sudo pacman -Sy --noconfirm --needed archlinux-keyring >/dev/null
+
   # releng, then karchy's files over it.
   cp -a "$RELENG" "$profile"
   cp -a "$PROFILE_SRC/airootfs/." "$profile/airootfs/"

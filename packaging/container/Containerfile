@@ -11,7 +11,10 @@
 FROM docker.io/archlinux/archlinux:base-devel@sha256:957559197e198f84888c8539fa9d6143d59a07c741873a60fa53af0e67dce6f8
 # base-devel 20261113.0.624902
 
-RUN pacman -Syu --noconfirm --needed archiso git github-cli jq pacman-contrib python \
+# Arch's keyring first: the pinned base only knows the packagers of its day,
+# and today's packages may be signed by newer ones.
+RUN pacman -Sy --noconfirm --needed archlinux-keyring \
+ && pacman -Su --noconfirm --needed archiso git github-cli jq pacman-contrib python \
  && rm -rf /var/cache/pacman/pkg/*
 
 # The build runs as "builder", uid 1000; packaging/container/run maps the
