@@ -1,0 +1,5 @@
+# More gruvbox shades for tools/tone-background, beside colors.toml: the
+# neutral greys and the darker accents, so photos tone smoothly.
+#504945 #665c54 #928374 #a89984
+#cc241d #d79921 #d65d0e #98971a #689d6a #458588 #b16286
+#c14a4a #b47109 #6c782e #4c7a5d #45707a

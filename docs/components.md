@@ -64,7 +64,7 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, night light,
 | Area | Choice | Source |
 |---|---|---|
 | Engine | Omarchy theme engine + templates | [O] |
-| Themes | All 23 Omarchy themes + **nulifyer** (default); the picker shows them in color-wheel order by each theme's accent, red to violet, gray accents last (user 2026-11-16) | [O] + [New] |
+| Themes | All 23 Omarchy themes + **nulifyer** (default, with its own backgrounds: nature photos recoloured to its palette, D-87); the picker shows them in color-wheel order by each theme's accent, red to violet, gray accents last (user 2026-11-16) | [O] + [New] |
 | GTK | `adw-gtk-theme`; GTK 3 and GTK 4 (libadwaita) apps get the theme's full palette (`default/themed/gtk.css.tpl`, `gtk4.css.tpl`) and follow a switch live in open apps; checked with Thunar, GNOME Disks and Mission Center | [New] |
 | Qt | Qt's GTK 3 platform theme (`QT_QPA_PLATFORMTHEME=gtk3`), so Qt apps take the generated GTK 3 colors and follow a theme switch live; checked with qpwgraph. No separate Qt template | [O] |
 | VS Code | Generated theme extension; `settings.json` never edited. Pick "Karchy" once in the color theme picker | [New] |

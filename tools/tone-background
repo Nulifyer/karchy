@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+"""Recolour a photo to a theme's palette, for a theme's backgrounds folder.
+
+Usage: tools/tone-background <theme> <input image> <output.jpg> [--width 3840] [--strength 1.0]
+
+Every colour keeps its own lightness and takes its hue and chroma from a
+distance-weighted mix of the nearest palette colours, in Oklab. This is what
+lutgen's Gaussian RBF does with --preserve --lum 0.78. The palette is every
+colour in themes/<theme>/colors.toml plus the ones in themes/<theme>/tone-palette.txt
+(optional: more shades give smoother tones). Needs numpy and ImageMagick.
+
+The nulifyer theme's photos were made with this; their sources and licences
+are in themes/nulifyer/CREDITS.md. A recoloured photo is a derivative of the
+original, so only ship photos whose licence allows that, and credit them.
+"""
+import argparse, re, subprocess, sys, tempfile
+from pathlib import Path
+import numpy as np
+
+ROOT = Path(__file__).resolve().parent.parent
+ap = argparse.ArgumentParser(usage=__doc__)
+ap.add_argument('theme'); ap.add_argument('input'); ap.add_argument('output')
+ap.add_argument('--width', type=int, default=3840, help='shrink to this width if wider')
+ap.add_argument('--strength', type=float, default=1.0, help='0 keeps the photo, 1 is fully toned')
+args = ap.parse_args()
+
+theme = ROOT / 'themes' / args.theme
+text = (theme / 'colors.toml').read_text()
+extra = theme / 'tone-palette.txt'
+if extra.exists():
+    text += extra.read_text()
+colors = sorted(set(c.lower() for c in re.findall(r'#[0-9a-fA-F]{6}\b', text)))
+if not colors:
+    sys.exit(f'tone-background: no colours found for theme {args.theme}')
+pal = np.array([[int(h[i:i + 2], 16) for i in (1, 3, 5)] for h in colors], dtype=np.float64) / 255
+
+def to_linear(c): return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+def to_srgb(c):
+    c = np.clip(c, 0, 1)
+    return np.where(c <= 0.0031308, c * 12.92, 1.055 * c ** (1 / 2.4) - 0.055)
+M1 = np.array([[0.4122214708, 0.5363325363, 0.0514459929], [0.2119034982, 0.6806995451, 0.1073969566], [0.0883024619, 0.2817188376, 0.6299787005]])
+M2 = np.array([[0.2104542553, 0.7936177850, -0.0040720468], [1.9779984951, -2.4285922050, 0.4505937099], [0.0259040371, 0.7827717662, -0.8086757660]])
+def oklab(rgb): return np.cbrt(to_linear(rgb) @ M1.T) @ M2.T
+def rgb(lab): return to_srgb(((lab @ np.linalg.inv(M2).T) ** 3) @ np.linalg.inv(M1).T)
+
+# A Hald colour table, level 8: 64 steps per channel, red changing fastest.
+n = 64
+g = np.arange(n) / (n - 1)
+b, gr, r = np.meshgrid(g, g, g, indexing='ij')
+lab, plab = oklab(np.stack([r.ravel(), gr.ravel(), b.ravel()], axis=1)), oklab(pal)
+toned = np.empty_like(lab)
+for s in range(0, len(lab), 32768):
+    d2 = (((lab[s:s + 32768, None, :] - plab[None, :, :]) * np.array([0.78, 1, 1])) ** 2).sum(-1)
+    w = np.exp(-128.0 * d2)
+    w /= w.sum(1, keepdims=True) + 1e-12
+    toned[s:s + 32768] = w @ plab
+lab[:, 1:] = lab[:, 1:] * (1 - args.strength) + toned[:, 1:] * args.strength   # lightness stays
+table = (rgb(lab) * 65535 + 0.5).astype('>u2').reshape(512, 512, 3)
+
+with tempfile.NamedTemporaryFile(suffix='.ppm') as hald:
+    hald.write(b'P6\n512 512\n65535\n' + table.tobytes()); hald.flush()
+    subprocess.run(['magick', args.input, '-resize', f'{args.width}x>', hald.name, '-hald-clut', '-strip',
+                    '-sampling-factor', '4:2:0', '-quality', '86', args.output], check=True)
