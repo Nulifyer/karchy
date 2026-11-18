@@ -24,4 +24,7 @@ package() {
   install -Dm644 bees-ac-only.conf "$pkgdir/usr/lib/systemd/system/karchy-bees.service.d/karchy-ac-only.conf"
   install -Dm644 90-karchy-bees-power.rules "$pkgdir/usr/lib/udev/rules.d/90-karchy-bees-power.rules"
   install -Dm755 bees-power "$pkgdir/usr/lib/karchy/bees-power"
+  # A battery about to run out hibernates the machine (D-93); the shell warns
+  # at the levels above it.
+  install -Dm644 upower.conf "$pkgdir/etc/UPower/UPower.conf.d/50-karchy-laptop.conf"
 }

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# karchy:summary=Send the critical battery warning notification and run battery-critical hooks.
+# karchy:args=<percentage>
+# karchy:hidden=true
+
+set -euo pipefail
+
+if (($# != 1)); then
+  echo "Usage: karchy-battery-critical <percentage>" >&2
+  exit 1
+fi
+
+level=$1
+
+# Says what UPower will do a little below this level (system/laptop/upower.conf):
+# hibernate where the machine can, power off where it cannot.
+if karchy-hibernation-available; then
+  body=$(karchy-i18n battery.criticalBodyHibernate "$level")
+else
+  body=$(karchy-i18n battery.criticalBodyPowerOff "$level")
+fi
+
+karchy-notification-send -g power.battery.low -u critical "$(karchy-i18n battery.criticalTitle)" "$body" -i battery-empty
+karchy-hook battery-critical "$level"

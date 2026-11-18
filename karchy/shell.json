@@ -9,6 +9,10 @@
   "lock": {
     "clock": true
   },
+  "battery": {
+    "low": 15,
+    "critical": 5
+  },
   "bar": {
     "position": "top",
     "background": "opaque",

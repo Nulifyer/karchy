@@ -11,7 +11,17 @@ Item {
   property var shell: null
   property string karchyPath: Quickshell.env("KARCHY_PATH")
 
-  readonly property int batteryThreshold: 10
+  // A low and a critical warning, each shown once per discharge. The levels
+  // are `battery.low` and `battery.critical` in shell.json (percent, 0 = off).
+  // What happens to an unattended laptop below them is UPower's
+  // CriticalPowerAction (system/laptop/upower.conf), which acts at a level
+  // under the critical warning.
+  readonly property int defaultLowPercent: 15
+  readonly property int defaultCriticalPercent: 5
+  readonly property var batteryConfig: shell && shell.shellConfig && shell.shellConfig.battery
+    ? shell.shellConfig.battery : ({})
+  readonly property var thresholds: BatteryModel.warningThresholds(batteryConfig, defaultLowPercent, defaultCriticalPercent)
+  onThresholdsChanged: checkBattery()
   property string pendingPowerSource: ""
   // Follows power-profiles-daemon's change signals, so nothing polls it.
   // Quickshell never attaches that listener if the daemon failed when the
@@ -25,7 +35,8 @@ Item {
   PersistentProperties {
     id: persisted
     reloadableId: "karchy-battery"
-    property bool notifiedLowBattery: false
+    // The highest warning shown in this discharge: "", "low" or "critical".
+    property string warned: ""
   }
 
   function batteryPercentage() {
@@ -36,19 +47,28 @@ Item {
     return BatteryModel.isDischarging(UPower.displayDevice, UPower.onBattery, UPowerDeviceState.Discharging)
   }
 
-  function checkBattery() {
-    var state = BatteryModel.shouldWarnLowBattery(UPower.displayDevice, UPower.onBattery, UPowerDeviceState.Discharging, batteryThreshold, persisted.notifiedLowBattery)
-    persisted.notifiedLowBattery = state.notifiedLowBattery
-    if (state.notify) sendLowBatteryWarning(state.level)
+  function batterySample() {
+    return {
+      level: batteryPercentage(),
+      onBattery: UPower.onBattery,
+      discharging: isDischarging()
+    }
   }
 
-  function sendLowBatteryWarning(level) {
-    if (warningProcess.running) return
-    warningProcess.command = [
-      "karchy-battery-low",
-      String(level)
-    ]
-    warningProcess.running = true
+  function checkBattery() {
+    var sample = batterySample()
+    var step = BatteryModel.warningStep(persisted.warned, sample, thresholds)
+    persisted.warned = step.warned
+    if (step.notify) sendBatteryWarning(step.notify, sample.level)
+  }
+
+  // The two warnings have a process each: the critical one must not wait for
+  // a slow battery-low hook.
+  function sendBatteryWarning(kind, level) {
+    var process = kind === "critical" ? criticalWarningProcess : lowWarningProcess
+    if (process.running) return
+    process.command = [kind === "critical" ? "karchy-battery-critical" : "karchy-battery-low", String(level)]
+    process.running = true
   }
 
   function applyPowerProfile() {
@@ -82,7 +102,8 @@ Item {
     }
   }
 
-  Process { id: warningProcess }
+  Process { id: lowWarningProcess }
+  Process { id: criticalWarningProcess }
 
   Process {
     id: powerProfileProcess
@@ -122,14 +143,28 @@ Item {
     target: "battery"
 
     function refreshPowerProfile(): void { root.refreshPowerProfile() }
+
+    function status(): string {
+      var sample = root.batterySample()
+      return JSON.stringify({
+        level: sample.level,
+        onBattery: sample.onBattery,
+        discharging: sample.discharging,
+        low: root.thresholds.low,
+        critical: root.thresholds.critical,
+        warned: persisted.warned
+      })
+    }
   }
 
-  Timer {
-    interval: 30000
-    running: true
-    repeat: true
-    triggeredOnStart: true
-    onTriggered: root.checkBattery()
+  // UPower signals every change of the battery's level and state, so the
+  // warnings follow those signals; nothing polls.
+  Connections {
+    target: UPower.displayDevice
+    function onPercentageChanged() { root.checkBattery() }
+    function onStateChanged() { root.checkBattery() }
+    function onIsPresentChanged() { root.checkBattery() }
+    function onReadyChanged() { root.checkBattery() }
   }
 
   Connections {
@@ -141,5 +176,8 @@ Item {
     }
   }
 
-  Component.onCompleted: root.refreshPowerProfile()
+  Component.onCompleted: {
+    root.checkBattery()
+    root.refreshPowerProfile()
+  }
 }
