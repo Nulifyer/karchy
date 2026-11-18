@@ -9,7 +9,10 @@ pkgdesc="karchy system defaults, starter configs, lock-screen PAM and session un
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
-depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza' 'karchy-bees')
+depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza' 'karchy-bees'
+  # Settings › Storage's measurement: compsize counts what files hold against
+  # what they take on a btrfs disk; jq writes the result.
+  'compsize' 'jq')
 backup=(
   'etc/sudoers.d/karchy'
   'etc/sudoers.d/karchy-theme-browser'
@@ -140,6 +143,22 @@ package() {
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.power-settings.policy"
   install -Dm644 polkit/rules.d/50-karchy-power-settings.rules \
     "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-power-settings.rules"
+
+  # Settings › Storage: the nightly measurement of what files hold against
+  # what they take on the disk, and of each disk's health (root, idle
+  # priority; the timer is on for every install); the root helper behind
+  # "Measure now" and the background-deduplication switch, with its polkit
+  # action and the rule that spares the person at the computer the password;
+  # and the one reader of bees' status file.
+  install -Dm755 -t "$pkgdir/usr/lib/karchy" storage/storage-measure storage/storage-settings storage/bees-summary
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" storage/karchy-storage-measure.service \
+    storage/karchy-storage-measure.timer
+  install -d "$pkgdir/usr/lib/systemd/system/timers.target.wants"
+  ln -s ../karchy-storage-measure.timer "$pkgdir/usr/lib/systemd/system/timers.target.wants/karchy-storage-measure.timer"
+  install -Dm644 polkit/actions/org.karchy.storage-settings.policy \
+    "$pkgdir/usr/share/polkit-1/actions/org.karchy.storage-settings.policy"
+  install -Dm644 polkit/rules.d/50-karchy-storage-settings.rules \
+    "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-storage-settings.rules"
 
   install -Dm755 keyring/keyring-key "$pkgdir/usr/lib/karchy/keyring-key"
   install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"

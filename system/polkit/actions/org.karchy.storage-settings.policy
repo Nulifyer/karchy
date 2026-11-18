@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  Settings › Storage's requests that need root: switching background
+  deduplication on or off, starting a measurement, and reading bees' progress.
+  karchy-settings-storage runs /usr/lib/karchy/storage-settings through
+  pkexec, which picks this action by the exec.path below. The defaults ask for
+  an administrator's password; 50-karchy-storage-settings.rules lets the
+  person at the computer skip it.
+-->
+<policyconfig>
+  <vendor>karchy</vendor>
+  <vendor_url>https://github.com/Nulifyer/karchy</vendor_url>
+
+  <action id="org.karchy.storage-settings">
+    <description>Measure disk space and switch background deduplication on or off</description>
+    <message>Measure how much space files take on the disks, or switch background deduplication of the system disk on or off.</message>
+    <icon_name>drive-harddisk</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/karchy/storage-settings</annotate>
+  </action>
+</policyconfig>

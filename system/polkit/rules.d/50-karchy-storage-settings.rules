@@ -1,0 +1,13 @@
+// Settings › Storage measures disk space, reads bees' progress and switches
+// background deduplication on or off without a password for the person at
+// the computer: an active, local session of a member of wheel. The helper
+// (/usr/lib/karchy/storage-settings) accepts nothing but those three requests
+// from fixed lists, none of them changes a file's contents, and each is
+// undone from the same page. Anyone else (a remote or inactive session, a
+// user outside wheel) gets the action's default: an administrator's password.
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.karchy.storage-settings" &&
+      subject.local && subject.active && subject.isInGroup("wheel")) {
+    return polkit.Result.YES;
+  }
+});

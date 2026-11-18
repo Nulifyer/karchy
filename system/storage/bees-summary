@@ -1,0 +1,166 @@
+#!/bin/bash
+
+# karchy: turns bees' status file into the few numbers Settings › Storage
+# shows. Installed as /usr/lib/karchy/bees-summary; the root helper
+# /usr/lib/karchy/storage-settings runs it with /run/karchy-bees/status on its
+# standard input, and tests/storage-helpers.sh runs it on saved status files.
+#
+# The status file is root's alone because its THREADS part can name the files
+# bees is reading. This is the one place that reads it, and what leaves here
+# is only lines of a fixed name and a whole number:
+#
+#   state=starting|scanning|idle|unknown
+#       starting   bees runs but has no progress table yet (it waits out the
+#                  settle delay after each start)
+#       scanning   at least one size tier is still working through the disk
+#       idle       every tier has caught up
+#       unknown    the table is there but not in the form this knows
+#   first_pass=1|0     scanning for the first time (a tier's gen_min is 0)
+#   percent=0..100     how far the scan is: each tier's `point` (000000 to
+#                      999999, its position in the data), weighed by the
+#                      tier's `datasz` when every tier gives one. A tier that
+#                      is idle, or already past its first pass during one,
+#                      counts as done.
+#   seconds_left=N     the longest `tm_left` among the tiers still scanning,
+#                      -1 when bees gives none yet
+#   backlog=N          how many filesystem transactions the scan under way
+#                      covers (the largest gen_max - gen_min among the tiers
+#                      still scanning): a handful while bees keeps up with
+#                      what is written, many after it was off for a while;
+#                      0 when idle, -1 when the table has no gen_max
+#   dedup_bytes=N      TOTAL's dedup_bytes counter: bytes of file data bees
+#                      has pointed at an existing copy since it started
+#
+# What it relies on in the file (src/bees-context.cc and bees-roots.cc of
+# karchy's fork): a "TOTAL:" part of name=value counters, and a "PROGRESS:"
+# part that is either "[No progress estimate available]" or a table whose
+# header names the columns extsz, datasz, point, gen_min, gen_max in that
+# order before the dates, with one row per size tier and "idle" as a row's
+# last word when the tier has caught up. Anything else is skipped, not
+# guessed at: a table with another header gives state=unknown.
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+
+exec awk '
+  # A size as bees prints it ("43.264G", "512K", "0"), in bytes; -1 when it
+  # is not one ("-" until bees has sampled enough).
+  function size_bytes(text,   number, unit, power) {
+    if (text !~ /^[0-9]+(\.[0-9]+)?[KMGTPE]?$/) return -1
+    number = text
+    unit = ""
+    if (text ~ /[KMGTPE]$/) {
+      unit = substr(text, length(text))
+      number = substr(text, 1, length(text) - 1)
+    }
+    power = index("KMGTPE", unit)
+    return number * (1024 ^ power)
+  }
+
+  # The seconds in one word of a duration ("2w", "31s"), -1 when it is not one.
+  function duration_part(text,   count, unit) {
+    if (text !~ /^[0-9]+[ywdhms]$/) return -1
+    count = substr(text, 1, length(text) - 1) + 0
+    unit = substr(text, length(text))
+    if (unit == "y") return count * 31536000
+    if (unit == "w") return count * 604800
+    if (unit == "d") return count * 86400
+    if (unit == "h") return count * 3600
+    if (unit == "m") return count * 60
+    return count
+  }
+
+  BEGIN {
+    part = ""; table = 0; known = 0; rows = 0; dedup = 0
+  }
+
+  # A part starts at a line that begins with a capital and holds a colon:
+  # "TOTAL:", "RATES:", "THREADS (work queue …):", "PROGRESS:".
+  /^[A-Z]+[: (]/ {
+    part = $1
+    sub(/:.*/, "", part)
+    next
+  }
+
+  part == "TOTAL" {
+    for (i = 1; i <= NF; i++)
+      if ($i ~ /^dedup_bytes=[0-9]+$/) dedup = substr($i, 13) + 0
+    next
+  }
+
+  part != "PROGRESS" { next }
+
+  # The header gives each leading column its place.
+  $1 == "extsz" {
+    table = 1
+    delete column
+    for (i = 1; i <= NF && $i != "this"; i++) column[$i] = i
+    known = (("datasz" in column) && ("point" in column) && ("gen_min" in column))
+    next
+  }
+
+  !known { next }
+  $1 == "total" || $1 ~ /^-+$/ { next }
+
+  # A tier: "max", or a size such as 32M or 128K.
+  $1 == "max" || $1 ~ /^[0-9]+[KMGTPE]?$/ {
+    if ($column["point"] !~ /^[0-9]+$/ || $column["gen_min"] !~ /^[0-9]+$/) next
+    rows++
+    point[rows] = $column["point"] / 999999
+    if (point[rows] > 1) point[rows] = 1
+    first[rows] = ($column["gen_min"] + 0 == 0)
+    idle[rows] = ($NF == "idle")
+    weight[rows] = size_bytes($column["datasz"])
+    span[rows] = -1
+    if (("gen_max" in column) && $column["gen_max"] ~ /^[0-9]+$/) {
+      span[rows] = $column["gen_max"] - $column["gen_min"]
+      if (span[rows] < 0) span[rows] = 0
+    }
+    left[rows] = -1
+    for (i = column["gen_min"] + 1; i <= NF; i++) {
+      seconds = duration_part($i)
+      if (seconds >= 0) left[rows] = (left[rows] < 0 ? 0 : left[rows]) + seconds
+    }
+  }
+
+  END {
+    scanning = 0; first_pass = 0; weighed = 1
+    for (r = 1; r <= rows; r++) {
+      if (!idle[r]) scanning = 1
+      if (!idle[r] && first[r]) first_pass = 1
+      if (weight[r] < 0) weighed = 0
+    }
+
+    done = 0; all = 0; seconds_left = -1; backlog = 0
+    for (r = 1; r <= rows; r++) {
+      share = weighed ? weight[r] : 1
+      finished = idle[r] || (first_pass && !first[r])
+      done += share * (finished ? 1 : point[r])
+      all += share
+      if (!finished && left[r] > seconds_left) seconds_left = left[r]
+      if (!idle[r] && backlog >= 0) backlog = (span[r] < 0 ? -1 : (span[r] > backlog ? span[r] : backlog))
+    }
+    # Every tier weighs nothing on an empty disk.
+    if (all <= 0) { done = 0; all = 0; for (r = 1; r <= rows; r++) { done += (idle[r] ? 1 : point[r]); all++ } }
+    percent = all > 0 ? int(100 * done / all) : 0
+    if (percent > 100) percent = 100
+    if (scanning && percent == 100) percent = 99
+
+    if (!table) state = "starting"
+    else if (!known || rows == 0) state = "unknown"
+    else if (scanning) state = "scanning"
+    else state = "idle"
+
+    if (state != "scanning") { first_pass = 0; seconds_left = -1; backlog = 0 }
+    if (state == "idle") percent = 100
+    if (state == "starting" || state == "unknown") percent = 0
+
+    printf "state=%s\n", state
+    printf "first_pass=%d\n", first_pass
+    printf "percent=%d\n", percent
+    printf "seconds_left=%d\n", seconds_left
+    printf "backlog=%d\n", backlog
+    printf "dedup_bytes=%.0f\n", dedup
+  }
+'

@@ -1,0 +1,152 @@
+#!/bin/bash
+
+# karchy: Settings › Storage's three requests that need root.
+# Installed as /usr/lib/karchy/storage-settings and run only through
+#   pkexec /usr/lib/karchy/storage-settings <key>=<value>
+# by karchy-settings-storage (polkit action org.karchy.storage-settings).
+# Every call takes exactly one of:
+#
+#   bees=on | bees=off   Background deduplication of the system disk.
+#                        off writes ENABLED=no into /etc/karchy/bees.conf and
+#                        stops and disables karchy-bees.service; on takes the
+#                        ENABLED line back out, so karchy's packaged default
+#                        (/usr/share/karchy/bees.conf) decides again, and
+#                        enables and starts the service. on is refused while
+#                        the packaged default itself is "no" (karchy ships
+#                        that when a kernel release is unsafe with bees).
+#   measure=now          Start karchy-storage-measure.service, the same
+#                        measurement the daily timer runs. Returns at once;
+#                        the result lands in /var/lib/karchy/storage.
+#   show=bees            Print bees' progress and its deduplicated total as
+#                        the name=number lines of /usr/lib/karchy/bees-summary
+#                        (or state=stopped when bees has no status file).
+#
+# Threat reasoning. polkit lets an active, local member of wheel run this
+# without a password (50-karchy-storage-settings.rules); everyone else must
+# authenticate as an administrator. So assume the caller is any program in
+# that user's session, hostile ones included.
+# - What it can reach: whether bees runs, when a measurement starts, and six
+#   numbers about bees. Stopping bees loses nothing (space that is already
+#   shared stays shared, and its state is kept for the next start); starting
+#   it costs idle CPU and disk time under the service's own limits.
+#   A measurement reads file metadata at idle priority and one runs at a
+#   time, so asking again and again costs no more than one that never ends.
+#   None of it changes a file's contents, and each choice is undone from the
+#   same page.
+# - What it cannot reach: bees' status file itself, which can name the files
+#   being read. Only bees-summary reads it, and it prints fixed names with
+#   whole numbers. A file whose name holds line breaks could fake lines of
+#   that status file; the worst that does is a wrong percentage on the page.
+# - Input is argv only: one argument, one of the three keys, each with a
+#   value from a fixed list. Nothing is read from the caller's files or
+#   environment, nothing of the caller's is sourced or evaluated, and no
+#   argument is ever used as a path, a unit name or part of a command.
+#   Anything else ends the call before a file or a service is touched.
+# - Files: only /etc/karchy/bees.conf is written, in a root-owned folder. It
+#   is root's own file (bees-run sources it), so it is only rewritten when it
+#   is a regular file owned by root, and the only text ever added to it is
+#   the fixed line ENABLED=no; its other lines are kept as they are.
+# - Only packaged, root-owned programs are run, by absolute path or from a
+#   fixed PATH, with none of the caller's environment (pkexec clears it; this
+#   does not rely on that).
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+
+BEES_CONF=/etc/karchy/bees.conf
+BEES_DEFAULTS=/usr/share/karchy/bees.conf
+BEES_UNIT=karchy-bees.service
+BEES_STATUS=/run/karchy-bees/status
+MEASURE_UNIT=karchy-storage-measure.service
+# A line that sets ENABLED, as bash reads the file.
+ENABLED_LINE='^[[:space:]]*(export[[:space:]]+)?ENABLED='
+
+fail() {
+  echo "storage-settings: $1" >&2
+  exit "${2:-1}"
+}
+
+usage() {
+  fail "usage: storage-settings bees=on|off | measure=now | show=bees" 64
+}
+
+# The request is checked before anything else, also before who is asking: a
+# call that is not one of the four is turned away the same for everyone.
+(( $# == 1 )) || usage
+
+case $1 in
+  bees=on | bees=off | measure=now | show=bees) request=$1 ;;
+  *) usage ;;
+esac
+(( EUID == 0 )) || fail "must run as root, through pkexec" 77
+
+tmp=""
+trap '[[ -z $tmp ]] || rm -f -- "$tmp"' EXIT
+
+# /etc/karchy/bees.conf without its ENABLED lines, plus `line` when given.
+# The file goes when nothing is left to say.
+write_bees_conf() {
+  local line=$1 kept=""
+  if [[ -e $BEES_CONF || -L $BEES_CONF ]]; then
+    [[ -f $BEES_CONF && ! -L $BEES_CONF && $(stat -c %u "$BEES_CONF") == 0 ]] ||
+      fail "$BEES_CONF is not a regular file owned by root; nothing was changed"
+    kept=$(grep -Ev "$ENABLED_LINE" "$BEES_CONF" || true)
+  fi
+  if [[ -z $line && -z ${kept//[[:space:]]/} ]]; then
+    rm -f -- "$BEES_CONF"
+    return 0
+  fi
+  install -d -m 755 -o root -g root "${BEES_CONF%/*}"
+  tmp=$(mktemp "${BEES_CONF%/*}/.bees.conf.XXXXXX")
+  {
+    [[ -z $kept ]] || printf '%s\n' "$kept"
+    [[ -z $line ]] || printf '%s\n' "$line"
+  } >"$tmp"
+  chmod 644 "$tmp"
+  mv -f -- "$tmp" "$BEES_CONF"
+  tmp=""
+}
+
+# The value karchy's packaged defaults give ENABLED: its last plain line.
+packaged_enabled() {
+  local value
+  value=$(sed -n -E 's/^[[:space:]]*ENABLED=//p' "$BEES_DEFAULTS" 2>/dev/null | tail -n 1)
+  value=${value//[\"\']/}
+  printf '%s' "${value%%[[:space:]]*}"
+}
+
+case $request in
+  bees=off)
+    exec 9>/run/karchy-storage-settings.lock
+    flock 9
+    write_bees_conf "ENABLED=no"
+    systemctl disable --now "$BEES_UNIT" >/dev/null 2>&1 ||
+      fail "background deduplication is switched off in $BEES_CONF, but $BEES_UNIT could not be stopped"
+    ;;
+  bees=on)
+    [[ -x /usr/lib/bees/bees ]] || fail "bees is not installed (the karchy-bees package)"
+    [[ $(packaged_enabled) == yes ]] ||
+      fail "karchy has switched background deduplication off for now ($BEES_DEFAULTS); an update turns it back on"
+    exec 9>/run/karchy-storage-settings.lock
+    flock 9
+    write_bees_conf ""
+    # On a laptop the start is skipped while on battery (karchy-laptop); the
+    # charger starts it then.
+    systemctl enable --now "$BEES_UNIT" >/dev/null 2>&1 ||
+      fail "background deduplication could not be started: systemctl status $BEES_UNIT says why"
+    ;;
+  measure=now)
+    systemctl start --no-block "$MEASURE_UNIT" >/dev/null 2>&1 ||
+      fail "the measurement could not be started: systemctl status $MEASURE_UNIT says why"
+    ;;
+  show=bees)
+    if [[ -f $BEES_STATUS && ! -L $BEES_STATUS ]]; then
+      /usr/lib/karchy/bees-summary <"$BEES_STATUS"
+    else
+      echo "state=stopped"
+    fi
+    ;;
+esac

@@ -1,0 +1,245 @@
+#!/bin/bash
+
+# karchy: measures what Settings › Storage can't read as a user, as root.
+# Installed as /usr/lib/karchy/storage-measure and run only by
+# karchy-storage-measure.service: every night from its timer, and when the
+# page's "Measure now" asks for it (/usr/lib/karchy/storage-settings). It
+# takes no arguments and reads no file a user can write.
+#
+# The result is /var/lib/karchy/storage/measurement.json, root's and readable
+# by everyone, replaced in one step when a run finishes:
+#
+#   {"version": 1, "time": <seconds since 1970>, "seconds": <how long it took>,
+#    "filesystems": [...], "disks": [...]}
+#
+# filesystems: one entry per mounted btrfs filesystem, by its UUID. btrfs
+# keeps no total of what files hold, so it is counted with compsize, which
+# reads each file's extent list from the metadata (no file data is read).
+# "Live" data is every subvolume that is writable, except bees' own
+# .beeshome; a read-only subvolume is a snapshot (snapper's are read-only).
+# To reach all of them, the filesystem's top level is mounted privately for
+# this run, as bees-run does.
+#   referenced     bytes the live files point at: each file's extent
+#                  references added up, so data two files share counts twice,
+#                  and a file with two names (a hard link) counts once per
+#                  name. ("Your files")
+#   uncompressed   the size, before compression, of every extent a live file
+#                  points at, each extent once and in full.
+#   disk           what those extents take on the disk. ("Stored on disk")
+#   snapshots      bytes on the disk in extents that only read-only
+#                  subvolumes point at: the same count over live and read-only
+#                  subvolumes together, less `disk`. null when that second
+#                  count failed. ("Held only by snapshots")
+#   live, readonly how many subvolumes were counted as each.
+#   error          why there are no figures, when compsize failed.
+# referenced - uncompressed is what sharing saves (reflink copies and
+# deduplication, by bees or anything else), less the parts of partly
+# overwritten extents that btrfs still keeps; uncompressed - disk is what
+# compression saves. The page does those sums (StorageModel.js).
+#
+# disks: one entry per whole disk, by kernel name and serial, from
+# `smartctl -j -i -H -A -n standby` (a sleeping hard disk is not woken):
+#   health       good | warning | asleep | unknown
+#   problems     which of a fixed list of findings make it a warning
+#   wear         percent of an SSD's rated life used, or null
+#   temperature  degrees Celsius, or null
+# Only those values are taken from smartctl's report.
+#
+# Nothing in the file is secret: sizes, counts, and the model and serial that
+# lsblk shows every user.
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+
+OUT_DIR=/var/lib/karchy/storage
+OUT=$OUT_DIR/measurement.json
+RUN_DIR=${RUNTIME_DIRECTORY:-}
+# One count may take this long; a disk with many snapshots on a slow drive
+# gives up on the snapshot figure instead of running into the next night.
+COUNT_TIMEOUT=6h
+
+fail() {
+  echo "storage-measure: $1" >&2
+  exit "${2:-1}"
+}
+
+(( $# == 0 )) || fail "usage: storage-measure (it takes no arguments)" 64
+(( EUID == 0 )) || fail "must run as root (karchy-storage-measure.service)" 77
+[[ -n $RUN_DIR && -d $RUN_DIR ]] || fail "run from karchy-storage-measure.service" 64
+
+# The nightly run leaves a laptop on battery alone, and a machine that was off
+# at the time gets it a few minutes after it starts, not during startup.
+if [[ -n ${TRIGGER_UNIT:-} ]]; then
+  if ! systemd-ac-power; then
+    echo "on battery: not measured this time"
+    exit 0
+  fi
+  uptime=$(cut -d. -f1 /proc/uptime)
+  (( uptime >= 300 )) || sleep $((300 - uptime))
+fi
+
+install -d -m 755 -o root -g root "$OUT_DIR"
+exec 9>"$OUT_DIR/.lock"
+flock -n 9 || { echo "another measurement is running"; exit 0; }
+
+started=$(date +%s)
+tmp=""
+mounted=""
+cleanup() {
+  [[ -z $mounted ]] || umount -- "$mounted" 2>/dev/null || umount -l -- "$mounted" 2>/dev/null || true
+  [[ -z $tmp ]] || rm -f -- "$tmp"
+}
+trap cleanup EXIT
+
+# compsize's three totals for the given folders, as "disk uncompressed
+# referenced" in bytes; nothing when it failed. A filesystem with no file
+# data prints no TOTAL line, which is three zeros.
+count() {
+  local out
+  out=$(timeout "$COUNT_TIMEOUT" compsize -b -x -- "$@" 2>/dev/null) || return 1
+  awk '$1 == "TOTAL" && $3 ~ /^[0-9]+$/ && $4 ~ /^[0-9]+$/ && $5 ~ /^[0-9]+$/ { print $3, $4, $5; found = 1 }
+       END { if (!found) print "0 0 0" }' <<<"$out"
+}
+
+# One filesystem's entry. Subvolumes are named by btrfs relative to the top
+# level; a name that isn't a folder there (one holding a line break) is left
+# out rather than guessed at.
+measure_filesystem() {
+  local uuid=$1 device=$2 mnt=$RUN_DIR/top path
+  local -a live=() frozen=()
+  local -A is_readonly=()
+  local disk="" uncompressed="" referenced="" all="" snapshots=null error=""
+
+  mkdir -p "$mnt"
+  if ! mount -t btrfs -o subvolid=5,noatime,nodev,noexec,nosuid -- "$device" "$mnt" 2>/dev/null; then
+    jq -n -c --arg uuid "$uuid" '{uuid: $uuid, error: "could not be mounted for the measurement"}'
+    return 0
+  fi
+  mounted=$mnt
+
+  while IFS= read -r path; do
+    [[ -n $path ]] && is_readonly[$path]=1
+  done < <(btrfs subvolume list -r -- "$mnt" 2>/dev/null | sed -n 's/^ID [0-9]* gen [0-9]* top level [0-9]* path //p')
+
+  live=("$mnt")
+  while IFS= read -r path; do
+    [[ -n $path && -d $mnt/$path ]] || continue
+    if [[ -n ${is_readonly[$path]:-} ]]; then
+      frozen+=("$mnt/$path")
+    elif [[ $path != .beeshome ]]; then
+      live+=("$mnt/$path")
+    fi
+  done < <(btrfs subvolume list -- "$mnt" 2>/dev/null | sed -n 's/^ID [0-9]* gen [0-9]* top level [0-9]* path //p')
+
+  if read -r disk uncompressed referenced < <(count "${live[@]}") && [[ -n $referenced ]]; then
+    if (( ${#frozen[@]} == 0 )); then
+      snapshots=0
+    elif read -r all _ < <(count "${live[@]}" "${frozen[@]}") && [[ -n $all ]]; then
+      snapshots=$(( all > disk ? all - disk : 0 ))
+    fi
+  else
+    error="could not be counted"
+  fi
+
+  umount -- "$mnt" 2>/dev/null || umount -l -- "$mnt" 2>/dev/null || true
+  mounted=""
+
+  if [[ -n $error ]]; then
+    jq -n -c --arg uuid "$uuid" --arg error "$error" '{uuid: $uuid, error: $error}'
+  else
+    jq -n -c --arg uuid "$uuid" --argjson referenced "$referenced" --argjson uncompressed "$uncompressed" \
+      --argjson disk "$disk" --argjson snapshots "$snapshots" \
+      --argjson live "${#live[@]}" --argjson readonly "${#frozen[@]}" \
+      '{uuid: $uuid, referenced: $referenced, uncompressed: $uncompressed, disk: $disk,
+        snapshots: $snapshots, live: $live, readonly: $readonly}'
+  fi
+}
+
+# One disk's entry, from smartctl's JSON report. smartctl's exit code is a
+# set of flags about the disk, not a failure to run.
+# shellcheck disable=SC2016 # jq variables, not shell ones
+SMART_FILTER='
+  def attribute($id): (.ata_smart_attributes.table // []) | map(select(.id == $id)) | first;
+  def raw($id): attribute($id) | if . == null then 0 else (.raw.value // 0) end;
+  def number: if type == "number" then . else null end;
+  . as $report
+  | (.nvme_smart_health_information_log // null) as $nvme
+  | ((.smartctl.messages // []) | map(.string // "") | join(" ")) as $messages
+  | (if $nvme != null then ($nvme.percentage_used | number)
+     elif (.rotation_rate // null) == 0 then
+       # The life left, as the drive normalizes it (100 new, 0 worn out),
+       # under whichever of the usual attributes it has.
+       ([231, 233, 177, 202, 169] | map(. as $id | $report | attribute($id)) | map(select(. != null and (.value | type) == "number")) | first) as $life
+       | if $life == null then null else (100 - $life.value) end
+     else null end) as $wear
+  | ($wear | if . == null then null elif . < 0 then 0 elif . > 100 then 100 else . end) as $wear
+  | ([ (if .smart_status.passed == false then "failing" else empty end),
+       (if $nvme != null and ($nvme.critical_warning // 0) != 0 then "critical" else empty end),
+       (if $nvme != null and ($nvme.media_errors // 0) > 0 then "media-errors" else empty end),
+       (if $nvme != null and ($nvme.available_spare | number) != null and ($nvme.available_spare_threshold | number) != null
+           and $nvme.available_spare < $nvme.available_spare_threshold then "spare-low" else empty end),
+       (if raw(5) > 0 then "reallocated" else empty end),
+       (if raw(197) > 0 then "pending" else empty end),
+       (if raw(198) > 0 then "unreadable" else empty end),
+       (if $wear != null and $wear >= 90 then "worn" else empty end)
+     ]) as $problems
+  | {
+      name: $name,
+      serial: ((.serial_number // "") | tostring | .[0:80]),
+      health: (if ($messages | test("STANDBY|SLEEP"; "i")) and .smart_status == null then "asleep"
+               elif ($problems | length) > 0 then "warning"
+               elif .smart_status.passed == true then "good"
+               else "unknown" end),
+      problems: $problems,
+      wear: $wear,
+      temperature: (.temperature.current | number)
+    }'
+
+measure_disk() {
+  local name=$1 report
+  report=$(timeout 30 smartctl -j -i -H -A -n standby -- "/dev/$name" 2>/dev/null) || true
+  jq -c --arg name "$name" "$SMART_FILTER" <<<"$report" 2>/dev/null ||
+    jq -n -c --arg name "$name" '{name: $name, serial: "", health: "unknown", problems: [], wear: null, temperature: null}'
+}
+
+filesystems=()
+if command -v compsize >/dev/null; then
+  declare -A seen=()
+  while read -r uuid source; do
+    [[ $uuid =~ ^[0-9a-fA-F-]{36}$ && -z ${seen[$uuid]:-} ]] || continue
+    seen[$uuid]=1
+    # "/dev/mapper/x[/@home]": the device, without the subvolume.
+    source=${source%%\[*}
+    [[ -b $source ]] || continue
+    filesystems+=("$(measure_filesystem "$uuid" "$source")")
+  done < <(findmnt -rn -t btrfs -o UUID,SOURCE)
+fi
+
+disks=()
+if command -v smartctl >/dev/null; then
+  for sys in /sys/block/*; do
+    name=${sys##*/}
+    [[ $name =~ ^(sd[a-z]+|nvme[0-9]+n[0-9]+)$ ]] || continue
+    disks+=("$(measure_disk "$name")")
+  done
+fi
+
+tmp=$(mktemp "$OUT_DIR/.measurement.XXXXXX")
+{
+  if ((${#filesystems[@]})); then printf '%s\n' "${filesystems[@]}"; fi
+  echo "---"
+  if ((${#disks[@]})); then printf '%s\n' "${disks[@]}"; fi
+} | jq -n -c -R --argjson time "$(date +%s)" --argjson started "$started" '
+  [inputs] as $lines
+  | ($lines | index("---")) as $split
+  | {
+      version: 1, time: $time, seconds: ($time - $started),
+      filesystems: ($lines[:$split] | map(fromjson)),
+      disks: ($lines[$split + 1:] | map(fromjson))
+    }' >"$tmp"
+chmod 644 "$tmp"
+mv -f -- "$tmp" "$OUT"
+tmp=""
