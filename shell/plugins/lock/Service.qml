@@ -89,6 +89,13 @@ Item {
     }
     return false
   }
+  // The lock turns the screen off shortly after it appears or was last used,
+  // but only where a screen-off time is set for the power source in use
+  // (Settings › Power, resolved by the idle service). With "Never" the lock
+  // stays lit. Without the idle service the lock keeps turning it off.
+  readonly property var idleService: shell && shell.firstPartyServiceFor
+    ? shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property bool blankWhenLocked: !idleService || idleService.screenOffEnabled !== false
   readonly property bool fingerprintUnavailable: FingerprintModel.isUnavailable(fingerprintProbeStreak) || (fingerprintConfigured && (!fingerprintAttemptReachedDevice || fingerprintAttemptFastError) && FingerprintModel.isUnavailable(fingerprintUnreachedStreak))
 
   function realScreenCount() {
@@ -266,6 +273,10 @@ Item {
   }
 
   function armBlankTimer(delayMs) {
+    if (!blankWhenLocked) {
+      idleBlankTimer.stop()
+      return
+    }
     idleBlankTimer.interval = delayMs || idleBlankTimer.idleMs
     idleBlankTimer.armedAt = Date.now()
     idleBlankTimer.restart()
@@ -866,6 +877,14 @@ Item {
     else armBlankTimer()
   }
 
+  // The screen-off time changed while locked: Settings, or the charger pulled
+  // or plugged in. A screen already off stays off until it is used.
+  onBlankWhenLockedChanged: {
+    if (!lockRequested) return
+    if (blankWhenLocked && !authenticatingPassword) armBlankTimer()
+    else if (!blankWhenLocked) idleBlankTimer.stop()
+  }
+
   FileView {
     path: "/etc/pam.d/karchy-lock-password"
     watchChanges: true
@@ -917,6 +936,8 @@ Item {
         secure: sessionLock.secure,
         realScreens: root.realScreenCount(),
         passwordPam: root.passwordPamConfigured,
+        blankWhenLocked: root.blankWhenLocked,
+        blankTimer: idleBlankTimer.running,
         fingerprint: root.fingerprintConfigured,
         fingerprintUnavailable: root.fingerprintUnavailable,
         authenticating: root.authenticating,

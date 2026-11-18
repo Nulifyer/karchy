@@ -144,11 +144,19 @@ Item {
       contrast: -0.08
     }
 
+    // The lock appearing under a resting pointer reports a position as well.
+    // Only a pointer that then moves is the user: the first report must not
+    // light a screen the idle time had already turned off.
+    PointerMoveGate { id: pointerGate }
+
     MouseArea {
+      id: wakeArea
       anchors.fill: parent
       hoverEnabled: true
       onClicked: { root.wakeRequested(); root.forcePasswordFocus() }
-      onPositionChanged: root.wakeRequested()
+      onPositionChanged: function(mouse) {
+        if (pointerGate.moved(wakeArea, mouse)) root.wakeRequested()
+      }
     }
 
     // The time and date above the field (Settings › Appearance › Lock screen),
