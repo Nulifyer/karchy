@@ -15,7 +15,7 @@ IGNORED_DIRECTORY_NAMES = {
     ".android", ".bun", ".cache", ".cargo", ".devcontainer", ".dotnet",
     ".git", ".gradle", ".hg", ".idea", ".jj", ".local", ".npm", ".nuget",
     ".pnpm-store", ".pki", ".pytest_cache", ".ruff_cache", ".rustup", ".ssh",
-    ".steam", ".svn", ".tmp", ".tox", ".var", ".venv", ".vscode",
+    ".steam", ".svn", ".t3", ".tmp", ".tox", ".var", ".venv", ".vscode",
     ".vscode-oss", ".vscode-oss-shared", ".vscode-shared", ".yarn",
     "__pycache__", "build", "cache", "caches", "dist", "node_modules",
     "out", "target", "vendor", "venv",
@@ -35,13 +35,38 @@ def directories(directory, follow_symlinks=False):
         return
 
 
+def linked_checkout(entry):
+    """True for a git linked worktree or a secondary jj workspace.
+
+    Coding agents and `git worktree add` leave these copies of a project
+    elsewhere in the home folder; the picker lists the main checkout only.
+    """
+    try:
+        if entry.name == ".git" and entry.is_file(follow_symlinks=False):
+            with open(entry.path, encoding="utf-8", errors="replace") as file:
+                gitdir = file.readline().strip()
+            return gitdir.startswith("gitdir:") and "/worktrees/" in gitdir
+        if entry.name == ".jj" and entry.is_dir(follow_symlinks=False):
+            return os.path.isfile(os.path.join(entry.path, "repo"))
+    except OSError:
+        pass
+    return False
+
+
 def inspect_directory(directory):
+    """(is_project, children); a linked checkout is neither nor descended."""
     children = []
+    project = False
     try:
         with os.scandir(directory) as entries:
             for entry in entries:
                 if entry.name in PROJECT_MARKERS:
-                    return True, []
+                    if linked_checkout(entry):
+                        return False, []
+                    project = True
+                    continue
+                if project:
+                    continue
                 try:
                     if entry.is_dir(follow_symlinks=False):
                         children.append(entry.path)
@@ -49,7 +74,7 @@ def inspect_directory(directory):
                     continue
     except OSError:
         return False, []
-    return False, children
+    return (True, []) if project else (False, children)
 
 
 def discover(home, projects_root):

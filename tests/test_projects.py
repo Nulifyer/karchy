@@ -51,6 +51,26 @@ class DiscoveryTest(unittest.TestCase):
                 (home / marker[1:] / marker).mkdir(parents=True)
             self.assertEqual(len(list(projects.discover(str(home), str(home / "Projects")))), 7)
 
+    def test_linked_checkouts_and_agent_state_are_skipped(self):
+        with tempfile.TemporaryDirectory() as fixture:
+            home = Path(fixture)
+            main = home / "src" / "main"
+            (main / ".git" / "worktrees" / "wt").mkdir(parents=True)
+            worktree = home / "agent" / "worktrees" / "wt"
+            (worktree / ".vscode").mkdir(parents=True)
+            (worktree / "inner" / ".git").mkdir(parents=True)
+            (worktree / ".git").write_text("gitdir: " + str(main / ".git/worktrees/wt") + "\n")
+            submodule = home / "sub"
+            submodule.mkdir()
+            (submodule / ".git").write_text("gitdir: ../elsewhere/.git/modules/sub\n")
+            workspace = home / "jj-workspace"
+            (workspace / ".jj").mkdir(parents=True)
+            (workspace / ".jj" / "repo").write_text("../jj-main/.jj/repo")
+            (home / "jj-main" / ".jj" / "repo").mkdir(parents=True)
+            (home / ".t3" / "scratch" / "clone" / ".git").mkdir(parents=True)
+            found = {r["path"] for r in projects.discover(str(home), str(home / "Projects"))}
+            self.assertEqual(found, {str(main), str(submodule), str(home / "jj-main")})
+
     def test_absent_roots_and_symlink_loop(self):
         with tempfile.TemporaryDirectory() as fixture:
             home = Path(fixture)

@@ -89,8 +89,12 @@ requires Node.js. CI tests Python 3.10 and 3.14 with Node.js 24.
 Every direct child directory of `~/Projects` appears first when there is no
 search query, including hidden directories and symlinked projects. The home
 scan finds outermost folders with `.git`, `.jj`, `.hg`, `.svn`, `.vscode`,
-`.idea`, or `.devcontainer` entries. A `.git` file also qualifies. It skips
-dependency, cache, application-state, and build folders, does not descend into
+`.idea`, or `.devcontainer` entries. A `.git` file also qualifies, except a
+linked worktree's, whose `.git` file points into another repository's
+`.git/worktrees/`; secondary jj workspaces are skipped the same way, so the
+copies that `git worktree add` and coding agents create don't crowd the list.
+It skips dependency, cache, application-state (including `~/.t3`), and build
+folders, does not descend into
 detected projects, and does not follow directory symlinks during the home scan.
 Canonical paths are deduplicated while preserving the first alias.
 
