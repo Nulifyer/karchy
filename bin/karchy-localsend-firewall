@@ -1,72 +1,115 @@
 #!/bin/bash
 
-# karchy:summary=Open LocalSend's port only while a trusted network is connected (D-33)
+# karchy:summary=Open LocalSend's and KDE Connect's ports only while a trusted network is connected (D-33)
 # karchy:args=[status]
 # karchy:hidden=true
 
 # Run as root by NetworkManager's dispatcher on every connection change, by
-# karchy-trusted-networks after the list changes, and once at boot before
-# NetworkManager starts (karchy-localsend-firewall.service), which closes the
-# port everywhere. Whether a connection is trusted comes from
+# karchy-trusted-networks after the list changes, by Quick install after it
+# installs or removes one of the apps, and once at boot before NetworkManager
+# starts (karchy-localsend-firewall.service), which closes the ports
+# everywhere. Whether a connection is trusted comes from
 # `karchy-trusted-networks status --json`: the profile and its router must
 # both match what was trusted (D-68).
 
 set -euo pipefail
 
-PORT=53317
-COMMENT=karchy-localsend
-# What this script opened last, for Settings (`status`): one device per line.
-STATE=/run/karchy/localsend-open
+# The apps karchy opens ports for: "<id> <ports> <protocols> <program>".
+# One port takes both protocols in one ufw rule ("any"); a range needs a rule
+# per protocol. KDE Connect's ports open only while it is installed; LocalSend
+# ships with karchy and its port keeps the behaviour it had.
+APPS=(
+  "localsend 53317 any -"
+  "kdeconnect 1714:1764 tcp,udp /usr/bin/kdeconnectd"
+)
+# What this script opened last, for Settings (`status`): "<id> <device>" lines.
+STATE=/run/karchy/firewall-open
 
 # For anyone (Settings › Network › Sharing and firewall): whether ufw is on
-# and refuses incoming connections, and where LocalSend's port is open now.
-# ufw's own rule list needs root; karchy opens only this port, and records
-# where.
+# and refuses incoming connections, and where the ports are open now. ufw's
+# own rule list needs root; karchy opens only these ports, and records where.
 if [[ ${1:-} == "status" ]]; then
   enabled=$(sed -n 's/^ENABLED=//p' /etc/ufw/ufw.conf 2>/dev/null | head -n 1)
   policy=$(sed -n 's/^DEFAULT_INPUT_POLICY="\{0,1\}\([A-Z]*\)"\{0,1\}$/\1/p' /etc/default/ufw 2>/dev/null | head -n 1)
+  apps=$(for app in "${APPS[@]}"; do
+    read -r id ports _ program <<<"$app"
+    [[ $program == - ]] && program=/usr/bin/$id
+    [[ -x $program ]] && installed=true || installed=false
+    jq -n --arg id "$id" --arg ports "$ports" --argjson installed "$installed" \
+      --arg open "$(sed -n "s/^$id //p" "$STATE" 2>/dev/null || true)" \
+      '{id: $id, ports: $ports, installed: $installed, open_on: ($open | split("\n") | map(select(length > 0)))}'
+  done | jq -s .)
   jq -n --arg active "$(systemctl is-active ufw.service 2>/dev/null || true)" --arg enabled "$enabled" \
-    --arg policy "$policy" --arg open "$(cat "$STATE" 2>/dev/null || true)" \
-    --arg localsend "$(command -v localsend 2>/dev/null || true)" --argjson port "$PORT" '{
+    --arg policy "$policy" --argjson apps "$apps" '{
       firewall: ($active == "active" and $enabled == "yes"),
       incoming: ($policy | ascii_downcase),
-      localsend_installed: ($localsend != ""),
-      port: $port,
-      open_on: ($open | split("\n") | map(select(length > 0)))
+      localsend_installed: ($apps[0].installed),
+      port: ($apps[0].ports | tonumber),
+      open_on: $apps[0].open_on,
+      apps: $apps
     }'
   exit 0
 fi
 
 (( EUID == 0 )) || { echo "karchy-localsend-firewall: run as root" >&2; exit 1; }
 
-# The port opens only on the interfaces of trusted connections, never on a
+# The ports open only on the interfaces of trusted connections, never on a
 # VPN, tether or second network that is up at the same time.
 # Before NetworkManager runs (at boot) nothing is connected, so nothing is
 # trusted; asking nmcli then could only wait on a daemon that isn't there.
-wanted=()
+trusted=()
 if systemctl is-active --quiet NetworkManager.service; then
   while IFS= read -r device; do
-    [[ $device =~ ^[A-Za-z0-9._@-]+$ ]] && wanted+=("$device")
+    [[ $device =~ ^[A-Za-z0-9._@-]+$ ]] && trusted+=("$device")
   done < <(/usr/bin/karchy-trusted-networks status --json 2>/dev/null |
     jq -r '.active[] | select(.trusted) | .device' 2>/dev/null)
 fi
 
-# Rules this script added earlier: "53317 on wlan0 ... # karchy-localsend",
-# plus the (v6) twin; "53317 ... # karchy-localsend" with no interface is the
-# old all-interfaces rule.
 status=$(ufw status)
-mapfile -t present < <(sed -n "s/^$PORT\( (v6)\)\? on \([^ ]*\) .*# $COMMENT\$/\2/p" <<<"$status" | sort -u)
-if grep -qE "^$PORT(/[a-z]+)?( \(v6\))? +ALLOW.*# $COMMENT\$" <<<"$status"; then
-  ufw delete allow "$PORT" >/dev/null || true
-fi
-
-for device in "${present[@]}"; do
-  [[ " ${wanted[*]} " == *" $device "* ]] || ufw delete allow in on "$device" to any port "$PORT" >/dev/null
-done
-for device in "${wanted[@]}"; do
-  [[ " ${present[*]} " == *" $device "* ]] || ufw allow in on "$device" to any port "$PORT" comment "$COMMENT" >/dev/null
-done
-
 mkdir -p "${STATE%/*}"
-printf '%s\n' "${wanted[@]}" | grep . >"$STATE.tmp" || true
+: >"$STATE.tmp"
+
+for app in "${APPS[@]}"; do
+  read -r id ports protocols program <<<"$app"
+  comment=karchy-$id
+  wanted=()
+  [[ $program != - && ! -x $program ]] || wanted=("${trusted[@]}")
+
+  # Rules this script added earlier: "53317 on wlan0 ... # karchy-localsend"
+  # or "1714:1764/tcp on wlan0 ... # karchy-kdeconnect", plus the (v6) twins;
+  # one with no interface is the old all-interfaces rule.
+  mapfile -t present < <(sed -n "s|^$ports\(/[a-z]*\)\? \((v6) \)\?on \([^ ]*\) .*# $comment\$|\3|p" <<<"$status" | sort -u)
+  if grep -qE "^$ports(/[a-z]+)?( \(v6\))? +ALLOW.*# $comment\$" <<<"$status"; then
+    ufw delete allow "$ports" >/dev/null || true
+  fi
+
+  # "any" is one rule for both protocols; otherwise one rule per protocol.
+  rule() {
+    local action=$1 device=$2 proto
+    if [[ $protocols == any ]]; then
+      if [[ $action == add ]]; then
+        ufw allow in on "$device" to any port "$ports" comment "$comment" >/dev/null
+      else
+        ufw delete allow in on "$device" to any port "$ports" >/dev/null
+      fi
+      return
+    fi
+    for proto in ${protocols//,/ }; do
+      if [[ $action == add ]]; then
+        ufw allow in on "$device" to any port "$ports" proto "$proto" comment "$comment" >/dev/null
+      else
+        ufw delete allow in on "$device" to any port "$ports" proto "$proto" >/dev/null
+      fi
+    done
+  }
+
+  for device in "${present[@]}"; do
+    [[ " ${wanted[*]} " == *" $device "* ]] || rule delete "$device"
+  done
+  for device in "${wanted[@]}"; do
+    [[ " ${present[*]} " == *" $device "* ]] || rule add "$device"
+    echo "$id $device" >>"$STATE.tmp"
+  done
+done
+
 mv "$STATE.tmp" "$STATE"

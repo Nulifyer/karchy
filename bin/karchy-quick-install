@@ -23,6 +23,9 @@
 #                 userServices user units to enable and start
 #                 groups      groups to add you to (applies at next login)
 #                 run         commands to run as you afterwards
+#                 firewall    have karchy open the app's ports on trusted
+#                             networks only (D-33), now and not at the next
+#                             network change; remove closes them the same way
 #                 A failed setup step is reported and the command fails; running
 #                 install again retries the setup (pacman skips what's there)
 #   remove <id>   remove the app's own packages (not ones another list entry
@@ -64,6 +67,17 @@ refresh_window() {
   # generated "Karchy" color theme without waiting for a theme switch (D-88).
   command -v karchy-theme-set-vscode >/dev/null && karchy-theme-set-vscode >/dev/null 2>&1
   return 0
+}
+
+# An entry with `setup.firewall` has its ports opened by karchy's root helper,
+# and only on trusted networks (D-33: LocalSend, KDE Connect). The helper
+# opens an app's ports while the app is installed, and NetworkManager runs it
+# at every connection change; running it here makes the rule follow the
+# install or removal at once.
+FIREWALL=/usr/bin/karchy-localsend-firewall
+refresh_firewall() {
+  [[ $(field "$1" '.setup.firewall // false') == true && -x $FIREWALL ]] || return 0
+  sudo "$FIREWALL"
 }
 
 # Each package's launcher, for Open: "<package>\t<desktop file>". Of the
@@ -138,14 +152,17 @@ info() {
     '{download: $d, installed: $i}'
 }
 
-# The 32-bit graphics driver games need, for the GPUs in this machine.
+# The 32-bit graphics driver games need, for the GPUs in this machine. Every
+# GPU gets a Vulkan driver by name: left to pacman, Steam's lib32-vulkan-driver
+# and vulkan-driver go to the first package that provides them, which is an
+# old NVIDIA driver (lib32-nvidia-390xx-utils) on any machine.
 gpu32_packages() {
   local dev vendor
-  local nvidia
+  local nvidia chosen pkg
   # pacman -Qq answers with the package that provides the name, and
   # nvidia-580xx-utils provides nvidia-utils (D-69): compare exact names.
   nvidia=$(pacman -Qq nvidia-utils 2>/dev/null)
-  {
+  chosen=$(
     case $nvidia in
       nvidia-580xx-utils) echo lib32-nvidia-580xx-utils ;;
       nvidia-utils) echo lib32-nvidia-utils ;;
@@ -156,11 +173,23 @@ gpu32_packages() {
       case $vendor in
         0x1002) echo lib32-mesa lib32-vulkan-radeon ;;
         0x8086) echo lib32-mesa lib32-vulkan-intel ;;
+        # NVIDIA on nouveau.
+        0x10de) [[ -n $nvidia ]] || echo lib32-mesa lib32-vulkan-nouveau ;;
+        # A virtual machine's virtio GPU.
+        0x1af4) echo lib32-mesa lib32-vulkan-virtio ;;
       esac
     done
-    # NVIDIA on nouveau, and virtual GPUs: Mesa's 32-bit OpenGL.
-    [[ -n $nvidia ]] || echo lib32-mesa
-  } | tr ' ' '\n' | sort -u
+  )
+  # Any other GPU: Mesa's 32-bit OpenGL and its software Vulkan.
+  [[ $chosen == *lib32-vulkan-* || $chosen == *lib32-nvidia-* ]] || chosen+=" lib32-mesa lib32-vulkan-swrast"
+  # karchy installs the 64-bit Vulkan driver for AMD, Intel and NVIDIA's own
+  # driver; where there is none, the 32-bit one's twin comes along.
+  if ! pacman -Qq vulkan-driver >/dev/null 2>&1; then
+    for pkg in $chosen; do
+      [[ $pkg == lib32-vulkan-* ]] && chosen+=" ${pkg#lib32-}"
+    done
+  fi
+  tr ' ' '\n' <<<"$chosen" | grep . | sort -u
 }
 
 install_app() {
@@ -227,6 +256,7 @@ install_app() {
   while read -r cmd; do
     [[ -z $cmd ]] || bash -c "$cmd" || failed+=("running $cmd")
   done < <(field "$app" '.setup.run[]? // empty')
+  refresh_firewall "$app" || failed+=("opening its ports on trusted networks")
 
   local note
   note=$(field "$app" '.setup.note // empty')
@@ -298,6 +328,7 @@ remove_app() {
     die "$name wasn't removed."
   fi
   [[ $(field "$app" .category) == browsers ]] && browser_fallback
+  refresh_firewall "$app" || echo "Its firewall rule stays until the network next changes."
   refresh_window
   karchy-notification-send -g quick-install "$name removed" 2>/dev/null || true
 }
