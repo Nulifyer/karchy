@@ -35,7 +35,7 @@ if [[ ${1:-} != "--inside" ]]; then
   image=$(sed -n 's/^FROM //p' "$ROOT/packaging/container/Containerfile")
   status=0
   for level in generic v3; do
-    podman run --rm --volume "$ROOT:$ROOT:ro" --workdir "$ROOT" --env KARCHY_CACHYOS_LEVEL="$level" \
+    podman run --quiet --rm --volume "$ROOT:$ROOT:ro" --workdir "$ROOT" --env KARCHY_CACHYOS_LEVEL="$level" \
       "$image" "$ROOT/tools/repos-check" --inside "$@" || status=1
   done
   exit "$status"
