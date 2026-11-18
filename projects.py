@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 """Streaming project discovery and argument-safe desktop launches."""
 
-import argparse
 import json
 import os
-from pathlib import Path
 import signal
-import shutil
-import subprocess
 import sys
+
+# A scan runs on every opening, so it imports only what it needs; argparse,
+# pathlib, shutil and subprocess together cost more than the walk on a small
+# home folder.
 
 PROJECT_MARKERS = {".devcontainer", ".git", ".hg", ".idea", ".jj", ".svn", ".vscode"}
 IGNORED_DIRECTORY_NAMES = {
-    ".android", ".bun", ".cache", ".cargo", ".devcontainer", ".dotnet",
-    ".git", ".gradle", ".hg", ".idea", ".jj", ".local", ".npm", ".nuget",
-    ".pnpm-store", ".pki", ".pytest_cache", ".ruff_cache", ".rustup", ".ssh",
-    ".steam", ".svn", ".t3", ".tmp", ".tox", ".var", ".venv", ".vscode",
+    ".android", ".bun", ".cache", ".cargo", ".claude", ".codex",
+    ".devcontainer", ".dotnet", ".git", ".gradle", ".hg", ".idea", ".jj",
+    ".local", ".npm", ".nuget", ".nv", ".pnpm-store", ".pki", ".pytest_cache",
+    ".ruff_cache", ".rustup", ".ssh", ".steam", ".svn", ".t3", ".tmp", ".tox",
+    ".var", ".venv", ".vscode",
     ".vscode-oss", ".vscode-oss-shared", ".vscode-shared", ".yarn",
     "__pycache__", "build", "cache", "caches", "dist", "node_modules",
-    "out", "target", "vendor", "venv",
+    "out", "target", "vendor", "venv", ".wine",
 }
+# Chromium writes this file at the root of every profile, so it marks browser
+# and Electron app state (Brave, VS Code, Obsidian, ...) wherever it lives.
+APP_PROFILE_MARKER = "Local State"
 
 
 def directories(directory, follow_symlinks=False):
@@ -54,12 +58,14 @@ def linked_checkout(entry):
 
 
 def inspect_directory(directory):
-    """(is_project, children); a linked checkout is neither nor descended."""
+    """(is_project, children); a linked checkout or app profile is neither."""
     children = []
     project = False
     try:
         with os.scandir(directory) as entries:
             for entry in entries:
+                if entry.name == APP_PROFILE_MARKER:
+                    return False, []
                 if entry.name in PROJECT_MARKERS:
                     if linked_checkout(entry):
                         return False, []
@@ -84,8 +90,8 @@ def discover(home, projects_root):
 
     def candidate(path, primary):
         try:
-            resolved = str(Path(path).resolve(strict=True))
-        except (OSError, RuntimeError):
+            resolved = os.path.realpath(path, strict=True)
+        except OSError:
             return None
         if resolved in seen:
             return None
@@ -168,6 +174,7 @@ def display(path):
 
 
 def require_command(executable):
+    import shutil
     if shutil.which(executable) is None:
         raise ValueError("Command not found: " + executable)
 
@@ -175,41 +182,68 @@ def require_command(executable):
 def start(command, cwd):
     # Keep the application independent of the shell's plugin lifecycle.
     # exec errors in the launcher itself remain visible to the caller.
+    import subprocess
     subprocess.Popen(command, cwd=cwd, start_new_session=True,
                      stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                      stderr=subprocess.DEVNULL)
 
 
+COMMANDS = {
+    "scan": {"--home", "--root"},
+    "launch": {"--action", "--path", "--editor-json"},
+    "create": {"--root", "--name", "--editor-json"},
+}
+USAGE = """usage: projects.py scan [--home DIR] [--root DIR]
+       projects.py launch --action editor|terminal --path DIR [--editor-json JSON]
+       projects.py create --name NAME [--root DIR] [--editor-json JSON]"""
+
+
+def parse_args(argv):
+    """The command and its options; takes --opt VALUE and --opt=VALUE."""
+    if not argv or argv[0] not in COMMANDS:
+        raise ValueError(USAGE)
+    command, allowed, options = argv[0], COMMANDS[argv[0]], {}
+    rest = iter(argv[1:])
+    for arg in rest:
+        name, equals, value = arg.partition("=")
+        if name not in allowed:
+            raise ValueError("Unknown option: " + arg + "\n" + USAGE)
+        if not equals:
+            value = next(rest, None)
+            if value is None:
+                raise ValueError("Option needs a value: " + name)
+        options[name[2:].replace("-", "_")] = value
+    root = os.environ.get("Z_PROJECTS_ROOT") or "~/Projects"
+    options.setdefault("home", os.path.expanduser("~"))
+    options.setdefault("root", root)
+    options.setdefault("editor_json", '["code"]')
+    if command == "launch" and options.get("action") not in {"editor", "terminal"}:
+        raise ValueError("--action must be editor or terminal.")
+    if command == "launch" and "path" not in options:
+        raise ValueError("--path is required.")
+    if command == "create" and "name" not in options:
+        raise ValueError("--name is required.")
+    return command, options
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    commands = parser.add_subparsers(dest="command", required=True)
-    scan = commands.add_parser("scan")
-    scan.add_argument("--home", default=os.path.expanduser("~"))
-    scan.add_argument("--root", default=os.environ.get("Z_PROJECTS_ROOT") or "~/Projects")
-    launch = commands.add_parser("launch")
-    launch.add_argument("--action", choices=["editor", "terminal"], required=True)
-    launch.add_argument("--path", required=True)
-    launch.add_argument("--editor-json", default='["code"]')
-    create = commands.add_parser("create", help="create a project folder and open it in the editor")
-    create.add_argument("--root", default=os.environ.get("Z_PROJECTS_ROOT") or "~/Projects")
-    create.add_argument("--name", required=True)
-    create.add_argument("--editor-json", default='["code"]')
-    args = parser.parse_args()
     try:
-        if args.command == "scan":
-            if not os.path.isdir(os.path.expanduser(args.home)):
-                raise ValueError("Home directory does not exist: " + args.home)
-            for row in discover(args.home, args.root):
+        command, args = parse_args(sys.argv[1:])
+        if command == "scan":
+            if not os.path.isdir(os.path.expanduser(args["home"])):
+                raise ValueError("Home directory does not exist: " + args["home"])
+            for row in discover(args["home"], args["root"]):
                 print(json.dumps(row, ensure_ascii=True), flush=True)
-        elif args.command == "create":
-            editor = json.loads(args.editor_json)
-            path = create_project(args.root, args.name, editor)
+        elif command == "create":
+            editor = json.loads(args["editor_json"])
+            path = create_project(args["root"], args["name"], editor)
             start(launch_command("editor", path, editor), path)
             print(path)
         else:
-            command = launch_command(args.action, args.path, json.loads(args.editor_json))
-            require_command("xdg-terminal-exec" if args.action == "terminal" else json.loads(args.editor_json)[0])
-            start(command, args.path)
+            editor = json.loads(args["editor_json"])
+            command = launch_command(args["action"], args["path"], editor)
+            require_command("xdg-terminal-exec" if args["action"] == "terminal" else editor[0])
+            start(command, args["path"])
     except (OSError, ValueError) as error:
         print(str(error), file=sys.stderr)
         return 1

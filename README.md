@@ -93,8 +93,9 @@ scan finds outermost folders with `.git`, `.jj`, `.hg`, `.svn`, `.vscode`,
 linked worktree's, whose `.git` file points into another repository's
 `.git/worktrees/`; secondary jj workspaces are skipped the same way, so the
 copies that `git worktree add` and coding agents create don't crowd the list.
-It skips dependency, cache, application-state (including `~/.t3`), and build
-folders, does not descend into
+It skips dependency, cache, application-state (including `~/.t3`, `~/.claude`,
+`~/.codex` and Wine prefixes), and build folders, plus any browser or Electron
+app profile (a folder holding Chromium's `Local State` file), does not descend into
 detected projects, and does not follow directory symlinks during the home scan.
 Canonical paths are deduplicated while preserving the first alias.
 

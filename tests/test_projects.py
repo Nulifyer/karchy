@@ -68,8 +68,24 @@ class DiscoveryTest(unittest.TestCase):
             (workspace / ".jj" / "repo").write_text("../jj-main/.jj/repo")
             (home / "jj-main" / ".jj" / "repo").mkdir(parents=True)
             (home / ".t3" / "scratch" / "clone" / ".git").mkdir(parents=True)
+            profile = home / ".config" / "Some Electron App"
+            (profile / "extensions" / "repo" / ".git").mkdir(parents=True)
+            (profile / "Local State").write_text("{}")
             found = {r["path"] for r in projects.discover(str(home), str(home / "Projects"))}
             self.assertEqual(found, {str(main), str(submodule), str(home / "jj-main")})
+
+    def test_arguments_take_both_forms_and_reject_mistakes(self):
+        command, options = projects.parse_args(
+            ["create", "--name=-dash", "--root", "/r", "--editor-json=[\"x\"]"])
+        self.assertEqual(command, "create")
+        self.assertEqual(options["name"], "-dash")
+        self.assertEqual(options["root"], "/r")
+        self.assertEqual(options["editor_json"], '["x"]')
+        for argv in [[], ["nope"], ["scan", "--name=x"], ["scan", "--home"],
+                     ["launch", "--path", "/"], ["launch", "--action", "x", "--path", "/"],
+                     ["create"]]:
+            with self.assertRaises(ValueError, msg=argv):
+                projects.parse_args(argv)
 
     def test_absent_roots_and_symlink_loop(self):
         with tempfile.TemporaryDirectory() as fixture:
