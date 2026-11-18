@@ -22,6 +22,20 @@ Panel {
   // this map only keeps the panel responsive while BlueZ catches up.
   property var pendingActions: ({})
 
+  // Pairing runs one device at a time, in karchy-bluetooth-device pair, which
+  // stays up until the device is connected or the pairing failed. A device
+  // that wants a code asks through it: each question is a line on its stdout
+  // (Model.parsePairEvent) and the answer goes to its stdin.
+  property string pairingAddress: ""
+  property string pairingName: ""
+  property bool pairingPaired: false
+  // { kind, code } while a question is open, else null.
+  property var pairingQuestion: null
+  property string pairingAnswerText: ""
+  // Why the last pairing failed, shown on that device's row for a while.
+  property string pairFailureAddress: ""
+  property string pairFailureText: ""
+
   readonly property var adapter: Bluetooth.defaultAdapter
 
   // True while this instance owes BlueZ a StopDiscovery: set when it starts
@@ -273,7 +287,82 @@ Panel {
   function connectDevice(device) {
     if (!device || device.connected) return
     if (device.paired || device.bonded || device.trusted) runDeviceAction(device, "connect", "connecting")
-    else runDeviceAction(device, "pair", "connecting")
+    else startPairing(device)
+  }
+
+  function startPairing(device) {
+    if (!device || !device.address || pairProc.running) return
+    pairingAddress = device.address
+    pairingName = deviceLabel(device)
+    pairingPaired = false
+    pairingQuestion = null
+    pairFailureAddress = ""
+    pairFailureText = ""
+    pairProc.command = deviceCommand("pair", device.address)
+    pairProc.running = true
+  }
+
+  function handlePairEvent(line) {
+    var event = Model.parsePairEvent(line)
+    if (!event) return
+
+    if (event.type === "question") {
+      pairingAnswerText = ""
+      pairingQuestion = { kind: event.kind, code: event.code }
+      // The device waits for the answer, so bring the question to the person.
+      if (!opened) open()
+      return
+    }
+
+    pairingQuestion = null
+    if (event.type === "paired") {
+      pairingPaired = true
+    } else if (event.type === "connected") {
+      scheduleAudioOutputSwitch(deviceForAddress(pairingAddress))
+    } else if (event.type === "failed") {
+      pairFailureAddress = pairingAddress
+      pairFailureText = Model.pairFailureText(event.reason, Commons.I18n.t)
+      if (pairFailureText !== "") pairFailureClear.restart()
+    }
+  }
+
+  function deviceForAddress(address) {
+    for (var i = 0; i < devices.length; i++) {
+      if (devices[i] && devices[i].address === address) return devices[i]
+    }
+    return null
+  }
+
+  function answerPairing(text) {
+    if (!pairProc.running) return
+    pairProc.write(text + "\n")
+    pairingQuestion = null
+  }
+
+  function submitPairingText() {
+    if (!pairingQuestion) return
+    var answer = Model.pairTypedAnswer(pairingQuestion.kind, pairingAnswerText)
+    if (answer !== "") answerPairing(answer)
+  }
+
+  // Enter and Escape while a question is open. A code that is only read
+  // (typed on the device) has nothing to accept; Escape gives the pairing up.
+  function acceptPairingQuestion() {
+    if (!pairingQuestion) return
+    if (pairingQuestion.kind === "confirm") answerPairing("yes")
+    else if (Model.pairQuestionTyped(pairingQuestion.kind)) submitPairingText()
+  }
+
+  function declinePairingQuestion() {
+    if (!pairingQuestion) return
+    answerPairing(pairingQuestion.kind === "confirm" ? "no" : "cancel")
+  }
+
+  function pairingEnded() {
+    pairingQuestion = null
+    pairingAddress = ""
+    pairingName = ""
+    pairingPaired = false
   }
 
   function disconnectDevice(device) {
@@ -581,6 +670,25 @@ Panel {
     onTriggered: root.pendingActions = ({})
   }
 
+  Process {
+    id: pairProc
+    stdinEnabled: true
+    stdout: SplitParser {
+      onRead: function(line) { root.handlePairEvent(line) }
+    }
+    onExited: root.pairingEnded()
+  }
+
+  Timer {
+    id: pairFailureClear
+    interval: 10000
+    repeat: false
+    onTriggered: {
+      root.pairFailureAddress = ""
+      root.pairFailureText = ""
+    }
+  }
+
   Timer {
     id: audioSwitchTimer
     interval: 500
@@ -643,11 +751,26 @@ Panel {
         if (dy !== 0) root.moveCursor(dy)
         else if (dx !== 0) root.moveCursorH(dx)
       }
-      onActivateRequested: if (root.cursorActive) root.activateCursor()
-      onCloseRequested: root.close()
+      // A typed answer (a PIN) takes the keys. Otherwise an open question
+      // owns Enter and Escape: yes and no, or giving the pairing up.
+      blocked: pairAnswer.activeFocus
+      onActivateRequested: {
+        if (root.pairingQuestion) root.acceptPairingQuestion()
+        else if (root.cursorActive) root.activateCursor()
+      }
+      onCloseRequested: {
+        if (root.pairingQuestion) root.declinePairingQuestion()
+        else root.close()
+      }
       onTabRequested: function(direction) { root.switchPanel(direction) }
-      onDeleteRequested: if (root.cursorActive) root.deleteSelected()
+      onDeleteRequested: if (root.cursorActive && !root.pairingQuestion) root.deleteSelected()
       onTextKey: function(t) {
+        if (root.pairingQuestion) {
+          if (root.pairingQuestion.kind !== "confirm") return
+          if (t === "y" || t === "Y") root.answerPairing("yes")
+          else if (t === "n" || t === "N") root.answerPairing("no")
+          return
+        }
         if (t === "b" || t === "B") root.toggleBluetooth()
       }
 
@@ -690,6 +813,106 @@ Panel {
         // grow the popup past the screen.
         PanelSeparator {
           foreground: root.panelText
+        }
+
+        // ---------- The code a device wants checked, shown or entered ----------
+        Column {
+          id: pairCard
+          readonly property string kind: root.pairingQuestion ? root.pairingQuestion.kind : ""
+          readonly property bool typed: Model.pairQuestionTyped(kind)
+
+          visible: root.pairingQuestion !== null
+          width: parent.width
+          spacing: Style.space(10)
+
+          // The field takes the keyboard for a typed answer and hands it
+          // back to the panel when the question is over. A question can also
+          // be what opened the panel, which focuses the panel itself.
+          function placeFocus() {
+            Qt.callLater(function() {
+              if (pairCard.typed) pairAnswer.forceActiveFocus()
+              else keyCatcher.forceActiveFocus()
+            })
+          }
+          onTypedChanged: placeFocus()
+          Component.onCompleted: if (typed) placeFocus()
+          Connections {
+            target: root
+            function onOpenedChanged() { if (root.opened && pairCard.typed) pairCard.placeFocus() }
+          }
+
+          Text {
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            text: Model.pairQuestionText(pairCard.kind, root.pairingName || Commons.I18n.t("bluetooth.device"), Commons.I18n.t)
+            color: root.panelText
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.body
+          }
+
+          Text {
+            visible: !pairCard.typed
+            width: parent.width
+            textFormat: Text.PlainText
+            horizontalAlignment: Text.AlignHCenter
+            text: root.pairingQuestion ? root.pairingQuestion.code : ""
+            color: root.panelText
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.display
+            font.letterSpacing: Style.space(4)
+          }
+
+          TextField {
+            id: pairAnswer
+            visible: pairCard.typed
+            width: parent.width
+            foreground: root.panelText
+            font.family: root.bar.fontFamily
+            inputMethodHints: pairCard.kind === "enter-passkey" ? Qt.ImhDigitsOnly : Qt.ImhNone
+            text: root.pairingAnswerText
+            onTextChanged: if (text !== root.pairingAnswerText) root.pairingAnswerText = text
+            onAccepted: root.submitPairingText()
+            Keys.onEscapePressed: root.declinePairingQuestion()
+          }
+
+          Text {
+            visible: pairCard.kind === "enter-pin"
+            width: parent.width
+            textFormat: Text.PlainText
+            wrapMode: Text.Wrap
+            text: Commons.I18n.t("bluetooth.pairEnterPinHint")
+            color: Commons.Color.secondaryText(root.panelText, root.panelSurface)
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.caption
+          }
+
+          Row {
+            spacing: Style.space(8)
+
+            Button {
+              visible: pairCard.kind === "confirm" || pairCard.typed
+              enabled: !pairCard.typed || Model.pairTypedAnswer(pairCard.kind, root.pairingAnswerText) !== ""
+              text: pairCard.typed ? Commons.I18n.t("bluetooth.pairSubmit") : Commons.I18n.t("bluetooth.pairConfirmYes")
+              variant: "primary"
+              bordered: true
+              foreground: root.panelText
+              fontFamily: root.bar.fontFamily
+              onClicked: root.acceptPairingQuestion()
+            }
+
+            Button {
+              text: pairCard.kind === "confirm" ? Commons.I18n.t("bluetooth.pairConfirmNo") : Commons.I18n.t("bluetooth.pairCancel")
+              bordered: true
+              foreground: root.panelText
+              fontFamily: root.bar.fontFamily
+              onClicked: root.declinePairingQuestion()
+            }
+          }
+
+          PanelSeparator {
+            foreground: root.panelText
+          }
         }
 
         Column {
@@ -837,8 +1060,17 @@ Panel {
     fill: root.hoverFill
     currentFill: root.selectedFill
 
+    // The link is up, and the device counts as connected, while its code is
+    // still being checked. Once paired, a connected device is done, though the
+    // pairing command can take longer to hear that every profile is up.
+    readonly property bool isPairing: !!dev && root.pairingAddress !== "" && root.pairingAddress === dev.address
+      && !(root.pairingPaired && dev.connected)
+    readonly property bool pairFailed: !!dev && root.pairFailureText !== "" && root.pairFailureAddress === dev.address
+
     readonly property string statusText: {
       if (!dev) return ""
+      if (isPairing) return root.pairingPaired ? Commons.I18n.t("bluetooth.connecting") : Commons.I18n.t("bluetooth.pairing")
+      if (pairFailed && !isConnected) return root.pairFailureText
       if (action === "forgetting") return Commons.I18n.t("bluetooth.forgetting")
       if (action === "disconnecting" || devState === 2) return Commons.I18n.t("bluetooth.disconnecting")
       if (isConnected) {
@@ -852,6 +1084,8 @@ Panel {
 
     readonly property color statusColor: {
       if (isConnected) return root.panelText
+      if (isPairing) return root.panelText
+      if (pairFailed) return Commons.Color.status.error
       if (action !== "" || devState === 3 || dev.pairing === true) return root.panelText
       return Commons.Color.secondaryText(root.panelText, Commons.Color.popups.background)
     }

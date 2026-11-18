@@ -1,0 +1,412 @@
+#!/bin/bash
+
+# karchy:summary=Pair a Bluetooth device, asking for its passkey or PIN when it wants one
+# karchy:group=bluetooth
+# karchy:args=<address>
+# karchy:hidden=true
+
+# Pairs, trusts and connects one device in a single interactive bluetoothctl
+# session. That session registers the agent BlueZ asks whenever a device
+# wants a code checked, shown or entered; a one-shot `bluetoothctl pair` with
+# its output thrown away has nobody to ask, so keyboards and phones never
+# paired.
+#
+# One event per line on stdout, one answer per line on stdin:
+#
+#   confirm <code>     Do both devices show <code>?           answer: yes | no
+#   passkey <code>     Type <code> on the device, then Enter. no answer
+#   pin <code>         Type <code> on the device, then Enter. no answer
+#   enter-pin          The device has a PIN of its own.       answer: the PIN
+#   enter-passkey      The device shows a number.             answer: the number
+#   paired             Pairing is done and any question is over.
+#   connected          The device is connected: the end, exit 0.
+#   failed <reason>    The end, exit 1. Reasons: rejected (a wrong code, or the
+#                      device said no), canceled (declined or cancelled here),
+#                      timeout, unreachable, unknown-device (BlueZ has not
+#                      seen that address), no-answer (a question came and
+#                      stdin was closed), busy, connect (paired, but the
+#                      connection failed), no-bluetooth, failed.
+#
+# `cancel` on stdin gives the pairing up at any point. On a terminal the
+# events are written as sentences instead.
+#
+# A device that pairs without a code never raises a question, so a caller
+# with no stdin still pairs mice and headphones.
+#
+# KARCHY_BLUETOOTH_PAIR_LOG=<file> appends every line bluetoothctl prints, for
+# a device that will not pair.
+
+usage() {
+  echo "Usage: karchy-bluetooth-pair <address>" >&2
+  exit 2
+}
+
+address=${1:-}
+[[ $address =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]] || usage
+address=${address^^}
+
+# Seconds without a result before giving up. BlueZ ends an unanswered question
+# sooner on its own; this only covers a bluetoothctl that says nothing. It
+# registers its agent as soon as bluetoothd answers, so that wait is short.
+wait_seconds=${KARCHY_BLUETOOTH_PAIR_TIMEOUT:-90}
+start_seconds=${KARCHY_BLUETOOTH_PAIR_START_TIMEOUT:-10}
+# bluetoothctl reports a connection only once every profile is up, which some
+# devices never finish. After this long BlueZ is asked whether the device is
+# connected, and its answer is the result.
+connect_seconds=${KARCHY_BLUETOOTH_PAIR_CONNECT_TIMEOUT:-20}
+
+human=0
+[[ -t 1 ]] && human=1
+
+# An event, or on a terminal the sentence for it.
+say() {
+  local key=$1
+
+  if ((!human)); then
+    printf '%s\n' "$*"
+    return
+  fi
+
+  case "$*" in
+    enter-pin) key=enterPin ;;
+    enter-passkey) key=enterPasskey ;;
+    "failed rejected") key=failedRejected ;;
+    "failed canceled") key=failedCanceled ;;
+    "failed timeout") key=failedTimeout ;;
+    "failed unreachable") key=failedUnreachable ;;
+    "failed unknown-device") key=failedUnknownDevice ;;
+    "failed no-answer") key=failedNoAnswer ;;
+    "failed busy") key=failedBusy ;;
+    "failed connect") key=failedConnect ;;
+    "failed no-bluetooth") key=failedNoBluetooth ;;
+  esac
+  local sentence
+  sentence=$(karchy-i18n "bluetooth.pair.$key" "${@:2}" 2>/dev/null) || sentence="$*"
+  printf '%s\n' "$sentence"
+}
+
+workdir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/karchy-bluetooth-pair.XXXXXX") || exit 1
+relay_pid=""
+
+cleanup() {
+  [[ -n $relay_pid ]] && kill "$relay_pid" 2>/dev/null
+  [[ -n ${BT_PID:-} ]] && kill "$BT_PID" 2>/dev/null
+  rm -rf "$workdir"
+}
+trap cleanup EXIT
+trap 'exit 1' INT TERM
+trap '' PIPE
+
+# Everything bluetoothctl prints and every answer from stdin arrive on one
+# pipe, so a single blocking read follows both. Held open for reading and
+# writing here, it never blocks on open and never reports end of file.
+mkfifo "$workdir/events" || exit 1
+exec 3<>"$workdir/events"
+exec 4<&0
+
+coproc BT { exec bluetoothctl >&3 2>&1 3>&- 4<&-; }
+
+# Answers travel as ESC \001 <line> ESC, and the end of stdin as ESC \002 ESC.
+# bluetoothctl's own output never puts \001 or \002 after an ESC.
+(
+  while IFS= read -r line <&4; do
+    printf '\033\001%s\033' "${line//$'\033'/}" >&3
+  done
+  printf '\033\002\033' >&3
+) &
+relay_pid=$!
+
+send() {
+  printf '%s\n' "$1" 2>/dev/null 1>&"${BT[1]}"
+}
+
+finish() {
+  send quit
+  exit "$1"
+}
+
+fail() {
+  say failed "$1"
+  finish 1
+}
+
+# Ending the session withdraws the agent and the Pair call with it, which is
+# how BlueZ cancels a pairing whatever it is waiting for.
+abandon() {
+  say failed "$1"
+  exit 1
+}
+
+state=start        # start -> pairing -> connecting -> asking
+question=""        # the question waiting for an answer: confirm | enter-pin | enter-passkey
+shown=""           # the last question or code announced, so a redrawn prompt is not announced twice
+asked=0            # the device wanted a code in this session
+answers_open=1     # stdin can still answer
+pair_error=""      # why pairing failed, while the connection is still tried
+deadline=$((SECONDS + start_seconds))
+reconnected=0      # the connection was tried a second time
+
+announce() {
+  asked=1
+  [[ $shown == "$*" ]] && return
+  shown="$*"
+  deadline=$((SECONDS + wait_seconds))
+  say "$@"
+}
+
+ask() {
+  question=$1
+  # Nobody is there to answer: give up rather than hold the device until
+  # BlueZ times the question out.
+  ((answers_open)) || abandon no-answer
+  announce "$@"
+}
+
+answer() {
+  local line=$1
+
+  [[ $line == cancel ]] && abandon canceled
+
+  case $question in
+    confirm)
+      [[ $line == yes || $line == no ]] || return
+      ;;
+    enter-pin)
+      [[ $line =~ ^[[:print:]]{1,16}$ ]] || return
+      ;;
+    enter-passkey)
+      [[ $line =~ ^[0-9]{1,6}$ ]] || return
+      ;;
+    *)
+      # No question is open, so the line would run as a bluetoothctl command.
+      return
+      ;;
+  esac
+
+  question=""
+  send "$line"
+
+  # Said no here: that is the result, whatever the device goes on to report.
+  [[ $line == no ]] && fail canceled
+}
+
+pairing_failed() {
+  local error=$1 reason
+
+  case $error in
+    *AuthenticationCanceled*) reason=canceled ;;
+    *AuthenticationFailed* | *AuthenticationRejected*) reason=rejected ;;
+    *AuthenticationTimeout*) reason=timeout ;;
+    *ConnectionAttemptFailed* | *"Page Timeout"*) reason=unreachable ;;
+    *NotReady*) reason=no-bluetooth ;;
+    *InProgress*) reason=busy ;;
+    *) reason=failed ;;
+  esac
+
+  # A device that never asked for a code is tried the way it always was:
+  # trusted and connected whatever Pair said, since some connect without it.
+  if ((!asked)) && [[ $reason != canceled ]]; then
+    pair_error=$reason
+    connect
+    return
+  fi
+
+  fail "$reason"
+}
+
+connect() {
+  state=connecting
+  question=""
+  deadline=$((SECONDS + connect_seconds))
+  send "trust $address"
+  send "connect $address"
+}
+
+handle_line() {
+  local line=$1
+
+  # Trim what the redrawn prompt leaves around a line.
+  line=${line#"${line%%[![:space:]]*}"}
+  line=${line%"${line##*[![:space:]]}"}
+  [[ -n $line ]] || return
+  [[ -n ${KARCHY_BLUETOOTH_PAIR_LOG:-} ]] && printf '%s\n' "$line" >>"$KARCHY_BLUETOOTH_PAIR_LOG"
+
+  case $line in
+    "Agent registered")
+      if [[ $state == start ]]; then
+        state=pairing
+        deadline=$((SECONDS + wait_seconds))
+        send "pair $address"
+      fi
+      ;;
+    "Device $address not available")
+      fail unknown-device
+      ;;
+    "Device $address is already paired, connecting instead"*)
+      # bluetoothctl connects on its own here.
+      if [[ $state == pairing ]]; then
+        say paired
+        state=connecting
+        deadline=$((SECONDS + connect_seconds))
+        send "trust $address"
+      fi
+      ;;
+    "No default controller available")
+      fail no-bluetooth
+      ;;
+    "[agent] Passkey: "*)
+      [[ ${line##* } =~ ^[0-9]+$ ]] && announce passkey "${line##* }"
+      ;;
+    "[agent] PIN code: "*)
+      announce pin "${line#"[agent] PIN code: "}"
+      ;;
+    "Request canceled")
+      question=""
+      shown=""
+      ;;
+    "Pairing successful")
+      if [[ $state == pairing ]]; then
+        say paired
+        connect
+      fi
+      ;;
+    "Failed to pair: "*)
+      [[ $state == pairing ]] || return
+      if [[ $line == *AlreadyExists* ]]; then
+        say paired
+        connect
+      else
+        pairing_failed "$line"
+      fi
+      ;;
+    "Connection successful")
+      if [[ $state == connecting ]]; then
+        say connected
+        finish 0
+      fi
+      ;;
+    "Connected: yes")
+      # The answer to `info`, asked when the connection took too long to report.
+      if [[ $state == asking ]]; then
+        say connected
+        finish 0
+      fi
+      ;;
+    "Connected: no")
+      [[ $state == asking ]] && fail "${pair_error:-connect}"
+      ;;
+    "Failed to connect: "*)
+      [[ $state == connecting ]] || return
+      # The link pairing ran over can be closing just as the connection
+      # starts, which cancels that connection: try once more when it is down.
+      if [[ -n $pair_error ]]; then
+        fail "$pair_error"
+      elif ((!reconnected)); then
+        reconnected=1
+        sleep 2
+        deadline=$((SECONDS + connect_seconds))
+        send "connect $address"
+      else
+        # A second connection can fail only because the first one is still
+        # being made, so BlueZ has the last word.
+        ask_connected
+      fi
+      ;;
+  esac
+}
+
+# A question is a prompt, so it ends with no line break: look for it in what
+# has arrived since the last one.
+handle_prompt() {
+  case $buffer in
+    *"Confirm passkey "*" (yes/no):"*)
+      local code=${buffer##*Confirm passkey }
+      buffer=""
+      ask confirm "${code%% *}"
+      ;;
+    *"Accept pairing (yes/no):"* | *"Authorize service "*" (yes/no):"*)
+      # Asked on behalf of the pairing started here, which is the consent.
+      buffer=""
+      send yes
+      ;;
+    *"Enter PIN code:"*)
+      buffer=""
+      ask enter-pin
+      ;;
+    *"Enter passkey (number in 0-999999):"*)
+      buffer=""
+      ask enter-passkey
+      ;;
+  esac
+}
+
+ask_connected() {
+  state=asking
+  deadline=$((SECONDS + start_seconds))
+  send "info $address"
+}
+
+timed_out() {
+  case $state in
+    start)
+      fail no-bluetooth
+      ;;
+    connecting)
+      ask_connected
+      ;;
+    asking)
+      fail "${pair_error:-connect}"
+      ;;
+    *)
+      fail "${pair_error:-timeout}"
+      ;;
+  esac
+}
+
+buffer=""
+after_escape=0     # the chunk being read follows one of bluetoothctl's ESCs
+while :; do
+  remaining=$((deadline - SECONDS))
+  if ((remaining <= 0)); then
+    timed_out
+    continue
+  fi
+
+  # bluetoothctl colors every prompt, so each line and each question is
+  # followed at once by an escape sequence: read up to the next ESC. A read
+  # that times out keeps what had arrived.
+  if ! IFS= read -r -d $'\033' -t "$remaining" -u 3 chunk; then
+    buffer+=$chunk
+    timed_out
+    continue
+  fi
+
+  case $chunk in
+    $'\001'*)
+      after_escape=0
+      answer "${chunk:1}"
+      continue
+      ;;
+    $'\002'*)
+      after_escape=0
+      answers_open=0
+      [[ -n $question ]] && abandon no-answer
+      continue
+      ;;
+  esac
+
+  # What follows bluetoothctl's ESC starts with the rest of its color sequence.
+  if ((after_escape)) && [[ $chunk =~ ^\[[0-9\;?]*[A-Za-z] ]]; then
+    chunk=${chunk:${#BASH_REMATCH[0]}}
+  fi
+  after_escape=1
+
+  buffer+=$chunk
+  buffer=${buffer//$'\r'/$'\n'}
+  while [[ $buffer == *$'\n'* ]]; do
+    line=${buffer%%$'\n'*}
+    buffer=${buffer#*$'\n'}
+    handle_line "$line"
+  done
+  handle_prompt
+done

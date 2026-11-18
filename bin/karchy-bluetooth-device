@@ -32,9 +32,10 @@ trust_device() {
 case "$action" in
   pair)
     power_on
-    timeout 20s bluetoothctl pair "$address" >/dev/null 2>&1 || true
-    trust_device
-    timeout 20s bluetoothctl connect "$address" >/dev/null 2>&1 || true
+    # Pairs, trusts and connects in one session that can ask for the code a
+    # keyboard or phone wants; its questions and their answers pass through
+    # this command's stdout and stdin.
+    exec karchy-bluetooth-pair "$address"
     ;;
   connect)
     power_on

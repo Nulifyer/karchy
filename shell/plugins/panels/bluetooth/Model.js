@@ -154,8 +154,64 @@ function sectionDevices(lists, section) {
   return []
 }
 
+// One line from karchy-bluetooth-pair (its header lists the events): a
+// question to show, or how the pairing went.
+var pairQuestions = ["confirm", "passkey", "pin", "enter-pin", "enter-passkey"]
+
+function parsePairEvent(line) {
+  var words = String(line || "").trim().split(/\s+/)
+  var kind = words[0] || ""
+  var value = words.slice(1).join(" ")
+
+  if (pairQuestions.indexOf(kind) >= 0) return { type: "question", kind: kind, code: value }
+  if (kind === "paired" || kind === "connected") return { type: kind }
+  if (kind === "failed") return { type: "failed", reason: value || "failed" }
+  return null
+}
+
+// A question the person answers by typing, rather than by reading a code.
+function pairQuestionTyped(kind) {
+  return kind === "enter-pin" || kind === "enter-passkey"
+}
+
+// What may be sent as the answer to a typed question; "" when it is not one yet.
+function pairTypedAnswer(kind, text) {
+  var value = String(text || "").trim()
+  if (kind === "enter-passkey") return /^[0-9]{1,6}$/.test(value) ? value : ""
+  if (kind === "enter-pin") return /^[\x20-\x7e]{1,16}$/.test(value) ? value : ""
+  return ""
+}
+
+function pairQuestionText(kind, name, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  var device = String(name || "")
+  var text = ""
+  if (kind === "confirm") text = t("bluetooth.pairConfirm", "Does %1 show this code?")
+  else if (kind === "passkey" || kind === "pin") text = t("bluetooth.pairTypeCode", "Type this code on %1, then press Enter on it")
+  else if (kind === "enter-pin") text = t("bluetooth.pairEnterPin", "Enter the PIN of %1")
+  else if (kind === "enter-passkey") text = t("bluetooth.pairEnterPasskey", "Enter the number %1 shows")
+  return text.replace("%1", device)
+}
+
+// Declining or cancelling here needs no explanation, so it has no text.
+function pairFailureText(reason, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  if (reason === "canceled") return ""
+  if (reason === "rejected") return t("bluetooth.pairFailedRejected", "Wrong code, or the device refused")
+  if (reason === "timeout" || reason === "no-answer") return t("bluetooth.pairFailedTimeout", "Pairing timed out")
+  if (reason === "unreachable" || reason === "unknown-device") return t("bluetooth.pairFailedUnreachable", "No answer: is it on and in pairing mode?")
+  if (reason === "busy") return t("bluetooth.pairFailedBusy", "Bluetooth is busy, try again")
+  if (reason === "connect") return t("bluetooth.pairFailedConnect", "Paired, but it did not connect")
+  return t("bluetooth.pairFailed", "Pairing failed")
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
+    parsePairEvent: parsePairEvent,
+    pairQuestionTyped: pairQuestionTyped,
+    pairTypedAnswer: pairTypedAnswer,
+    pairQuestionText: pairQuestionText,
+    pairFailureText: pairFailureText,
     deviceLabel: deviceLabel,
     toArray: toArray,
     isUuidLike: isUuidLike,
