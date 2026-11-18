@@ -8,7 +8,7 @@ BarWidget {
   id: root
   moduleName: "karchy.indicators"
 
-  readonly property var defaultIndicatorEntries: [ "Updates", "ScreenRecording", "Reminder", "Minimized" ]
+  readonly property var defaultIndicatorEntries: [ "Updates", "ScreenRecording", "Dnd", "StayAwake", "Reminder", "Minimized" ]
   readonly property var indicatorEntries: indicatorEntriesFromSettings(settings)
   property var activeIndicatorIds: []
   property var indicatorActiveStates: ({})

@@ -32,6 +32,8 @@
           "items": [
             "Updates",
             "ScreenRecording",
+            "Dnd",
+            "StayAwake",
             "Reminder",
             "Minimized"
           ]

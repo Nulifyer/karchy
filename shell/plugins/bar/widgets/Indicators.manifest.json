@@ -37,6 +37,16 @@
             "description": "GPU screen recorder status"
           },
           {
+            "value": "Dnd",
+            "label": "Do Not Disturb",
+            "description": "Shows while Do Not Disturb is on; click to turn it off"
+          },
+          {
+            "value": "StayAwake",
+            "label": "Stay Awake",
+            "description": "Shows while Stay Awake is on; click to turn it off"
+          },
+          {
             "value": "Reminder",
             "label": "Reminder",
             "description": "Queued reminder status"

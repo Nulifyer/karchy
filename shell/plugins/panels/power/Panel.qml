@@ -20,6 +20,8 @@ Panel {
   property string activeProfile: ""
   property int profileIndex: 0
   property bool cursorActive: false
+  // The keyboard cursor walks the profiles and then the Stay Awake switch.
+  property bool stayAwakeCursor: false
   readonly property bool showPercentage: setting("showPercentage", false) === true
   // With the percentage shown the button paints a text block wider than an
   // icon, so the open-panel mark takes the painted width instead of the
@@ -41,6 +43,27 @@ Panel {
 
   function selectProfileByDelta(delta) {
     profileIndex = Model.selectProfileIndex(profileIndex, delta, profiles)
+  }
+
+  // One line of stops: each profile, then Stay Awake.
+  function moveCursor(delta) {
+    if (stayAwakeCursor) {
+      if (delta < 0) stayAwakeCursor = false
+    } else if (delta > 0 && profileIndex >= profiles.length - 1) {
+      stayAwakeCursor = true
+    } else {
+      selectProfileByDelta(delta)
+    }
+  }
+
+  // Stay Awake belongs to the idle service, which keeps it across restarts
+  // (~/.local/state/karchy/indicators/stay-awake); the bar's indicator shows
+  // while it is on.
+  readonly property var idle: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property bool stayAwake: idle ? idle.stayAwake === true : false
+
+  function toggleStayAwake() {
+    if (root.idle) root.idle.setIdleEnabled(root.stayAwake)
   }
 
   function activateSelectedProfile() {
@@ -220,6 +243,7 @@ Panel {
       var idx = profiles.indexOf(activeProfile)
       profileIndex = idx >= 0 ? idx : 0
       cursorActive = false
+      stayAwakeCursor = false
     }
   }
 
@@ -329,10 +353,14 @@ Panel {
       implicitHeight: column.implicitHeight
       onMoveRequested: function(dx, dy) {
         if (!root.cursorActive) { root.cursorActive = true; return }
-        if (dx !== 0) root.selectProfileByDelta(dx)
-        else if (dy !== 0) root.selectProfileByDelta(dy)
+        if (dx !== 0) root.moveCursor(dx)
+        else if (dy !== 0) root.moveCursor(dy)
       }
-      onActivateRequested: if (root.cursorActive) root.activateSelectedProfile()
+      onActivateRequested: {
+        if (!root.cursorActive) return
+        if (root.stayAwakeCursor) root.toggleStayAwake()
+        else root.activateSelectedProfile()
+      }
       onCloseRequested: root.close()
       onTabRequested: function(direction) { root.switchPanel(direction) }
 
@@ -467,15 +495,35 @@ Panel {
                 verticalPadding: Style.spacing.controlPaddingY + Style.space(2)
                 bordered: true
                 active: root.activeProfile === modelData
-                hasCursor: root.cursorActive && root.profileIndex === index
+                hasCursor: root.cursorActive && !root.stayAwakeCursor && root.profileIndex === index
                 onClicked: root.setProfile(modelData)
                 onHovered: function(h) {
                   if (h) {
                     root.cursorActive = true
+                    root.stayAwakeCursor = false
                     root.profileIndex = index
                   }
                 }
               }
+            }
+          }
+        }
+
+        // ---------- Stay Awake ----------
+        Toggle {
+          visible: root.idle !== null
+          width: parent.width
+          label: Commons.I18n.t("power.stayAwake")
+          description: Commons.I18n.t("power.stayAwakeHint")
+          checked: root.stayAwake
+          hasCursor: root.cursorActive && root.stayAwakeCursor
+          foreground: root.panelText
+          fontFamily: root.bar.fontFamily
+          onClicked: root.toggleStayAwake()
+          onHovered: function(h) {
+            if (h) {
+              root.cursorActive = true
+              root.stayAwakeCursor = true
             }
           }
         }

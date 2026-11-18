@@ -141,6 +141,7 @@
   "power.profile.balanced": {"cp": "f029a", "nf": "md-gauge"},
   "power.profile.performance": {"cp": "f0241", "nf": "md-flash"},
   "power.profile.saver": {"cp": "f032a", "nf": "md-leaf"},
+  "power.stay-awake": {"cp": "f0176", "nf": "md-coffee"},
   "printer": {"cp": "f042a", "nf": "md-printer"},
   "quick-install": {"cp": "f03d4", "nf": "md-package_down"},
   "record": {"cp": "f0ec2", "nf": "md-record_circle"},

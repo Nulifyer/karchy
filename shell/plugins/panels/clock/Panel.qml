@@ -13,6 +13,10 @@ import "Model.js" as Model
 // day, and the only thing that moves is which month is on screen —
 // chevrons, the scroll wheel, and the arrow keys all step it.
 //
+// Under the calendar sits the Do Not Disturb switch: karchy has no
+// notification list to put it in, and the clock is where quiet hours are
+// looked for.
+//
 // BarWidget.qml owns the bar label and hands this panel the button to
 // anchor against.
 Panel {
@@ -91,6 +95,15 @@ Panel {
   readonly property int cellSpacing: Style.space(2)
   readonly property int weekColumnWidth: Style.space(32)
   readonly property int gutterWidth: Style.space(14)
+
+  // Do Not Disturb belongs to the notification service, which remembers it
+  // across restarts; the bar's indicator shows while it is on.
+  readonly property var notifications: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.notifications") : null
+  readonly property bool doNotDisturb: notifications ? notifications.doNotDisturb === true : false
+
+  function toggleDoNotDisturb() {
+    if (root.notifications) root.notifications.setDoNotDisturb(!root.doNotDisturb)
+  }
 
   function open() {
     refresh()
@@ -284,6 +297,7 @@ Panel {
         else if (t === "}") root.moveYear(1)
         else if (t === "t" || t === "T") root.goToToday()
         else if (t === "w" || t === "W") root.toggleWeekStart()
+        else if (t === "d" || t === "D") root.toggleDoNotDisturb()
       }
 
       Flickable {
@@ -782,6 +796,27 @@ Panel {
                 fontFamily: root.contentFontFamily
                 onClicked: root.moveMonth(1)
               }
+            }
+          }
+
+          // ---- Do Not Disturb, on the grid's rails like the rows above.
+          //      The D key flips it, as W flips the week start.
+          Item {
+            visible: root.notifications !== null
+            width: parent.width
+            height: visible ? doNotDisturbToggle.y + doNotDisturbToggle.height : 0
+
+            Toggle {
+              id: doNotDisturbToggle
+              y: Style.space(6)
+              anchors.horizontalCenter: parent.horizontalCenter
+              width: gridColumn.width
+              label: Commons.I18n.t("clock.doNotDisturb")
+              description: Commons.I18n.t("clock.doNotDisturbHint")
+              checked: root.doNotDisturb
+              foreground: root.contentForeground
+              fontFamily: root.contentFontFamily
+              onClicked: root.toggleDoNotDisturb()
             }
           }
         }
