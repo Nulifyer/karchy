@@ -29,6 +29,9 @@ depends=(
   # Files and mounts (D-24, D-36, D-40)
   'thunar' 'thunar-archive-plugin' 'thunar-volman' 'tumbler' 'ffmpegthumbnailer'
   'gvfs' 'gvfs-mtp' 'gvfs-smb' 'cifs-utils' 'xarchiver' '7zip' 'udiskie'
+  # Format and check USB sticks and Windows disks (exFAT, NTFS); FAT's tools
+  # come with the base system. GNOME Disks and udisks use them.
+  'exfatprogs' 'ntfsprogs'
   # The terminal karchy's own commands open; the other apps karchy ships are
   # optdepends below, so they can be removed (D-71)
   'foot'
@@ -45,6 +48,10 @@ depends=(
   'openssh' 'rsync' 'unzip'
   # System health and updates (D-28, D-29)
   'pacman-contrib' 'paru' 'rate-mirrors' 'smartmontools' 'fwupd'
+  # Keeps the running kernel's modules after a kernel update, so a USB stick
+  # or a VPN still loads its module until the restart (the installer enables
+  # linux-modules-cleanup.service, which removes them at the next boot)
+  'kernel-modules-hook'
   # Battery state for the shell's battery warnings, power panel and idle
   # suspend; harmless without a battery
   'upower'

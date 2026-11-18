@@ -100,9 +100,12 @@ setup_services() {
   # karchy-localsend-firewall closes LocalSend's port at boot, before
   # NetworkManager reopens it on a trusted network (D-33).
   # avahi isn't enabled: karchy-network-privacy starts it on trusted networks.
+  # linux-modules-cleanup (kernel-modules-hook): after a kernel update the
+  # running kernel's modules are kept so devices plugged in before the restart
+  # still work; this removes the kept copy at the next boot.
   in_target systemctl enable greetd.service bluetooth.service karchy-network-privacy.service ufw.service \
     smartd.service paccache.timer systemd-oomd.service karchy-mirrors.timer fwupd-refresh.timer \
-    karchy-localsend-firewall.service
+    karchy-localsend-firewall.service linux-modules-cleanup.service
   # foot runs as a server so footclient windows open instantly; karchy's own
   # session units lock before suspend and recover a disabled internal monitor;
   # oo7 is the login keyring (D-57).

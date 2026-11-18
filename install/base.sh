@@ -282,12 +282,12 @@ base_data_disks() {
     mkdir -p "$KARCHY_MNT$mount"
     echo "$line" >>"$KARCHY_MNT/etc/fstab"
     log "data disk $device mounts at $mount"
-    # A btrfs data disk gets the same monthly scrub as the system disk; NTFS
-    # gets ntfsfix, the only way to clear a dirty flag Windows left.
-    case "$fstype" in
-      btrfs) in_target systemctl enable "btrfs-scrub@$(systemd-escape -p "$mount").timer" ;;
-      ntfs) in_target pacman -S --needed --noconfirm ntfsprogs ;;
-    esac
+    # A btrfs data disk gets the same monthly scrub as the system disk. (For
+    # NTFS, ntfsfix, the only way to clear a dirty flag Windows left, comes
+    # with the desktop: ntfsprogs in karchy-desktop.)
+    if [[ $fstype == btrfs ]]; then
+      in_target systemctl enable "btrfs-scrub@$(systemd-escape -p "$mount").timer"
+    fi
   done < <(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" "$KARCHY_SRC/bin/karchy-disk-fstab" list)
 }
 
