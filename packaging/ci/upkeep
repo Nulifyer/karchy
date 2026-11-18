@@ -1,0 +1,92 @@
+#!/bin/bash
+
+# The daily upkeep check (.github/workflows/upkeep.yml, docs/maintenance.md):
+# run the checks that watch what karchy doesn't own, and keep one GitHub issue
+# for a failure that lasts.
+#
+#   tools/repos-check     karchy still installs from the live repositories
+#   tools/catalog-check   the Quick install list still matches them
+#
+# Usage: packaging/ci/upkeep [--now]
+#
+#   --now  report a failure at once (to try the reporting out)
+#
+# The repositories karchy reads are often out of step for a day or two (a
+# CachyOS rebuild behind Arch's update, a mirror behind its origin), and that
+# passes without anyone doing anything. So a failure is reported from the
+# third day in a row: one issue, whose text follows the latest run, closed
+# when the checks pass again. .upkeep/failing-since holds the day the failures
+# began; the workflow keeps it between runs.
+#
+# Always exits 0 when it could do its work: the issue is the report, and a
+# failed run means this check itself is broken. Needs GH_TOKEN and GH_REPO.
+
+set -euo pipefail
+
+TITLE="Upkeep: karchy no longer installs cleanly from the repositories"
+REPORT_AFTER_DAYS=2
+
+now=false
+[[ ${1:-} == "--now" ]] && now=true
+
+state=.upkeep
+mkdir -p "$state"
+# Something to keep even when nothing is failing.
+date -u +%FT%TZ >"$state/last-run"
+run_url="${GITHUB_SERVER_URL:-https://github.com}/$GH_REPO/actions/runs/${GITHUB_RUN_ID:-}"
+
+details=$(mktemp)
+failed=()
+check() {
+  local name=$1 output
+  echo "::group::$name"
+  if output=$("$name" 2>&1); then
+    printf '%s\n' "$output"
+  else
+    printf '%s\n' "$output"
+    failed+=("$name")
+    # The last lines hold the failures; an issue's text has a size limit.
+    # shellcheck disable=SC2016  # backticks are Markdown here
+    printf '### `%s`\n\n```\n%s\n```\n\n' "$name" "$(tail -n 150 <<<"$output" | cut -c1-300)" >>"$details"
+  fi
+  echo "::endgroup::"
+}
+check tools/repos-check
+check tools/catalog-check
+
+issue=$(gh issue list --state open --limit 200 --json number,title |
+  jq -r --arg title "$TITLE" 'map(select(.title == $title)) | first | .number // empty')
+
+if ((${#failed[@]} == 0)); then
+  rm -f "$state/failing-since"
+  echo "upkeep: all checks pass"
+  if [[ -n $issue ]]; then
+    gh issue close "$issue" --comment "The checks pass again ($run_url)."
+    echo "upkeep: closed issue #$issue"
+  fi
+  exit 0
+fi
+
+today=$(date -u +%F)
+[[ -s $state/failing-since ]] || echo "$today" >"$state/failing-since"
+since=$(<"$state/failing-since")
+days=$((($(date -u -d "$today" +%s) - $(date -u -d "$since" +%s)) / 86400))
+echo "upkeep: failing since $since ($days day(s)): ${failed[*]}"
+
+body=$(mktemp)
+{
+  printf 'The daily upkeep check has failed since %s. Latest run: %s\n\n' "$since" "$run_url"
+  printf 'What each failure means and what to do is in [docs/maintenance.md](../blob/main/docs/maintenance.md). '
+  printf 'This issue follows the latest run and closes by itself when the checks pass.\n\n'
+  cat "$details"
+} >"$body"
+[[ -z ${GITHUB_STEP_SUMMARY:-} ]] || cat "$body" >>"$GITHUB_STEP_SUMMARY"
+
+if [[ -n $issue ]]; then
+  gh issue edit "$issue" --body-file "$body" >/dev/null
+  echo "upkeep: updated issue #$issue"
+elif [[ $now == "true" ]] || ((days >= REPORT_AFTER_DAYS)); then
+  gh issue create --title "$TITLE" --body-file "$body"
+else
+  echo "upkeep: not reported yet; an issue is opened if this lasts $REPORT_AFTER_DAYS days"
+fi

@@ -1,0 +1,51 @@
+# Daily: does karchy still install from the repositories it doesn't own, and
+# is the Quick install list still right? (docs/maintenance.md)
+#
+# packaging/ci/upkeep runs tools/repos-check and tools/catalog-check. A
+# failure that lasts into its third day becomes one issue, which closes by
+# itself when the checks pass again; the run itself stays green, so a red run
+# means the check is broken, not the repositories.
+#
+# To try the reporting: Actions › upkeep › Run workflow, with "report now".
+
+name: upkeep
+
+on:
+  schedule:
+    - cron: "43 7 * * *"
+  workflow_dispatch:
+    inputs:
+      now:
+        description: "Report a failure now, without waiting for it to last"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency: { group: upkeep, cancel-in-progress: false }
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      # The day the current failures began (.upkeep/failing-since), from the
+      # run before this one.
+      - name: Earlier result
+        uses: actions/cache/restore@v4
+        with:
+          path: .upkeep
+          key: upkeep-${{ github.run_id }}
+          restore-keys: upkeep-
+      - name: Check
+        run: packaging/ci/upkeep ${{ inputs.now && '--now' || '' }}
+      - name: Keep the result
+        uses: actions/cache/save@v4
+        with:
+          path: .upkeep
+          key: upkeep-${{ github.run_id }}

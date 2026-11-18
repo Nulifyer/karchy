@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# Check that karchy still installs from the live repositories. Run daily by
+# .github/workflows/upkeep.yml (docs/maintenance.md), so a dropped or renamed
+# package, a rotated key or a dead mirror list is reported before a machine's
+# update or a new install fails on it.
+#
+# Usage: tools/repos-check [CHANNEL...]
+#        (default: every channel with a release; stable, rc, nightly)
+#
+# In a throwaway container of stock Arch (the build image's pinned base), as
+# root, the way the installer works on the install medium. Once with CachyOS's
+# generic repository and once with its CPU-tuned ones (v3), which can run
+# behind or ahead of Arch:
+#   1. The installer's own first step (install/base.sh, base_repos_live):
+#      trust the pinned [cachyos] and [omarchy] keys from the installer's
+#      copies, sync through its bootstrap mirror list, then install the
+#      projects' keyring and mirror list packages.
+#   2. For each channel, pacman resolves what a karchy machine installs, for
+#      an empty system: the base (install/packages/base.txt and both CPU
+#      microcodes), every package in [karchy] with all its dependencies, and
+#      the apps karchy ships (their optional dependencies). The legacy NVIDIA
+#      driver, which takes the other's place and needs [multilib], is resolved
+#      on its own. Nothing is downloaded.
+# pacman's own errors name what no longer resolves. Exits 1 on any failure.
+#
+# Needs podman (rootless) and the network.
+
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+if [[ ${1:-} != "--inside" ]]; then
+  command -v podman >/dev/null || { echo "repos-check: missing podman (pacman -S podman)" >&2; exit 1; }
+  image=$(sed -n 's/^FROM //p' "$ROOT/packaging/container/Containerfile")
+  status=0
+  for level in generic v3; do
+    podman run --rm --volume "$ROOT:$ROOT:ro" --workdir "$ROOT" --env KARCHY_CACHYOS_LEVEL="$level" \
+      "$image" "$ROOT/tools/repos-check" --inside "$@" || status=1
+  done
+  exit "$status"
+fi
+shift
+
+level=$KARCHY_CACHYOS_LEVEL
+failed=0
+fail() {
+  echo "FAILED ($level): $*"
+  failed=1
+}
+
+# ---------------------------------------------------- 1. the installer's step
+export KARCHY_SRC=$ROOT KARCHY_INSTALL_LOG=/tmp/karchy-install.log
+# shellcheck source=install/lib.sh
+source "$ROOT/install/lib.sh"
+# shellcheck source=install/base.sh
+source "$ROOT/install/base.sh"
+
+channels=("$@")
+if ((${#channels[@]} == 0)); then
+  for channel in stable rc nightly; do
+    if curl -fsL --max-time 20 -o /dev/null "$KARCHY_REPO_SERVER/repo-$channel/release"; then
+      channels+=("$channel")
+    fi
+  done
+fi
+if ((${#channels[@]} == 0)); then
+  fail "no [karchy] channel has a release at $KARCHY_REPO_SERVER"
+  exit 1
+fi
+KARCHY_CHANNEL=${channels[0]}
+
+echo "== CachyOS $level: the installer's repository setup (keys, bootstrap mirrors, keyring packages)"
+# An install medium starts with its own pacman keyring (pacman-init); the
+# container image comes without the keyring's secret key.
+if ! (set -e; pacman-key --init; pacman-key --populate archlinux; base_repos_live) >/tmp/repos-live.log 2>&1; then
+  tail -n 30 /tmp/repos-live.log | sed 's/^/    /'
+  fail "the installer's repository setup (install/base.sh, base_repos_live)"
+  exit 1
+fi
+echo "ok"
+
+# ------------------------------------------------------- 2. what gets installed
+# Resolve for an empty system, as pacstrap does: an empty local database
+# beside the synced ones.
+fresh=/tmp/fresh
+mkdir -p "$fresh/local"
+ln -sfn /var/lib/pacman/sync "$fresh/sync"
+
+resolve() {
+  local label=$1 output
+  shift
+  # On failure pacman prints the reason (":: unable to satisfy dependency
+  # ..." on stdout, "error: ..." on stderr), once per path to it, and no
+  # package list.
+  if output=$(LC_ALL=C pacman --dbpath "$fresh" -Sp --print-format '%n' "$@" 2>&1); then
+    echo "ok: $label ($# packages named, $(wc -l <<<"$output") resolved)"
+  else
+    printf '%s\n' "$output" | awk 'NF && !seen[$0]++' | head -n 40 | sed 's/^/    /'
+    fail "$label"
+  fi
+}
+
+# Point [karchy] at a channel and sync. The other channel's database goes
+# first: pacman would keep it when it is the newer file, beside the new
+# channel's signature.
+use_channel() {
+  sed -i "s|^Server = .*|Server = $KARCHY_REPO_SERVER/repo-$1|" /etc/pacman.d/karchy-server
+  rm -f /var/lib/pacman/sync/karchy.db /var/lib/pacman/sync/karchy.db.sig
+  if ! pacman -Sy >/tmp/sync.log 2>&1; then
+    tail -n 15 /tmp/sync.log | sed 's/^/    /'
+    fail "$1: the repositories don't sync"
+    return 1
+  fi
+}
+
+# The packages a list of [karchy] packages suggest: the apps karchy ships.
+optional_of() {
+  LC_ALL=C pacman -Si "${@/#/karchy/}" | awk '
+    /^Optional Deps *:/ { on = 1; sub(/^Optional Deps *: */, "") }
+    on && /^[A-Z][A-Za-z ]* *: / { on = 0 }
+    on && $1 != "None" { sub(/:.*/, "", $1); print $1 }
+  ' | sort -u
+}
+
+mapfile -t base < <(grep -vE '^\s*(#|$)' "$ROOT/install/packages/base.txt")
+base+=(amd-ucode intel-ucode)
+
+declare -A legacy=()
+for channel in "${channels[@]}"; do
+  use_channel "$channel" || continue
+  mapfile -t karchy < <(pacman -Slq karchy | grep -vx 'karchy-nvidia-580xx')
+  mapfile -t apps < <(optional_of "${karchy[@]}")
+  resolve "$channel: base, every [karchy] package and the apps karchy ships" "${base[@]}" "${karchy[@]}" "${apps[@]}"
+  if pacman -Slq karchy | grep -qx 'karchy-nvidia-580xx'; then
+    legacy[$channel]=1
+  fi
+done
+
+if ((${#legacy[@]} > 0)); then
+  # install/setup.sh turns on [multilib] on these machines. The container
+  # image's pacman.conf has no such section to uncomment.
+  printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >>/etc/pacman.conf
+  for channel in "${channels[@]}"; do
+    [[ -n ${legacy[$channel]:-} ]] || continue
+    use_channel "$channel" || continue
+    resolve "$channel: the legacy NVIDIA driver (karchy-nvidia-580xx)" "${base[@]}" karchy-desktop karchy-nvidia-580xx
+  done
+fi
+
+exit "$failed"
