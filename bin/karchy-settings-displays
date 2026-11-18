@@ -82,7 +82,7 @@ lua_quote() {
 }
 
 write_files() {
-  local config="$1" config_tmp hypr_tmp key line gdk_scale vrr
+  local config="$1" config_tmp hypr_tmp key line vrr
   mkdir -p "$(dirname "$CONFIG_FILE")" "$(dirname "$HYPR_FILE")"
   config_tmp=$(mktemp "$(dirname "$CONFIG_FILE")/.displays.json.XXXXXX")
   hypr_tmp=$(mktemp "$(dirname "$HYPR_FILE")/.displays.lua.XXXXXX")
@@ -116,12 +116,6 @@ write_files() {
       fi
       echo "$line })"
     done < <(jq -r '.monitors | keys[]' <<<"$config")
-
-    # GDK_SCALE is one value for the whole session and GTK takes integers only,
-    # so XWayland apps follow the lowest saved scale, rounded.
-    gdk_scale=$(jq -r '[.monitors[] | select(.enabled != false) | .scale | select(type == "number")]
-      | if length == 0 then empty else (min + 0.5 | floor | if . < 1 then 1 else . end) end' <<<"$config")
-    [[ -z $gdk_scale ]] || echo "hl.env(\"GDK_SCALE\", \"$gdk_scale\")"
   } >"$hypr_tmp"
 
   chmod 644 "$config_tmp" "$hypr_tmp"

@@ -37,6 +37,10 @@ hl.env("PATH", table.concat(kept, ":"))
 -- Hardware-specific environment.
 require("default.hypr.nvidia")
 
+require("default.hypr.xwayland-scale")
+
+-- X11 apps draw at the monitor's real pixels (sharp, not stretched) and are
+-- told the scale through Xft.dpi: default/hypr/xwayland-scale.lua.
 hl.config({
   xwayland = {
     force_zero_scaling = true,
