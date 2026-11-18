@@ -18,6 +18,9 @@ o.window(
 -- App-specific tweaks and terminal tags.
 require("default.hypr.apps")
 
+-- A window that asks for focus gets it.
+require("default.hypr.activation")
+
 -- Terminals (including TUIs) and these desktop apps opt in to transparency.
 o.transparent_window({ tag = "terminal" })
 o.transparent_window("(omawrite|1[pP]assword|com\\.onepassword\\.OnePassword|org\\.gnome\\.Nautilus)")
