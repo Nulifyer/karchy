@@ -112,6 +112,9 @@ Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/p
 - Lid on battery: suspend, then hibernate after 2 h; lid on AC, unplug, wait 2 h: it hibernates.
 - Idle suspend on battery; resume with the Wi-Fi card (MT7922) working, no reboot instead of resume.
 - Headphone jack: no buzz or pop at idle (if there is, `snd_hda_intel power_save=0` for Framework).
+- Night light: the switch in the display panel visibly warms the screen; the schedule turns it on and off; it comes back after suspend.
+- Settings › Power: close the lid on battery and plugged in with each choice; the hibernate delay with a short value; the screen-off, lock and sleep times on each power source.
+- Stay Awake on: the screen stays on past the idle times; off: it locks again. Do Not Disturb on: a chat notification stays off screen.
 - Fingerprint: lock screen and polkit prompts take it, sudo asks for the password.
 - A USB4 dock: Ethernet and USB behind it work (bolt).
 - Suspend with a VM running.
