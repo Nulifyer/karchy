@@ -98,7 +98,7 @@ All rows were confirmed by the user during inception (2026-11-13). Tags: [O] Oma
 ## Open decisions
 
 - **How the dotfiles stubs are created** (the checkout lives at `~/Projects/dotfiles`, user 2026-11-16).
-- **A "Try karchy" live entry on the ISO** (user asked 2026-11-17): feasible, as the desktop is `karchy-desktop` plus greetd autologin; the ISO would carry the desktop packages and pin their version at build time. Not approved or built.
+- **A "Try karchy" live entry on the ISO**: deferred (user 2026-11-17, "not right now"). Feasible, as the desktop is `karchy-desktop` plus greetd autologin, but by package sizes the desktop adds about 910 MiB to the 1,261 MiB ISO, about 120 MiB over GitHub's 2 GiB release-file limit. The largest savings if it is taken up again: leave `noto-fonts-cjk` out of the live image (189 MiB), then unneeded firmware (Marvell 78 MiB). A trial build would give the real size.
 
 ## Superseded decisions
 
