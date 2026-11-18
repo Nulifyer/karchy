@@ -9,10 +9,16 @@
 #   hibernate-after=                     default | never | minutes (5 to 1440)
 #
 # Every call states the whole choice: a key left out is "default". It writes
-# only /etc/systemd/logind.conf.d/karchy-settings.conf and
-# /etc/systemd/sleep.conf.d/karchy-settings.conf, removes each when nothing is
-# left to say, and tells logind to read its config again (SIGHUP; logind is
+# only /etc/systemd/logind.conf.d/60-karchy-settings.conf and
+# /etc/systemd/sleep.conf.d/60-karchy-settings.conf, removes each when nothing
+# is left to say, and tells logind to read its config again (SIGHUP; logind is
 # never restarted, which would end the session).
+#
+# The order in both folders: karchy's packaged files are numbered below 60
+# (30-karchy-laptop.conf, 40-karchy-nvidia.conf), so the choice made here wins
+# over them, and a file the user numbers higher (90-mine.conf) wins over it.
+# Until 2026-11 these files were named karchy-settings.conf, which sorted
+# after every numbered file; a leftover one is removed on each call.
 #
 # Threat reasoning. polkit lets an active, local member of wheel run this
 # without a password (50-karchy-power-settings.rules); everyone else must
@@ -30,9 +36,9 @@
 #   a path or as part of a command. Each argument must be one of four keys
 #   with a value from a fixed list or a number in range; anything else ends
 #   the call before a file is touched.
-# - The two files have fixed names in root-owned folders, and their text is
-#   built from fixed strings chosen by the validated values, never from the
-#   arguments themselves.
+# - The files have fixed names in root-owned folders (the two written, and
+#   the two old names removed), and their text is built from fixed strings
+#   chosen by the validated values, never from the arguments themselves.
 # - Only packaged, root-owned programs are run, by absolute path, with a
 #   fixed PATH and none of the caller's environment (pkexec clears it; this
 #   does not rely on that).
@@ -43,8 +49,10 @@ export LC_ALL=C
 umask 022
 IFS=$' \t\n'
 
-LOGIND_FILE=/etc/systemd/logind.conf.d/karchy-settings.conf
-SLEEP_FILE=/etc/systemd/sleep.conf.d/karchy-settings.conf
+LOGIND_FILE=/etc/systemd/logind.conf.d/60-karchy-settings.conf
+SLEEP_FILE=/etc/systemd/sleep.conf.d/60-karchy-settings.conf
+OLD_LOGIND_FILE=/etc/systemd/logind.conf.d/karchy-settings.conf
+OLD_SLEEP_FILE=/etc/systemd/sleep.conf.d/karchy-settings.conf
 
 fail() {
   echo "power-settings: $1" >&2
@@ -100,7 +108,7 @@ for key in lid-battery lid-ac lid-docked; do
 done
 
 # The line for one lid setting, or nothing to leave it to the files before
-# this one (karchy-laptop's, or logind's own default).
+# this one (karchy-laptop's, karchy-nvidia's, or logind's own default).
 lid_line() {
   local option=$1 value=$2
   case $value in
@@ -136,14 +144,19 @@ case ${choice[hibernate-after]} in
   *) sleep_lines="HibernateDelaySec=${choice[hibernate-after]}min" ;;
 esac
 
-# Replace a file with new text, or remove it when there is none. Sets
-# `changed` to 1 when the file is different afterwards.
+# Replace a file with new text, or remove it when there is none, and remove
+# the file's old name. Sets `changed` to 1 when what systemd reads is
+# different afterwards.
 tmp=""
 trap '[[ -z $tmp ]] || rm -f -- "$tmp"' EXIT
 
 write_file() {
-  local file=$1 section=$2 lines=$3 text
+  local file=$1 old=$2 section=$3 lines=$4 text
   changed=0
+  if [[ -e $old || -L $old ]]; then
+    rm -f -- "$old"
+    changed=1
+  fi
   if [[ -z $lines ]]; then
     if [[ -e $file || -L $file ]]; then
       rm -f -- "$file"
@@ -152,7 +165,8 @@ write_file() {
     return 0
   fi
   text="# Written by karchy Settings › Power (/usr/lib/karchy/power-settings); change it
-# there. A file in this folder whose name sorts after this one overrides it.
+# there. A file in this folder whose name sorts after this one (90-mine.conf)
+# overrides it.
 [$section]
 $lines"
   if [[ -f $file && ! -L $file && $(<"$file") == "$text" ]]; then
@@ -170,9 +184,9 @@ $lines"
 exec 9>/run/karchy-power-settings.lock
 flock 9
 
-write_file "$SLEEP_FILE" Sleep "$sleep_lines"
+write_file "$SLEEP_FILE" "$OLD_SLEEP_FILE" Sleep "$sleep_lines"
 # systemd-sleep reads sleep.conf each time it runs; logind has to be told.
-write_file "$LOGIND_FILE" Login "$logind_lines"
+write_file "$LOGIND_FILE" "$OLD_LOGIND_FILE" Login "$logind_lines"
 if (( changed )); then
   systemctl kill --kill-whom=main --signal=HUP systemd-logind.service
 fi

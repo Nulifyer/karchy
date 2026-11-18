@@ -2,7 +2,7 @@
 
 # karchy:summary=Read and save power settings: idle times, lid, power button, hibernation and battery warnings (Settings › Power)
 # karchy:args=[status | set <setting> <value> | reset]
-# karchy:examples=karchy settings power | karchy settings power status | karchy settings power set lock.ac 600
+# karchy:examples=karchy settings power | karchy-settings-power status | karchy-settings-power set lock.ac 600
 # karchy:hidden=true
 
 # What Settings › Power changed is recorded in ~/.config/karchy/power.json,
@@ -19,14 +19,15 @@
 #       which karchy's Hyprland config loads before ~/.config/hypr, so a
 #       binding written there by hand wins (D-27). logind leaves the key
 #       alone on karchy (10-ignore-power-button.conf), so this needs no root.
-#   lid and hibernate delay           /etc/systemd/logind.conf.d/karchy-settings.conf
-#       and /etc/systemd/sleep.conf.d/karchy-settings.conf, written by the
+#   lid and hibernate delay           /etc/systemd/logind.conf.d/60-karchy-settings.conf
+#       and /etc/systemd/sleep.conf.d/60-karchy-settings.conf, written by the
 #       root helper /usr/lib/karchy/power-settings through pkexec (no password
 #       for the person at the computer; see the helper). Those sort after
-#       karchy's packaged files; a file there that sorts later still wins.
+#       karchy's packaged files (30-karchy-laptop.conf, 40-karchy-nvidia.conf);
+#       a file there that sorts later (90-mine.conf) still wins.
 #
-#   (nothing)              Open the Settings window at Power: `karchy settings
-#                          power` reaches this command, not karchy-settings
+#   (nothing)              Open the Settings window at Power (as `karchy settings
+#                          power` does)
 #   status                 JSON: what this machine has (`battery`, `lid`,
 #                          `hibernation`), each setting's value in effect
 #                          (`values`), what is recorded here (`saved`), the
@@ -158,14 +159,19 @@ logind_property() {
 }
 
 # The last value systemd's logind.conf or sleep.conf (and their drop-ins) give
-# a key. "packaged" leaves out Settings' own drop-in: what applies before any
-# choice made here, from karchy's packages or the user's own files.
+# a key. "packaged" leaves out Settings' own drop-in (and the name it had
+# until 2026-11, which the root helper removes at the next change): what
+# applies before any choice made here, from karchy's packages or the user's
+# own files.
 systemd_value() {
-  local mode="$1" file="$2" key="$3" ours=""
-  [[ $mode == packaged ]] && ours="/etc/systemd/$file.conf.d/karchy-settings.conf"
+  local mode="$1" file="$2" key="$3" ours="" old=""
+  if [[ $mode == packaged ]]; then
+    ours="/etc/systemd/$file.conf.d/60-karchy-settings.conf"
+    old="/etc/systemd/$file.conf.d/karchy-settings.conf"
+  fi
   systemd-analyze cat-config "systemd/$file.conf" 2>/dev/null |
-    awk -v ours="$ours" -v key="$key" '
-      /^# \// { skip = ($2 == ours) }
+    awk -v ours="$ours" -v old="$old" -v key="$key" '
+      /^# \// { skip = ($2 == ours || $2 == old) }
       skip { next }
       {
         line = $0

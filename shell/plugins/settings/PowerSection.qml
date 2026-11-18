@@ -342,7 +342,7 @@ ColumnLayout {
 
   Outcome {
     visible: root.lid && (root.isForeign("lid.battery") || root.isForeign("lid.ac") || root.isForeign("lid.docked"))
-    text: "A file in /etc/systemd/logind.conf.d that sorts after karchy-settings.conf decides the lid, so a choice here may not change it."
+    text: "A file in /etc/systemd/logind.conf.d that sorts after 60-karchy-settings.conf decides the lid, so a choice here may not change it."
   }
 
   SettingsHeader { text: "Power button" }
@@ -390,7 +390,7 @@ ColumnLayout {
   Outcome {
     visible: root.hibernation && root.ready
     text: root.isForeign("hibernateAfter")
-      ? "A file in /etc/systemd/sleep.conf.d that sorts after karchy-settings.conf decides this, so a choice here may not change it."
+      ? "A file in /etc/systemd/sleep.conf.d that sorts after 60-karchy-settings.conf decides this, so a choice here may not change it."
       : Number(root.values.hibernateAfter) === 0
         ? "Stays asleep until you wake it. Sleep still uses a little power, so a battery runs down over days."
         : Number(root.values.hibernateAfter) > 0

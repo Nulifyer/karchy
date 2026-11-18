@@ -131,9 +131,10 @@ package() {
   # ...and the timezone menu may restart it without a password.
   install -Dm644 polkit/rules.d/50-karchy-wifi-regdomain.rules "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-wifi-regdomain.rules"
   # Settings › Power: the root helper that writes the lid and hibernate-delay
-  # drop-ins (/etc/systemd/{logind,sleep}.conf.d/karchy-settings.conf), its
+  # drop-ins (/etc/systemd/{logind,sleep}.conf.d/60-karchy-settings.conf), its
   # polkit action, and the rule that spares the person at the computer the
-  # password. Its drop-ins sort after karchy-laptop's and karchy-nvidia's.
+  # password. Its drop-ins sort after karchy-laptop's (30) and karchy-nvidia's
+  # (40), and before a file the user numbers higher.
   install -Dm755 power/power-settings "$pkgdir/usr/lib/karchy/power-settings"
   install -Dm644 polkit/actions/org.karchy.power-settings.policy \
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.power-settings.policy"

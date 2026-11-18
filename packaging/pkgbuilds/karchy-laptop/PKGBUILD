@@ -18,10 +18,13 @@ sha256sums=('SKIP')
 
 package() {
   cd "$srcdir/karchy/system/laptop"
-  install -Dm644 sleep.conf "$pkgdir/usr/lib/systemd/sleep.conf.d/karchy-laptop.conf"
-  install -Dm644 logind.conf "$pkgdir/usr/lib/systemd/logind.conf.d/karchy-laptop.conf"
+  # Numbered so the order is plain: karchy-settings (10, 20), this (30),
+  # karchy-nvidia (40), Settings › Power's choice (60), then whatever the
+  # user numbers higher.
+  install -Dm644 sleep.conf "$pkgdir/usr/lib/systemd/sleep.conf.d/30-karchy-laptop.conf"
+  install -Dm644 logind.conf "$pkgdir/usr/lib/systemd/logind.conf.d/30-karchy-laptop.conf"
   # bees (D-86) runs only on AC power.
-  install -Dm644 bees-ac-only.conf "$pkgdir/usr/lib/systemd/system/karchy-bees.service.d/karchy-ac-only.conf"
+  install -Dm644 bees-ac-only.conf "$pkgdir/usr/lib/systemd/system/karchy-bees.service.d/50-karchy-ac-only.conf"
   install -Dm644 90-karchy-bees-power.rules "$pkgdir/usr/lib/udev/rules.d/90-karchy-bees-power.rules"
   install -Dm755 bees-power "$pkgdir/usr/lib/karchy/bees-power"
   # A battery about to run out hibernates the machine (D-93); the shell warns
