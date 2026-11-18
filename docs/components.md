@@ -45,7 +45,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Idle | Shell screensaver + lock + screen off [O]; the screen turns off on its own timer (`idle.screenOff`), locked or not; laptops on battery also suspend (then hibernate) after 15 minutes idle. Times are `idle.screenOff`, `idle.lock`, `idle.suspend` (seconds, 0 = never), with `idle.ac.*` and `idle.battery.*` for each power source, set in Settings › Power or `~/.config/karchy/shell.json` [New]. A playing video, a call or a game holds all of it off: besides Wayland's idle inhibitor, karchy answers `org.freedesktop.ScreenSaver` and `org.freedesktop.PowerManagement` on D-Bus and follows logind's idle and sleep inhibitors (D-94); `karchy system idle-inhibit` lists who is holding it [New] | [O] + [New] |
 | Night light | hyprsunset [New]: a switch in the display panel, and in Settings › Displays a schedule (default 20:00 to 07:00, typed times, no location lookup) and a warmth slider. A manual switch holds until the next scheduled change. `karchy-settings-nightlight` owns `~/.config/karchy/nightlight.json`; your own `~/.config/hypr/hyprsunset.conf` wins (D-96) | [New] |
 | Do Not Disturb, Stay Awake | Do Not Disturb is a switch in the clock panel (sign-in codes and system alerts still show). Stay Awake is a switch in the power panel, or in the display panel on a machine without a battery; it stays on until turned off, also across restarts (D-97) | [New] |
-| Power settings | Settings › Power [New]: screen-off, lock and sleep times (on battery and plugged in on laptops), what closing the lid does, the power button, when sleep becomes hibernation, and the battery warning levels. Idle times and warnings are keys in `shell.json`; the lid and hibernate delay go through a root helper that takes four fixed settings (`/usr/lib/karchy/power-settings`, no password for the person at the computer) and writes `karchy-settings.conf` drop-ins for logind and sleep; a drop-in of yours that sorts later wins (D-98) | [New] |
+| Power settings | Settings › Power [New]: screen-off, lock and sleep times (on battery and plugged in on laptops), what closing the lid does, the power button, when sleep becomes hibernation, and the battery warning levels. Idle times and warnings are keys in `shell.json`; the lid and hibernate delay go through a root helper that takes four fixed settings (`/usr/lib/karchy/power-settings`, no password for the person at the computer) and writes `60-karchy-settings.conf` drop-ins for logind and sleep; karchy's packaged files are numbered 10 to 40, so a drop-in of yours numbered higher than 60 wins (D-98, D-99) | [New] |
 | Games | A fullscreen game (Steam and Proton windows, gamescope, Wine programs, content type game) holds idle off and never loses focus to another window's request (D-91, D-94); tag another game's window with `tag = "+game"` | [New] |
 | Gestures | 3-finger swipe left/right = workspace | [O] |
 
@@ -115,6 +115,8 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 ## Mounts
 
 - **USB:** udisks2 + udiskie automount with a notification [O].
+- **Sleep with shares open:** network locations opened in the file manager (gvfs) are disconnected just before sleep, because a file being read from one makes suspend fail; they reconnect when opened again (`karchy-sleep-shares`, D-99). Kept NAS mounts are kernel mounts and are left alone.
+- **Booted a snapshot:** a notification names the snapshot (number, date, what changed) and offers "Restore this snapshot" (`karchy-snapshot-boot`, D-100).
 - **Internal data disks:** fstab at `/mnt/<label>`, with `nofail` and `x-gvfs-show`, owned by the user, NTFS via `ntfs3`. The installer sets up existing ones; a notification offers new ones [New]. Built: `karchy-disk-fstab`, `karchy-disks-check`, `karchy-disk-keep`.
 - **NAS:** browse via gvfs-smb. The menu's Setup › Network Shares › Keep a Share Mounted writes an fstab systemd automount (`nofail,_netdev,x-systemd.idle-timeout`) with root-only credentials; Remove a Kept Share undoes it (D-76) [New]. Built: `karchy-mount-keep`.
 
@@ -123,7 +125,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 **Always:**
 - desktop portals (`xdg-desktop-portal-hyprland` + `-gtk`)
 - `systemd-oomd`
-- `fstrim.timer`, monthly btrfs scrub, `smartd` disk-health warnings
+- `fstrim.timer`, monthly btrfs scrub, `smartd`; a SMART warning or a scrub that finds errors shows as a desktop notification with the details one click away (`karchy-disk-health`, D-99)
 - `paccache` cleanup, `.pacnew` alerts (`pacdiff`)
 - the rate-mirrors timer
 - a default-apps list: links → Brave Origin, PDF → Brave Origin, images → imv, video and audio → mpv, folders → Thunar, plain text and Markdown → Omawrite

@@ -115,6 +115,12 @@ Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/p
 - Night light: the switch in the display panel visibly warms the screen; the schedule turns it on and off; it comes back after suspend.
 - Settings › Power: close the lid on battery and plugged in with each choice; the hibernate delay with a short value; the screen-off, lock and sleep times on each power source.
 - Stay Awake on: the screen stays on past the idle times; off: it locks again. Do Not Disturb on: a chat notification stays off screen.
+- Sleep with a share open: open a NAS share in Thunar, play a file from it in mpv, close the lid on Wi-Fi: it sleeps, and the share opens again after wake. After wake, `ip -4 addr` shows an address.
+- Disk warnings: `sudo smartd -q onecheck` with `-M test` appended to the DEVICESCAN line in `/etc/smartd.conf` shows a "Disk warning test" notification per disk.
+- Share a whole screen and a single window from a call in Brave; the picker lists both.
+- Steam at the panel's scale is neither tiny nor blurry; one Proton game runs, and the screen doesn't lock while it is fullscreen.
+- KDE Connect pairs with a phone on the trusted home network and not on an untrusted one.
+- Boot a snapshot: the notice names it; "Restore this snapshot" restores it.
 - Fingerprint: lock screen and polkit prompts take it, sudo asks for the password.
 - A USB4 dock: Ethernet and USB behind it work (bolt).
 - Suspend with a VM running.

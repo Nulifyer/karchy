@@ -56,7 +56,7 @@ Boot a snapshot from before the update.
 2. Open the newest snapshot that is older than the update. Each snapshot shows its number, date and the packages that changed.
 3. Boot `linux-cachyos` inside it. Type the disk password.
 
-The desktop starts from the snapshot. Changes you make now are temporary: the snapshot runs on a writable layer that is thrown away at the next boot. Your home folder is not part of a snapshot, so your files are as you left them.
+The desktop starts from the snapshot, and a notification says which snapshot is running, with a **Restore this snapshot** button. Changes you make now are temporary: the snapshot runs on a writable layer that is thrown away at the next boot. Your home folder is not part of a snapshot, so your files are as you left them.
 
 If the snapshot works, make it permanent. See the next section.
 
@@ -64,7 +64,7 @@ A snapshot boot reports one failed unit, `systemd-remount-fs.service`. This is e
 
 ## Make a snapshot permanent (restore)
 
-Do this while the snapshot from the previous section is running.
+Do this while the snapshot from the previous section is running. The quickest way is the **Restore this snapshot** button on the notification: it opens a terminal that asks for your password and runs the restore. By hand:
 
 1. Open a terminal and run:
 
@@ -103,7 +103,7 @@ If the boot ends at "You are in emergency mode", press Enter. karchy opens a roo
 - **The computer starts fresh instead of resuming.** The session is lost. Nothing else is damaged. `journalctl -b -k | grep -i -E 'hibernat|resume|PM:'` shows the reason.
 - **The computer hangs while it resumes.** Hold the power button until it turns off, then start it again. If it hangs again, boot `linux-cachyos-lts`: a different kernel does not load the saved image, so the system starts fresh.
 
-To turn hibernation off until the cause is found, create `/etc/systemd/sleep.conf.d/zz-no-hibernate.conf`:
+To turn hibernation off until the cause is found, create `/etc/systemd/sleep.conf.d/90-no-hibernate.conf` (karchy's own files there are numbered below 90, so this one wins):
 
 ```ini
 [Sleep]
