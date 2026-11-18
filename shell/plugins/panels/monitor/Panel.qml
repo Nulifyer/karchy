@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.UPower
 import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
@@ -28,6 +29,42 @@ Panel {
   property var displays: []
   property int enabledDisplayCount: 0
 
+  // Night light (hyprsunset, through karchy-settings-nightlight). The switch
+  // turns the warm tint on or off now; hours and warmth are in Settings ›
+  // Displays. With hours set, the switch holds until they next change it,
+  // and `nightLightUntil` is that time.
+  property bool nightLightInstalled: false
+  property bool nightLightOn: false
+  property string nightLightUntil: ""
+  readonly property bool nightLightBusy: nightLightSetProc.running
+
+  // Stay Awake lives in the power panel, which a computer without a battery
+  // doesn't have, so there it is offered here. It belongs to the idle service.
+  readonly property var idle: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property bool stayAwake: idle ? idle.stayAwake === true : false
+  readonly property bool stayAwakeOffered: idle !== null && !(UPower.displayDevice && UPower.displayDevice.isPresent)
+
+  function updateNightLight(text) {
+    var status = Model.parseNightLight(text)
+    if (!status) return
+    root.nightLightInstalled = status.installed
+    root.nightLightOn = status.on
+    root.nightLightUntil = status.until
+  }
+
+  function toggleNightLight() {
+    if (!root.nightLightInstalled || nightLightSetProc.running) return
+    var on = !root.nightLightOn
+    // Shown at once; the command's answer then says what really happened.
+    root.nightLightOn = on
+    nightLightSetProc.command = ["karchy-settings-nightlight", on ? "on" : "off"]
+    nightLightSetProc.running = true
+  }
+
+  function toggleStayAwake() {
+    if (root.idle) root.idle.setIdleEnabled(root.stayAwake)
+  }
+
   // Carry sub-notch touchpad deltas between wheel events.
   property real wheelAccumulator: 0
 
@@ -35,11 +72,15 @@ Panel {
   //   "brightness" - single slider row, selectedIndex = -1 sentinel
   //                  (mirrors Audio's slider rows). Only present if a
   //                  controllable backlight was detected.
+  //   "nightlight" - single switch row, same sentinel. Only present if
+  //                  hyprsunset is installed.
   //   "scale"      - 6 Button scale presets; treated as a single
   //                  horizontal row from j/k's perspective. h/l moves
   //                  between presets, identical to bluetooth's header.
   //   "monitors"   - vertical display row list for enabling/disabling displays;
   //                  j/k walks each row.
+  //   "stayawake"  - single switch row, last. Only on computers without a
+  //                  battery, which have no power panel.
   // Mouse hover on a target updates root state via the components' `hovered`
   // signal so keyboard cursor and pointer share one highlight.
   readonly property var scalePresets: Model.SCALE_PRESETS
@@ -76,27 +117,33 @@ Panel {
   readonly property var visibleSections: {
     var list = []
     if (brightnessAvailable) list.push("brightness")
+    if (nightLightInstalled) list.push("nightlight")
     list.push("textsize")
     list.push("scale")
     if (displays.length > 1) list.push("monitors")
+    if (stayAwakeOffered) list.push("stayawake")
     return list
   }
 
+  // A slider or a switch on its own: one stop, at the -1 sentinel.
+  function sectionIsLoneControl(section) {
+    return section === "brightness" || section === "textsize" || section === "nightlight" || section === "stayawake"
+  }
+
   function sectionCount(section) {
-    if (section === "brightness") return 0  // only the slider sentinel at -1
-    if (section === "textsize") return 0    // slider sentinel at -1, like brightness
+    if (sectionIsLoneControl(section)) return 0  // only the sentinel at -1
     if (section === "scale") return scaleValues.length
     if (section === "monitors") return displays.length
     return 0
   }
 
   function sectionIsSingleRow(section) {
-    // brightness and text size are lone sliders; scale presets sit horizontally.
-    return section === "brightness" || section === "textsize" || section === "scale"
+    // Sliders and switches are lone controls; scale presets sit horizontally.
+    return sectionIsLoneControl(section) || section === "scale"
   }
 
   function sectionFirstIndex(section) {
-    if (section === "brightness" || section === "textsize") return -1
+    if (sectionIsLoneControl(section)) return -1
     return 0
   }
 
@@ -155,7 +202,10 @@ Panel {
     if (focusSection === "monitors" && selectedIndex >= 0 && selectedIndex < displays.length) {
       var d = displays[selectedIndex]
       if (d) toggleDisplay(d.name, d.enabled)
+      return
     }
+    if (focusSection === "nightlight") toggleNightLight()
+    else if (focusSection === "stayawake") toggleStayAwake()
     // brightness: no separate action; the slider value is the action.
   }
 
@@ -169,8 +219,8 @@ Panel {
     }
     var count = sectionCount(focusSection)
     if (sectionIsSingleRow(focusSection)) {
-      // brightness/text size use the -1 sentinel; scale clamps into the presets.
-      if (focusSection === "brightness" || focusSection === "textsize") selectedIndex = -1
+      // Lone controls use the -1 sentinel; scale clamps into the presets.
+      if (sectionIsLoneControl(focusSection)) selectedIndex = -1
       else if (selectedIndex < 0 || selectedIndex >= count) selectedIndex = 0
       return
     }
@@ -233,6 +283,7 @@ Panel {
 
   function refresh() {
     if (!stateProc.running) stateProc.running = true
+    if (!nightLightStatusProc.running && !nightLightSetProc.running) nightLightStatusProc.running = true
   }
 
   function setBrightness(value) {
@@ -412,6 +463,20 @@ Panel {
         root.updateDisplays(String(lines[7] || "[]").trim())
       }
     }
+  }
+
+  Process {
+    id: nightLightStatusProc
+    command: ["karchy-settings-nightlight", "status"]
+    stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateNightLight(text) }
+  }
+
+  // Answers with the status after the switch; if it failed, ask again so the
+  // switch goes back to what is really showing.
+  Process {
+    id: nightLightSetProc
+    stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.updateNightLight(text) }
+    onExited: function(exitCode) { if (exitCode !== 0) nightLightStatusProc.running = true }
   }
 
   Timer {
@@ -621,6 +686,28 @@ Panel {
             }
           }
 
+          // ---------- Night light ----------
+          Toggle {
+            id: nightLightRow
+            visible: root.nightLightInstalled
+            width: parent.width
+            label: Commons.I18n.t("monitor.nightLight")
+            description: Model.nightLightLabel(root.nightLightOn, root.nightLightUntil, Commons.I18n.t)
+            checked: root.nightLightOn
+            busy: root.nightLightBusy
+            hasCursor: root.cursorActive && root.focusSection === "nightlight"
+            onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(nightLightRow)
+            foreground: root.panelText
+            fontFamily: root.bar.fontFamily
+            onClicked: root.toggleNightLight()
+            onHovered: function(isHovered) {
+              if (!isHovered || root.reflowingText) return
+              root.cursorActive = true
+              root.focusSection = "nightlight"
+              root.selectedIndex = -1
+            }
+          }
+
           // ---------- Text size ----------
           PanelSeparator {
             foreground: root.panelText
@@ -786,6 +873,27 @@ Panel {
                 display: modelData
                 rowIndex: index
               }
+            }
+          }
+
+          // ---------- Stay Awake (computers without a battery) ----------
+          Toggle {
+            id: stayAwakeRow
+            visible: root.stayAwakeOffered
+            width: parent.width
+            label: Commons.I18n.t("power.stayAwake")
+            description: Commons.I18n.t("power.stayAwakeHint")
+            checked: root.stayAwake
+            hasCursor: root.cursorActive && root.focusSection === "stayawake"
+            onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(stayAwakeRow)
+            foreground: root.panelText
+            fontFamily: root.bar.fontFamily
+            onClicked: root.toggleStayAwake()
+            onHovered: function(isHovered) {
+              if (!isHovered || root.reflowingText) return
+              root.cursorActive = true
+              root.focusSection = "stayawake"
+              root.selectedIndex = -1
             }
           }
 

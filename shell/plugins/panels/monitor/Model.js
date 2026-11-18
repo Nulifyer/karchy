@@ -119,6 +119,34 @@ function parseDisplays(raw) {
   }
 }
 
+// karchy-settings-nightlight's status, or null when the text isn't one (the
+// command is missing, or failed).
+function parseNightLight(raw) {
+  var status = null
+  try {
+    status = JSON.parse(String(raw || "").trim())
+  } catch (e) {
+    return null
+  }
+  if (!status || typeof status !== "object") return null
+  return {
+    installed: status.installed === true,
+    on: status.on === true,
+    until: String(status.until || "")
+  }
+}
+
+// The line under the night light's name. The switch already shows on or off,
+// so this says what a schedule will do next ("On until 07:00"), or with no
+// schedule what the night light is.
+function nightLightLabel(on, until, tr) {
+  var t = typeof tr === "function" ? tr : function(key, english) { return english }
+  if (!until) return t("monitor.nightLightHint", "Warmer colors for the evening")
+  return on
+    ? t("monitor.nightLightOnUntil", "On until %1").replace("%1", until)
+    : t("monitor.nightLightOffUntil", "Off until %1").replace("%1", until)
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     clampBrightness: clampBrightness,
@@ -127,6 +155,8 @@ if (typeof module !== "undefined") {
     matchingScaleIndex: matchingScaleIndex,
     availableScales: availableScales,
     brightnessName: brightnessName,
-    parseDisplays: parseDisplays
+    parseDisplays: parseDisplays,
+    parseNightLight: parseNightLight,
+    nightLightLabel: nightLightLabel
   }
 }

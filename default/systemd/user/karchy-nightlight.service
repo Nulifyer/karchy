@@ -1,0 +1,17 @@
+# karchy: night light. hyprsunset tints the screen warm at night, with the
+# hours and warmth chosen in Settings › Displays (karchy-settings-nightlight).
+# Started with every session (graphical-session.target.wants) and skipped
+# while night light is off and has no schedule, so nothing runs then.
+[Unit]
+Description=Night light (hyprsunset)
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecCondition=/usr/bin/karchy-settings-nightlight wanted
+ExecStart=/usr/bin/karchy-settings-nightlight run
+Slice=session.slice
+Restart=on-failure
+RestartSec=2

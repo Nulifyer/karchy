@@ -55,6 +55,9 @@ depends=(
   # Battery state for the shell's battery warnings, power panel and idle
   # suspend; harmless without a battery
   'upower'
+  # Night light: Hyprland's own tool for the warm screen tint (display panel,
+  # Settings › Displays; karchy-nightlight.service runs it only while in use)
+  'hyprsunset'
 )
 # The apps karchy ships (D-34). The installer installs them explicitly and
 # Quick install lists them as installed, so each can be removed like any app

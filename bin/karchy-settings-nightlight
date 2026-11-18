@@ -1,0 +1,361 @@
+#!/bin/bash
+
+# karchy:summary=Night light: the warm screen tint, its schedule and warmth (display panel, Settings › Displays)
+# karchy:args=status | on | off | toggle | set <schedule|from|to|temperature> <value> | preview <kelvin|end>
+# karchy:hidden=true
+
+# Night light is hyprsunset, Hyprland's own tool, run by the user unit
+# karchy-nightlight.service only while it has something to do. The choices
+# made in Settings live in ~/.config/karchy/nightlight.json (only what differs
+# from karchy's defaults) and are written as hyprsunset profiles into
+# ~/.local/state/karchy/nightlight/hypr/hyprsunset.conf. A
+# ~/.config/hypr/hyprsunset.conf written by hand is used instead of that file,
+# and then its profiles decide.
+#
+#   status                 JSON: on now, the schedule, the warmth, and when a
+#                          scheduled night light next changes ("until")
+#   on | off | toggle      Switch the tint now. With a schedule, the switch
+#                          holds until the schedule's next change.
+#   set schedule on|off    Follow the hours below, or only the switch
+#   set from HH:MM         When the scheduled night light turns on  (20:00)
+#   set to HH:MM           When it turns off                        (07:00)
+#   set temperature <K>    Warmth, 1000 (warmest) to 6500           (4000)
+#   preview <K> | end      Show a warmth without saving it, then put back
+#                          what should be showing
+#   wanted | run           For karchy-nightlight.service: whether hyprsunset
+#                          has anything to do, and starting it
+
+set -euo pipefail
+
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/karchy/nightlight.json"
+USER_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprsunset.conf"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/nightlight"
+SUNSET_CONFIG="$STATE_DIR/hypr/hyprsunset.conf"
+# The last use of the switch: "on" or "off", and when (seconds since 1970).
+MANUAL_FILE="$STATE_DIR/manual"
+# Present while Settings shows a warmth that isn't saved yet.
+PREVIEW_FILE="$STATE_DIR/preview"
+UNIT=karchy-nightlight.service
+
+DEFAULT_FROM="20:00"
+DEFAULT_TO="07:00"
+DEFAULT_TEMPERATURE=4000
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-settings-nightlight /p' "$0" >&2
+  exit 1
+}
+
+saved() {
+  if [[ -f $CONFIG_FILE ]] && jq -e '.version == 1' "$CONFIG_FILE" >/dev/null 2>&1; then
+    jq -c . "$CONFIG_FILE"
+  else
+    echo '{"version":1}'
+  fi
+}
+
+setting() {
+  jq -r --arg k "$1" --arg d "$2" 'if .[$k] == null then $d else .[$k] end' <<<"$CONFIG"
+}
+
+load() {
+  CONFIG=$(saved)
+  SCHEDULE=$(setting schedule false)
+  FROM=$(setting from "$DEFAULT_FROM")
+  TO=$(setting to "$DEFAULT_TO")
+  TEMPERATURE=$(setting temperature "$DEFAULT_TEMPERATURE")
+  # A value the file was given by hand and that makes no sense counts as unset.
+  [[ $SCHEDULE == true ]] || SCHEDULE=false
+  [[ $FROM =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]] || FROM=$DEFAULT_FROM
+  [[ $TO =~ ^([01][0-9]|2[0-3]):[0-5][0-9]$ ]] || TO=$DEFAULT_TO
+  if ! [[ $TEMPERATURE =~ ^[1-9][0-9]*$ ]] || ((TEMPERATURE < 1000 || TEMPERATURE > 6500)); then
+    TEMPERATURE=$DEFAULT_TEMPERATURE
+  fi
+}
+
+minutes() {
+  local time="$1"
+  echo $((10#${time%%:*} * 60 + 10#${time##*:}))
+}
+
+# Whether the scheduled hours cover this moment. They may run past midnight.
+in_scheduled_hours() {
+  local now from to
+  now=$(minutes "$(date +%H:%M)")
+  from=$(minutes "$FROM")
+  to=$(minutes "$TO")
+  if ((from < to)); then
+    ((now >= from && now < to))
+  else
+    ((now >= from || now < to))
+  fi
+}
+
+scheduled_state() {
+  if [[ $SCHEDULE == true ]] && in_scheduled_hours; then echo on; else echo off; fi
+}
+
+# When the schedule last changed the night light, in seconds since 1970.
+last_scheduled_change() {
+  local now time at latest=0
+  now=$(date +%s)
+  for time in "$FROM" "$TO"; do
+    at=$(date -d "today $time" +%s)
+    ((at <= now)) || at=$(date -d "yesterday $time" +%s)
+    ((at > latest)) && latest=$at
+  done
+  echo "$latest"
+}
+
+# What should be showing: the switch's last use, while the schedule hasn't
+# changed the night light since; otherwise what the schedule says.
+desired_state() {
+  local manual="" at=""
+  if [[ -f $MANUAL_FILE ]]; then
+    read -r manual at <"$MANUAL_FILE" || true
+  fi
+  if [[ ($manual == on || $manual == off) && $at =~ ^[0-9]+$ ]]; then
+    if [[ $SCHEDULE != true ]] || ((at >= $(last_scheduled_change))); then
+      echo "$manual"
+      return
+    fi
+  fi
+  scheduled_state
+}
+
+installed() {
+  command -v hyprsunset >/dev/null 2>&1
+}
+
+running() {
+  hyprctl hyprsunset identity get >/dev/null 2>&1
+}
+
+live_state() {
+  if [[ $(hyprctl hyprsunset identity get 2>/dev/null) == false ]]; then echo on; else echo off; fi
+}
+
+# hyprsunset runs only while there is a tint to show or a schedule to follow.
+wanted() {
+  [[ -f $USER_CONFIG || -f $PREVIEW_FILE || $SCHEDULE == true || $(desired_state) == on ]]
+}
+
+sunset_config() {
+  echo "# Generated by karchy Settings › Displays › Night light (karchy-settings-nightlight)."
+  echo "# Change it there. A ~/.config/hypr/hyprsunset.conf of your own is used instead"
+  echo "# of this file."
+  if [[ $SCHEDULE == true ]]; then
+    printf 'profile {\n    time = %s\n    identity = true\n}\n' "$TO"
+    printf 'profile {\n    time = %s\n    temperature = %s\n}\n' "$FROM" "$TEMPERATURE"
+  else
+    # No hours: hyprsunset leaves the screen alone and the switch sets the tint.
+    printf 'profile {\n    time = 00:00\n    identity = true\n}\n'
+  fi
+}
+
+# Write hyprsunset's profiles; succeeds only if the file changed.
+write_sunset_config() {
+  local tmp
+  mkdir -p "$(dirname "$SUNSET_CONFIG")"
+  if [[ -f $SUNSET_CONFIG ]] && [[ $(sunset_config) == "$(<"$SUNSET_CONFIG")" ]]; then
+    return 1
+  fi
+  tmp=$(mktemp "$(dirname "$SUNSET_CONFIG")/.hyprsunset.conf.XXXXXX")
+  sunset_config >"$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$SUNSET_CONFIG"
+}
+
+unit_active() {
+  systemctl --user is-active --quiet "$UNIT"
+}
+
+# hyprsunset takes commands a moment after it starts.
+start_unit() {
+  systemctl --user "${1:-start}" "$UNIT" 2>/dev/null || true
+  for _ in {1..30}; do
+    running && return 0
+    sleep 0.1
+  done
+  return 1
+}
+
+stop_unit() {
+  unit_active || return 0
+  hyprctl hyprsunset identity >/dev/null 2>&1 || true
+  systemctl --user stop "$UNIT" 2>/dev/null || true
+}
+
+tint() {
+  if [[ $1 == on ]]; then
+    hyprctl hyprsunset temperature "$TEMPERATURE" >/dev/null 2>&1 || true
+  else
+    hyprctl hyprsunset identity >/dev/null 2>&1 || true
+  fi
+}
+
+# Make the screen match what should be showing.
+apply() {
+  installed || return 0
+  if [[ -f $USER_CONFIG ]]; then
+    # The user's own profiles decide; only the switch reaches hyprsunset.
+    return 0
+  fi
+
+  local changed=false
+  write_sunset_config && changed=true
+  if ! wanted; then
+    stop_unit
+  elif unit_active && [[ $changed == true ]]; then
+    # hyprsunset reads its profiles only when it starts.
+    start_unit restart || true
+  elif ! running; then
+    start_unit || true
+  else
+    tint "$(desired_state)"
+  fi
+}
+
+status() {
+  local on=false until="" user_config=false
+  installed && [[ $(live_state) == on ]] && on=true
+  [[ -f $USER_CONFIG ]] && user_config=true
+  # With hours set, the state showing lasts until the schedule next disagrees
+  # with it: on until the hours end, off until they start.
+  if [[ $SCHEDULE == true && $user_config == false ]]; then
+    if [[ $on == true ]]; then until=$TO; else until=$FROM; fi
+  fi
+  jq -n -c --argjson installed "$(installed && echo true || echo false)" \
+    --argjson on "$on" --argjson schedule "$SCHEDULE" --arg from "$FROM" --arg to "$TO" \
+    --argjson temperature "$TEMPERATURE" --arg until "$until" --argjson userConfig "$user_config" \
+    '{installed: $installed, on: $on, schedule: $schedule, from: $from, to: $to,
+      temperature: $temperature, until: $until, userConfig: $userConfig}'
+}
+
+# Save one value, or drop it when it is karchy's default (D-56).
+save() {
+  local key="$1" value="$2" default="$3" tmp
+  if [[ $value == "$default" ]]; then
+    CONFIG=$(jq -c --arg k "$key" 'del(.[$k])' <<<"$CONFIG")
+  else
+    CONFIG=$(jq -c --arg k "$key" --argjson v "$value" '.[$k] = $v' <<<"$CONFIG")
+  fi
+  mkdir -p "$(dirname "$CONFIG_FILE")"
+  tmp=$(mktemp "$(dirname "$CONFIG_FILE")/.nightlight.json.XXXXXX")
+  jq . <<<"$CONFIG" >"$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$CONFIG_FILE"
+  load
+}
+
+# 7:00 and 07:00 both mean 07:00.
+clock_time() {
+  local time="$1"
+  [[ $time =~ ^([0-9]|[01][0-9]|2[0-3]):([0-5][0-9])$ ]] ||
+    { echo "The time must be hours and minutes, such as 20:00" >&2; exit 1; }
+  printf '%02d:%s\n' "$((10#${BASH_REMATCH[1]}))" "${BASH_REMATCH[2]}"
+}
+
+kelvin() {
+  local value="$1"
+  if ! [[ $value =~ ^[0-9]+$ ]] || ((10#$value < 1000 || 10#$value > 6500)); then
+    echo "The warmth must be a color temperature from 1000 to 6500" >&2
+    exit 1
+  fi
+  echo "$((10#$value))"
+}
+
+set_value() {
+  local key="${1:-}" value="${2:-}" time
+  case "$key" in
+    schedule)
+      [[ $value == on || $value == off ]] || usage
+      save schedule "$([[ $value == on ]] && echo true || echo false)" false
+      ;;
+    from | to)
+      time=$(clock_time "$value")
+      if [[ $key == from && $time == "$TO" ]] || [[ $key == to && $time == "$FROM" ]]; then
+        echo "The night light can't turn on and off at the same time" >&2
+        exit 1
+      fi
+      save "$key" "\"$time\"" "\"$([[ $key == from ]] && echo "$DEFAULT_FROM" || echo "$DEFAULT_TO")\""
+      ;;
+    temperature)
+      value=$(kelvin "$value")
+      save temperature "$value" "$DEFAULT_TEMPERATURE"
+      rm -f "$PREVIEW_FILE"
+      ;;
+    *) usage ;;
+  esac
+  apply
+  status
+}
+
+switch() {
+  local state="$1" tmp
+  installed || { echo "Night light needs the hyprsunset package" >&2; exit 1; }
+  mkdir -p "$STATE_DIR"
+  tmp=$(mktemp "$STATE_DIR/.manual.XXXXXX")
+  printf '%s %s\n' "$state" "$(date +%s)" >"$tmp"
+  mv "$tmp" "$MANUAL_FILE"
+  if [[ -f $USER_CONFIG ]]; then
+    running || start_unit || true
+    tint "$state"
+  else
+    apply
+  fi
+  status
+}
+
+preview() {
+  local value="${1:-}"
+  installed || exit 0
+  if [[ $value == end ]]; then
+    rm -f "$PREVIEW_FILE"
+    if [[ -f $USER_CONFIG ]]; then
+      hyprctl hyprsunset reset >/dev/null 2>&1 || true
+    else
+      apply
+    fi
+    return
+  fi
+  value=$(kelvin "$value")
+  mkdir -p "$STATE_DIR"
+  touch "$PREVIEW_FILE"
+  running || start_unit || true
+  hyprctl hyprsunset temperature "$value" >/dev/null 2>&1 || true
+}
+
+# karchy-nightlight.service starts hyprsunset through this, already showing
+# what should be showing, so a switch used before a restart doesn't flash the
+# schedule's state first.
+run() {
+  local state args=()
+  # A warmth being tried when the session ended is not a reason to run.
+  rm -f "$PREVIEW_FILE"
+  if [[ -f $USER_CONFIG ]]; then
+    exec hyprsunset
+  fi
+  write_sunset_config || true
+  state=$(desired_state)
+  if [[ $state != "$(scheduled_state)" ]]; then
+    if [[ $state == on ]]; then args=(--temperature "$TEMPERATURE"); else args=(--identity); fi
+  fi
+  # hyprsunset 0.4.0 doesn't take its --config value (it reads the path as a
+  # second, unknown argument), so it is pointed at karchy's file through the
+  # folder it looks in: $XDG_CONFIG_HOME/hypr/hyprsunset.conf.
+  XDG_CONFIG_HOME="$STATE_DIR" exec hyprsunset "${args[@]}"
+}
+
+load
+
+case "${1:-}" in
+  status) status ;;
+  on | off) switch "$1" ;;
+  toggle) if [[ $(live_state) == on ]]; then switch off; else switch on; fi ;;
+  set) set_value "${2:-}" "${3:-}" ;;
+  preview) preview "${2:-}" ;;
+  wanted) installed && wanted ;;
+  run) run ;;
+  *) usage ;;
+esac

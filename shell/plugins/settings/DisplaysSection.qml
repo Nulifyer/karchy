@@ -8,7 +8,8 @@ import qs.Ui
 import "../panels/monitor/Model.js" as MonitorModel
 
 // Settings › Displays: per-monitor mode, scale, position, rotation and on/off,
-// saved per physical monitor by karchy-settings-displays.
+// saved per physical monitor by karchy-settings-displays; and the night light
+// for every monitor (karchy-settings-nightlight).
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -105,7 +106,144 @@ ColumnLayout {
     if (!setProc.running) statusProc.running = true
   }
 
-  Component.onCompleted: refresh()
+  // ---- Night light: what karchy-settings-nightlight reports.
+  property var night: ({ installed: true, on: false, schedule: false, from: "20:00", to: "07:00", temperature: 4000, until: "", userConfig: false })
+  // Counts the answers, so the time fields take the saved (and tidied) value
+  // after a change and keep what was typed after a refusal.
+  property int nightRevision: 0
+  property string nightError: ""
+  // The warmth being dragged, in kelvin; 0 while none is.
+  property int nightPreview: 0
+  // A warmth to save once the preview in flight has been shown; 0 for none.
+  property int nightSaveAfterPreview: 0
+  // The warmth being saved, so the slider shows it at once and further steps
+  // count from it; 0 once the command has answered with it.
+  property int nightWarmthPending: 0
+  readonly property int nightWarmth: nightWarmthPending > 0 ? nightWarmthPending : night.temperature
+  // Left is barely tinted, right is warmest.
+  readonly property int nightCoolest: 6000
+  readonly property int nightWarmest: 2500
+  readonly property int nightStep: 100
+
+  function loadNight(text) {
+    try {
+      var status = JSON.parse(text)
+      if (!status || typeof status !== "object") return
+      root.night = status
+      root.nightRevision++
+      if (status.temperature === root.nightWarmthPending) root.nightWarmthPending = 0
+    } catch (e) {
+    }
+  }
+
+  // One change at a time; the newest one made meanwhile runs next.
+  property var nightQueued: null
+
+  function setNight(args) {
+    if (nightProc.running) {
+      root.nightQueued = args
+      return
+    }
+    root.nightError = ""
+    nightProc.command = ["karchy-settings-nightlight"].concat(args)
+    nightProc.running = true
+  }
+
+  // Shows a warmth while the slider moves. One command at a time; a newer
+  // position replaces one still waiting.
+  function previewNight(kelvin) {
+    root.nightPreview = kelvin
+    if (nightPreviewProc.running) return
+    nightPreviewProc.shown = kelvin
+    nightPreviewProc.command = ["karchy-settings-nightlight", "preview", String(kelvin)]
+    nightPreviewProc.running = true
+  }
+
+  // Saves the warmth, which also puts back what should be showing (nothing,
+  // if the night light is off). Waits for a preview in flight, so that one
+  // can't land after the save and stay on screen.
+  function saveNightWarmth(kelvin) {
+    root.nightPreview = 0
+    root.nightWarmthPending = kelvin
+    if (nightPreviewProc.running) root.nightSaveAfterPreview = kelvin
+    else root.setNight(["set", "temperature", String(kelvin)])
+  }
+
+  // One step warmer (1) or cooler (-1), from the keyboard.
+  function stepNightWarmth(delta) {
+    var next = Math.max(root.nightWarmest, Math.min(root.nightCoolest, root.nightWarmth - delta * root.nightStep))
+    if (next !== root.nightWarmth) root.saveNightWarmth(next)
+  }
+
+  // With hours set, the card also says when the night light next changes.
+  function nightSummary() {
+    if (root.night.until === "") return "Warmer colors on every monitor, easier on the eyes at night."
+    return "Warmer colors on every monitor. " + (root.night.on ? "On until " : "Off until ") + root.night.until + "."
+  }
+
+  // Milliseconds until the schedule next changes the night light, a moment
+  // past it so the change has happened.
+  function nightChangeDelay(time) {
+    var parts = String(time).split(":")
+    var now = new Date()
+    var at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), Number(parts[0]) || 0, Number(parts[1]) || 0, 3)
+    if (at <= now) at.setDate(at.getDate() + 1)
+    return at - now
+  }
+
+  // An open page shows the schedule's change when it happens.
+  Timer {
+    interval: root.nightChangeDelay(root.night.until)
+    running: root.night.until !== ""
+    onTriggered: nightStatusProc.running = true
+  }
+
+  Component.onCompleted: {
+    refresh()
+    nightStatusProc.running = true
+  }
+
+  Process {
+    id: nightStatusProc
+    command: ["karchy-settings-nightlight", "status"]
+    stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.loadNight(text) }
+  }
+
+  Process {
+    id: nightProc
+    stdout: StdioCollector { waitForEnd: true; onStreamFinished: if (text.trim() !== "") root.loadNight(text) }
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.nightError = text.trim()
+        // Refused: the slider goes back to the saved warmth.
+        if (root.nightError !== "") root.nightWarmthPending = 0
+      }
+    }
+    // The next change starts once this one has stopped, as the display
+    // panel queues its brightness.
+    onRunningChanged: {
+      if (running) return
+      var next = root.nightQueued
+      root.nightQueued = null
+      if (next) root.setNight(next)
+    }
+  }
+
+  Process {
+    id: nightPreviewProc
+    property int shown: 0
+    onRunningChanged: {
+      if (running) return
+      if (root.nightSaveAfterPreview > 0) {
+        var kelvin = root.nightSaveAfterPreview
+        root.nightSaveAfterPreview = 0
+        root.setNight(["set", "temperature", String(kelvin)])
+      } else if (root.nightPreview > 0 && root.nightPreview !== shown) {
+        root.previewNight(root.nightPreview)
+      }
+    }
+  }
 
   Process {
     id: statusProc
@@ -181,6 +319,151 @@ ColumnLayout {
           font.pixelSize: Style.font.body
         }
       }
+    }
+  }
+
+  // Night light: the same switch as the display panel's, plus its hours and
+  // warmth. Applies to every monitor.
+  Card {
+    id: nightCard
+    title: "Night light"
+    subtitle: root.nightSummary()
+    trailing: ToggleSwitch {
+      visible: root.night.installed
+      checked: root.night.on
+      busy: nightProc.running
+      accessibleName: "Night light"
+      onToggled: root.setNight([root.night.on ? "off" : "on"])
+    }
+
+    InlineMessage {
+      Layout.fillWidth: true
+      kind: "warning"
+      text: root.night.installed ? "" : "Night light needs the hyprsunset package, which isn't installed."
+    }
+
+    InlineMessage {
+      Layout.fillWidth: true
+      kind: "info"
+      text: root.night.installed && root.night.userConfig
+        ? "Your own ~/.config/hypr/hyprsunset.conf decides the hours and the warmth, from the next login after you write it. The settings below apply once that file is gone; the switch still turns the tint on or off."
+        : ""
+    }
+
+    GridLayout {
+      visible: root.night.installed
+      Layout.fillWidth: true
+      columns: root.wide ? 2 : 1
+      columnSpacing: Style.spacing.xxl
+      rowSpacing: Style.spacing.md
+
+      SettingsLabel { text: "On a schedule" }
+      ToggleSwitch {
+        checked: root.night.schedule
+        busy: nightProc.running
+        accessibleName: "Night light on a schedule"
+        onToggled: root.setNight(["set", "schedule", root.night.schedule ? "off" : "on"])
+      }
+
+      SettingsLabel { visible: root.night.schedule; text: "Turn on at" }
+      NightTimeField {
+        visible: root.night.schedule
+        setting: "from"
+        saved: root.night.from
+        Accessible.name: "Turn night light on at"
+      }
+
+      SettingsLabel { visible: root.night.schedule; text: "Turn off at" }
+      NightTimeField {
+        visible: root.night.schedule
+        setting: "to"
+        saved: root.night.to
+        Accessible.name: "Turn night light off at"
+      }
+
+      // The command's own sentence: a time it couldn't read, or hours that
+      // start and end together. Under the fields, so they stay where they are.
+      InlineMessage {
+        Layout.columnSpan: root.wide ? 2 : 1
+        Layout.fillWidth: true
+        kind: "error"
+        details: root.nightError
+        dismissible: true
+        onDismissed: root.nightError = ""
+      }
+
+      SettingsLabel { text: "Warmth" }
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: Style.spacing.lg
+
+        // Tab reaches the slider; Left and Right move it a step and save.
+        Item {
+          id: warmth
+          readonly property int kelvin: warmthSlider.dragging
+            ? root.nightCoolest - Math.round(warmthSlider.liveValue) * root.nightStep
+            : root.nightWarmth
+
+          Layout.fillWidth: true
+          Layout.maximumWidth: Style.space(320)
+          implicitHeight: warmthSlider.implicitHeight + Style.spacing.md
+          activeFocusOnTab: true
+          Accessible.role: Accessible.Slider
+          Accessible.name: "Night light warmth, " + warmth.kelvin + " kelvin"
+          Keys.onLeftPressed: root.stepNightWarmth(LayoutMirroring.enabled ? 1 : -1)
+          Keys.onRightPressed: root.stepNightWarmth(LayoutMirroring.enabled ? -1 : 1)
+
+          FocusRing { shown: warmth.activeFocus; control: warmth; radius: Style.radius.control }
+
+          PanelSlider {
+            id: warmthSlider
+            anchors.fill: parent
+            anchors.leftMargin: Style.spacing.sm
+            anchors.rightMargin: Style.spacing.sm
+            // A window, not a panel: the slider takes the window's colors.
+            trackColor: Style.selectedFillFor(Commons.Color.foreground, Commons.Color.accent)
+            fillColor: Commons.Color.foreground
+            knobColor: Commons.Color.foreground
+            minimum: 0
+            maximum: (root.nightCoolest - root.nightWarmest) / root.nightStep
+            step: 1
+            integer: true
+            value: (root.nightCoolest - root.nightWarmth) / root.nightStep
+            onMoved: function(v) { root.previewNight(root.nightCoolest - Math.round(v) * root.nightStep) }
+            onReleased: function(v) { root.saveNightWarmth(root.nightCoolest - Math.round(v) * root.nightStep) }
+          }
+        }
+
+        Text {
+          textFormat: Text.PlainText
+          text: Commons.I18n.formatNumber(warmth.kelvin) + " K"
+          color: Commons.Color.textSecondary
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
+          font.features: { "tnum": 1 }
+          Layout.preferredWidth: Style.space(64)
+        }
+      }
+    }
+  }
+
+  // A time of day, typed as hours and minutes. Saved on Enter or when the
+  // field is left; a time the command refuses stays in the field with the
+  // reason shown above.
+  component NightTimeField: TextField {
+    property string setting: ""
+    property string saved: ""
+    readonly property int revision: root.nightRevision
+
+    Layout.preferredWidth: Style.space(96)
+    placeholderText: "20:00"
+    inputMethodHints: Qt.ImhTime
+    maximumLength: 5
+    Component.onCompleted: text = saved
+    onRevisionChanged: text = saved
+    onEditingFinished: {
+      if (text.trim() !== saved) root.setNight(["set", setting, text.trim()])
+      else root.nightError = ""
     }
   }
 

@@ -448,8 +448,7 @@ var GUARD_READERS = [
   "karchy-hyprland-corners",
   "karchy-hyprland-window-transparency",
   "karchy-hyprland-workspace-layout-default",
-  "karchy-shell notifications isDnd",
-  "karchy-toggle-nightlight --status"
+  "karchy-shell notifications isDnd"
 ]
 
 // Package and command presence account for most of what the guards ask, and
