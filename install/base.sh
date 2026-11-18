@@ -354,6 +354,173 @@ base_services() {
     fstrim.timer snapper-cleanup.timer limine-snapper-sync.service btrfs-scrub@-.timer
 }
 
+# Wi-Fi from the install media. The live system connects with iwd (iwctl, on
+# the Arch ISO and the karchy ISO alike); the installed system uses
+# NetworkManager, which knows nothing of it, so the first boot would be
+# offline on a machine without a cable. iwd keeps one file per network it has
+# connected to, named after the network and its security: <name>.psk (WPA2 and
+# WPA3 personal), <name>.open, <name>.8021x (enterprise). A live system only
+# knows the networks joined in this session, so each becomes a NetworkManager
+# profile, root-only like the ones NetworkManager writes. A machine on a
+# cable has no such files and nothing happens.
+KARCHY_IWD_DIR=${KARCHY_IWD_DIR:-/var/lib/iwd}
+
+base_wifi() {
+  local file
+  [[ -d $KARCHY_IWD_DIR ]] || return 0
+  for file in "$KARCHY_IWD_DIR"/*.*; do
+    [[ -f $file ]] || continue
+    # A network that can't be carried over is not worth stopping the install.
+    wifi_profile "$file" || log "Wi-Fi network in ${file##*/} was not carried over; connect again after the first boot"
+  done
+  return 0
+}
+
+# Write the NetworkManager profile for one iwd network file. The passphrase
+# goes from one file to the other and never to the log.
+wifi_profile() {
+  local file="$1" base type name hex="" ssid="" id i
+  local dir="$KARCHY_MNT/etc/NetworkManager/system-connections" dest
+  base=${file##*/}
+  type=${base##*.}
+  name=${base%.*}
+  case "$type" in
+    psk | open) ;;
+    8021x)
+      log "Wi-Fi network in $base uses enterprise sign-in (802.1X), which isn't carried over; connect again after the first boot"
+      return 0
+      ;;
+    *)
+      echo "skipping $base: not a network type karchy carries over"
+      return 0
+      ;;
+  esac
+
+  # iwd names the file after the network when the name is only letters,
+  # digits, spaces, _ and -; otherwise the name is "=" and its bytes in hex.
+  if [[ $name == =* ]]; then
+    hex=${name#=}
+  else
+    hex=$(printf '%s' "$name" | od -An -v -tx1 | tr -d ' \n')
+  fi
+  [[ ${hex,,} =~ ^([0-9a-f]{2}){1,32}$ ]] || return 1
+  hex=${hex,,}
+
+  # The network name as bytes ("104;111;109;101;"), the keyfile form that
+  # needs no escaping whatever the name holds.
+  local bytes="" escaped=""
+  for ((i = 0; i < ${#hex}; i += 2)); do
+    bytes+="$((16#${hex:i:2}));"
+    escaped+="\\x${hex:i:2}"
+  done
+
+  # The profile's name: the network's name when it is plain text, else the hex.
+  id="Wi-Fi $hex"
+  if [[ ! $hex =~ ^(..)*00 ]]; then
+    ssid=$(printf '%b' "$escaped")
+    if [[ $ssid != *[[:cntrl:]]* ]] && printf '%s' "$ssid" | iconv -f UTF-8 -t UTF-8 >/dev/null 2>&1; then
+      id=$ssid
+    fi
+  fi
+
+  # The iwd file: the passphrase (or only the key derived from it), and the
+  # two settings NetworkManager also has.
+  local line group="" key value passphrase="" psk="" hidden="" autoconnect="" secret=""
+  while IFS= read -r line || [[ -n $line ]]; do
+    line=${line%$'\r'}
+    if [[ $line =~ ^\[(.+)\]$ ]]; then
+      group=${BASH_REMATCH[1]}
+      continue
+    fi
+    [[ $line == *=* && $line != \#* ]] || continue
+    key=${line%%=*}
+    key=${key//[[:blank:]]/}
+    value=${line#*=}
+    value=${value#"${value%%[![:blank:]]*}"}
+    case "$group/$key" in
+      Security/Passphrase) passphrase=$value ;;
+      Security/PreSharedKey) psk=$value ;;
+      Settings/Hidden) hidden=$value ;;
+      Settings/AutoConnect) autoconnect=$value ;;
+    esac
+  done <"$file"
+
+  if [[ $type == psk ]]; then
+    if [[ -n $passphrase ]]; then
+      wifi_iwd_unescape "$passphrase" || return 1
+      secret=$REPLY
+      ((${#secret} >= 8 && ${#secret} <= 63)) || return 1
+    elif [[ $psk =~ ^[0-9a-fA-F]{64}$ ]]; then
+      # Only the derived key was stored: enough for WPA2, not for WPA3.
+      secret=$psk
+    else
+      return 1
+    fi
+    wifi_keyfile_escape "$secret"
+    secret=$REPLY
+  fi
+
+  wifi_keyfile_escape "$id"
+  local id_value=$REPLY
+
+  # The file's name: the network's when it is safe as one, else the hex.
+  dest=$id
+  [[ $dest =~ ^[A-Za-z0-9_-][A-Za-z0-9\ _.-]*$ ]] || dest="wifi-$hex"
+  [[ ! -e $dir/$dest.nmconnection ]] || dest+="-$type"
+  dest="$dir/$dest.nmconnection"
+
+  install -d -m 0700 "$dir"
+  {
+    printf '[connection]\nid=%s\nuuid=%s\ntype=wifi\n' "$id_value" "$(</proc/sys/kernel/random/uuid)"
+    [[ ${autoconnect,,} != false ]] || printf 'autoconnect=false\n'
+    printf '\n[wifi]\nmode=infrastructure\nssid=%s\n' "$bytes"
+    [[ ${hidden,,} != true ]] || printf 'hidden=true\n'
+    if [[ $type == psk ]]; then
+      printf '\n[wifi-security]\nkey-mgmt=wpa-psk\npsk=%s\n' "$secret"
+    fi
+    printf '\n[ipv4]\nmethod=auto\n\n[ipv6]\nmethod=auto\n'
+  } | install -m 0600 /dev/stdin "$dest"
+  log "Wi-Fi network \"$id\" is carried into the installed system"
+}
+
+# iwd's value escapes (\s \t \n \r \\), undone into REPLY.
+wifi_iwd_unescape() {
+  local in="$1" out="" i
+  for ((i = 0; i < ${#in}; i++)); do
+    if [[ ${in:i:1} == "\\" ]]; then
+      i=$((i + 1))
+      case "${in:i:1}" in
+        s) out+=" " ;;
+        t) out+=$'\t' ;;
+        n) out+=$'\n' ;;
+        r) out+=$'\r' ;;
+        "\\") out+="\\" ;;
+        *) return 1 ;;
+      esac
+    else
+      out+=${in:i:1}
+    fi
+  done
+  REPLY=$out
+}
+
+# A value as a NetworkManager keyfile holds it, into REPLY: backslashes
+# doubled, and every space written as \s so none is lost at either end.
+wifi_keyfile_escape() {
+  local in="$1" out="" i
+  for ((i = 0; i < ${#in}; i++)); do
+    case "${in:i:1}" in
+      "\\") out+="\\\\" ;;
+      " ") out+="\\s" ;;
+      $'\t') out+="\\t" ;;
+      $'\n') out+="\\n" ;;
+      $'\r') out+="\\r" ;;
+      *) out+=${in:i:1} ;;
+    esac
+  done
+  REPLY=$out
+}
+
 # Secure Boot (D-31), chosen in the form when the firmware is in Setup Mode.
 # The installer's last step, and enrolling is its last action: until the keys
 # are enrolled the firmware stays in Setup Mode, so a failure anywhere before

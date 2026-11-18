@@ -16,7 +16,7 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
 
 ## From the Arch ISO
 
-1. Boot the Arch ISO in UEFI mode and connect to the network (`iwctl` for Wi-Fi).
+1. Boot the Arch ISO in UEFI mode and connect to the network (`iwctl` for Wi-Fi). The installer copies a Wi-Fi network joined here into the installed system, so the first boot is online.
 2. Run:
 
    ```sh
@@ -30,6 +30,10 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
 5. When it says it's done, remove the install media and reboot. At boot, type the password at the disk prompt.
 
 Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
+
+The Wi-Fi networks the install media joined (WPA2/WPA3 personal and open ones) become NetworkManager profiles on the installed system, with the password. Enterprise (802.1X) networks are not copied: connect to those again from the network panel.
+
+If the installed system does not boot, see [When karchy does not boot](recovery.md): snapshots, the LTS kernel, getting in from the install media, and the LUKS header backup to make on the first day.
 
 ## From the karchy ISO
 

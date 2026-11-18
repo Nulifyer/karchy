@@ -90,6 +90,7 @@ step "Find data disks" base_data_disks
 step "Configure snapshots" base_snapper
 step "Install the bootloader" base_bootloader
 step "Enable services" base_services
+step "Carry over Wi-Fi networks" base_wifi
 step "Install the desktop" setup_packages
 step "Configure the desktop for this machine" setup_system_files
 step "Enable desktop services" setup_services
