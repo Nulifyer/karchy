@@ -6,7 +6,9 @@ import qs.Commons as Commons
 // Themed single-select dropdown. Trigger row paints with the kit's focus
 // chrome; the popup anchors below and uses Commons.Color.popups.background +
 // Commons.Color.popups.border so it reads as a panel surface rather than the
-// platform-native ComboBox look.
+// platform-native ComboBox look. Where the window has too little room under
+// the trigger the popup opens over it instead, and where neither side fits
+// the whole list it takes the larger side and the list scrolls.
 //
 // `options` accepts either a plain string[] or an array of
 // { value, label } objects (label is what we render; value is what we
@@ -154,13 +156,42 @@ Item {
 
       Popup {
         id: popup
+
+        // A popup is drawn inside its window and cut off at the window's
+        // edge, so where it opens is decided each time it opens, from the
+        // room the window then has on each side of the trigger.
+        property bool above: false
+        // The most height the chosen side has room for; 0 before the first open.
+        property real room: 0
+        readonly property real gap: Style.spacing.xxs
+        readonly property real fullHeight:
+          Math.min(root.options.length * root.popupRowHeight + Math.max(0, root.options.length - 1) * Style.spacing.labelGap,
+                   root.popupRowHeight * 8 + 7 * Style.spacing.labelGap)
+          + topPadding + bottomPadding
+
+        function place() {
+          var win = trigger.Window.window
+          if (!win) {
+            popup.above = false
+            popup.room = 0
+            return
+          }
+          // The window's top and bottom edges, seen from the trigger.
+          var windowTop = trigger.mapFromItem(null, 0, 0).y
+          var windowBottom = trigger.mapFromItem(null, 0, win.height).y
+          var edge = Style.spacing.sm
+          var below = windowBottom - trigger.height - popup.gap - edge
+          var over = -windowTop - popup.gap - edge
+          popup.above = popup.fullHeight > below && over > below
+          popup.room = Math.max(root.popupRowHeight + topPadding + bottomPadding, popup.above ? over : below)
+        }
+
         x: 0
-        y: trigger.height + Style.spacing.xxs
+        y: above ? -height - gap : trigger.height + gap
         closePolicy: Popup.CloseOnPressOutsideParent | Popup.CloseOnEscape
         width: trigger.width
-        implicitHeight: Math.min(root.options.length * root.popupRowHeight + Math.max(0, root.options.length - 1) * Style.spacing.labelGap,
-                                 root.popupRowHeight * 8 + 7 * Style.spacing.labelGap)
-                        + topPadding + bottomPadding
+        implicitHeight: room > 0 ? Math.min(fullHeight, room) : fullHeight
+        onAboutToShow: place()
         padding: Style.spacing.hairline
         leftPadding: Border.left(root.popupBorderSpec) + Style.spacing.hairline
         rightPadding: Border.right(root.popupBorderSpec) + Style.spacing.hairline

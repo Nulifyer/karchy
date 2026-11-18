@@ -16,6 +16,13 @@ import qs.Commons as Commons
 // immediately). Down arrow from the search jumps to the first match;
 // Up from the first match returns to the search. Enter selects, Esc
 // closes (and clears the filter).
+//
+// Where the window has too little room under the trigger the popup opens
+// over it, mirrored: the search stays next to the trigger, the first match
+// sits right above the search and the rest follow upward, so Up enters the
+// list and Down comes back. Where neither side fits the whole popup it
+// takes the larger side and the list scrolls. Dropdown places its popup
+// the same way.
 Item {
   id: root
 
@@ -176,13 +183,50 @@ Item {
 
       QQC.Popup {
         id: popup
+
+        // A popup is drawn inside its window and cut off at the window's
+        // edge, so where it opens is decided each time it opens, from the
+        // room the window then has on each side of the trigger.
+        property bool above: false
+        // The most height the chosen side has room for; 0 before the first open.
+        property real room: 0
+        readonly property real gap: Style.spacing.xxs
+        // The tallest the popup gets with every option listed, which is what
+        // has to fit: the list grows back when the filter is cleared.
+        readonly property real fullHeight:
+          Math.max(root.popupMinHeight,
+                   Math.min(root.options.length * root.popupRowHeight + Math.max(0, root.options.length - 1) * Style.spacing.labelGap,
+                            root.popupRowHeight * 6 + 5 * Style.spacing.labelGap) + Style.space(50))
+        // The search and one row.
+        readonly property real leastHeight: searchHeader.height + 1 + root.popupRowHeight + topPadding + bottomPadding
+
+        function place() {
+          var win = trigger.Window.window
+          if (!win) {
+            popup.above = false
+            popup.room = 0
+            return
+          }
+          // The window's top and bottom edges, seen from the trigger.
+          var windowTop = trigger.mapFromItem(null, 0, 0).y
+          var windowBottom = trigger.mapFromItem(null, 0, win.height).y
+          var edge = Style.spacing.sm
+          var below = windowBottom - trigger.height - popup.gap - edge
+          var over = -windowTop - popup.gap - edge
+          popup.above = popup.fullHeight > below && over > below
+          popup.room = Math.max(popup.leastHeight, popup.above ? over : below)
+        }
+
         x: 0
-        y: trigger.height + Style.spacing.xxs
+        y: above ? -height - gap : trigger.height + gap
         width: trigger.width
         closePolicy: QQC.Popup.CloseOnPressOutsideParent | QQC.Popup.CloseOnEscape
-        implicitHeight: Math.max(root.popupMinHeight,
-                                 Math.min(resultList.contentHeight + Style.space(50),
-                                          root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + Style.space(50)))
+        readonly property real wantedHeight:
+          Math.max(root.popupMinHeight,
+                   Math.min(resultList.contentHeight + Style.space(50),
+                            root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + Style.space(50)))
+        implicitHeight: room > 0 ? Math.min(wantedHeight, room) : wantedHeight
+        onAboutToShow: place()
         padding: Style.spacing.hairline
         leftPadding: Border.left(root.popupBorderSpec) + Style.spacing.hairline
         rightPadding: Border.right(root.popupBorderSpec) + Style.spacing.hairline
@@ -203,11 +247,12 @@ Item {
         }
         onClosed: searchField.text = ""
 
-        contentItem: Column {
-          spacing: 0
-
+        // The search is on the trigger's side: at the top of a popup that
+        // opens under the trigger, at the bottom of one that opens over it.
+        contentItem: Item {
           Item {
             id: searchHeader
+            y: popup.above ? parent.height - height : 0
             width: parent.width
             height: root.popupRowHeight + Style.spacing.controlPaddingX
 
@@ -229,7 +274,9 @@ Item {
               Keys.onPressed: function(event) {
                 if (event.key === Qt.Key_Escape) {
                   popup.close(); event.accepted = true
-                } else if (event.key === Qt.Key_Down) {
+                } else if (event.key === (popup.above ? Qt.Key_Up : Qt.Key_Down)) {
+                  // Toward the list, which is over the search in a popup
+                  // that opened upward.
                   if (resultList.count > 0) {
                     resultList.currentIndex = 0
                     resultList.forceActiveFocus()
@@ -247,14 +294,16 @@ Item {
           }
 
           Rectangle {
+            y: popup.above ? searchHeader.y - height : searchHeader.height
             width: parent.width
             height: 1
             color: Util.alpha(root.foreground, 0.10)
           }
 
           Item {
+            y: popup.above ? 0 : searchHeader.height + 1
             width: parent.width
-            height: popup.height - searchHeader.height - Style.spacing.xxs - 1
+            height: parent.height - searchHeader.height - 1
 
             Text {
               textFormat: Text.PlainText
@@ -275,6 +324,8 @@ Item {
               model: root.filtered
               currentIndex: -1
               keyNavigationEnabled: false
+              // The first match is always the one next to the search.
+              verticalLayoutDirection: popup.above ? ListView.BottomToTop : ListView.TopToBottom
 
               function selectCurrent() {
                 if (currentIndex < 0 || currentIndex >= root.filtered.length) return
@@ -286,15 +337,22 @@ Item {
 
               Keys.priority: Keys.BeforeItem
               Keys.onPressed: function(event) {
+                // Away from the search is the next match, toward it the
+                // previous one: Down and Up, or the reverse in a popup that
+                // opened upward.
+                var down = event.key === Qt.Key_Down || event.text === "j"
+                var up = event.key === Qt.Key_Up || event.text === "k"
+                var next = popup.above ? up : down
+                var previous = popup.above ? down : up
                 if (event.key === Qt.Key_Escape) {
                   popup.close(); event.accepted = true
-                } else if (event.key === Qt.Key_Down || event.text === "j") {
+                } else if (next) {
                   if (resultList.currentIndex >= resultList.count - 1) {
                     event.accepted = true; return
                   }
                   resultList.currentIndex = resultList.currentIndex + 1
                   event.accepted = true
-                } else if (event.key === Qt.Key_Up || event.text === "k") {
+                } else if (previous) {
                   if (resultList.currentIndex <= 0) {
                     searchField.forceActiveFocus()
                     event.accepted = true; return
