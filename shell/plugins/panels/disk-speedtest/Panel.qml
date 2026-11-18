@@ -24,7 +24,16 @@ Item {
   property string error: ""
   property string stderrText: ""
 
+  // The folder whose disk is tested; "" is karchy-disk-speedtest's own choice
+  // (the user's cache folder, on the system disk).
+  property string targetDir: ""
+
+  // The payload may name a folder on another disk: {"dir": "/mnt/big"}
+  // (Settings › Storage).
   function open(payloadJson) {
+    var payload = {}
+    try { payload = JSON.parse(payloadJson || "{}") || {} } catch (e) {}
+    targetDir = typeof payload.dir === "string" ? payload.dir : ""
     opened = true
     runTest()
   }
@@ -96,7 +105,7 @@ Item {
 
   Process {
     id: proc
-    command: ["karchy-disk-speedtest"]
+    command: root.targetDir !== "" ? ["karchy-disk-speedtest", root.targetDir] : ["karchy-disk-speedtest"]
     stdout: SplitParser { onRead: function(line) { root.updateLine(line) } }
     // Exit and stream-finished have no guaranteed order: when a failed exit
     // beat the collector and published the generic message, replace it with
