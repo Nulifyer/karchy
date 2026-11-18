@@ -194,9 +194,12 @@ BarWidget {
   function bucket(category) {
     var values = SystemTray.items.values
     var result = []
+    // Passive items (an app with nothing to report, such as KDE Connect with
+    // no phone connected) are listed like any other: in the drawer unless
+    // pinned or hidden. Leaving them out took the app's only icon away, with
+    // no way to open it or to pin or hide it.
     for (var i = 0; i < values.length; i++) {
       var item = values[i]
-      if (item.status === Status.Passive) continue
       if (ownedByKarchy(item)) continue
       if (category === "all") {
         result.push(item)
@@ -876,9 +879,8 @@ BarWidget {
 
     required property var modelData
 
-    visible: modelData.status !== Status.Passive
-    implicitWidth: visible ? root.trayItemExtent : 0
-    implicitHeight: visible ? root.trayItemExtent : 0
+    implicitWidth: root.trayItemExtent
+    implicitHeight: root.trayItemExtent
 
     function displayMenu(mouse) {
       root.openTrayMenu(trayItemRoot.modelData, trayItemRoot, mouse)
