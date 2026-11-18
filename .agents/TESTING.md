@@ -74,24 +74,46 @@ Both machines:
 - Boot a snapshot from the Limine menu: the desktop comes up (writable overlay), then reboot normally.
 - `vainfo` and brave://gpu show hardware video decode.
 - A data disk: mounted at boot; the 3.6 TB disk comes up without "timed out waiting for device" (`journalctl -b`).
-- Firmware: Update Firmware lists devices; with Secure Boot on, a BIOS update applies (the signed `fwupdx64.efi.signed` is used).
 - Secure Boot recovery, before relying on it: what turning Secure Boot off in the firmware does to booting, written down.
 
 Desktop (RTX 5080, Ryzen 7 3700X):
 - `pacman -Q linux-cachyos` comes from `cachyos-v3`.
+- Firmware: Update Firmware lists devices; with Secure Boot on, a BIOS update applies (the signed `fwupdx64.efi.signed` is used).
 - Both monitors at their full refresh rate; HDMI color and refresh look right; VRR and 10-bit where the monitors take them.
 - Suspend and resume work; Hibernate is not offered. To check NVIDIA issue #1343 once a driver says it's fixed: save everything, then follow the test in .agents/research/docs-audit/nvidia-hibernation.md (resume keeps the session, `boot_id` unchanged, no `nv_pmops_freeze -5`).
 - Idle VRAM use (`nvidia-smi`) with the desktop running; only act if it's gigabytes.
 - If the CPU's integrated GPU is enabled, Hyprland draws on the NVIDIA card.
 - bees soak test (D-83, D-86), after a snapshot and a NAS backup: install with the default (bees on), use the machine normally for a week on linux-cachyos 7.x; `journalctl -k` shows no btrfs warnings or hung tasks, `btrfs scrub` is clean, and `karchy-bees.service` keeps running. Also: hibernate and resume while bees is deduplicating, and `btrfs inspect-internal map-swapfile -r /swap/swapfile` gives the same offset before and after.
 
-Framework 13 AMD:
+Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/pre-laptop/03-framework-readiness.md` §5):
 - `pacman -Q linux-cachyos` comes from `cachyos-znver4` (Ryzen 7040).
+- First boot: run the command block in `03-framework-readiness.md` §3.3 (failed units, kernel versions, command line, swap and resume offset, sleep states, power profiles); every line matches its comment. Then take a named snapshot.
+- Firmware: Update Firmware lists devices; decline System Firmware 3.20 (bricked boards reported, see `03-framework-readiness.md`).
+- Back up the LUKS header to the NAS (`docs/recovery.md`).
+- Wi-Fi: the network joined on the install media connects at the first boot without asking (the installer carries it over; a real connect was never tested in a VM). Then connect to another network from the network panel, reboot, and confirm it reconnects. `iw reg get` shows your country and the link is on 5 or 6 GHz.
+- Bluetooth: pair headphones and a mouse; check the headset microphone.
+- Speakers and internal microphone: `speaker-test -c 2 -t wav -l 1` plays left and right; `arecord -d 5 /tmp/mic.wav && aplay /tmp/mic.wav` plays your voice back.
+- Webcam, speakers and microphone in one Brave video call; the two privacy switches cut the picture and the microphone (`sudo framework_tool --privacy`).
+- Share a screen and a window in that call.
+- Function row: brightness through its range (100 % is brighter than 95 %), keyboard backlight (Fn+Space), volume, media and the airplane key. F9 and F12 do nothing, which is expected.
+- Touchpad: tap, two-finger scroll, the 3-finger swipe, palm rejection while typing.
+- Display scale: `hyprctl monitors` shows 2 or the scale set in Settings › Displays, text is sharp; Steam or another X11 app has a usable size at that scale.
+- Play a 10-minute video in Brave and in mpv on battery: the screensaver, lock and suspend do not start.
+- s2idle reaches hardware sleep: on battery, `systemctl suspend`, wait 10 minutes, wake; `cat /sys/power/suspend_stats/last_hw_sleep` is close to 600000000.
+- Power profiles: each profile in the power panel changes `energy_performance_preference`; `powerprofilesctl list-actions` shows `amdgpu_panel_power` disabled.
+- bees follows the charger: `systemctl is-active karchy-bees` is active on AC, inactive 10 seconds after unplugging, active again when plugged in.
+- Plug in a USB stick: a notification appears and Thunar shows it; eject it. Plug in a phone: Thunar shows its storage (MTP).
+- External monitor: plug, unplug, mirror, close the lid, undock while asleep.
+- Start one app that adds itself to autostart; log out and in: it starts and shows in the tray.
+- After the snapshot boot above, make the snapshot permanent with `sudo limine-snapper-restore` (`docs/recovery.md`) and reboot: a package installed after the snapshot is gone and the system boots.
+- Realtime audio: `grep 'Max realtime timeout' /proc/$(pgrep -x quickshell)/limits` shows no hard limit of 0.
+- Idle power on battery with and without `90-karchy-usb-autosuspend.rules`; write both numbers down.
+- Secure Boot, if the install was done without it (`03-framework-readiness.md` §1.3 recommends that for the first week): clear the keys in the firmware, run `karchy secureboot setup`, restart; `sbctl status` shows Secure Boot enabled.
 - Lid on battery: suspend, then hibernate after 2 h; lid on AC, unplug, wait 2 h: it hibernates.
 - Idle suspend on battery; resume with the Wi-Fi card (MT7922) working, no reboot instead of resume.
 - Headphone jack: no buzz or pop at idle (if there is, `snd_hda_intel power_save=0` for Framework).
 - Fingerprint: lock screen and polkit prompts take it, sudo asks for the password.
 - A USB4 dock: Ethernet and USB behind it work (bolt).
 - Suspend with a VM running.
-- Charge limit set in the BIOS or with `framework_tool --charge-limit`; the battery panel shows it.
-- Console text at the disk password prompt is readable.
+- Charge limit set in the BIOS or with `sudo framework_tool --charge-limit 80`: `sudo framework_tool --charge-limit` reports 80 and charging stops there. The battery panel shows no limit and `/sys/class/power_supply/BAT1/charge_control_end_threshold` does not exist; both are expected (the kernel's charge-control driver does not load on Framework, `03-framework-readiness.md` row 15).
+- Console text at the disk password prompt is readable, and no kernel or boot message prints over it (quiet boot).

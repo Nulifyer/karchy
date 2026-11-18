@@ -107,6 +107,7 @@ Phase 2, Settings window and display control (D-56). Owner: coordinating agent.
 - 2026-11-17, bees on by default (D-86): `karchy-bees.service`, `bees-run` and `bees.conf` in `system/bees` (karchy-settings, which now depends on `karchy-bees`); the installer asks with Yes as the default and only enables the service; karchy-laptop's charger rule follows the new unit. Checked on 7.3.4: (1) VM `fresh`, corpus snapshot, packages installed with pacman: pass in 11.5 min at one core, memory peak 1.6 GB, same space freed with the 64 MiB auto table, all 288,140 files hash-identical, `ENABLED=no` stops it cleanly; (2) VM `inst`, a full unattended install from `tests/vm-install.conf` (which no longer sets `KARCHY_BEES`): summary shows `bees: yes`, and after the first boot the service is enabled and running with the limits applied, no failed units. Not checked: the form's question on screen (the unattended path was used), the laptop charger rule on hardware. Found on the way, not fixed: `packaging/build` leaves an old `.sig` beside a package it rebuilds without `--sign`, and pacman then rejects the package (seen with the titlebars in `out/repo-dev`).
 - 2026-11-17, fresh install from nightly (after PRs #15 and #16 merged): VM `inst`, Arch ISO, the interactive form end to end, channel nightly (`SigLevel = Required`). The summary shows `bees: yes`; after the first boot the release is `0.1.0rc5.r12.gdcafecb`, `karchy-bees.service` is enabled and running with its limits, no unit has failed, the desktop is up, and `pacman -Qkk` finds no altered files in karchy-bees or karchy-settings. The bees question was longer than the screen is wide and was cut off; it is now one short line (not re-run on screen after the change).
 - 2026-11-17, nulifyer backgrounds (D-87): `themes/nulifyer/backgrounds` is now a real folder with seven toned photos and `karchy.webp`; `tools/tone-background` reproduces a shipped file pixel for pixel. Checked in VM `inst`: after `karchy-theme-set nulifyer` the background is `1-everest-dusk.jpg` and `karchy-theme-bg-next` cycles through the new set. A machine keeps its copied theme, with the paintings, until the theme is set again.
+- 2026-11-17, before the laptop install (D-90 to D-95), from the review in `.agents/research/pre-laptop/`. Built by three agents in parallel, each with its own VM, then one combined build and a fresh install. What was observed is in each decision's evidence. Not testable in a VM and now on the hardware checklist: a real Wi-Fi join after the carry-over, real Bluetooth devices (passkey and PIN), a real battery (warnings, the charging icon, hibernate at 3%), Steam and Proton games holding idle, Secure Boot setup on real firmware. Known gaps left open: the critical-battery notice isn't dismissed on plug-in; audio-only players that take no inhibitor still let the machine suspend; a snapshot boot shows no "restore this snapshot" notice; about 85 MB of unused kernel images stay in `/boot` after an install; the bar shows no urgent mark for the windows the focus rule skips.
 
 ## Next action
 
@@ -114,14 +115,12 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 
 ## Open work
 
-- Thunar's Keep This Mount / Remove Kept Mount (D-24) is not built.
-- Not yet checked in a VM: booting a snapshot under Secure Boot; `tools/vm --secureboot` and `--tpm`; display mirroring, FIDO2 with a real key, screen recording, a full snapshot restore.
+- Not yet checked in a VM: booting a snapshot under Secure Boot; `tools/vm --secureboot` and `--tpm`; display mirroring, FIDO2 with a real key, screen recording.
 - The shell's plugin API still accepts the `karchy.nightlight` and `karchy.remote-session` service IDs; with those services gone the calls do nothing, and they stay in case a ported plugin uses them.
 - The first `karchy update` after an install asks to replace zlib with CachyOS's zlib-ng-compat (a `[cachyos]`-first effect, D-45); pacstrap could take CachyOS's replacements up front.
 
 ## Needs the user
 
-- The Omarchy `etc/` tuning list in `docs/ownership-audit.md` (keep or skip each; recommendations given).
 - Try resizing the `karchy-disp` window in virt-manager (View › Scale Display › Auto resize VM with window) and say whether the desktop follows.
 
 - How the dotfiles user layer is set up on a karchy machine (open decision; recommended: you run `./dotfiles` yourself after installing). D-84 lists what karchy took from it.
