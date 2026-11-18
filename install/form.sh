@@ -132,9 +132,9 @@ form_run() {
     fi
   fi
 
-  KARCHY_BEES=no
-  if form_yes_no --default=false "Enable bees background deduplication? (optional, can use some CPU and RAM)"; then
-    KARCHY_BEES=yes
+  KARCHY_BEES=yes
+  if ! form_yes_no --default=true "Deduplicate the disk in the background (bees)? It stores identical data once, which saves space with worktrees, caches and copied VM disks; it uses idle CPU and some memory."; then
+    KARCHY_BEES=no
   fi
 }
 
@@ -178,7 +178,7 @@ form_load() {
     [[ -n ${!var:-} ]] || die "$file does not set $var"
   done
   KARCHY_KEYMAP=${KARCHY_KEYMAP:-us}
-  KARCHY_BEES=${KARCHY_BEES:-no}
+  KARCHY_BEES=${KARCHY_BEES:-yes}
   # dev: a local packaging/build, for VM tests only.
   KARCHY_CHANNEL=${KARCHY_CHANNEL:-stable}
   [[ $KARCHY_CHANNEL =~ ^(stable|rc|nightly|dev)$ ]] || die "KARCHY_CHANNEL must be stable, rc or nightly"

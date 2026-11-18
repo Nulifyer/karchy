@@ -14,7 +14,7 @@
 | `karchy-nvidia` | Meta: NVIDIA drivers for both kernels |
 | `karchy-nvidia-580xx` | Meta: NVIDIA's 580 legacy driver for both kernels (Maxwell, Pascal, Volta); provides and conflicts with `karchy-nvidia` |
 | `karchy-vm` | Meta: SPICE and QEMU guest agents, for a VM |
-| `karchy-bees` | Native: bees, the btrfs deduplicator, built from a pinned tag of karchy's fork Nulifyer/bees (D-85); provides and conflicts with Arch's `bees`; installed only when bees is chosen in the installer |
+| `karchy-bees` | Native: bees, the btrfs deduplicator, built from a pinned tag of karchy's fork Nulifyer/bees (D-85); provides and conflicts with Arch's `bees`; a `karchy-settings` dependency; `karchy-bees.service` runs it (D-86) |
 | `nulifyer-vpn` | The VPN's system half (D-68): policy service, kill switch, sign-in pause, polkit rule. Built from a pinned tag of Nulifyer/omarchy-vpn-plugin, not from this repository; optional, controlled from the network panel |
 
 ## Channels and versions (D-61)

@@ -1,0 +1,47 @@
+# Background deduplication of the system disk with bees, karchy's fork (D-85,
+# D-86). The options and the hash table size come from /usr/share/karchy/bees.conf
+# and /etc/karchy/bees.conf (see bees-run); the limits below keep it out of the
+# way: one core at most and only when the CPU is otherwise idle, idle I/O, and a
+# ceiling on memory, which includes the file cache its reading fills.
+# karchy-laptop holds it to AC power.
+[Unit]
+Description=Background deduplication of the system disk (bees)
+Documentation=https://github.com/Nulifyer/bees
+After=local-fs.target
+ConditionPathExists=/usr/lib/bees/bees
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/karchy/bees-run
+RuntimeDirectory=karchy-bees
+RuntimeDirectoryMode=0700
+Restart=on-abnormal
+KillMode=control-group
+KillSignal=SIGTERM
+
+Nice=19
+CPUWeight=idle
+CPUQuota=100%
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+IOWeight=10
+MemoryHigh=1536M
+MemoryMax=2G
+
+# The sandbox of upstream's beesd@.service: read-only system, no /home (bees
+# reaches files through its own private mount), no network.
+ProtectProc=invisible
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateNetwork=true
+PrivateIPC=true
+ProtectHostname=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+# The first three reach any file on the filesystem; the last one mounts it.
+AmbientCapabilities=CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH CAP_FOWNER CAP_SYS_ADMIN
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

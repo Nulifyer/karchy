@@ -129,19 +129,12 @@ setup_user() {
   as_user bash -c 'mkdir -p "$HOME/.config/btop/themes" && ln -snf "$HOME/.local/state/karchy/current/theme/btop.theme" "$HOME/.config/btop/themes/current.theme"'
 }
 
-# bees (D-39), chosen in the form: deduplicates the system's btrfs filesystem
-# in the background through the beesd@ unit (idle CPU and I/O priority).
-# karchy-bees is karchy's fork (D-85). Its options: never rewrite snapper's
-# read-only snapshots, keep preallocated space, and log no file names.
+# bees (D-86), on unless declined in the form: deduplicates the system's btrfs
+# filesystem in the background. karchy-settings ships the service, its limits
+# and its options (system/bees), and depends on karchy-bees, karchy's fork
+# (D-85), so the installer only enables it and updates can change the rest.
 # karchy-laptop holds it to AC power on laptops.
 setup_bees() {
   [[ $KARCHY_BEES == "yes" ]] || return 0
-  local uuid
-  uuid=$(findmnt -no UUID "$KARCHY_MNT")
-  in_target pacman -S --needed --noconfirm karchy-bees
-  install -d -m 0755 "$KARCHY_MNT/etc/bees"
-  printf '# bees for the system filesystem (D-39, D-85). DB_SIZE: hash table size in bytes.\nUUID=%s\nDB_SIZE=%s\nOPTIONS="%s"\n' \
-    "$uuid" "$((256 * 1024 * 1024))" "--strip-paths --verbose 5 --workaround-btrfs-send --keep-prealloc" \
-    >"$KARCHY_MNT/etc/bees/$uuid.conf"
-  in_target systemctl enable "beesd@$uuid.service"
+  in_target systemctl enable karchy-bees.service
 }

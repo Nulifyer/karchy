@@ -24,7 +24,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Audio | PipeWire + WirePlumber | [O+C] |
 | Laptop power | power-profiles-daemon (Arch) with amd-pstate; suspend on idle; suspend-then-hibernate after 2 h | [New] |
 | Mirrors | rate-mirrors weekly with safety checks (D-29) | [C] tool, [New] safety |
-| Dedup | bees on btrfs, from karchy's fork (`karchy-bees`, D-85): an installer choice, off by default; 256 MB table; never rewrites snapper's snapshots, keeps preallocated space, logs no file names; AC power only on laptops (D-39) | [New] |
+| Dedup | bees on btrfs, from karchy's fork (`karchy-bees`, D-85), on by default (the installer asks; D-86). `karchy-bees.service` deduplicates the system disk with karchy's options and limits from `/usr/share/karchy/bees.conf` (yours go in `/etc/karchy/bees.conf`): at most one core and only idle CPU, a memory ceiling, a hash table sized from the disk; never rewrites snapper's snapshots, keeps preallocated space, logs no file names; AC power only on laptops. Off: `systemctl disable --now karchy-bees.service` | [New] |
 | Secure Boot | sbctl + Microsoft keys, signed Limine, config hash enrollment (installer step) | [C] |
 | Firmware | fwupd (menu entry) | [O] |
 | AUR helper | paru (from `[cachyos]`) | [C] |
@@ -144,7 +144,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 - **Fingerprint reader:** Set Up Fingerprint is offered in the menu (Setup › Security) when a reader is found; it enrolls a finger, then adds fprintd to polkit and the lock screen, not sudo (D-14).
 - **Firmware in Setup Mode:** the Secure Boot step (D-31).
 
-**Installer choice:** bees dedup, off by default (D-39).
+**Installer choice:** bees dedup, on by default (D-86).
 
 **Optional (Quick install › System features, D-70):**
 - Printers & scanners (package `karchy-printing`, D-67): CUPS with Omarchy's hardened cups-browsed (own user, sandboxed, driverless queues only), `system-config-printer`, `sane`, `sane-airscan`, `simple-scan`, and `ipp-usb` for driverless USB printers and scanners (D-38).
