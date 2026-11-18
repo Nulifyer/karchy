@@ -10,7 +10,7 @@ An installed machine runs `karchy update` (or the Updates window). That is one f
 | --- | --- | --- |
 | Kernel, NVIDIA driver, pacman, Mesa, CPU-tuned builds | `[cachyos]` | CachyOS |
 | Everything else in the base (Hyprland, Quickshell, PipeWire, apps) | Arch `core` and `extra` | Arch |
-| omasnap, omarchy-speedtest, ttfx, hyprland-preview-share-picker, and the apps omawrite, omacalc, localsend-bin, disktree-bin | `[omarchy]` | Omarchy |
+| omasnap, omarchy-speedtest, ttfx, and the apps omawrite, omacalc, localsend-bin, disktree-bin | `[omarchy]` | Omarchy |
 | Signing keys and CachyOS's mirror list | each project's `-keyring` and `-mirrorlist` packages; keyrings are installed first in every update | each project |
 | Apps the user added from the AUR | AUR, built by paru | each AUR maintainer |
 | karchy's own packages | `[karchy]`, the machine's channel | karchy (CI builds, signs and publishes each push and tag) |

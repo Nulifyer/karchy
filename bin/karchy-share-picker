@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# karchy:summary=Ask what to share when an app asks for the screen
+# karchy:args=[--allow-token]
+# karchy:hidden=true
+
+# xdg-desktop-portal-hyprland runs this as its picker (custom_picker_binary in
+# ~/.config/hypr/xdph.conf) each time an app asks to share the screen: a call
+# in the browser, OBS, a recorder that goes through the portal. It shows
+# karchy's menu with every screen, every window and "A region…".
+#
+# What the portal gives (1.5.0, src/shared/ScreencopyShared.cpp):
+#   --allow-token             when screencopy:allow_token_by_default is on:
+#                             the app may be handed a token that repeats this
+#                             choice without asking
+#   XDPH_WINDOW_SHARING_LIST  <id>[HC>]<class>[HT>]<title>[HE>]<address>[HA>]
+#                             per window. The portal has already taken quotes,
+#                             $, ` and the "]" of any ">]" out of class and
+#                             title, so the separators can't appear in them;
+#                             tabs and line breaks still can
+#   WAYLAND_DISPLAY, HYPRLAND_INSTANCE_SIGNATURE, and the portal service's own
+#   environment (no terminal)
+# What it reads back: the first line of stdout that holds
+#   [SELECTION]<flags>/screen:<output>
+#   [SELECTION]<flags>/window:<id>
+#   [SELECTION]<flags>/region:<output>@<x>,<y>,<w>,<h>
+# with the region in the output's own scaled pixels, from its top-left corner,
+# and the flag r for "a token is allowed". Anything else, or nothing, declines
+# the request, whatever the exit code: the app is told the user cancelled.
+# The portal runs this and waits for it to end, so every way out answers:
+# Escape, a menu that can't open, a shell that stops and an answer this
+# doesn't know all decline.
+
+set -uo pipefail
+
+export KARCHY_PATH=${KARCHY_PATH:-/usr/share/karchy}
+
+flags=""
+for arg in "$@"; do
+  [[ $arg == "--allow-token" ]] && flags="r"
+done
+
+# One line of plain text for a menu row: a title is whatever the app set.
+clean() {
+  local text=${1//[[:cntrl:]]/ }
+  text=${text#"${text%%[![:space:]]*}"}
+  printf '%s' "${text%"${text##*[![:space:]]}"}"
+}
+
+rows=()
+declare -A answers=()
+
+# A row and what to answer for it. The menu hands back the row without its
+# icon ("<label>", or "<label><TAB><subtext>"), so two rows that read the same
+# get a number in the subtext.
+add_row() {
+  local icon=$1 label=$2 subtext=$3 answer=$4 count=2 key
+  key=$label${subtext:+$'\t'$subtext}
+  while [[ -n ${answers[$key]+set} ]]; do
+    key=$label$'\t'${subtext:+$subtext }"($count)"
+    ((count++))
+  done
+  answers[$key]=$answer
+  rows+=("$icon"$'\t'"$key")
+}
+
+monitors=$(hyprctl -j monitors 2>/dev/null) || exit 1
+
+# Screens, the one in use first. With a single screen it is the first row, so
+# Enter shares it. A mirror shows another screen and has nothing of its own.
+while IFS=$'\t' read -r name size; do
+  [[ -n $name ]] || continue
+  add_row display "$(karchy-i18n sharePicker.screen "$name")" "$size" "screen:$name"
+done < <(jq -r '[.[] | select((.mirrorOf // "none") == "none")] | sort_by(.focused | not)
+  | .[] | [.name, "\(.width) × \(.height)"] | @tsv' <<<"$monitors")
+
+# Windows waiting on a special workspace nobody is looking at (minimized ones,
+# a browser's "is sharing" bar) aren't offered.
+hidden=$(hyprctl -j clients 2>/dev/null | jq -r --argjson monitors "$monitors" '
+  ($monitors | map(.specialWorkspace.name // "") | map(select(. != ""))) as $shown
+  | .[] | select((.workspace.name // "") | startswith("special"))
+  | select(.workspace.name as $name | $shown | index($name) | not) | .address' 2>/dev/null)
+
+list=${XDPH_WINDOW_SHARING_LIST:-}
+untitled=""
+while [[ $list == *"[HA>]"* ]]; do
+  entry=${list%%"[HA>]"*}
+  list=${list#*"[HA>]"}
+  [[ $entry == *"[HC>]"*"[HT>]"*"[HE>]"* ]] || continue
+  id=${entry%%"[HC>]"*}
+  rest=${entry#*"[HC>]"}
+  class=$(clean "${rest%%"[HT>]"*}")
+  rest=${rest#*"[HT>]"}
+  title=$(clean "${rest%"[HE>]"*}")
+  address=${rest##*"[HE>]"}
+  [[ $id =~ ^[0-9]+$ ]] || continue
+  if [[ $address =~ ^[0-9]+$ ]] && grep -qxF "$(printf '0x%x' "$address")" <<<"$hidden"; then
+    continue
+  fi
+  if [[ -z $title ]]; then
+    [[ -n $untitled ]] || untitled=$(karchy-i18n sharePicker.untitled)
+    title=${class:-$untitled}
+  fi
+  add_row look.layout "$title" "$class" "window:$id"
+done
+
+add_row look.layout.tiling "$(karchy-i18n sharePicker.region)" "$(karchy-i18n sharePicker.regionHint)" region
+
+# The menu's answer comes from the shell. If the shell goes away with the menu
+# open (a restart, a crash) there is none, so the wait ends with the shell and
+# the request is declined.
+shell=$(pgrep -n -u "$UID" -f "^quickshell .*-p $KARCHY_PATH/shell") || exit 1
+picked=$(mktemp) || exit 1
+trap 'kill "${menu:-}" "${watch:-}" 2>/dev/null; rm -f "$picked"' EXIT
+karchy-menu-select "$(karchy-i18n sharePicker.title)" "${rows[@]}" -- --width 560 --maxheight 560 >"$picked" 2>/dev/null &
+menu=$!
+tail --pid="$shell" -f /dev/null >/dev/null 2>&1 &
+watch=$!
+wait -n -p ended "$menu" "$watch" || exit 1
+[[ $ended == "$menu" ]] || exit 1
+choice=$(<"$picked")
+[[ -n $choice ]] || exit 1
+answer=${answers[$choice]:-}
+[[ -n $answer ]] || exit 1
+
+if [[ $answer == "region" ]]; then
+  # slurp gives the corner inside the screen that holds it, and a size already
+  # cut at that screen's edge.
+  area=$(slurp -f '%o@%X,%Y,%W,%H' 2>/dev/null) || exit 1
+  [[ $area =~ ^[^@]+@[0-9]+,[0-9]+,[1-9][0-9]*,[1-9][0-9]*$ ]] || exit 1
+  answer="region:$area"
+fi
+
+printf '[SELECTION]%s/%s\n' "$flags" "$answer"

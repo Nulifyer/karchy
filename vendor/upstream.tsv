@@ -273,7 +273,6 @@ default/themed/ghostty.conf.tpl	default/themed/ghostty.conf.tpl	12cd5339f337cde1
 default/themed/gum_env.lua.tpl	default/themed/gum_env.lua.tpl	81f4c7bc123550a3da6da2d8df437ef1aad4435a
 default/themed/helix.toml.tpl	default/themed/helix.toml.tpl	6ac03d0f73f4c4cf70701bcfd435e865d808c3ba
 default/themed/hermes.yaml.tpl	default/themed/hermes.yaml.tpl	2e39710e08bf2cafea21238523d884c835b4cf46
-default/themed/hyprland-preview-share-picker.css.tpl	default/themed/hyprland-preview-share-picker.css.tpl	750b726fd68f75be7558345be7a356a917dfd9b7
 default/themed/hyprland.lua.tpl	default/themed/hyprland.lua.tpl	1a2d6d1a511def73a8a60234ce3c64cbc1fcc859
 default/themed/keyboard.rgb.tpl	default/themed/keyboard.rgb.tpl	bc9f35a249028f2172ad862a294dd4471a8f1944
 default/themed/kitty.conf.tpl	default/themed/kitty.conf.tpl	9380ab5d52c225d34162f2a82423e0af1fb4a079

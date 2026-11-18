@@ -35,8 +35,6 @@ depends=(
   # The terminal karchy's own commands open; the other apps karchy ships are
   # optdepends below, so they can be removed (D-71)
   'foot'
-  # Screen sharing: the portal's picker with previews, themed (Omarchy's)
-  'hyprland-preview-share-picker'
   # Titlebars with minimize, maximize and close on floating workspaces (D-60)
   'karchy-hyprland-titlebars'
   # Login keyring: the Secret Service for passwords and sign-ins (D-57)
