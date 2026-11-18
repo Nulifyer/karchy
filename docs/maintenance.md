@@ -25,7 +25,7 @@ The release channel (stable, rc, nightly) covers only karchy's packages. Arch an
 
 | Check | What it proves | Covers |
 | --- | --- | --- |
-| `tools/repos-check` | In a stock Arch container, the installer's own repository setup works (pinned keys, bootstrap mirror list, the projects' keyring and mirror list packages), and pacman can resolve everything a karchy machine installs, for an empty system: the base, every `[karchy]` package with its dependencies, the apps karchy ships, and the legacy NVIDIA driver. Once with CachyOS's generic repository and once with its CPU-tuned ones, for each channel with a release | Items 3, 7, 8 and 10 |
+| `tools/repos-check` | In a stock Arch container, the installer's own repository setup works (pinned keys, bootstrap mirror list, the projects' keyring and mirror list packages), and pacman can resolve everything a karchy machine installs, for an empty system: the base, every `[karchy]` package with its dependencies, the apps karchy ships, and the legacy NVIDIA driver. Once with CachyOS's generic repository and once with each set of its CPU-tuned ones (v3, v4, znver4), for each channel with a release | Items 3, 7, 8 and 10 |
 | `tools/catalog-check` | Every Quick install entry's packages exist where the entry says | Item 9 |
 
 The daily scheduled run of `release.yml` rebuilds the titlebars; when that fails, GitHub emails the failed run (item 2).
@@ -53,7 +53,7 @@ Omarchy's later changes to the code karchy took (D-46). karchy owns that code, a
 
 ## When something reports
 
-- **The upkeep issue opens:** its text carries pacman's own errors. If they name an Arch or CachyOS package pair (one repository behind the other), wait for it to close; otherwise find the item in the register.
+- **The upkeep issue opens:** its text carries pacman's own errors. If they name an Arch or CachyOS package pair (one repository behind the other), wait for it to close; otherwise find the item in the register. A failure of the legacy NVIDIA driver on a `lib32-` package means every 32-bit package (Steam) fails to install on machines of that CPU level until CachyOS rebuilds the 64-bit library; karchy has nothing to fix.
 - **A failed-run email:** read the run. The scheduled run of `release.yml` builds only the titlebars, so a failure there is item 2 or 7. A failed `upkeep` run means the check itself is broken.
 - **A machine breaks after an update:** boot the pre-update snapshot, fix karchy, release (item 1).
 - **Before tagging a release:** update a nightly machine or VM first and use it.

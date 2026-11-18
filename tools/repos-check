@@ -10,8 +10,8 @@
 #
 # In a throwaway container of stock Arch (the build image's pinned base), as
 # root, the way the installer works on the install medium. Once with CachyOS's
-# generic repository and once with its CPU-tuned ones (v3), which can run
-# behind or ahead of Arch:
+# generic repository and once with each set of its CPU-tuned ones (v3, v4,
+# znver4), which are rebuilt on their own and can each run behind Arch:
 #   1. The installer's own first step (install/base.sh, base_repos_live):
 #      trust the pinned [cachyos] and [omarchy] keys from the installer's
 #      copies, sync through its bootstrap mirror list, then install the
@@ -21,7 +21,9 @@
 #      microcodes), every package in [karchy] with all its dependencies, and
 #      the apps karchy ships (their optional dependencies). The legacy NVIDIA
 #      driver, which takes the other's place and needs [multilib], is resolved
-#      on its own. Nothing is downloaded.
+#      on its own; it stands for every 32-bit package (Steam), whose
+#      libraries need the exact version of their 64-bit ones. Nothing is
+#      downloaded.
 # pacman's own errors name what no longer resolves. Exits 1 on any failure.
 #
 # Needs podman (rootless) and the network.
@@ -34,7 +36,7 @@ if [[ ${1:-} != "--inside" ]]; then
   command -v podman >/dev/null || { echo "repos-check: missing podman (pacman -S podman)" >&2; exit 1; }
   image=$(sed -n 's/^FROM //p' "$ROOT/packaging/container/Containerfile")
   status=0
-  for level in generic v3; do
+  for level in generic v3 v4 znver4; do
     podman run --quiet --rm --volume "$ROOT:$ROOT:ro" --workdir "$ROOT" --env KARCHY_CACHYOS_LEVEL="$level" \
       "$image" "$ROOT/tools/repos-check" --inside "$@" || status=1
   done
