@@ -1,0 +1,197 @@
+#!/bin/bash
+
+# karchy:summary=Show disk-health warnings from smartd and the monthly btrfs scrub as notifications
+# karchy:args=[watch | check | details <warning> | disks <warning>]
+# karchy:hidden=true
+
+# smartd and btrfs-scrub@.service leave each warning as a small file in
+# /var/lib/karchy/disk-health (root's helper /usr/lib/karchy/disk-health
+# writes them; its header describes the file).
+#
+#   watch              What karchy-disk-health.service runs in every session:
+#                      `check` at login, for warnings from before, and again
+#                      each time a file appears in or leaves that folder
+#                      (inotify, so nothing polls). A systemd path unit would
+#                      need no process, but it drops a change that arrives
+#                      while the check for the one before is still running,
+#                      and smartd reports two disks within milliseconds.
+#   check              A notification, which stays until dismissed, for each
+#                      warning not shown before. Which ones were shown is kept
+#                      in ~/.local/state/karchy/disk-health-seen by the file's
+#                      name and text, so a warning that changes (more damaged
+#                      blocks) or comes back after it was cleared shows again.
+#   details <warning>  In a terminal: the warning, then the disk's own report
+#                      (smartctl -a) or the scrub's (btrfs scrub status and
+#                      device stats). Both need the password.
+#   disks <warning>    Open GNOME Disks at the disk, when it is installed.
+#
+# The files are root's, but they are still read as data: a device or mount
+# point from one is only passed on after it is checked to be one.
+
+set -euo pipefail
+
+STATE_DIR=${KARCHY_DISK_HEALTH_DIR:-/var/lib/karchy/disk-health}
+SEEN="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/disk-health-seen"
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-disk-health /p' "$0" >&2
+  exit 1
+}
+
+# A warning's file, by name: one of root's regular files in the folder.
+record_file() {
+  local name=$1 file
+  [[ $name =~ ^(smart|scrub)-[A-Za-z0-9._-]+$ ]] || return 1
+  file="$STATE_DIR/$name"
+  [[ -f $file && ! -L $file && $(stat -c %u "$file") == 0 ]] || return 1
+  printf '%s' "$file"
+}
+
+# One value from a warning's file.
+field() {
+  sed -n "s/^$2=//p" "$1" | head -n 1
+}
+
+# The disk a warning is about, only when it is a device: a block device, or
+# the character device smartd names an NVMe drive by (/dev/nvme0).
+record_device() {
+  local device
+  device=$(field "$1" device)
+  [[ $device =~ ^/dev/[A-Za-z0-9._/-]+$ && $device != *..* ]] || return 1
+  [[ -b $device || -c $device ]] || return 1
+  printf '%s' "$device"
+}
+
+# What tells one showing of a warning from the next: everything but the time.
+record_key() {
+  printf '%s %s' "${1##*/}" "$(grep -v '^time=' "$1" | sha256sum | cut -d' ' -f1)"
+}
+
+check() {
+  local file name key kind what device model summary headline urgency current=()
+  local -a actions
+  [[ -d $STATE_DIR ]] || return 0
+  karchy-notifications-wait || return 1
+  mkdir -p "$(dirname "$SEEN")"
+
+  for file in "$STATE_DIR"/*; do
+    name=${file##*/}
+    file=$(record_file "$name") || continue
+    key=$(record_key "$file")
+    current+=("$key")
+    [[ -f $SEEN ]] && grep -qxF "$key" "$SEEN" && continue
+
+    kind=$(field "$file" kind)
+    what=$(field "$file" what)
+    device=$(field "$file" device)
+    summary=$(field "$file" summary)
+    # "which disk": smartd's device info starts with the model.
+    model=$(field "$file" info)
+    model=${model%%,*}
+    [[ -z $model ]] || device="$model ($device)"
+    urgency=critical
+    case $kind in
+      smart)
+        if [[ $what == EmailTest ]]; then
+          headline=$(karchy-i18n diskHealth.testTitle "$device")
+          urgency=normal
+        else
+          headline=$(karchy-i18n diskHealth.smartTitle "$device")
+        fi
+        ;;
+      scrub) headline=$(karchy-i18n diskHealth.scrubTitle "$(field "$file" mount)") ;;
+      *) continue ;;
+    esac
+    actions=(--action "$(karchy-i18n diskHealth.details)" karchy-launch-floating-terminal-with-presentation karchy-disk-health details)
+    if [[ $kind == smart ]] && command -v gnome-disks >/dev/null && record_device "$file" >/dev/null; then
+      actions+=(--action "$(karchy-i18n diskHealth.openDisks)" karchy-disk-health disks)
+    fi
+    # Only a warning that was shown counts as shown.
+    if karchy-notification-send -g disk -u "$urgency" -t 0 "$headline" "$summary" "${actions[@]}" --with "$name"; then
+      printf '%s\n' "$key" >>"$SEEN"
+    fi
+  done
+
+  # Forget warnings that are gone, so one that comes back shows again.
+  if [[ -f $SEEN ]]; then
+    if ((${#current[@]})); then
+      printf '%s\n' "${current[@]}" | grep -xFf - "$SEEN" >"$SEEN.new" || true
+      mv -f "$SEEN.new" "$SEEN"
+    else
+      rm -f "$SEEN"
+    fi
+  fi
+}
+
+# inotifywait says "Watches established." once it is watching, and then names
+# each change: the first look comes after the watch is in place, so a warning
+# written in between is not missed. Root's helper renames each file into
+# place, and removes one when a scrub finds the errors gone.
+watch() {
+  local line
+  [[ -d $STATE_DIR ]] || { echo "karchy-disk-health: $STATE_DIR is missing (karchy-settings creates it)" >&2; exit 1; }
+  inotifywait -m -e moved_to -e delete --format '%e %f' "$STATE_DIR" 2>&1 |
+    while IFS= read -r line; do
+      [[ $line == "Setting up watches."* ]] && continue
+      check || true
+    done
+}
+
+details() {
+  local file kind device mount
+  # Not a failure: a later scrub found the errors gone and cleared the warning.
+  file=$(record_file "${1:-}") || { echo "That warning is gone: the problem was not found again."; exit 0; }
+  kind=$(field "$file" kind)
+  [[ $kind != scrub ]] || echo "Disk check of $(field "$file" mount) ($(field "$file" device)):"
+  field "$file" summary
+  [[ -z $(field "$file" info) ]] || echo "Disk: $(field "$file" info)"
+  echo "Reported: $(date -d "@$(field "$file" time)" 2>/dev/null || true)"
+  echo
+  case $kind in
+    smart)
+      device=$(record_device "$file") || { echo "$(field "$file" device) is not connected now." >&2; exit 1; }
+      echo "The disk's own report follows (smartctl -a $device)."
+      # A closed password prompt closes the window (exit 130).
+      sudo -v -p "Your password, to read the disk's report: " || exit 130
+      echo
+      # smartctl's exit code is a set of flags about the disk, not a failure
+      # to run; the report itself says what is wrong.
+      sudo smartctl -a -- "$device" || true
+      ;;
+    scrub)
+      mount=$(field "$file" mount)
+      if [[ $mount != /* ]] || ! mountpoint -q -- "$mount"; then
+        echo "$mount is not mounted now." >&2
+        exit 1
+      fi
+      echo "The check's result and each disk's error counts follow."
+      echo "The damaged files are named in the system log: journalctl -k | grep -i 'btrfs.*error'"
+      sudo -v -p "Your password, to read the check's result: " || exit 130
+      echo
+      sudo btrfs scrub status -d -- "$mount" || true
+      echo
+      sudo btrfs device stats -- "$mount" || true
+      ;;
+    *) exit 1 ;;
+  esac
+}
+
+disks() {
+  local file device
+  file=$(record_file "${1:-}") || exit 1
+  device=$(record_device "$file") || exit 1
+  # GNOME Disks takes a block device: an NVMe drive's first namespace.
+  if [[ -c $device ]]; then
+    [[ -b ${device}n1 ]] || exit 1
+    device=${device}n1
+  fi
+  exec setsid uwsm-app -- gnome-disks --block-device "$device"
+}
+
+case ${1:-check} in
+  watch) (($# == 1)) || usage; watch ;;
+  check) (($# <= 1)) || usage; check ;;
+  details) (($# == 2)) || usage; details "$2" ;;
+  disks) (($# == 2)) || usage; disks "$2" ;;
+  *) usage ;;
+esac

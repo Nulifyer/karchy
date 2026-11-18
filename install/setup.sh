@@ -87,6 +87,15 @@ setup_system_files() {
   # A backup file of filesystem, so pacman keeps the edit.
   printf 'karchy \\r (\\l)\n\n' >"$KARCHY_MNT/etc/issue"
 
+  # smartd's warnings go to the desktop instead of to mail nobody reads:
+  # karchy's helper records each one and the session shows it as a
+  # notification (system/disk-health). DEVICESCAN keeps its default, every
+  # check on every ATA, SCSI and NVMe disk. A backup file of smartmontools, so
+  # pacman keeps the edit.
+  sed -i 's|^DEVICESCAN$|DEVICESCAN -m <nomailer> -M exec /usr/lib/karchy/disk-health|' "$KARCHY_MNT/etc/smartd.conf"
+  grep -q '^DEVICESCAN .*-M exec /usr/lib/karchy/disk-health$' "$KARCHY_MNT/etc/smartd.conf" ||
+    log "smartd's warnings are not connected to the desktop: /etc/smartd.conf has no plain DEVICESCAN line to change"
+
   # ufw denies incoming by default; enabling it here starts it at boot (D-15).
   sed -i 's/^ENABLED=no/ENABLED=yes/' "$KARCHY_MNT/etc/ufw/ufw.conf"
   # ufw would set strict reverse-path filtering, which breaks NetworkManager's

@@ -151,11 +151,28 @@ package() {
   install -Dm644 systemd/system/user@.service.d/karchy-snapshot-boot.conf \
     "$pkgdir/usr/lib/systemd/system/user@.service.d/karchy-snapshot-boot.conf"
 
+  # Disk-health warnings reach the desktop: root's helper records what smartd
+  # (through /etc/smartd.conf, which the installer points at it) and each
+  # btrfs scrub found in /var/lib/karchy/disk-health (tmpfiles.d above); the
+  # session's karchy-disk-health.service turns a new record into a
+  # notification (karchy-disk-health, in karchy).
+  install -Dm755 disk-health/disk-health "$pkgdir/usr/lib/karchy/disk-health"
+  install -Dm644 disk-health/btrfs-scrub.conf \
+    "$pkgdir/usr/lib/systemd/system/btrfs-scrub@.service.d/10-karchy-disk-health.conf"
 
   cd "$srcdir/karchy"
   # User units and drop-ins; the installer enables the units per machine.
   install -d "$pkgdir/usr/lib/systemd/user"
   cp -a default/systemd/user/. "$pkgdir/usr/lib/systemd/user/"
+  # ...and the ones that start with every session without being enabled: the
+  # disk-health watcher, and disconnecting network shares before sleep.
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/user" system/systemd/user/karchy-disk-health.service \
+    system/systemd/user/karchy-sleep-shares.service
+  install -d "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants"
+  local unit
+  for unit in karchy-disk-health.service karchy-sleep-shares.service; do
+    ln -s "../$unit" "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants/$unit"
+  done
 
   # Starting configs for new users, never touched again after creation (D-07).
   # No shell.json: the shell reads karchy's defaults and a user file holds only

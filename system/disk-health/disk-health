@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# karchy: records a disk-health warning where the desktop finds it, as root.
+# Installed as /usr/lib/karchy/disk-health and run by
+#   smartd          for each warning it would otherwise mail, with no
+#                   arguments and what it found in SMARTD_* variables
+#                   (/etc/smartd.conf: -m <nomailer> -M exec, set by the
+#                   installer)
+#   btrfs-scrub@    after every scrub, as `disk-health scrub <mount point>`
+#                   (ExecStopPost, 10-karchy-disk-health.conf)
+#
+# smartd and the monthly scrub report to the journal and to mail, and a
+# desktop has neither in view. A warning becomes one small file in
+# /var/lib/karchy/disk-health, which only root writes and everyone reads;
+# karchy-disk-health.service in each session sees it appear (inotify) and
+# shows it as a notification. A warning about the same
+# thing replaces the file, so the folder holds the latest of each:
+#   smart-<device>-<kind of failure>   as smartd names them
+#   scrub-<mount point>                removed again by a scrub with no errors
+#
+# The file is lines of key=value, the value being the rest of the line:
+#   kind=smart|scrub   what=<smartd's failure type, or "errors">
+#   device=/dev/…      mount=<mount point, scrub only>
+#   info=<model and serial as smartd gives them>
+#   summary=<one sentence>   time=<seconds since 1970>
+# Nothing in it is secret (the model, serial and error counts are what lsblk
+# and the journal already show), and nothing from it is ever run: the desktop
+# side shows the text and passes the device or mount point to smartctl and
+# btrfs only after checking that it is one.
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+
+STATE_DIR=/var/lib/karchy/disk-health
+
+# One printable line, at most 300 bytes: what smartd and btrfs print is shown
+# on the desktop as it is.
+line() {
+  printf '%s' "$1" | tr '\n\t' '  ' | tr -d '\000-\037\177' | cut -c1-300
+}
+
+# A record's name: only letters, digits, dot, dash and underscore.
+name_part() {
+  local part
+  part=$(printf '%s' "$1" | tr -c 'A-Za-z0-9._-' '_' | cut -c1-80)
+  printf '%s' "${part:-none}"
+}
+
+# write_record <name> <key=value>...
+write_record() {
+  local name=$1 tmp
+  shift
+  install -d -m 755 -o root -g root "$STATE_DIR"
+  tmp=$(mktemp "$STATE_DIR/.new.XXXXXX")
+  printf '%s\n' "$@" "time=$(date +%s)" >"$tmp"
+  chmod 644 "$tmp"
+  mv -f -- "$tmp" "$STATE_DIR/$name"
+}
+
+smart() {
+  local device type message
+  device=$(line "${SMARTD_DEVICE:-}")
+  type=$(line "${SMARTD_FAILTYPE:-unknown}")
+  message=$(line "${SMARTD_MESSAGE:-}")
+  [[ -n $device ]] || { echo "disk-health: smartd named no device (SMARTD_DEVICE)" >&2; exit 64; }
+  write_record "smart-$(name_part "${device#/dev/}")-$(name_part "$type")" \
+    "kind=smart" "what=$type" "device=$device" "info=$(line "${SMARTD_DEVICEINFO:-}")" \
+    "summary=${message:-smartd reported $type}"
+}
+
+# One counter from `btrfs scrub status -R`, 0 when it isn't there.
+counter() {
+  local value
+  value=$(sed -n "s/^[[:space:]]*$1:[[:space:]]*\([0-9]\+\)[[:space:]]*$/\1/p" <<<"$2" | head -n 1)
+  printf '%s' "${value:-0}"
+}
+
+scrub() {
+  local mount=$1 name status state device found uncorrectable corrected summary
+  [[ $mount == /* ]] || { echo "disk-health: scrub takes a mount point" >&2; exit 64; }
+  name="scrub-$(name_part "$mount")"
+  # A scrub that never started (the filesystem went away) has no status;
+  # that is not a finding about the disk.
+  status=$(btrfs scrub status -R -- "$mount" 2>/dev/null) || return 0
+  state=$(sed -n 's/^Status:[[:space:]]*//p' <<<"$status" | head -n 1)
+  uncorrectable=$(counter uncorrectable_errors "$status")
+  corrected=$(counter corrected_errors "$status")
+  found=$(($(counter read_errors "$status") + $(counter csum_errors "$status") +
+    $(counter verify_errors "$status") + $(counter super_errors "$status")))
+  # Errors found always equal corrected plus uncorrectable ones when the
+  # scrub finished; a scrub that stopped early may only have the first count.
+  ((found >= uncorrectable + corrected)) || found=$((uncorrectable + corrected))
+
+  if ((found == 0)); then
+    # btrfs exits 3 for errors it couldn't repair; anything else that ended
+    # the scrub early (a shutdown, `btrfs scrub cancel`) says nothing about
+    # the disk. A finished scrub with nothing found clears the last warning.
+    if [[ ${EXIT_STATUS:-0} == 3 ]]; then
+      found=1 uncorrectable=1
+    else
+      [[ $state != finished ]] || rm -f -- "$STATE_DIR/$name"
+      return 0
+    fi
+  fi
+
+  device=$(findmnt -n -o SOURCE --target "$mount" 2>/dev/null | head -n 1 || true)
+  device=${device%%\[*}
+  # Short enough for a notification's two lines; the mount point is its title.
+  if ((uncorrectable > 0)); then
+    summary="$found damaged blocks; $uncorrectable could not be repaired. Files in them are damaged."
+  else
+    summary="$found damaged blocks, all repaired. The disk may be failing."
+  fi
+  write_record "$name" "kind=scrub" "what=errors" "device=$(line "$device")" "mount=$(line "$mount")" \
+    "info=" "summary=$summary"
+}
+
+((EUID == 0)) || { echo "disk-health: must run as root (smartd, btrfs-scrub@.service)" >&2; exit 77; }
+
+case ${1:-} in
+  "") smart ;;
+  scrub) (($# == 2)) || { echo "usage: disk-health [scrub <mount point>]" >&2; exit 64; }; scrub "$2" ;;
+  *) echo "usage: disk-health [scrub <mount point>]" >&2; exit 64 ;;
+esac

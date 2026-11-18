@@ -1,0 +1,17 @@
+# karchy: shows disk-health warnings from smartd and the monthly btrfs scrub
+# as notifications: the ones not shown before at login, and each new one as
+# root's helper records it in /var/lib/karchy/disk-health
+# (karchy-disk-health watch). Started with every session
+# (graphical-session.target.wants).
+[Unit]
+Description=Show disk-health warnings
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/karchy-disk-health watch
+Slice=session.slice
+Restart=on-failure
+RestartSec=5

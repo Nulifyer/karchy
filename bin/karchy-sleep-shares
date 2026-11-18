@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# karchy:summary=Disconnect network shares opened in the file manager before the computer sleeps
+# karchy:args=[unmount]
+# karchy:hidden=true
+
+# karchy-sleep-shares.service runs this in every session. It holds a logind
+# delay inhibitor, as the lock-before-sleep monitor does, and when logind
+# announces sleep (suspend, hibernate, the lid) it disconnects the network
+# shares the file manager opened (gvfs: smb, sftp, ftp, dav, nfs, afp), then
+# lets go of the inhibitor. systemd restarts it after the wake.
+#
+# Why. Those shares live in this session's gvfs daemons and reach other
+# programs (a video player, a terminal, an editor) through a FUSE mount,
+# /run/user/<uid>/gvfs. Sleep freezes the session's programs first. A program
+# that is reading a file there at that moment waits, in the kernel, on a gvfs
+# daemon that is already frozen, and can't be frozen itself. systemd gives up
+# on the session after 60 seconds, the kernel twice more after 20 ("Freezing
+# user space processes failed ... 1 tasks refusing to freeze", the task in
+# fuse_send_readpages), and the sleep fails: the computer stays awake with the
+# lid closed, its desktop frozen for those 100 seconds. Seen in a VM on Linux
+# 7.3 with systemd 262, with a file on an SMB share being read.
+#
+# So before the freeze, nothing may be left waiting on a share:
+#   1. each network location is unmounted (gio mount --unmount --force), which
+#      a healthy connection does at once;
+#   2. gvfs's network daemons that are still there are killed. With the
+#      network already going down for the sleep, a daemon in the middle of a
+#      read doesn't notice the unmount until the read times out; once it is
+#      gone, gvfs fails the read at once;
+#   3. it waits, up to 2 seconds, until the kernel shows no request waiting
+#      on the gvfs FUSE mount.
+# Programs reading from a share get an error instead of blocking. After the
+# wake the share opens again from its bookmark with a fresh connection (the
+# old one would be dead anyway), with the password from the keyring.
+#
+# It has to happen here, in the session, before the freeze: by the time root's
+# sleep hooks run (/usr/lib/systemd/system-sleep), the gvfs daemons can no
+# longer answer. Only network locations are disconnected: USB drives and
+# disks are kernel mounts (udisks), not gvfs's; phones, cameras and archives
+# opened through gvfs stay as they are. Shares kept at /mnt
+# (karchy-mount-keep) are kernel CIFS mounts and are left alone: the kernel
+# freezes a program reading from one and carries the connection over the
+# sleep, and systemd unmounts them when idle.
+#
+#   (nothing)   hold the inhibitor and wait for the next sleep
+#   unmount     disconnect the network shares now
+
+set -uo pipefail
+
+# gvfs's network backends: the URI schemes they mount, and their daemons'
+# names (the ones that only browse the network hold no files).
+NETWORK_URI='^(smb|sftp|ftp|ftps|ftpis|dav|davs|dav\+sd|davs\+sd|nfs|afp|google-drive|onedrive)://'
+NETWORK_DAEMON='gvfsd-(smb|sftp|ftp|dav|nfs|afp|google|onedrive)'
+
+# The URIs of the network locations gvfs has mounted: `gio mount -l` prints
+# "Mount(0): media on nas -> smb://nas/media/".
+network_mounts() {
+  LC_ALL=C timeout 2 gio mount -l 2>/dev/null |
+    sed -n 's/^Mount([0-9]*): .* -> \([a-z][a-z0-9+.-]*:\/\/.*\)$/\1/p' |
+    grep -E "$NETWORK_URI" || true
+}
+
+# Requests the kernel has waiting on the gvfs FUSE mount; nothing when it
+# can't be read. The connection's number is the mount's device number.
+fuse_waiting() {
+  local mount="${XDG_RUNTIME_DIR:-/run/user/$UID}/gvfs" device
+  device=$(stat -c %d "$mount" 2>/dev/null) || return 0
+  cat "/sys/fs/fuse/connections/$device/waiting" 2>/dev/null || true
+}
+
+# logind waits 15 seconds for every inhibitor together (20-inhibit-delay.conf)
+# and locking needs most of that, so this takes 5 at the very most, and well
+# under one when the shares answer. A share with files open is disconnected
+# anyway (--force): the sleep ends its connection regardless, and a program
+# left blocked on it stops the sleep.
+unmount_shares() {
+  local uri waiting tries
+  while IFS= read -r uri; do
+    [[ -n $uri ]] || continue
+    timeout 2 gio mount --unmount --force "$uri" >/dev/null 2>&1 &
+  done < <(network_mounts)
+  wait
+  pkill -KILL -U "$UID" -x "$NETWORK_DAEMON" 2>/dev/null
+  for ((tries = 0; tries < 20; tries++)); do
+    waiting=$(fuse_waiting)
+    if [[ ! $waiting =~ ^[0-9]+$ ]] || ((waiting == 0)); then
+      break
+    fi
+    sleep 0.1
+  done
+}
+
+# Returns when logind announces sleep: gdbus prints the signal as
+# "/org/freedesktop/login1: org.freedesktop.login1.Manager.PrepareForSleep (true,)".
+wait_for_sleep() {
+  local line status=1
+  coproc SLEEP_EVENTS {
+    exec gdbus monitor --system --dest org.freedesktop.login1 --object-path /org/freedesktop/login1
+  }
+  local monitor_pid=$SLEEP_EVENTS_PID
+  while IFS= read -r line; do
+    if [[ $line == *"Manager.PrepareForSleep (true,)"* ]]; then
+      status=0
+      break
+    fi
+  done <&"${SLEEP_EVENTS[0]}"
+  kill "$monitor_pid" 2>/dev/null
+  wait "$monitor_pid" 2>/dev/null
+  return "$status"
+}
+
+case ${1:-} in
+  unmount)
+    unmount_shares
+    ;;
+  --inhibited)
+    wait_for_sleep || exit 1
+    unmount_shares
+    ;;
+  "")
+    exec systemd-inhibit --what=sleep --mode=delay --who=karchy \
+      --why="Disconnect network shares before sleep" "$0" --inhibited
+    ;;
+  *)
+    sed -n 's/^# karchy:args=/Usage: karchy-sleep-shares /p' "$0" >&2
+    exit 1
+    ;;
+esac

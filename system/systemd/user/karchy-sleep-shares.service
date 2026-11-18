@@ -1,0 +1,17 @@
+# karchy: network shares opened in the file manager are disconnected before
+# the computer sleeps (karchy-sleep-shares says why). Started with every
+# session (graphical-session.target.wants). The command holds a logind delay
+# inhibitor and exits once it has acted on a sleep, so it is started again
+# for the next one.
+[Unit]
+Description=Disconnect network shares before sleep
+After=dbus.socket
+Requires=dbus.socket
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/karchy-sleep-shares
+Slice=session.slice
+Restart=always
+RestartSec=2
