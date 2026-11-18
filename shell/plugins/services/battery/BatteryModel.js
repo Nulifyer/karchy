@@ -25,16 +25,18 @@ function warningThresholds(config, fallbackLow, fallbackCritical) {
 
 // One step of the battery warnings. `warned` is the highest warning already
 // shown in this discharge ("", "low" or "critical"); the result carries the
-// new value and the warning to show now, if any.
+// new value, the warning to show now, if any, and whether the warnings shown
+// are to be taken off the screen (`clear`).
 //
 // Each warning shows once per discharge: a level that wobbles around a
 // threshold does not repeat it, and the critical one is not followed by the
 // low one. Plugging in the charger clears both, so the next discharge warns
-// again. On battery without a "discharging" state (some firmware reports
-// unknown for a while) nothing is shown and nothing is forgotten.
+// again, and what they said no longer holds, so they leave the screen. On
+// battery without a "discharging" state (some firmware reports unknown for a
+// while) nothing is shown and nothing is forgotten.
 function warningStep(warned, sample, thresholds) {
   var level = sample ? Number(sample.level) : -1
-  if (!sample || !(level >= 0) || !sample.onBattery) return { warned: "", notify: "" }
+  if (!sample || !(level >= 0) || !sample.onBattery) return { warned: "", notify: "", clear: !!warned }
   if (!sample.discharging) return { warned: warned, notify: "" }
 
   if (thresholds.critical > 0 && level <= thresholds.critical) {

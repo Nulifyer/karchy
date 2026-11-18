@@ -60,6 +60,7 @@ Item {
     var step = BatteryModel.warningStep(persisted.warned, sample, thresholds)
     persisted.warned = step.warned
     if (step.notify) sendBatteryWarning(step.notify, sample.level)
+    else if (step.clear) clearWarningsProcess.running = true
   }
 
   // The two warnings have a process each: the critical one must not wait for
@@ -104,6 +105,14 @@ Item {
 
   Process { id: lowWarningProcess }
   Process { id: criticalWarningProcess }
+
+  // With the charger in, the warnings on screen no longer hold: the critical
+  // one never leaves by itself. The notifications are found by their titles,
+  // the ones karchy-battery-low and karchy-battery-critical send.
+  Process {
+    id: clearWarningsProcess
+    command: ["bash", "-c", "for title in battery.lowTitle battery.criticalTitle; do karchy-shell -q notifications dismiss \"$(karchy-i18n \"$title\")\"; done"]
+  }
 
   Process {
     id: powerProfileProcess
