@@ -24,7 +24,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Audio | PipeWire + WirePlumber | [O+C] |
 | Laptop power | power-profiles-daemon (Arch) with amd-pstate; suspend on idle; suspend-then-hibernate after 2 h | [New] |
 | Mirrors | rate-mirrors weekly with safety checks (D-29) | [C] tool, [New] safety |
-| Dedup | bees on btrfs, from karchy's fork (`karchy-bees`, D-85), on by default (the installer asks; D-86). `karchy-bees.service` deduplicates the system disk with karchy's options and limits from `/usr/share/karchy/bees.conf` (yours go in `/etc/karchy/bees.conf`): at most one core and only idle CPU, a memory ceiling, a hash table sized from the disk; never rewrites snapper's snapshots, keeps preallocated space, logs no file names; AC power only on laptops. Off: `systemctl disable --now karchy-bees.service` | [New] |
+| Dedup | bees on btrfs, from karchy's fork (`karchy-bees`, D-85), on by default (the installer asks; D-86). `karchy-bees.service` deduplicates the system disk with karchy's options and limits from `/usr/share/karchy/bees.conf` (yours go in `/etc/karchy/bees.conf`): at most one core and only idle CPU, a memory ceiling, a hash table sized from the disk; never rewrites snapper's snapshots, keeps preallocated space, logs no file names, and leaves new data alone until it has been stable for 5 minutes (D-103); AC power only on laptops. Off: `systemctl disable --now karchy-bees.service` | [New] |
 | Secure Boot | sbctl + Microsoft keys, signed Limine, config hash enrollment (installer step) | [C] |
 | Firmware | fwupd (menu entry) | [O] |
 | AUR helper | paru (from `[cachyos]`) | [C] |
