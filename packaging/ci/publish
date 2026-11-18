@@ -79,9 +79,10 @@ args=(--channel "$channel" --repo "$repo" --native --sign "$KARCHY_SIGNING_KEY_I
 if [[ $native_only == "true" ]]; then
   [[ -n $current ]] || { echo "publish: $channel has no release yet; nothing to rebuild"; exit 0; }
   commit=$(sed -n 's/^COMMIT=//p' "$repo/release")
-  mapfile -t natives < <(grep -L "^arch=('any')" packaging/pkgbuilds/*/PKGBUILD | xargs -n1 dirname | xargs -n1 basename)
-  # The channel's released PKGBUILDs, not main's.
+  # The channel's released PKGBUILDs, not main's, and the native packages
+  # that release had: main may have gained one since (karchy-bees after rc.5).
   git checkout --quiet --detach "$commit"
+  mapfile -t natives < <(grep -L "^arch=('any')" packaging/pkgbuilds/*/PKGBUILD | xargs -n1 dirname | xargs -n1 basename)
   packaging/build "${args[@]}" --version "$current" "${natives[@]}"
 else
   [[ -n $version ]] && args+=(--version "$version")
