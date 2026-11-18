@@ -138,6 +138,16 @@ To have the installer set up Secure Boot, put the firmware in Setup Mode first: 
 
 If a firmware update clears the keys, the machine still boots, without Secure Boot. At login a notification offers to enroll the keys again (`karchy-secureboot enroll`).
 
+### Turning it on after the install
+
+A system installed without Secure Boot gets the same setup later from one command:
+
+1. Put the firmware in Setup Mode, as above, and boot karchy.
+2. Run `karchy secureboot setup` in a terminal. It asks for your password, then installs sbctl, creates the keys, turns on Limine's file checks, signs both copies of Limine and enrolls the keys.
+3. Restart. If `sbctl status` still shows Secure Boot off, turn it on in the firmware settings.
+
+Outside Setup Mode the command changes nothing and says how to get there. The keys are enrolled last, so if a step fails before that, the computer boots as before and the command can be run again.
+
 ## Updates and release channels
 
 `karchy update` updates everything in one pass: karchy's own packages from `[karchy]`, and Arch, CachyOS and AUR packages through paru, with snapper snapshots before and after. It then reloads the desktop and shows the karchy release change with a link to its release notes.

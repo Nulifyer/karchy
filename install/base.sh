@@ -327,11 +327,13 @@ base_bootloader() {
 ESP_PATH="/boot"
 KERNEL_CMDLINE[default]="$cmdline"
 BOOT_ORDER="*, *lts, Snapshots"
+ENABLE_LIMINE_FALLBACK=yes
 EOF
-  # The firmware's fallback copy of Limine (EFI/BOOT/BOOTX64.EFI) is kept
-  # current by limine-update, except under Secure Boot, where karchy's own
-  # hook keeps it identical to the signed binary instead.
-  [[ $KARCHY_SECUREBOOT == "yes" ]] || echo 'ENABLE_LIMINE_FALLBACK=yes' >>"$KARCHY_MNT/etc/default/limine"
+  # ENABLE_LIMINE_FALLBACK: limine-update keeps the firmware's fallback copy
+  # of Limine (EFI/BOOT/BOOTX64.EFI) current. Setting up Secure Boot
+  # (karchy-secureboot setup, at the end of the install or later) takes the
+  # line out again: karchy's own hook then keeps that copy identical to the
+  # signed binary.
   in_target limine-install --fallback
   in_target limine-update
 }
@@ -525,26 +527,15 @@ wifi_keyfile_escape() {
 # The installer's last step, and enrolling is its last action: until the keys
 # are enrolled the firmware stays in Setup Mode, so a failure anywhere before
 # leaves a machine that still boots (and boots the install ISO to retry).
-# karchy-secureboot (karchy) does the enrolling.
-# sbctl's keys are enrolled with Microsoft's (GPU option ROMs, dual boot).
-# Kernels are not signed: Limine checks each file's BLAKE2 hash from
-# limine.conf, and the config's own hash is enrolled into the signed Limine
-# binary. limine's hooks re-enroll and re-sign after every kernel, initramfs
-# or snapshot change; karchy-settings' 95-karchy-limine-fallback hook keeps the
-# firmware's fallback copy identical to the enrolled, signed binary.
+# karchy-secureboot (in karchy, installed with the desktop) owns the steps and
+# explains them; `karchy secureboot setup` does the same on an installed
+# system later. In short: sbctl's keys are enrolled with Microsoft's (GPU
+# option ROMs, dual boot); Limine is signed and checks each kernel and
+# initramfs by the hash in limine.conf, whose own hash is enrolled into the
+# signed binary.
 base_secureboot() {
   [[ $KARCHY_SECUREBOOT == "yes" ]] || return 0
-  in_target pacman -S --needed --noconfirm sbctl
-  in_target sbctl create-keys
-  printf 'ENABLE_VERIFICATION=yes\nENABLE_ENROLL_LIMINE_CONFIG=yes\n' >>"$KARCHY_MNT/etc/default/limine"
-  # Signs with the new keys; karchy's hook fails it unless both binaries carry
-  # limine.conf's hash and are signed.
-  in_target limine-update
-  local efi
-  for efi in /boot/EFI/limine/limine_x64.efi /boot/EFI/BOOT/BOOTX64.EFI; do
-    in_target sbctl verify "$efi" | grep -q 'is signed' || die "$efi is not signed"
-  done
-  in_target karchy-secureboot enroll
+  in_target karchy-secureboot setup
 }
 
 base_git_identity() {

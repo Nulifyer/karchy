@@ -1,25 +1,39 @@
 #!/bin/bash
 
-# karchy:summary=Secure Boot status, and re-enrolling keys a firmware update cleared (D-31)
-# karchy:args=check | enroll
+# karchy:summary=Secure Boot: set it up, check it, and re-enroll keys a firmware update cleared (D-31)
+# karchy:args=check | setup | enroll
 # karchy:hidden=true
 
-# The installer sets up Secure Boot when the firmware is in Setup Mode: sbctl
-# keys enrolled with Microsoft's and the firmware's own, Limine signed with its config hash enrolled
-# (limine's hooks re-enroll and re-sign after every change).
+# Secure Boot with karchy's own keys: sbctl keys enrolled with Microsoft's and
+# the firmware's own, Limine signed with its config hash enrolled (limine's
+# hooks re-enroll and re-sign after every change). The installer runs `setup`
+# when the firmware is in Setup Mode; on an installed system the same command
+# turns Secure Boot on later.
 #
 # check   at login: if the firmware is back in Setup Mode (a firmware update or
 #         reset cleared the keys), offer to enroll karchy's keys again; if
-#         Secure Boot is off otherwise, say how to get back to Setup Mode.
-# enroll  enroll karchy's keys with Microsoft's (asks for your password; the
-#         installer runs it too). Firmware resets often clear only the
-#         platform key, and the kernel marks the key variables that remain
-#         immutable, so that flag is lifted first.
+#         Secure Boot is off otherwise, say how to turn it on.
+# setup   set Secure Boot up from nothing, with the firmware in Setup Mode:
+#         install sbctl, create karchy's keys, have Limine verify its files and
+#         carry its config's hash, sign both copies of Limine, then enroll the
+#         keys. Asks for your password. Until the keys are enrolled, the last
+#         action, the firmware checks nothing, so a failure before that leaves
+#         a machine that boots as before; running it again finishes the job.
+# enroll  enroll karchy's keys with Microsoft's (asks for your password).
+#         Firmware resets often clear only the platform key, and the kernel
+#         marks the key variables that remain immutable, so that flag is
+#         lifted first.
 
-set -euo pipefail
+set -eEuo pipefail
 
 EFIVARS=/sys/firmware/efi/efivars
-SETUP_MODE=$EFIVARS/SetupMode-8be4df61-93ca-11d2-aa0d-00e098032b8c
+EFI_GLOBAL=8be4df61-93ca-11d2-aa0d-00e098032b8c
+SETUP_MODE=$EFIVARS/SetupMode-$EFI_GLOBAL
+LIMINE_DEFAULTS=/etc/default/limine
+INSTALL_CONF=/etc/karchy/install.conf
+# Both copies of Limine: the one the firmware's boot entry names and the
+# fallback path it uses when that entry is gone.
+LIMINE_BINARIES=(/boot/EFI/limine/limine_x64.efi /boot/EFI/BOOT/BOOTX64.EFI)
 
 as_root() {
   if ((EUID == 0)); then "$@"; else sudo "$@"; fi
@@ -30,13 +44,156 @@ in_setup_mode() {
 }
 
 secure_boot_on() {
-  local var=$EFIVARS/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c
+  local var=$EFIVARS/SecureBoot-$EFI_GLOBAL
   [[ -r $var && $(od -An -t u1 -j4 -N1 "$var" | tr -d ' ') == "1" ]]
+}
+
+# Whether the firmware's platform key is the one sbctl made for karchy: the
+# key's certificate is stored whole inside the firmware variable.
+karchy_keys_enrolled() {
+  local var=$EFIVARS/PK-$EFI_GLOBAL cert=/var/lib/sbctl/keys/PK/PK.pem enrolled ours
+  # Without sbctl there are no karchy keys, and no reason to ask for a password.
+  command -v sbctl >/dev/null && [[ -r $var ]] && as_root test -f "$cert" || return 1
+  enrolled=$(od -An -v -t x1 "$var" | tr -d ' \n')
+  ours=$(as_root openssl x509 -in "$cert" -outform DER 2>/dev/null | od -An -v -t x1 | tr -d ' \n')
+  [[ -n $ours && $enrolled == *"$ours"* ]]
+}
+
+enroll() {
+  in_setup_mode || { echo "The firmware is not in Setup Mode, so keys can't be enrolled. Clear the Secure Boot keys in the firmware settings first." >&2; exit 1; }
+  local var conf builtin=()
+  for var in "$EFIVARS"/{PK,KEK,db,dbx}-*; do
+    [[ -e $var ]] && as_root chattr -i "$var"
+  done
+  # fwupd's capsule loader, signed with karchy's keys (and kept signed by
+  # sbctl's hook) so BIOS updates still run under Secure Boot; fwupd must
+  # then not look for shim, which karchy doesn't use.
+  if [[ -f /usr/lib/fwupd/efi/fwupdx64.efi ]]; then
+    as_root sbctl sign -s -o /usr/lib/fwupd/efi/fwupdx64.efi.signed /usr/lib/fwupd/efi/fwupdx64.efi
+    conf=/etc/fwupd/fwupd.conf
+    if ! as_root grep -qx 'DisableShimForSecureBoot=true' "$conf" 2>/dev/null; then
+      if as_root grep -qx '\[uefi_capsule\]' "$conf" 2>/dev/null; then
+        as_root sed -i '/^\[uefi_capsule\]$/a DisableShimForSecureBoot=true' "$conf"
+      else
+        printf '\n[uefi_capsule]\nDisableShimForSecureBoot=true\n' | as_root tee -a "$conf" >/dev/null
+      fi
+    fi
+  fi
+  # The firmware's own certificates too, when it ships defaults: the board
+  # maker's firmware updates and option ROMs are signed with them, and the
+  # Arch Wiki warns that leaving them out can block updates or brick some
+  # machines (Framework laptops among them).
+  if compgen -G "$EFIVARS/dbDefault-*" >/dev/null || compgen -G "$EFIVARS/KEKDefault-*" >/dev/null; then
+    builtin=(--firmware-builtin)
+  fi
+  as_root sbctl enroll-keys --microsoft "${builtin[@]}"
+}
+
+# A setup step failed. The keys are enrolled last, and until they are the
+# firmware checks no signatures.
+SETUP_STEP=""
+setup_failed() {
+  trap - ERR
+  echo >&2
+  echo "Secure Boot was not set up: $SETUP_STEP." >&2
+  if in_setup_mode; then
+    echo "No keys are enrolled, so the computer boots as before. Fix what the lines above show, then run this again: karchy secureboot setup" >&2
+  fi
+  exit 1
+}
+
+setup() {
+  [[ -d $EFIVARS ]] || { echo "Secure Boot needs UEFI, and this system did not boot in UEFI mode." >&2; exit 1; }
+  # Setup Mode first: the firmware has no platform key, so there is work to
+  # do whatever it says about the boot that is running.
+  if ! in_setup_mode; then
+    if secure_boot_on; then
+      echo "Secure Boot is already on. Nothing to do."
+      exit 0
+    fi
+    if karchy_keys_enrolled; then
+      echo "karchy's keys are enrolled, and Secure Boot is off."
+      echo "Restart. If it is still off then, turn Secure Boot on in the firmware settings (systemctl reboot --firmware-setup opens them)."
+      exit 0
+    fi
+    cat >&2 <<'EOF'
+The firmware is not in Setup Mode, so karchy can't enroll its keys yet.
+
+1. Restart into the firmware settings: systemctl reboot --firmware-setup
+2. On the Secure Boot page, erase the Secure Boot keys. Firmwares name this
+   "Reset to Setup Mode", "Erase all Secure Boot settings" or "Delete all
+   Secure Boot keys". Leave Secure Boot itself enabled if there is a switch.
+3. Save, boot karchy and run this again: karchy secureboot setup
+
+Nothing was changed.
+EOF
+    exit 1
+  fi
+
+  # Any command that fails from here on stops the setup with SETUP_STEP's words.
+  trap setup_failed ERR
+  echo "Setting up Secure Boot with karchy's own keys."
+  if ! command -v sbctl >/dev/null; then
+    echo "Installing sbctl..."
+    SETUP_STEP="sbctl couldn't be installed (if a download failed, run karchy update first)"
+    as_root pacman -S --needed --noconfirm sbctl
+  fi
+
+  # Says so and changes nothing when the keys already exist.
+  echo "Creating the keys..."
+  SETUP_STEP="sbctl couldn't create the keys"
+  as_root sbctl create-keys
+
+  # Limine checks every file it loads against the hash in limine.conf, and
+  # the hash of limine.conf itself is enrolled into the signed Limine binary.
+  # limine-update must then stop refreshing the firmware's fallback copy with
+  # a plain Limine: karchy's hook (95-karchy-limine-fallback) keeps that copy
+  # identical to the enrolled, signed binary instead.
+  echo "Turning on Limine's file checks..."
+  SETUP_STEP="$LIMINE_DEFAULTS couldn't be changed"
+  local line
+  as_root sed -i '/^ENABLE_LIMINE_FALLBACK=/d' "$LIMINE_DEFAULTS"
+  for line in ENABLE_VERIFICATION=yes ENABLE_ENROLL_LIMINE_CONFIG=yes; do
+    if ! as_root grep -qx "$line" "$LIMINE_DEFAULTS"; then
+      echo "$line" | as_root tee -a "$LIMINE_DEFAULTS" >/dev/null
+    fi
+  done
+
+  # Hashes, enrolls and signs with the new keys; karchy's hook fails it
+  # unless both binaries carry limine.conf's hash and are signed.
+  echo "Signing the bootloader..."
+  SETUP_STEP="limine-update failed"
+  as_root limine-update
+  local efi
+  for efi in "${LIMINE_BINARIES[@]}"; do
+    SETUP_STEP="$efi is not signed"
+    [[ $(as_root sbctl verify "$efi" 2>&1) == *"is signed"* ]]
+  done
+
+  # From here the login check (karchy-secureboot check) watches over Secure
+  # Boot. Recorded before enrolling: if enrolling fails, the firmware is
+  # still in Setup Mode and the check offers to enroll again, which is all
+  # that is left to do.
+  SETUP_STEP="$INSTALL_CONF couldn't be changed"
+  if as_root grep -q '^KARCHY_SECUREBOOT=' "$INSTALL_CONF" 2>/dev/null; then
+    as_root sed -i 's/^KARCHY_SECUREBOOT=.*/KARCHY_SECUREBOOT=yes/' "$INSTALL_CONF"
+  else
+    as_root install -d -m 0755 "${INSTALL_CONF%/*}"
+    echo 'KARCHY_SECUREBOOT=yes' | as_root tee -a "$INSTALL_CONF" >/dev/null
+  fi
+
+  echo "Enrolling the keys in the firmware..."
+  SETUP_STEP="the keys couldn't be enrolled"
+  enroll
+  trap - ERR
+  echo
+  echo "Secure Boot is set up. Restart to use it."
+  echo "If \`sbctl status\` still shows Secure Boot off after the restart, turn it on in the firmware settings."
 }
 
 case "${1:-}" in
   check)
-    grep -qx 'KARCHY_SECUREBOOT=yes' /etc/karchy/install.conf 2>/dev/null || exit 0
+    grep -qx 'KARCHY_SECUREBOOT=yes' "$INSTALL_CONF" 2>/dev/null || exit 0
     if in_setup_mode; then
       karchy-notifications-wait || exit 0
       karchy-notification-send -g security.secureboot -t 0 "Secure Boot keys were cleared" \
@@ -44,41 +201,17 @@ case "${1:-}" in
         --action "Enroll keys" karchy-launch-floating-terminal-with-presentation karchy-secureboot enroll
     elif ! secure_boot_on; then
       # Turned off by hand, or the firmware restored its factory keys and
-      # Secure Boot had to be turned off to boot karchy at all. Enrolling
-      # needs Setup Mode, which only the firmware settings can enter.
+      # Secure Boot had to be turned off to boot karchy at all. `setup` tells
+      # the two apart and says what to do.
       karchy-notifications-wait || exit 0
       karchy-notification-send -g security.secureboot -t 0 "Secure Boot is off" \
-        "To turn it back on with karchy's keys, clear the Secure Boot keys in the firmware settings (Setup Mode); at the next login karchy offers to enroll them."
+        "karchy secureboot setup says how to turn it on again." \
+        --action "Show how" karchy-launch-floating-terminal-with-presentation karchy-secureboot setup
     fi
     ;;
+  setup) setup ;;
   enroll)
-    in_setup_mode || { echo "The firmware is not in Setup Mode, so keys can't be enrolled. Clear the Secure Boot keys in the firmware settings first." >&2; exit 1; }
-    for var in "$EFIVARS"/{PK,KEK,db,dbx}-*; do
-      [[ -e $var ]] && as_root chattr -i "$var"
-    done
-    # fwupd's capsule loader, signed with karchy's keys (and kept signed by
-    # sbctl's hook) so BIOS updates still run under Secure Boot; fwupd must
-    # then not look for shim, which karchy doesn't use.
-    if [[ -f /usr/lib/fwupd/efi/fwupdx64.efi ]]; then
-      as_root sbctl sign -s -o /usr/lib/fwupd/efi/fwupdx64.efi.signed /usr/lib/fwupd/efi/fwupdx64.efi
-      conf=/etc/fwupd/fwupd.conf
-      if ! as_root grep -qx 'DisableShimForSecureBoot=true' "$conf" 2>/dev/null; then
-        if as_root grep -qx '\[uefi_capsule\]' "$conf" 2>/dev/null; then
-          as_root sed -i '/^\[uefi_capsule\]$/a DisableShimForSecureBoot=true' "$conf"
-        else
-          printf '\n[uefi_capsule]\nDisableShimForSecureBoot=true\n' | as_root tee -a "$conf" >/dev/null
-        fi
-      fi
-    fi
-    # The firmware's own certificates too, when it ships defaults: the board
-    # maker's firmware updates and option ROMs are signed with them, and the
-    # Arch Wiki warns that leaving them out can block updates or brick some
-    # machines (Framework laptops among them).
-    builtin=()
-    if compgen -G "$EFIVARS/dbDefault-*" >/dev/null || compgen -G "$EFIVARS/KEKDefault-*" >/dev/null; then
-      builtin=(--firmware-builtin)
-    fi
-    as_root sbctl enroll-keys --microsoft "${builtin[@]}"
+    enroll
     echo "Done. If Secure Boot is still off, turn it on in the firmware settings."
     ;;
   *) sed -n 's/^# karchy:args=/Usage: karchy-secureboot /p' "$0" >&2; exit 1 ;;
