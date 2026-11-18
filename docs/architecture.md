@@ -35,7 +35,7 @@ The PKGBUILDs live in `packaging/pkgbuilds/`, next to the code they package, so 
 | Package | Contents | From |
 |---|---|---|
 | `karchy` | everything under `/usr/share/karchy`, `/usr/bin` links to its commands, the Hyprland reload-guard pacman hooks | `bin/ shell/ default/ karchy/ install/{helpers,provisioning} logo.txt` |
-| `karchy-settings` | `/etc` defaults, user and system unit drop-ins, lock-screen PAM, `/etc/skel` starter configs | `system/ config/ default/systemd/user karchy/shell.json` |
+| `karchy-settings` | `/etc` defaults, user and system unit drop-ins, lock-screen PAM, `/etc/skel` starter configs (no `shell.json`: a user's file holds only differences, D-92) | `system/ config/ default/systemd/user` |
 | `karchy-themes` | `/usr/share/karchy/themes` | `themes/` |
 | `karchy-desktop` | meta: the packages above plus the session, services, fonts and apps | — |
 | `karchy-laptop` | meta: power-profiles-daemon, bolt (USB4 docks), sof-firmware; lid and sleep drop-ins | `system/laptop` |

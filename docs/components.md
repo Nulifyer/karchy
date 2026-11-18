@@ -49,7 +49,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 
 Kept:
 - **Core:** host, IPC, plugin registry and CLI, bar engine, `omarchy` router, Commons and Ui, `shell.json`.
-- **Services:** notifications (with the hover ✕), OSD, polkit, lock (with the time and date above the password field [New]; turn it off in Settings › Appearance › Lock screen, or `lock.clock: false` in `~/.config/karchy/shell.json`), idle, clipboard history, reminders, theme/background picker, speed tests, and the battery service (only on machines with a battery).
+- **Services:** notifications (with the hover ✕), OSD, polkit, lock (with the time and date above the password field [New]; turn it off in Settings › Appearance › Lock screen, or `lock.clock: false` in `~/.config/karchy/shell.json`), idle, clipboard history, reminders, theme/background picker, speed tests, and the battery service (only on machines with a battery). `~/.config/karchy/shell.json` holds only what you changed; everything else follows karchy's defaults, also after updates (D-92).
 - **Menu:** the engine, used as the launcher (app search). The tree is in `menu.md`.
 - **Floating bar** [New]: floats inset from the screen edge and docks on a monitor while a window there is maximized; `bar.style` auto, floating or docked (`karchy bar style`, Settings › Appearance). See `architecture.md`, "The bar: floating and docked".
 - **Bar modules:** workspaces, clock, tray, audio, microphone, network, Bluetooth, display brightness, power, media, the indicators for kept features, and running VMs and containers (each shown only while something runs; D-63).

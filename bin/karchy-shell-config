@@ -17,13 +17,39 @@ refresh_shell_config() {
   fi
 }
 
-source_file() {
+# The config the shell runs with: the user's file laid over karchy's defaults.
+# Objects merge key by key; an array or a plain value in the user's file
+# replaces the default whole (jq's `*`). shell/Commons/ShellConfigModel.js is
+# the shell's side of this; keep the two in step. A file that is not a JSON
+# object is not read as empty, so that commit never replaces it.
+effective_config() {
   if [[ -s $CONFIG_FILE ]]; then
-    printf '%s\n' "$CONFIG_FILE"
+    jq -e -s 'if (.[1] | type) == "object" then .[0] * .[1] else error("not an object") end' \
+      "$DEFAULTS_FILE" "$CONFIG_FILE" 2>/dev/null || fail "$CONFIG_FILE is not valid; fix it or remove it"
   else
-    printf '%s\n' "$DEFAULTS_FILE"
+    jq . "$DEFAULTS_FILE"
   fi
 }
+
+# What is written back: only the keys that differ from the defaults, so the
+# rest keeps following them (D-56). A key cannot be removed, only given another
+# value. A full copy of the defaults from before this shrinks to its
+# differences on the first commit.
+# shellcheck disable=SC2016 # jq variables, not shell ones
+OVERRIDES='
+  def overrides($base):
+    if type == "object" and ($base | type) == "object" then
+      . as $cur
+      | reduce keys_unsorted[] as $k ({};
+          if ($base | has($k)) | not then .[$k] = $cur[$k]
+          elif $cur[$k] == $base[$k] then .
+          else
+            ($cur[$k] | overrides($base[$k])) as $inner
+            | if ($inner == {}) and ($cur[$k] | type) == "object" and ($base[$k] | type) == "object"
+              then . else .[$k] = $inner end
+          end)
+    else . end;
+'
 
 # jq pipeline that normalizes shell.json into a well-shaped object with
 # version=1, bar.layout.{left,centerBegin,center,centerEnd,right} arrays, and
@@ -44,9 +70,9 @@ NORMALIZE='
   | .plugins = (.plugins | array_or_empty)
 '
 
-# Apply a jq program to the source file and atomically write the result to the
-# user config, then refresh the running shell. Extra args after the program are
-# forwarded to jq (e.g. --arg/--argjson).
+# Apply a jq program to the effective config and atomically write what differs
+# from the defaults to the user config, then refresh the running shell. Extra
+# args after the program are forwarded to jq (e.g. --arg/--argjson).
 _SHELL_CONFIG_TMP=""
 cleanup_shell_config_tmp() {
   if [[ -n $_SHELL_CONFIG_TMP ]]; then rm -f "$_SHELL_CONFIG_TMP"; fi
@@ -54,11 +80,14 @@ cleanup_shell_config_tmp() {
 trap cleanup_shell_config_tmp EXIT
 
 commit() {
-  local program="$1"
+  local program="$1" config
   shift
+  config=$(effective_config) || exit 1
   mkdir -p "$(dirname "$CONFIG_FILE")"
   _SHELL_CONFIG_TMP=$(mktemp)
-  jq -S -e "$@" "$program" "$(source_file)" >"$_SHELL_CONFIG_TMP" || fail "could not update shell config"
+  jq -S -e "$@" --slurpfile karchy_shell_defaults "$DEFAULTS_FILE" \
+    "$OVERRIDES ($program) | overrides(\$karchy_shell_defaults[0]) | .version = 1" \
+    <<<"$config" >"$_SHELL_CONFIG_TMP" || fail "could not update shell config"
   mv "$_SHELL_CONFIG_TMP" "$CONFIG_FILE"
   _SHELL_CONFIG_TMP=""
   refresh_shell_config

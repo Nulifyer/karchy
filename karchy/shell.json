@@ -74,7 +74,8 @@
         {
           "id": "karchy.power"
         }
-      ]
+      ],
+      "tray": []
     }
   },
   "plugins": []

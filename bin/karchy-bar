@@ -205,7 +205,7 @@ cmd_defaults() {
 
 cmd_position() {
   if (( $# == 0 )); then
-    jq -r '.bar.position // "top"' "$(source_file)"
+    effective_config | jq -r '.bar.position // "top"'
     return
   fi
 
@@ -220,7 +220,7 @@ cmd_position() {
 # had one says transparent instead, which is none, and setting a background
 # drops it.
 current_background() {
-  jq -r '.bar.background // (if .bar.transparent == true then "none" else "opaque" end)' "$(source_file)"
+  effective_config | jq -r '.bar.background // (if .bar.transparent == true then "none" else "opaque" end)'
 }
 
 cmd_background() {
@@ -254,7 +254,7 @@ cmd_background() {
 
 # The bar style is auto, floating or docked; a shell.json without one is auto.
 current_style() {
-  jq -r '.bar.style // "auto" | if IN("auto", "floating", "docked") then . else "auto" end' "$(source_file)"
+  effective_config | jq -r '.bar.style // "auto" | if IN("auto", "floating", "docked") then . else "auto" end'
 }
 
 cmd_style() {
@@ -488,10 +488,10 @@ cmd_get() {
   [[ -n $key ]] || fail "get requires a setting key"
   (( $# == 2 )) || fail "get takes a widget id and a setting key"
 
-  jq -e -r --arg id "$id" --arg key "$key" '
+  effective_config 2>/dev/null | jq -e -r --arg id "$id" --arg key "$key" '
     first(.bar.layout[]?[]? | select(.id == $id) | .[$key] | select(. != null))
     | if type == "string" then . else tojson end
-  ' "$(source_file)" 2>/dev/null || exit 1
+  ' 2>/dev/null || exit 1
 }
 
 # --------------------------------------------------------------------- dispatch

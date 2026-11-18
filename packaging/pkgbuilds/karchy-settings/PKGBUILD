@@ -142,7 +142,8 @@ package() {
   cp -a default/systemd/user/. "$pkgdir/usr/lib/systemd/user/"
 
   # Starting configs for new users, never touched again after creation (D-07).
+  # No shell.json: the shell reads karchy's defaults and a user file holds only
+  # what differs (D-92), so default changes keep reaching every user.
   install -d "$pkgdir/etc/skel/.config/karchy/themes"
   cp -a config/. "$pkgdir/etc/skel/.config/"
-  install -m644 karchy/shell.json "$pkgdir/etc/skel/.config/karchy/shell.json"
 }

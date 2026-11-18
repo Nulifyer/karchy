@@ -11,6 +11,7 @@ import qs.Commons as Commons
 import "plugins/bar"
 import "services"
 import "services/AuthServiceStore.js" as AuthServiceStore
+import "Commons/ShellConfigModel.js" as ShellConfigModel
 
 ShellRoot {
   id: shell
@@ -80,10 +81,16 @@ ShellRoot {
     pluginRegistry.pluginsChanged()
   }
 
+  // The defaults a user shell.json is laid over, and saved against.
+  function shellDefaults() {
+    return Util.isPlainObject(defaultsConfig) ? defaultsConfig : builtinShellConfig
+  }
+
   function applyShellConfig() {
-    // Decide which source is canonical: a valid user shell.json overrides
-    // defaults entirely; otherwise fall back to defaults. We do not deep-merge.
-    var defaults = Util.isPlainObject(defaultsConfig) ? defaultsConfig : builtinShellConfig
+    // A valid user shell.json is laid over the defaults, so a file holding
+    // one changed value keeps following every other default (D-56). A full
+    // copy works the same, each of its keys winning. See ShellConfigModel.js.
+    var defaults = shellDefaults()
     var user = null
     var userText = userConfigFile.text() || ""
     if (userText.trim()) {
@@ -96,7 +103,7 @@ ShellRoot {
       }
     }
     userConfigUnreadable = !!userText.trim() && !user
-    shellConfig = user || defaults
+    shellConfig = user ? ShellConfigModel.merge(defaults, user) : defaults
   }
 
   function loadDefaults(raw) {
@@ -117,6 +124,10 @@ ShellRoot {
     applyShellConfig()
   }
 
+  // Every write of the user's shell.json comes through here. The shell runs
+  // with the whole config; the file gets only what differs from the defaults,
+  // so the rest keeps following them. A full copy from before this shrinks to
+  // its differences here, on the first save.
   function persistShellConfig(nextConfig) {
     var payload = JSON.parse(JSON.stringify(nextConfig))
     payload.version = 1
@@ -125,7 +136,8 @@ ShellRoot {
       console.warn("shell.json is unreadable, not overwriting it; fix it to save bar changes")
       return
     }
-    userConfigFile.setText(JSON.stringify(payload, null, 2) + "\n")
+    var saved = ShellConfigModel.userFileFor(shellDefaults(), payload)
+    userConfigFile.setText(JSON.stringify(saved, null, 2) + "\n")
   }
 
   readonly property var barConfig: shellConfig && Util.isPlainObject(shellConfig.bar) ? shellConfig.bar : builtinShellConfig.bar

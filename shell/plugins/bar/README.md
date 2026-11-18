@@ -9,12 +9,12 @@ the shell for its whole session.
 - `Bar.qml` is Karchy-owned bar engine code, loaded by the karchy-shell host. Users should not edit it directly.
 - `widgets/` holds simple first-party bar widgets with sibling manifests.
 - Feature plugins such as `../panels/audio/`, `../panels/network/`, `../panels/power/`, and `../agents/` provide richer popup bar plugins.
-- The bar receives its config from the host shell as a `barConfig` property; the host loads it from `~/.config/karchy/shell.json` (or `config/karchy/shell.json` when the user has no file).
+- The bar receives its config from the host shell as a `barConfig` property; the host merges `~/.config/karchy/shell.json` over karchy's defaults (`karchy/shell.json`).
 - `karchy bar position` updates only the user shell.json file.
 
 ## Customizing
 
-The bar config lives under the `bar:` key of [`~/.config/karchy/shell.json`](../../../docs/karchy-shell.md#shelljson). Out of the box the shell uses [`config/karchy/shell.json`](../../../config/karchy/shell.json). Once you customize anything via the bar gestures, `karchy bar ...`, or by editing shell.json directly, your file is canonical — there is no deep-merge.
+The bar config lives under the `bar:` key of [`~/.config/karchy/shell.json`](../../../docs/karchy-shell.md#shelljson). Out of the box the shell uses [`config/karchy/shell.json`](../../../config/karchy/shell.json). Your file holds only what you changed: objects merge key by key over the defaults, and a list or value you set replaces the default one. The bar gestures, `karchy bar ...` and Settings save only the differences.
 
 The bar is configured directly on the bar itself: drag empty bar space (or click-and-hold) to move the bar to another screen edge, double-left-click empty center-bar space to cycle the bar background from clear to glassy to opaque, and drag widgets to reorder them. The `karchy bar position`, `karchy bar background`, `karchy bar move`, and `karchy bar set` commands do the same from scripts. `karchy bar style auto|floating|docked` (or Settings › Appearance) picks whether the bar floats inset from the screen edge, stays docked, or, in auto (the default), floats and docks on a monitor while a window there is maximized; see `docs/architecture.md`, "The bar: floating and docked". Enable or disable widgets with `karchy plugin enable` and `karchy plugin disable` (widget ids come from `karchy plugin list`).
 
