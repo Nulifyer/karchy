@@ -146,10 +146,24 @@ base_packages() {
   printf '%s\n' "${packages[@]}"
 }
 
+# mkinitcpio's own pacman hook is switched off for this one transaction.
+# limine-mkinitcpio-hook replaces it with a hook of the same name in
+# /etc/pacman.d/hooks, which builds each kernel's files where Limine reads
+# them (/boot/<machine-id>/<kernel>/). pacman takes that folder from the
+# system it runs on, never from the target (--hookdir is not relative to
+# --root), so pacstrap doesn't see the replacement and mkinitcpio's hook
+# would run: it writes a preset for each kernel and puts /boot/vmlinuz-<kernel>
+# and /boot/initramfs-<kernel>.img on the ESP, about 85 MB that nothing boots
+# and no later update refreshes or removes. Limine's files are built by
+# limine-update (base_bootloader), and from then on by the replacement hook.
 base_pacstrap() {
   local -a packages
+  local hooks
   mapfile -t packages < <(base_packages)
-  pacstrap "$KARCHY_MNT" --noconfirm "${packages[@]}"
+  hooks=$(mktemp -d)
+  ln -s /dev/null "$hooks/90-mkinitcpio-install.hook"
+  pacstrap "$KARCHY_MNT" --noconfirm --hookdir="$hooks" "${packages[@]}"
+  rm -rf "$hooks"
 }
 
 base_fstab() {
@@ -336,6 +350,18 @@ EOF
   # signed binary.
   in_target limine-install --fallback
   in_target limine-update
+  # These are the only kernel files on the ESP (see base_pacstrap), and
+  # limine-update carries on when one kernel's build fails: stop here rather
+  # than at a first boot with nothing to start.
+  local machine_id pkgbase kernel
+  machine_id=$(<"$KARCHY_MNT/etc/machine-id")
+  for pkgbase in "$KARCHY_MNT"/usr/lib/modules/*/pkgbase; do
+    kernel=$(<"$pkgbase")
+    [[ -s $KARCHY_MNT/boot/$machine_id/$kernel/vmlinuz && -s $KARCHY_MNT/boot/$machine_id/$kernel/initramfs ]] ||
+      die "Limine has no kernel or initramfs for $kernel in /boot/$machine_id/$kernel"
+    grep -qF "/$machine_id/$kernel/vmlinuz" "$KARCHY_MNT/boot/limine.conf" ||
+      die "limine.conf has no entry for $kernel"
+  done
 }
 
 base_snapper() {
