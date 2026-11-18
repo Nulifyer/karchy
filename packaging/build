@@ -3,6 +3,7 @@
 
 Usage:
   packaging/build [--channel CH] [--version V] [--ref REF] [--repo DIR] [--native] [--sign KEY] [PKG...]
+  packaging/build --self-test
 
   --channel CH  stable, rc, nightly or dev (default dev: local builds for VMs)
   --version V   the release version, in pacman's form (default: from git, below)
@@ -13,6 +14,8 @@ Usage:
                 titlebars plugin, against Arch as it is now (the container's
                 packages are upgraded first)
   --sign KEY    sign each new package and the database with this gpg key (CI)
+  --self-test   check the repository clean-up rules on a made-up directory;
+                builds nothing and needs no container
   PKG           build only these packages (default: every packaging/pkgbuilds/*)
 
 The build runs in a fresh container of karchy's build environment
@@ -50,6 +53,16 @@ nothing means there is no release to build yet, and the package is skipped.
 
 Hashes live next to the database in karchy.versions, so the repository is the
 only state: CI downloads a channel's repository, builds, signs and uploads it.
+
+The repository directory holds one file per package. Writing a package also
+removes what it replaces. A signature left by an earlier signed build goes at
+once when this run doesn't sign: pacman rejects a package whose .sig doesn't
+match it. Every other version of the same package, with its signature, goes
+once the database names the new one: repo-add --remove deletes only the file
+the database named before, so a file a failed run left, or one the database
+lost track of, would otherwise stay for good. Nothing else is touched:
+packages this run didn't write keep their files and signatures, which is what
+packaging/ci/publish compares, uploads and prunes by.
 """
 
 import argparse
@@ -175,6 +188,59 @@ def own_version(pkg):
     return version
 
 
+def package_name(filename):
+    """The package a repository file belongs to, or None: karchy-vm-1.2-1-any.pkg.tar.zst[.sig] -> karchy-vm."""
+    m = re.fullmatch(r"(.+)-[^-]+-[^-]+-[^-]+\.pkg\.tar\.zst(\.sig)?", filename)
+    return m.group(1) if m else None
+
+
+def drop_stale_signature(pkgfile):
+    """Remove the signature beside a package just written unsigned; say whether there was one.
+
+    It was made for a file of the same name with other contents.
+    """
+    sig = pkgfile.with_name(pkgfile.name + ".sig")
+    if not sig.is_file():
+        return False
+    sig.unlink()
+    return True
+
+
+def drop_superseded(repo, pkg, pkgfile):
+    """Remove every other version of PKG, and their signatures, from REPO; return the names removed."""
+    keep = {pkgfile.name, pkgfile.name + ".sig"}
+    removed = []
+    for path in sorted(repo.iterdir()):
+        if path.name not in keep and package_name(path.name) == pkg and path.is_file():
+            path.unlink()
+            removed.append(path.name)
+    return removed
+
+
+def self_test():
+    """Check the repository clean-up rules on a made-up repository."""
+    assert package_name("karchy-vm-0.1.0rc5.r41.g2d224a4.l1794975405-1-any.pkg.tar.zst") == "karchy-vm"
+    assert package_name("karchy-nvidia-580xx-0.1.0-1-any.pkg.tar.zst.sig") == "karchy-nvidia-580xx"
+    assert package_name("karchy.db.tar.gz") is None and package_name("release") is None
+    with tempfile.TemporaryDirectory(prefix="karchy-build-test-") as tmp:
+        repo = Path(tmp)
+        new = "karchy-nvidia-2-1-any.pkg.tar.zst"
+        files = [new, new + ".sig",                                      # rewritten, with an old signature
+                 "karchy-nvidia-1-1-any.pkg.tar.zst", "karchy-nvidia-1-1-any.pkg.tar.zst.sig",  # superseded
+                 "karchy-nvidia-580xx-1-1-any.pkg.tar.zst", "karchy-nvidia-580xx-1-1-any.pkg.tar.zst.sig",
+                 "karchy.db.tar.gz", "karchy.db.tar.gz.sig", "karchy.versions", "release"]
+        for name in files:
+            (repo / name).write_text(name)
+        removed = drop_superseded(repo, "karchy-nvidia", repo / new)
+        assert removed == ["karchy-nvidia-1-1-any.pkg.tar.zst", "karchy-nvidia-1-1-any.pkg.tar.zst.sig"], removed
+        assert (repo / (new + ".sig")).exists()  # a signed run keeps the signature it made
+        assert drop_stale_signature(repo / new) and not drop_stale_signature(repo / new)
+        left = sorted(p.name for p in repo.iterdir())
+        assert left == sorted(set(files) - {new + ".sig", "karchy-nvidia-1-1-any.pkg.tar.zst",
+                                            "karchy-nvidia-1-1-any.pkg.tar.zst.sig"}), left
+    print("build: self-test passed")
+
+
 def build(pkg, version, source, conf, workdir, env, native):
     """Build pkgbuilds/PKG at VERSION in WORKDIR; return the package file."""
     build_dir = workdir / pkg
@@ -221,8 +287,11 @@ def main():
     ap.add_argument("--repo")
     ap.add_argument("--native", action="store_true")
     ap.add_argument("--sign", metavar="KEY")
+    ap.add_argument("--self-test", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("packages", nargs="*")
     args = ap.parse_args()
+    if args.self_test:
+        return self_test()
     if not os.environ.get("KARCHY_BUILD_ENV"):
         in_container(sys.argv[1:], Path(args.repo).resolve() if args.repo else None)
     if args.native:
@@ -297,13 +366,19 @@ def main():
             if args.sign:
                 run(["gpg", "--batch", "--yes", "--detach-sign", "--no-armor", "--local-user", args.sign,
                      "--output", str(repo / (pkgfile.name + ".sig")), str(repo / pkgfile.name)])
-            changed.append(repo / pkgfile.name)
+            elif drop_stale_signature(repo / pkgfile.name):
+                print(f"{pkg}: removed the signature of the file this one replaces")
+            changed.append((pkg, repo / pkgfile.name))
             versions[pkg] = (pkg_version, digest)
 
     if changed:
         sign = ["--sign", "--key", args.sign] if args.sign else []
-        run(["repo-add", "--quiet", "--remove", *sign, str(repo / f"{REPO_NAME}.db.tar.gz"), *map(str, changed)])
+        run(["repo-add", "--quiet", "--remove", *sign, str(repo / f"{REPO_NAME}.db.tar.gz"),
+             *(str(path) for _, path in changed)])
         write_versions(state_file, versions)
+        for pkg, path in changed:
+            for name in drop_superseded(repo, pkg, path):
+                print(f"{pkg}: removed {name}")
     # A full build is a release of the channel; a partial one (native packages
     # only, say) leaves the channel's release as it was.
     if not args.packages:
