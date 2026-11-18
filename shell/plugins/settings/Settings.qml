@@ -36,6 +36,7 @@ Item {
   readonly property var sections: [
     { id: "displays", label: "Displays", iconName: "display" },
     { id: "input", label: "Input", iconName: "input.keyboard" },
+    { id: "power", label: "Power", iconName: "system.power" },
     { id: "network", label: "Network", iconName: "net.network" },
     { id: "ssh", label: "SSH", iconName: "security.ssh" },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
@@ -287,6 +288,7 @@ Item {
           source: {
             switch (root.section) {
               case "input": return "InputSection.qml"
+              case "power": return "PowerSection.qml"
               case "network": return "NetworkSection.qml"
               case "ssh": return "SshSection.qml"
               case "appearance": return "AppearanceSection.qml"

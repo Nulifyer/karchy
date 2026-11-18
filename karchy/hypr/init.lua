@@ -31,7 +31,7 @@ require_optional.module("karchy.current.theme.hyprland")
 -- the karchy-settings-* commands. They load here, after karchy's defaults and
 -- before the user's ~/.config/hypr files, so a hand-written rule always wins.
 local paths = require("default.hypr.paths")
-for _, name in ipairs({ "displays", "input" }) do
+for _, name in ipairs({ "displays", "input", "power" }) do
   local file = paths.state_home .. "/karchy/hypr/" .. name .. ".lua"
   local handle = io.open(file, "r")
   if handle then

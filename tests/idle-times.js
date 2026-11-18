@@ -1,0 +1,13 @@
+const assert = require("assert")
+const M = require(process.argv[2] + "/shell/plugins/services/idle/IdleModel.js")
+const d = { screensaver: 150, screenOff: 300, lock: 300, suspend: 900 }
+const eq = (a, b) => assert.deepStrictEqual(a, b)
+eq(M.timeouts({}, true, d), { screensaver: 150, screenOff: 300, lock: 300, suspend: 900 })
+eq(M.timeouts({}, false, d), { screensaver: 150, screenOff: 300, lock: 300, suspend: 0 })
+eq(M.timeouts({ suspendOnAC: true, suspend: 600 }, false, d).suspend, 600)
+eq(M.timeouts({ lock: 600, ac: { lock: 120, suspend: 1800 } }, false, d), { screensaver: 150, screenOff: 300, lock: 120, suspend: 1800 })
+eq(M.timeouts({ lock: 600, ac: { lock: 120, suspend: 1800 } }, true, d), { screensaver: 150, screenOff: 300, lock: 600, suspend: 900 })
+eq(M.timeouts({ battery: { suspend: 0, screenOff: 0, lock: "x" } }, true, d), { screensaver: 150, screenOff: 0, lock: 300, suspend: 0 })
+eq(M.timeouts({ ac: 5, battery: null }, true, d).lock, 300)
+eq(M.firstIdleTimeout(150, 300), 150); eq(M.firstIdleTimeout(0, 0), 0); eq(M.firstIdleTimeout(0, 300, 60, 0), 60); eq(M.firstIdleTimeout(), 0)
+console.log("idle model ok")

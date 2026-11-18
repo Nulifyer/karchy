@@ -1,0 +1,13 @@
+// Settings › Power changes the lid actions and the sleep-then-hibernate delay
+// without a password for the person at the computer: an active, local session
+// of a member of wheel. That session can already hold the lid switch off,
+// suspend, hibernate and power off without one, and the helper
+// (/usr/lib/karchy/power-settings) accepts nothing but those few choices from
+// fixed lists. Anyone else (a remote or inactive session, a user outside
+// wheel) gets the action's default: an administrator's password.
+polkit.addRule(function (action, subject) {
+  if (action.id == "org.karchy.power-settings" &&
+      subject.local && subject.active && subject.isInGroup("wheel")) {
+    return polkit.Result.YES;
+  }
+});

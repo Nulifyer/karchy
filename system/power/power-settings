@@ -1,0 +1,178 @@
+#!/bin/bash
+
+# karchy: writes Settings › Power's system-wide choices, as root.
+# Installed as /usr/lib/karchy/power-settings and run only through
+#   pkexec /usr/lib/karchy/power-settings <key>=<value>...
+# by karchy-settings-power (polkit action org.karchy.power-settings).
+#
+#   lid-battery=, lid-ac=, lid-docked=   default | sleep | ignore | poweroff | hibernate
+#   hibernate-after=                     default | never | minutes (5 to 1440)
+#
+# Every call states the whole choice: a key left out is "default". It writes
+# only /etc/systemd/logind.conf.d/karchy-settings.conf and
+# /etc/systemd/sleep.conf.d/karchy-settings.conf, removes each when nothing is
+# left to say, and tells logind to read its config again (SIGHUP; logind is
+# never restarted, which would end the session).
+#
+# Threat reasoning. polkit lets an active, local member of wheel run this
+# without a password (50-karchy-power-settings.rules); everyone else must
+# authenticate as an administrator. So assume the caller is any program in
+# that user's session, hostile ones included.
+# - What it can reach: the lid actions and the sleep-then-hibernate delay,
+#   nothing else. The same session may already block the lid switch (logind's
+#   inhibit-handle-lid-switch), suspend, hibernate and power off without a
+#   password, so no value here does more than it could do already. What is
+#   new is that the choice outlasts the session, which is the point of a
+#   setting; the worst outcome is a laptop that stays awake or shuts down with
+#   the lid closed until the choice is changed back in Settings.
+# - Input is argv only. Nothing is read from the caller's files or
+#   environment, nothing is sourced or evaluated, and no value is ever used as
+#   a path or as part of a command. Each argument must be one of four keys
+#   with a value from a fixed list or a number in range; anything else ends
+#   the call before a file is touched.
+# - The two files have fixed names in root-owned folders, and their text is
+#   built from fixed strings chosen by the validated values, never from the
+#   arguments themselves.
+# - Only packaged, root-owned programs are run, by absolute path, with a
+#   fixed PATH and none of the caller's environment (pkexec clears it; this
+#   does not rely on that).
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+
+LOGIND_FILE=/etc/systemd/logind.conf.d/karchy-settings.conf
+SLEEP_FILE=/etc/systemd/sleep.conf.d/karchy-settings.conf
+
+fail() {
+  echo "power-settings: $1" >&2
+  exit "${2:-1}"
+}
+
+usage() {
+  fail "usage: power-settings [lid-battery|lid-ac|lid-docked=default|sleep|ignore|poweroff|hibernate] [hibernate-after=default|never|5-1440]" 64
+}
+
+(( EUID == 0 )) || fail "must run as root, through pkexec" 77
+(( $# <= 4 )) || usage
+
+declare -A choice=([lid-battery]=default [lid-ac]=default [lid-docked]=default [hibernate-after]=default)
+declare -A seen=()
+
+for arg in "$@"; do
+  [[ $arg == *=* ]] || usage
+  key=${arg%%=*}
+  value=${arg#*=}
+  case $key in
+    lid-battery | lid-ac | lid-docked)
+      case $value in
+        default | sleep | ignore | poweroff | hibernate) ;;
+        *) usage ;;
+      esac
+      ;;
+    hibernate-after)
+      case $value in
+        default | never) ;;
+        *)
+          [[ $value =~ ^[1-9][0-9]{0,3}$ ]] || usage
+          (( value >= 5 && value <= 1440 )) || usage
+          ;;
+      esac
+      ;;
+    *) usage ;;
+  esac
+  # Only one of the four keys gets this far.
+  [[ -z ${seen[$key]:-} ]] || usage
+  seen[$key]=1
+  choice[$key]=$value
+done
+
+# logind does nothing at all when told to hibernate a machine that can't, so
+# a lid set to hibernate there would be a lid that keeps the laptop running.
+for key in lid-battery lid-ac lid-docked; do
+  if [[ ${choice[$key]} == hibernate ]]; then
+    env -i PATH=/usr/bin /usr/bin/karchy-hibernation-available ||
+      fail "this computer can't hibernate, so the lid can't be set to it"
+    break
+  fi
+done
+
+# The line for one lid setting, or nothing to leave it to the files before
+# this one (karchy-laptop's, or logind's own default).
+lid_line() {
+  local option=$1 value=$2
+  case $value in
+    sleep) printf '%s=sleep\n' "$option" ;;
+    ignore) printf '%s=ignore\n' "$option" ;;
+    poweroff) printf '%s=poweroff\n' "$option" ;;
+    hibernate) printf '%s=hibernate\n' "$option" ;;
+    default) ;;
+  esac
+}
+
+# "Never hibernate" turns suspend-then-hibernate off, and logind ignores a lid
+# set to an operation that is off: karchy-laptop's lid default is exactly that
+# one. So an untouched lid is then set to "sleep", which picks the best sleep
+# still allowed (a plain suspend).
+if [[ ${choice[hibernate-after]} == never ]]; then
+  for key in lid-battery lid-ac; do
+    if [[ ${choice[$key]} == default ]]; then
+      choice[$key]="sleep"
+    fi
+  done
+fi
+
+logind_lines=$(
+  lid_line HandleLidSwitch "${choice[lid-battery]}"
+  lid_line HandleLidSwitchExternalPower "${choice[lid-ac]}"
+  lid_line HandleLidSwitchDocked "${choice[lid-docked]}"
+)
+
+case ${choice[hibernate-after]} in
+  default) sleep_lines="" ;;
+  never) sleep_lines="AllowSuspendThenHibernate=no" ;;
+  *) sleep_lines="HibernateDelaySec=${choice[hibernate-after]}min" ;;
+esac
+
+# Replace a file with new text, or remove it when there is none. Sets
+# `changed` to 1 when the file is different afterwards.
+tmp=""
+trap '[[ -z $tmp ]] || rm -f -- "$tmp"' EXIT
+
+write_file() {
+  local file=$1 section=$2 lines=$3 text
+  changed=0
+  if [[ -z $lines ]]; then
+    if [[ -e $file || -L $file ]]; then
+      rm -f -- "$file"
+      changed=1
+    fi
+    return 0
+  fi
+  text="# Written by karchy Settings › Power (/usr/lib/karchy/power-settings); change it
+# there. A file in this folder whose name sorts after this one overrides it.
+[$section]
+$lines"
+  if [[ -f $file && ! -L $file && $(<"$file") == "$text" ]]; then
+    return 0
+  fi
+  install -d -m 755 -o root -g root "${file%/*}"
+  tmp=$(mktemp "${file%/*}/.karchy-settings.XXXXXX")
+  printf '%s\n' "$text" >"$tmp"
+  chmod 644 "$tmp"
+  mv -f -- "$tmp" "$file"
+  tmp=""
+  changed=1
+}
+
+exec 9>/run/karchy-power-settings.lock
+flock 9
+
+write_file "$SLEEP_FILE" Sleep "$sleep_lines"
+# systemd-sleep reads sleep.conf each time it runs; logind has to be told.
+write_file "$LOGIND_FILE" Login "$logind_lines"
+if (( changed )); then
+  systemctl kill --kill-whom=main --signal=HUP systemd-logind.service
+fi

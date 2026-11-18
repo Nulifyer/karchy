@@ -130,6 +130,15 @@ package() {
   install -Dm644 -t "$pkgdir/usr/lib/systemd/system" wifi/karchy-wifi-regdomain.service
   # ...and the timezone menu may restart it without a password.
   install -Dm644 polkit/rules.d/50-karchy-wifi-regdomain.rules "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-wifi-regdomain.rules"
+  # Settings › Power: the root helper that writes the lid and hibernate-delay
+  # drop-ins (/etc/systemd/{logind,sleep}.conf.d/karchy-settings.conf), its
+  # polkit action, and the rule that spares the person at the computer the
+  # password. Its drop-ins sort after karchy-laptop's and karchy-nvidia's.
+  install -Dm755 power/power-settings "$pkgdir/usr/lib/karchy/power-settings"
+  install -Dm644 polkit/actions/org.karchy.power-settings.policy \
+    "$pkgdir/usr/share/polkit-1/actions/org.karchy.power-settings.policy"
+  install -Dm644 polkit/rules.d/50-karchy-power-settings.rules \
+    "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-power-settings.rules"
 
   install -Dm755 keyring/keyring-key "$pkgdir/usr/lib/karchy/keyring-key"
   install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"

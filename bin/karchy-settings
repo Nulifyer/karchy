@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # karchy:summary=Open the karchy Settings window
-# karchy:args=[displays|input|network|ssh|appearance|apps|about] [item]
-# karchy:examples=karchy settings | karchy settings displays | karchy settings network Home-5G
+# karchy:args=[displays|input|power|network|ssh|appearance|apps|about] [item]
+# karchy:examples=karchy settings | karchy settings displays | karchy settings power | karchy settings network Home-5G
 
 # The item opens the section at one thing in it: for network, a saved network
 # (its name, SSID or UUID), a device (wlan0) or a part of the page (dns, vpn).

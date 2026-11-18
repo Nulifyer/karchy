@@ -18,24 +18,37 @@ Item {
   readonly property string stayAwakeStatePath: stayAwakeStateDir + "/stay-awake"
   readonly property int defaultScreensaverSeconds: 150
   readonly property int defaultLockSeconds: 300
-  // Laptops sleep after this long idle, on battery only unless idle.suspendOnAC
-  // is true (karchy). 0 turns it off.
+  // The screen turns off after this long idle, locked or not. 0 turns it off.
+  readonly property int defaultScreenOffSeconds: 300
+  // Sleep after this long idle, on battery only unless idle.suspendOnAC is
+  // true or idle.ac.suspend gives plugged-in its own time. 0 turns it off.
   readonly property int defaultSuspendSeconds: 900
   readonly property var idleConfig: shell && shell.shellConfig && shell.shellConfig.idle
     ? shell.shellConfig.idle : (shell && shell.idleConfig ? shell.idleConfig : ({}))
-  readonly property int screensaverTimeoutSeconds: secondsFromConfig(idleConfig.screensaver, defaultScreensaverSeconds)
-  readonly property int lockTimeoutSeconds: secondsFromConfig(idleConfig.lock, defaultLockSeconds)
-  readonly property int suspendTimeoutSeconds: secondsFromConfig(idleConfig.suspend, defaultSuspendSeconds)
-  readonly property bool suspendOnAC: idleConfig.suspendOnAC === true
-  // Only machines with a battery suspend on idle; a desktop's UPower reports
-  // no laptop battery and never "on battery".
+  // A desktop's UPower reports no laptop battery and never "on battery", so
+  // it follows the plugged-in times.
   readonly property bool hasBattery: UPower.displayDevice && UPower.displayDevice.isLaptopBattery
-  readonly property bool suspendNow: suspendTimeoutSeconds > 0 && hasBattery && (UPower.onBattery || suspendOnAC)
+  readonly property bool onBattery: hasBattery && UPower.onBattery
+  // The times for the power source in use (Settings › Power); see IdleModel.
+  readonly property var timeouts: IdleModel.timeouts(idleConfig, onBattery, {
+    screensaver: defaultScreensaverSeconds,
+    screenOff: defaultScreenOffSeconds,
+    lock: defaultLockSeconds,
+    suspend: defaultSuspendSeconds
+  })
+  readonly property int screensaverTimeoutSeconds: timeouts.screensaver
+  readonly property int screenOffTimeoutSeconds: timeouts.screenOff
+  readonly property int lockTimeoutSeconds: timeouts.lock
+  readonly property int suspendTimeoutSeconds: timeouts.suspend
+  readonly property bool suspendNow: suspendTimeoutSeconds > 0
   readonly property bool screensaverEnabled: screensaverTimeoutSeconds > 0
+  readonly property bool screenOffEnabled: screenOffTimeoutSeconds > 0
   readonly property bool lockEnabled: lockTimeoutSeconds > 0
-  readonly property bool idleTimersEnabled: screensaverEnabled || lockEnabled
-  readonly property int firstIdleTimeoutSeconds: IdleModel.firstIdleTimeout(screensaverTimeoutSeconds, lockTimeoutSeconds)
+  readonly property bool idleTimersEnabled: screensaverEnabled || screenOffEnabled || lockEnabled || suspendNow
+  readonly property int firstIdleTimeoutSeconds: IdleModel.firstIdleTimeout(
+    screensaverTimeoutSeconds, screenOffTimeoutSeconds, lockTimeoutSeconds, suspendTimeoutSeconds)
   readonly property int screensaverDelaySeconds: IdleModel.delayAfterFirstIdle(screensaverTimeoutSeconds, firstIdleTimeoutSeconds)
+  readonly property int screenOffDelaySeconds: IdleModel.delayAfterFirstIdle(screenOffTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int lockDelaySeconds: IdleModel.delayAfterFirstIdle(lockTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int suspendDelaySeconds: IdleModel.delayAfterFirstIdle(suspendTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property bool idleEnabled: stayAwakeStateLoaded && !stayAwake
@@ -91,20 +104,32 @@ Item {
 
   onFirstIdleTimeoutSecondsChanged: retimeIdleMonitor()
 
+  // The charger pulled or plugged in during an idle stretch: sleep follows the
+  // new source's time, counted from when the stretch began.
+  onSuspendTimeoutSecondsChanged: {
+    if (!idleMonitor.isIdle || !root.idleEnabled || root.idleSince <= 0) return
+    suspendTimer.stop()
+    root.suspendWaiting = false
+    if (root.suspendTimeoutSeconds <= 0) return
+    suspendTimer.interval = Math.max(1000, root.suspendTimeoutSeconds * 1000 - (Date.now() - root.idleSince))
+    suspendTimer.restart()
+    logEvent("suspend-rearm", "in " + Math.round(suspendTimer.interval / 1000) + "s")
+  }
+
   property bool stayAwake: false
   property bool stayAwakeStateLoaded: false
   property bool hasPendingStayAwakePersist: false
   property bool pendingStayAwakePersist: false
   property bool idledThisCycle: false
   property bool screensaverStartedThisCycle: false
+  // The idle service turned the screen off in this cycle.
+  property bool screenOffThisCycle: false
+  // When the current idle stretch began (ms), 0 while in use.
+  property double idleSince: 0
   property string lastEvent: "starting"
   property string lastEventAt: ""
   property var screensaverWindows: ({})
   property int screensaverWindowCount: 0
-
-  function secondsFromConfig(value, fallback) {
-    return IdleModel.secondsFromConfig(value, fallback)
-  }
 
   function nowIso() {
     return new Date().toISOString()
@@ -129,14 +154,26 @@ Item {
   }
 
   function launchScreensaver() {
+    // Nothing to draw on a screen that is already off.
+    if (root.screenOffThisCycle) return
     root.screensaverStartedThisCycle = true
     screensaverLaunchGraceTimer.restart()
     runProcess(screensaverProcess, "screensaver", "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || karchy-launch-screensaver")
   }
 
+  // The screen turns off on its own deadline, whether or not the session
+  // locks (settings audit F4). A locked session is left alone: the lock screen
+  // turns the screen off itself, 5 seconds after it appears or was last used.
+  function turnScreenOff() {
+    root.screenOffThisCycle = true
+    runProcess(screenOffProcess, "screen-off",
+      "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || { karchy-brightness-keyboard off; karchy-brightness-display off; }")
+  }
+
   function lockSystem(reason) {
     logEvent("lock-system", reason || "requested")
     screensaverTimer.stop()
+    screenOffTimer.stop()
     lockTimer.stop()
     screensaverLaunchGraceTimer.stop()
     root.idledThisCycle = false
@@ -163,9 +200,12 @@ Item {
       return
     }
 
-    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " lock=" + root.lockTimeoutSeconds)
+    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " screenOff=" + root.screenOffTimeoutSeconds
+      + " lock=" + root.lockTimeoutSeconds + " suspend=" + root.suspendTimeoutSeconds)
     root.idledThisCycle = true
     root.screensaverStartedThisCycle = false
+    root.screenOffThisCycle = false
+    root.idleSince = Date.now() - idleMonitor.timeout * 1000
     resetScreensaverWindows()
 
     // Set this cycle's deadlines once: a bound interval would restart a pending
@@ -175,6 +215,16 @@ Item {
       else {
         screensaverTimer.interval = root.screensaverDelaySeconds * 1000
         screensaverTimer.restart()
+      }
+    }
+
+    // A screen-off time at or after the lock's is the lock screen's to keep:
+    // it turns the screen off 5 seconds after locking.
+    if (root.screenOffEnabled && !(root.lockEnabled && root.lockTimeoutSeconds <= root.screenOffTimeoutSeconds)) {
+      if (root.screenOffDelaySeconds === 0) turnScreenOff()
+      else {
+        screenOffTimer.interval = root.screenOffDelaySeconds * 1000
+        screenOffTimer.restart()
       }
     }
 
@@ -194,6 +244,12 @@ Item {
     }
   }
 
+  function endIdleStretch() {
+    root.idleSince = 0
+    screenOffTimer.stop()
+    root.screenOffThisCycle = false
+  }
+
   function cancelIdleCycle(reason) {
     logEvent("idle-cycle-cancel", reason || "requested")
     suspendTimer.stop()
@@ -201,6 +257,7 @@ Item {
     screensaverTimer.stop()
     lockTimer.stop()
     screensaverLaunchGraceTimer.stop()
+    endIdleStretch()
 
     if (root.idledThisCycle) runProcess(wakeProcess, "wake", "karchy-system-wake")
 
@@ -255,6 +312,7 @@ Item {
 
   function handleActiveSignal() {
     if (!root.idledThisCycle) {
+      endIdleStretch()
       // Locked by the idle cycle, then woken: no sleep after all.
       if (suspendTimer.running || root.suspendWaiting) {
         suspendTimer.stop()
@@ -293,7 +351,10 @@ Item {
       idle: idleMonitor.isIdle,
       inIdleCycle: root.idledThisCycle,
       screensaverStarted: root.screensaverStartedThisCycle,
+      onBattery: root.onBattery,
       screensaver: root.screensaverTimeoutSeconds,
+      screenOff: root.screenOffTimeoutSeconds,
+      screenOffDone: root.screenOffThisCycle,
       lock: root.lockTimeoutSeconds,
       suspend: root.suspendTimeoutSeconds,
       suspendNow: root.suspendNow,
@@ -307,6 +368,7 @@ Item {
       timers: {
         idleMonitorRearm: idleMonitorRearmTimer.running,
         screensaver: screensaverTimer.running,
+        screenOff: screenOffTimer.running,
         lock: lockTimer.running,
         suspend: suspendTimer.running,
         screensaverLaunchGrace: screensaverLaunchGraceTimer.running
@@ -391,6 +453,12 @@ Item {
   }
 
   Timer {
+    id: screenOffTimer
+    repeat: false
+    onTriggered: if (root.idleEnabled && root.idledThisCycle && root.screenOffEnabled) root.turnScreenOff()
+  }
+
+  Timer {
     id: lockTimer
     repeat: false
     onTriggered: if (root.idleEnabled && root.idledThisCycle && root.lockEnabled) root.lockSystem("lock-timeout")
@@ -401,7 +469,7 @@ Item {
     repeat: false
     onTriggered: {
       if (!(root.idleEnabled && idleMonitor.isIdle && root.suspendNow)) {
-        root.logEvent("suspend-skip", "active, stay-awake, plugged in or no battery")
+        root.logEvent("suspend-skip", "active, stay-awake or sleep is off on this power source")
       } else if (root.sleepInhibited) {
         // systemd would refuse; sleep once the holder lets go, if still idle.
         root.suspendWaiting = true
@@ -431,6 +499,10 @@ Item {
   Process {
     id: screensaverProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver exitCode=" + exitCode + " status=" + exitStatus) }
+  }
+  Process {
+    id: screenOffProcess
+    onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screen-off exitCode=" + exitCode + " status=" + exitStatus) }
   }
   Process {
     id: lockProcess

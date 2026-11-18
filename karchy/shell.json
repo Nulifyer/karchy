@@ -2,6 +2,7 @@
   "version": 1,
   "idle": {
     "screensaver": 150,
+    "screenOff": 300,
     "lock": 300,
     "suspend": 900,
     "suspendOnAC": false

@@ -4,16 +4,45 @@ function secondsFromConfig(value, fallback) {
   return Math.floor(n)
 }
 
-// 0 means the action is disabled, not "fire immediately". min(0, 300) would
-// otherwise make IdleMonitor report idle as soon as an inhibitor is released.
-function firstIdleTimeout(screensaverSeconds, lockSeconds) {
-  var times = []
-  if (screensaverSeconds > 0) times.push(screensaverSeconds)
-  if (lockSeconds > 0) times.push(lockSeconds)
-  if (times.length === 0) return 0
-  var min = times[0]
-  for (var i = 1; i < times.length; i++) {
-    if (times[i] < min) min = times[i]
+// The idle times in effect on one power source, in seconds (0 is never).
+// idle.<key> is shared by both sources; idle.battery.<key> and idle.ac.<key>
+// set one source apart, "ac" being plugged in or a machine with no battery.
+// Sleep differs: the shared idle.suspend counts on battery only, unless
+// idle.suspendOnAC is true, so a plugged-in machine sleeps only when asked.
+// bin/karchy-settings-power reads the same keys the same way (Settings ›
+// Power); keep the two in step.
+function timeouts(config, onBattery, defaults) {
+  var idle = config && typeof config === "object" ? config : {}
+  var own = idle[onBattery ? "battery" : "ac"]
+  if (!own || typeof own !== "object") own = {}
+
+  function set(value) {
+    return value !== undefined && value !== null && value !== "" && isFinite(Number(value)) && Number(value) >= 0
+  }
+  function pick(key) {
+    return set(own[key]) ? Math.floor(Number(own[key])) : secondsFromConfig(idle[key], defaults[key])
+  }
+
+  var suspend = 0
+  if (set(own.suspend)) suspend = Math.floor(Number(own.suspend))
+  else if (onBattery || idle.suspendOnAC === true) suspend = secondsFromConfig(idle.suspend, defaults.suspend)
+
+  return {
+    screensaver: secondsFromConfig(idle.screensaver, defaults.screensaver),
+    screenOff: pick("screenOff"),
+    lock: pick("lock"),
+    suspend: suspend
+  }
+}
+
+// The soonest of the given idle times. 0 means the action is disabled, not
+// "fire immediately": min(0, 300) would otherwise make IdleMonitor report idle
+// as soon as an inhibitor is released.
+function firstIdleTimeout() {
+  var min = 0
+  for (var i = 0; i < arguments.length; i++) {
+    var seconds = arguments[i]
+    if (seconds > 0 && (min === 0 || seconds < min)) min = seconds
   }
   return min
 }
@@ -111,6 +140,7 @@ if (typeof module !== "undefined") {
     inhibits: inhibits,
     describeInhibitors: describeInhibitors,
     secondsFromConfig: secondsFromConfig,
+    timeouts: timeouts,
     firstIdleTimeout: firstIdleTimeout,
     delayAfterFirstIdle: delayAfterFirstIdle,
     eventParts: eventParts,

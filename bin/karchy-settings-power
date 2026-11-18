@@ -1,0 +1,500 @@
+#!/bin/bash
+
+# karchy:summary=Read and save power settings: idle times, lid, power button, hibernation and battery warnings (Settings › Power)
+# karchy:args=[status | set <setting> <value> | reset]
+# karchy:examples=karchy settings power | karchy settings power status | karchy settings power set lock.ac 600
+# karchy:hidden=true
+
+# What Settings › Power changed is recorded in ~/.config/karchy/power.json,
+# only the values that differ from karchy's defaults, and each value is written
+# where the system reads it:
+#
+#   idle times and battery warnings   the `idle` and `battery` keys of
+#       ~/.config/karchy/shell.json, through karchy-shell-config, one key per
+#       change. That file is also the user's to edit, and the shell reads
+#       nothing else, so a value changed there by hand is what runs and what
+#       this command reports; Settings writes a key only when that very
+#       setting is changed here.
+#   power button                      ~/.local/state/karchy/hypr/power.lua,
+#       which karchy's Hyprland config loads before ~/.config/hypr, so a
+#       binding written there by hand wins (D-27). logind leaves the key
+#       alone on karchy (10-ignore-power-button.conf), so this needs no root.
+#   lid and hibernate delay           /etc/systemd/logind.conf.d/karchy-settings.conf
+#       and /etc/systemd/sleep.conf.d/karchy-settings.conf, written by the
+#       root helper /usr/lib/karchy/power-settings through pkexec (no password
+#       for the person at the computer; see the helper). Those sort after
+#       karchy's packaged files; a file there that sorts later still wins.
+#
+#   (nothing)              Open the Settings window at Power: `karchy settings
+#                          power` reaches this command, not karchy-settings
+#   status                 JSON: what this machine has (`battery`, `lid`,
+#                          `hibernation`), each setting's value in effect
+#                          (`values`), what is recorded here (`saved`), the
+#                          settings something else decides (`foreign`), the
+#                          last-resort battery action and the power profile
+#   set <setting> <value>
+#       screenOff.battery, screenOff.ac, lock.battery, lock.ac, sleep.battery,
+#       sleep.ac           never, or seconds idle (10 to 86400). "ac" is
+#                          plugged in, and the only one a desktop uses
+#       battery.low, battery.critical
+#                          percent (low 5 to 50, critical 4 to 30, under low)
+#       powerKey           menu, sleep, hibernate, shutdown, nothing
+#       lid.battery, lid.ac, lid.docked
+#                          sleep, ignore (karchy still locks the session),
+#                          poweroff, hibernate
+#       hibernateAfter     never, or minutes asleep (5 to 1440)
+#   reset                  Forget every choice made here
+
+set -euo pipefail
+
+# shellcheck source=bin/karchy-shell-config
+source karchy-shell-config
+
+POWER_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/karchy/power.json"
+HYPR_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/hypr/power.lua"
+ROOT_HELPER=/usr/lib/karchy/power-settings
+POWER_KEY=XF86PowerOff
+
+# What the power button runs for each choice, and its name among the keybindings.
+declare -A POWER_KEY_COMMAND=(
+  [sleep]="systemctl sleep"
+  [hibernate]="systemctl hibernate"
+  [shutdown]="karchy-system shutdown"
+)
+declare -A POWER_KEY_NAME=([sleep]="Sleep" [hibernate]="Hibernate" [shutdown]="Shut down")
+
+# Messages here are shown on the Settings page as they are.
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-settings-power /p' "$0" >&2
+  exit 1
+}
+
+saved() {
+  if [[ -f $POWER_FILE ]] && jq -e '.version == 1 and (.settings | type) == "object"' "$POWER_FILE" >/dev/null 2>&1; then
+    jq -c .settings "$POWER_FILE"
+  else
+    echo '{}'
+  fi
+}
+
+write_saved() {
+  local settings="$1" tmp
+  # Nothing differs from the defaults any more: no file, as before the first change.
+  if [[ $(jq -c . <<<"$settings") == "{}" ]]; then
+    rm -f "$POWER_FILE"
+    return
+  fi
+  mkdir -p "$(dirname "$POWER_FILE")"
+  tmp=$(mktemp "$(dirname "$POWER_FILE")/.power.json.XXXXXX")
+  jq -S '{version: 1, settings: .}' <<<"$settings" >"$tmp"
+  chmod 644 "$tmp"
+  mv "$tmp" "$POWER_FILE"
+}
+
+is() { "$@" >/dev/null 2>&1 && echo true || echo false; }
+
+# The same answer the idle service uses: UPower's display device is a battery
+# that powers the machine. A desktop, and a mouse's battery, are not.
+has_battery() {
+  local out
+  out=$(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower/devices/DisplayDevice \
+    org.freedesktop.UPower.Device Type PowerSupply IsPresent 2>/dev/null | tr '\n' ' ') || return 1
+  [[ $out == "u 2 b true b true " ]]
+}
+
+# The idle times in effect on both power sources, from a shell config on
+# stdin: {battery: {screenOff, lock, sleep}, ac: {…}} in seconds, 0 for never.
+# shell/plugins/services/idle/IdleModel.js `timeouts` is the shell's side of
+# this; keep the two in step.
+# shellcheck disable=SC2016 # jq variables, not shell ones
+IDLE_TIMES='
+  def number_of: if type == "number" then . elif type == "string" then (tonumber? // null) else null end;
+  def seconds($fallback): (number_of) as $n | if $n == null or $n < 0 then $fallback else ($n | floor) end;
+  def is_set: (number_of) as $n | $n != null and $n >= 0;
+  def idle_times:
+    (.idle | if type == "object" then . else {} end) as $idle
+    | def source($name):
+        ($idle[$name] | if type == "object" then . else {} end) as $own
+        | def pick($key; $fallback):
+            if ($own[$key] | is_set) then ($own[$key] | number_of | floor)
+            else ($idle[$key] | seconds($fallback)) end;
+          {
+            screenOff: pick("screenOff"; 300),
+            lock: pick("lock"; 300),
+            sleep: (if ($own.suspend | is_set) then ($own.suspend | number_of | floor)
+                    elif $name == "battery" or $idle.suspendOnAC == true then ($idle.suspend | seconds(900))
+                    else 0 end)
+          };
+      {battery: source("battery"), ac: source("ac")};
+'
+
+# shell.json's key for an idle setting: "lock.ac" is idle.ac.lock.
+idle_key() {
+  case ${1%%.*} in
+    sleep) echo suspend ;;
+    *) echo "${1%%.*}" ;;
+  esac
+}
+
+# A logind action as the page names it. The three ways to sleep are one choice.
+lid_choice() {
+  case $1 in
+    suspend | suspend-then-hibernate | sleep | hybrid-sleep) echo sleep ;;
+    *) echo "$1" ;;
+  esac
+}
+
+logind_property() {
+  local value
+  value=$(busctl get-property org.freedesktop.login1 /org/freedesktop/login1 \
+    org.freedesktop.login1.Manager "$1" 2>/dev/null) || return 0
+  value=${value#s \"}
+  printf '%s' "${value%\"}"
+}
+
+# The last value systemd's logind.conf or sleep.conf (and their drop-ins) give
+# a key. "packaged" leaves out Settings' own drop-in: what applies before any
+# choice made here, from karchy's packages or the user's own files.
+systemd_value() {
+  local mode="$1" file="$2" key="$3" ours=""
+  [[ $mode == packaged ]] && ours="/etc/systemd/$file.conf.d/karchy-settings.conf"
+  systemd-analyze cat-config "systemd/$file.conf" 2>/dev/null |
+    awk -v ours="$ours" -v key="$key" '
+      /^# \// { skip = ($2 == ours) }
+      skip { next }
+      {
+        line = $0
+        sub(/^[[:space:]]+/, "", line)
+        if (index(line, key) != 1) next
+        rest = substr(line, length(key) + 1)
+        if (rest !~ /^[[:space:]]*=/) next
+        sub(/^[[:space:]]*=[[:space:]]*/, "", rest)
+        value = rest
+      }
+      END { print value }'
+}
+
+# Minutes of sleep before hibernation, 0 for never, -1 when systemd works it
+# out from the battery (no HibernateDelaySec anywhere on a laptop).
+hibernate_after() {
+  local mode="$1" allowed delay microseconds
+  allowed=$(systemd_value "$mode" sleep AllowSuspendThenHibernate)
+  case ${allowed,,} in
+    no | false | 0 | off) echo 0; return ;;
+  esac
+  delay=$(systemd_value "$mode" sleep HibernateDelaySec)
+  if [[ -z $delay ]]; then
+    has_battery && echo -1 || echo 120
+    return
+  fi
+  microseconds=$(systemd-analyze timespan "$delay" 2>/dev/null | sed -n 's/^[[:space:]]*μs:[[:space:]]*//p')
+  [[ $microseconds =~ ^[0-9]+$ ]] || { echo 120; return; }
+  echo $(( microseconds / 60000000 ))
+}
+
+# What each system setting is before any choice made here.
+defaults_json() {
+  local lid ac docked
+  lid=$(systemd_value packaged logind HandleLidSwitch)
+  ac=$(systemd_value packaged logind HandleLidSwitchExternalPower)
+  docked=$(systemd_value packaged logind HandleLidSwitchDocked)
+  jq -n -c \
+    --arg lid "$(lid_choice "${lid:-suspend}")" \
+    --arg ac "$(lid_choice "${ac:-${lid:-suspend}}")" \
+    --arg docked "$(lid_choice "${docked:-ignore}")" \
+    --argjson hibernateAfter "$(hibernate_after packaged)" \
+    '{powerKey: "menu", "lid.battery": $lid, "lid.ac": $ac, "lid.docked": $docked, hibernateAfter: $hibernateAfter}'
+}
+
+# What the power button does now, read back from Hyprland, so a binding in the
+# user's own config shows as it is. Hyprland reports a Lua binding by its
+# description only, so that is what tells karchy's bindings apart.
+power_key() {
+  local binds
+  binds=$(hyprctl binds -j 2>/dev/null) || { echo menu; return; }
+  jq -r --arg key "$POWER_KEY" --arg sleep "${POWER_KEY_NAME[sleep]}" \
+    --arg hibernate "${POWER_KEY_NAME[hibernate]}" --arg shutdown "${POWER_KEY_NAME[shutdown]}" '
+    [.[] | select(.key == $key and (.modmask // 0) == 0)] as $binds
+    | if ($binds | length) == 0 then "nothing"
+      else ($binds | last | .description // "") as $name
+        | if $name == "Power menu" then "menu"
+          elif $name == $sleep then "sleep"
+          elif $name == $hibernate then "hibernate"
+          elif $name == $shutdown then "shutdown"
+          else "custom" end
+      end' <<<"$binds" 2>/dev/null || echo menu
+}
+
+# The level and action of UPower's last resort (karchy-laptop's drop-in), for
+# the line under the warnings.
+battery_action() {
+  local config percent action
+  config=$(cat /etc/UPower/UPower.conf /etc/UPower/UPower.conf.d/*.conf 2>/dev/null || true)
+  percent=$(sed -n 's/^[[:space:]]*PercentageAction[[:space:]]*=[[:space:]]*//p' <<<"$config" | tail -n 1)
+  action=$(sed -n 's/^[[:space:]]*CriticalPowerAction[[:space:]]*=[[:space:]]*//p' <<<"$config" | tail -n 1)
+  [[ $percent =~ ^[0-9]+(\.[0-9]+)?$ ]] || percent=2
+  jq -n -c --argjson percent "${percent%%.*}" --arg action "${action:-Auto}" '{percent: $percent, action: ($action | ascii_downcase)}'
+}
+
+# The idle times and battery warnings the shell runs with, by setting name.
+shell_values() {
+  effective_config | jq -c "$IDLE_TIMES"'
+    idle_times as $idle
+    | {
+        "screenOff.battery": $idle.battery.screenOff, "screenOff.ac": $idle.ac.screenOff,
+        "lock.battery": $idle.battery.lock, "lock.ac": $idle.ac.lock,
+        "sleep.battery": $idle.battery.sleep, "sleep.ac": $idle.ac.sleep,
+        "battery.low": (.battery.low // 15), "battery.critical": (.battery.critical // 5)
+      }'
+}
+
+status() {
+  local values settings docked ac
+  settings=$(saved)
+  ac=$(logind_property HandleLidSwitchExternalPower)
+  [[ -n $ac ]] || ac=$(logind_property HandleLidSwitch)
+  docked=$(logind_property HandleLidSwitchDocked)
+
+  values=$(shell_values | jq -c \
+    --arg powerKey "$(power_key)" \
+    --arg lidBattery "$(lid_choice "$(logind_property HandleLidSwitch)")" \
+    --arg lidAc "$(lid_choice "$ac")" \
+    --arg lidDocked "$(lid_choice "${docked:-ignore}")" \
+    --argjson hibernateAfter "$(hibernate_after live)" '
+    . + {
+      powerKey: $powerKey,
+      "lid.battery": $lidBattery, "lid.ac": $lidAc, "lid.docked": $lidDocked,
+      hibernateAfter: $hibernateAfter
+    }')
+
+  # Decided somewhere else: the value in effect is not the one recorded here,
+  # nor karchy's default. A hand-written binding or drop-in does that.
+  jq -n -c \
+    --argjson battery "$(is has_battery)" \
+    --argjson lid "$(is karchy-hw-laptop)" \
+    --argjson hibernation "$(is karchy-hibernation-available)" \
+    --argjson values "$values" \
+    --argjson saved "$settings" \
+    --argjson defaults "$(defaults_json)" \
+    --argjson batteryAction "$(battery_action)" \
+    --arg profile "$(powerprofilesctl get 2>/dev/null || true)" '
+    {
+      battery: $battery, lid: $lid, hibernation: $hibernation,
+      values: $values, saved: $saved,
+      foreign: [$defaults | keys[] | select(($saved[.] // $defaults[.]) != $values[.])],
+      batteryAction: $batteryAction, profile: $profile
+    }'
+}
+
+# One idle time: written to shell.json for its power source, or taken out of
+# it when the shared idle.<key> already gives that time, so only a difference
+# is kept. Prints "set" or "default".
+apply_idle() {
+  local setting="$1" seconds="$2" source key config fallback
+  source=${setting#*.}
+  key=$(idle_key "$setting")
+  config=$(effective_config)
+  fallback=$(jq -r --arg source "$source" --arg key "$key" --arg name "${setting%%.*}" "$IDLE_TIMES"'
+    (if (.idle | type) == "object" and (.idle[$source] | type) == "object" then del(.idle[$source][$key]) else . end)
+    | idle_times[$source][$name]' <<<"$config")
+  if (( seconds == fallback )); then
+    # shellcheck disable=SC2016 # jq variables, not shell ones
+    commit 'if (.idle | type) == "object" and (.idle[$source] | type) == "object"
+            then del(.idle[$source][$key]) | (if .idle[$source] == {} then del(.idle[$source]) else . end)
+            else . end' --arg source "$source" --arg key "$key"
+    echo default
+  else
+    # shellcheck disable=SC2016 # jq variables, not shell ones
+    commit '.idle = (.idle | if type == "object" then . else {} end)
+            | .idle[$source] = (.idle[$source] | if type == "object" then . else {} end)
+            | .idle[$source][$key] = $seconds' --arg source "$source" --arg key "$key" --argjson seconds "$seconds"
+    echo set
+  fi
+}
+
+# A battery warning level; commit drops it from shell.json when it is karchy's.
+apply_battery() {
+  local key="${1#battery.}" percent="$2" default
+  # shellcheck disable=SC2016 # jq variables, not shell ones
+  commit '.battery = (.battery | if type == "object" then . else {} end) | .battery[$key] = $percent' \
+    --arg key "$key" --argjson percent "$percent"
+  default=$(jq -r --arg key "$key" '.battery[$key] // empty' "$DEFAULTS_FILE")
+  [[ $percent == "$default" ]] && echo default || echo set
+}
+
+# The power button's binding, generated for karchy's Hyprland config to load.
+apply_power_key() {
+  local choice="$1" tmp
+  if [[ $choice == menu ]]; then
+    rm -f "$HYPR_FILE"
+  else
+    mkdir -p "$(dirname "$HYPR_FILE")"
+    tmp=$(mktemp "$(dirname "$HYPR_FILE")/.power.lua.XXXXXX")
+    {
+      echo "-- Generated by karchy Settings › Power (karchy-settings-power)."
+      echo "-- Change it there. A binding in ~/.config/hypr loads later and wins."
+      if [[ $choice == nothing ]]; then
+        echo "hl.unbind(\"$POWER_KEY\")"
+      else
+        echo "o.rebind(\"$POWER_KEY\", \"${POWER_KEY_NAME[$choice]}\", \"${POWER_KEY_COMMAND[$choice]}\", { locked = true })"
+      fi
+    } >"$tmp"
+    chmod 644 "$tmp"
+    mv "$tmp" "$HYPR_FILE"
+  fi
+  hyprctl reload >/dev/null 2>&1 || true
+}
+
+# The lid and hibernate-delay choices, all of them at once, to the root
+# helper. pkexec exits 126 when the password prompt is dismissed and 127 when
+# the request is refused.
+apply_system() {
+  local settings="$1" args=() key value code=0
+  [[ -x $ROOT_HELPER ]] || fail "$ROOT_HELPER is missing; update karchy-settings"
+  for key in lid.battery lid.ac lid.docked hibernateAfter; do
+    value=$(jq -r --arg k "$key" '.[$k] // empty' <<<"$settings")
+    [[ -n $value ]] || continue
+    case $key in
+      hibernateAfter)
+        [[ $value == 0 ]] && value=never
+        args+=("hibernate-after=$value")
+        ;;
+      *) args+=("${key/./-}=$value") ;;
+    esac
+  done
+  pkexec "$ROOT_HELPER" "${args[@]}" >/dev/null || code=$?
+  case $code in
+    0) ;;
+    126 | 127) fail "Not changed: the password prompt was closed or the request was refused" ;;
+    *) exit "$code" ;;
+  esac
+}
+
+# Idle and battery choices recorded here that shell.json no longer carries
+# were changed there by hand since; they are the user's now, so forget them.
+reconciled() {
+  local settings="$1"
+  jq -c --argjson values "$(shell_values)" '
+    with_entries(select((.key | test("^(screenOff|lock|sleep|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
+}
+
+set_value() {
+  local setting="${1:-}" value="${2:-}" settings json outcome="" number
+  settings=$(reconciled "$(saved)")
+
+  case $setting in
+    screenOff.battery | screenOff.ac | lock.battery | lock.ac | sleep.battery | sleep.ac)
+      if [[ $value == never ]]; then
+        number=0
+      else
+        [[ $value =~ ^[1-9][0-9]{1,4}$ ]] || usage
+        (( value >= 10 && value <= 86400 )) || usage
+        number=$value
+      fi
+      outcome=$(apply_idle "$setting" "$number")
+      json=$number
+      ;;
+    battery.low | battery.critical)
+      [[ $value =~ ^[1-9][0-9]?$ ]] || usage
+      local low critical
+      low=$(effective_config | jq '.battery.low // 15')
+      critical=$(effective_config | jq '.battery.critical // 5')
+      if [[ $setting == battery.low ]]; then
+        (( value >= 5 && value <= 50 )) || usage
+        (( value > critical )) || fail "The low warning has to come before the critical one ($critical%)"
+      else
+        (( value >= 4 && value <= 30 )) || usage
+        (( low == 0 || value < low )) || fail "The critical warning has to come after the low one ($low%)"
+      fi
+      outcome=$(apply_battery "$setting" "$value")
+      json=$value
+      ;;
+    powerKey)
+      case $value in
+        menu | sleep | shutdown | nothing) ;;
+        hibernate) karchy-hibernation-available || fail "This computer can't hibernate" ;;
+        *) usage ;;
+      esac
+      apply_power_key "$value"
+      json=$(jq -n --arg v "$value" '$v')
+      ;;
+    lid.battery | lid.ac | lid.docked)
+      case $value in
+        sleep | ignore | poweroff) ;;
+        hibernate) karchy-hibernation-available || fail "This computer can't hibernate" ;;
+        *) usage ;;
+      esac
+      json=$(jq -n --arg v "$value" '$v')
+      ;;
+    hibernateAfter)
+      if [[ $value == never ]]; then
+        json=0
+      else
+        [[ $value =~ ^[1-9][0-9]{0,3}$ ]] || usage
+        (( value >= 5 && value <= 1440 )) || usage
+        json=$value
+      fi
+      ;;
+    *) usage ;;
+  esac
+
+  # Only a difference from the default is recorded.
+  if [[ $outcome == default ]] || jq -e --arg k "$setting" --argjson v "$json" 'has($k) and .[$k] == $v' <<<"$(defaults_json)" >/dev/null; then
+    settings=$(jq -c --arg k "$setting" 'del(.[$k])' <<<"$settings")
+  else
+    settings=$(jq -c --arg k "$setting" --argjson v "$json" '.[$k] = $v' <<<"$settings")
+  fi
+
+  case $setting in
+    lid.* | hibernateAfter) apply_system "$settings" ;;
+  esac
+  write_saved "$settings"
+
+  status
+  # Said after the status, which the page still shows: the choice is recorded,
+  # but something that loads later decides.
+  if [[ $setting == powerKey && $(power_key) != "$value" ]]; then
+    fail "The power button didn't change: Hyprland still has it doing something else. A binding for $POWER_KEY in ~/.config/hypr wins over this setting."
+  fi
+}
+
+reset_all() {
+  local settings key
+  settings=$(reconciled "$(saved)")
+  while IFS= read -r key; do
+    case $key in
+      screenOff.* | lock.* | sleep.*)
+        # shellcheck disable=SC2016 # jq variables, not shell ones
+        commit 'if (.idle | type) == "object" and (.idle[$source] | type) == "object"
+                then del(.idle[$source][$key]) | (if .idle[$source] == {} then del(.idle[$source]) else . end)
+                else . end' --arg source "${key#*.}" --arg key "$(idle_key "$key")"
+        ;;
+      battery.*)
+        # shellcheck disable=SC2016 # jq variables, not shell ones
+        commit '.battery[$key] = $karchy_shell_defaults[0].battery[$key]' --arg key "${key#battery.}"
+        ;;
+    esac
+  done < <(jq -r 'keys[]' <<<"$settings")
+
+  if [[ -e $HYPR_FILE ]]; then
+    apply_power_key menu
+  fi
+  if jq -e 'has("lid.battery") or has("lid.ac") or has("lid.docked") or has("hibernateAfter")' <<<"$settings" >/dev/null; then
+    apply_system '{}'
+  fi
+  rm -f "$POWER_FILE"
+  status
+}
+
+case "${1:-}" in
+  "") exec karchy-settings power ;;
+  status) (( $# == 1 )) || usage; status ;;
+  set) (( $# == 3 )) || usage; set_value "$2" "$3" ;;
+  reset) (( $# == 1 )) || usage; reset_all ;;
+  *) usage ;;
+esac
