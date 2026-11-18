@@ -60,8 +60,9 @@ else
 fi
 if ((wanted != current)); then
   echo "hash table: $current -> $wanted bytes"
-  # A table of another size makes the saved scan position meaningless.
-  rm -f "$home/beescrawl.dat"
+  # A table of another size makes the saved scan position meaningless, and
+  # the journal holds changes to the old table.
+  rm -f "$home/beescrawl.dat" "$home/beeshash.journal"
   truncate -s "$wanted" "$table"
 fi
 chmod 700 "$table"
