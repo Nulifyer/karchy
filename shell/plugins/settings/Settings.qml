@@ -38,6 +38,7 @@ Item {
     { id: "input", label: "Input", iconName: "input.keyboard" },
     { id: "power", label: "Power", iconName: "system.power" },
     { id: "network", label: "Network", iconName: "net.network" },
+    { id: "storage", label: "Storage", iconName: "disk" },
     { id: "ssh", label: "SSH", iconName: "security.ssh" },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
     { id: "apps", label: "Default apps", iconName: "menu.apps" },
@@ -290,6 +291,7 @@ Item {
               case "input": return "InputSection.qml"
               case "power": return "PowerSection.qml"
               case "network": return "NetworkSection.qml"
+              case "storage": return "StorageSection.qml"
               case "ssh": return "SshSection.qml"
               case "appearance": return "AppearanceSection.qml"
               case "apps": return "DefaultAppsSection.qml"

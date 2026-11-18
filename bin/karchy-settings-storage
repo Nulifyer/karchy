@@ -1,0 +1,455 @@
+#!/bin/bash
+
+# karchy:summary=Show disks, mounted storage and what sharing and compression save (Settings › Storage)
+# karchy:args=[status | shares | bees [on|off] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
+# karchy:examples=karchy settings storage | karchy-settings-storage status | karchy-settings-storage bees off
+# karchy:hidden=true
+
+# The page's side of Settings › Storage. Nothing here runs as root: what needs
+# root goes through /usr/lib/karchy/storage-settings (pkexec, no password for
+# the person at the computer; see the helper), udisks (which asks through
+# polkit by itself) or, where a password has to be typed, a terminal.
+#
+#   (nothing)          Open the Settings window at Storage
+#   status             JSON: every disk with its volumes, their space and
+#                      mount points (lsblk), what karchy keeps mounted
+#                      (/etc/fstab), each disk's health and each btrfs
+#                      filesystem's measured figures (root's nightly
+#                      measurement, /var/lib/karchy/storage/measurement.json),
+#                      and the disk-health warnings that apply
+#                      (/var/lib/karchy/disk-health)
+#   shares             JSON: the network shares kept mounted at /mnt, each
+#                      "connected" (with its space), "idle" (it connects when
+#                      opened) or "unreachable". A share is only asked for its
+#                      space when it is connected, in the background and for
+#                      2 seconds at most, so a server that is away never
+#                      holds this up.
+#   bees               JSON: background deduplication (bees) on the system
+#                      disk: whether it is on, running, and how far it is
+#   bees on|off        Switch it, then the same JSON
+#   measure            Start a measurement now
+#   mount, unmount     One volume, through udisks
+#   eject <disk>       Unmount every volume of a removable disk and power it off
+#   unlock <device>    In a terminal: ask for an encrypted volume's password
+#                      and mount it
+#   keep <device>      In a terminal: keep an internal data disk mounted
+#                      (karchy-disk-keep), unmounting it first when the file
+#                      manager has it mounted
+#   check <mount point>  In a terminal: check a btrfs filesystem for errors
+#                      (the monthly scrub, now), and say what it found
+#   watch              Print a line whenever disks, mounts, /etc/fstab, the
+#                      measurement or the disk warnings change, so the page
+#                      reads again without polling
+
+set -euo pipefail
+
+ROOT_HELPER=/usr/lib/karchy/storage-settings
+MEASUREMENT=${KARCHY_STORAGE_MEASUREMENT:-/var/lib/karchy/storage/measurement.json}
+MEASURE_UNIT=karchy-storage-measure.service
+HEALTH_DIR=${KARCHY_DISK_HEALTH_DIR:-/var/lib/karchy/disk-health}
+FSTAB=${KARCHY_FSTAB:-/etc/fstab}
+BEES_UNIT=karchy-bees.service
+DISK_MARKER="# karchy-data-disk"
+SHARE_MARKER="# karchy-kept-mount"
+
+# Messages here are shown on the Settings page as they are.
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-settings-storage /p' "$0" >&2
+  exit 1
+}
+
+# A device named by the page: a block device under /dev, and nothing else.
+device_arg() {
+  local device=${1:-}
+  [[ $device =~ ^/dev/[A-Za-z0-9._/-]+$ && $device != *..* && -b $device ]] || fail "$device is not a disk or a volume."
+  printf '%s' "$device"
+}
+
+# udisks' own words, without the D-Bus error name in front of them.
+udisks() {
+  local out code=0
+  out=$(udisksctl "$@" 2>&1) || code=$?
+  if (( code != 0 )); then
+    sed -E 's/^Error [^:]*: GDBus\.Error:[^ ]* //; s/^Error [^:]*: //' <<<"$out" | head -n 3 >&2
+    return 1
+  fi
+}
+
+# fstab fields escape spaces and tabs as octal.
+fstab_unescape() {
+  local value=${1//\\040/ }
+  printf '%s' "${value//\\011/$'\t'}"
+}
+
+# Root's measurement, or null: only a regular file of root's counts.
+measurement() {
+  if [[ -f $MEASUREMENT && ! -L $MEASUREMENT && $(stat -c %u "$MEASUREMENT") == 0 ]]; then
+    jq -c 'select(type == "object" and .version == 1 and (.time | type) == "number")' "$MEASUREMENT" 2>/dev/null | head -n 1 | grep . && return
+  fi
+  echo null
+}
+
+# The disk-health warnings (see /usr/lib/karchy/disk-health), as JSON. The
+# files are root's, and still read as data.
+warnings() {
+  local file name what
+  {
+    [[ -d $HEALTH_DIR ]] && for file in "$HEALTH_DIR"/*; do
+      name=${file##*/}
+      [[ $name =~ ^(smart|scrub)-[A-Za-z0-9._-]+$ && -f $file && ! -L $file && $(stat -c %u "$file") == 0 ]] || continue
+      what=$(sed -n 's/^what=//p' "$file" | head -n 1)
+      [[ $what != EmailTest ]] || continue
+      jq -n -c --arg name "$name" --arg kind "$(sed -n 's/^kind=//p' "$file" | head -n 1)" \
+        --arg device "$(sed -n 's/^device=//p' "$file" | head -n 1)" \
+        --arg mount "$(sed -n 's/^mount=//p' "$file" | head -n 1)" \
+        --arg summary "$(sed -n 's/^summary=//p' "$file" | head -n 1)" \
+        '{name: $name, kind: $kind, device: $device, mount: $mount, summary: $summary}'
+    done
+    true
+  } | jq -s -c .
+}
+
+# shellcheck disable=SC2016 # jq variables, not shell ones
+STATUS_FILTER='
+  def mounts: (.mountpoints // []) | map(select(. != null and . != "[SWAP]"));
+  # What a disk holds that is worth a line: each filesystem, swap space, and
+  # each encrypted volume that is still locked. Partitions with nothing
+  # recognizable on them are left out.
+  def volumes($encrypted):
+    if .fstype == "crypto_LUKS" then
+      if ((.children // []) | length) > 0 then .children[] | volumes(true)
+      else {path, name, label, fstype: null, size, uuid, encrypted: true, locked: true, mounts: [], fsSize: null, fsUsed: null, fsAvail: null, parttype}
+      end
+    elif ((.children // []) | length) > 0 then
+      # Partitions, or the volumes of an LVM group or a RAID: what is on
+      # them counts, not what the device around them looks like.
+      .children[] | volumes($encrypted)
+    elif .fstype == null or .fstype == "LVM2_member" or (.fstype | test("_raid_member$")) then
+      empty
+    else
+      {path, name, label, fstype, size, uuid, encrypted: $encrypted, locked: false, mounts: mounts,
+       fsSize: .fssize, fsUsed: .fsused, fsAvail: .fsavail, parttype}
+    end;
+  ($measurement | if . == null then {filesystems: [], disks: []} else . end) as $m
+  | {
+      measurement: {time: ($measurement.time // null), seconds: ($measurement.seconds // null), running: $running, available: $available},
+      disks: [
+        .blockdevices[]
+        | select(.type == "disk" and (.size // 0) > 0 and (.name | test("^(zram|loop|ram|nbd)") | not))
+        | . as $disk
+        | {
+            name, path, model: ((.model // "") | gsub("^\\s+|\\s+$"; "")), serial: (.serial // ""), size,
+            transport: (.tran // ""), rotational: (.rota == true),
+            removable: (.rm == true or .hotplug == true or .tran == "usb"),
+            health: ($m.disks | map(select(.name == $disk.name and (.serial == "" or ($disk.serial // "") == "" or .serial == $disk.serial))) | first // null),
+            warnings: ($warnings | map(select(.kind == "smart" and ((.device | sub("^/dev/"; "")) as $d
+              | $d == $disk.name or ($d != "" and ($disk.name | startswith($d + "n"))))))),
+            volumes: [
+              volumes(false)
+              | . as $volume
+              | . + {
+                  role: (if (.mounts | index("/")) != null then "system"
+                         elif (.mounts | map(select(. == "/boot" or . == "/efi" or . == "/boot/efi")) | length) > 0 then "boot"
+                         elif .fstype == "swap" then "swap"
+                         else "data" end),
+                  kept: ($kept | map(select(.uuid == $volume.uuid)) | first | .mount // ""),
+                  keepable: (($keepable | index($volume.path)) != null),
+                  writable: (.mounts | map(select(. as $p | $writable | index($p) != null)) | first // ""),
+                  measured: (if .fstype == "btrfs" then ($m.filesystems | map(select(.uuid == $volume.uuid)) | first // null) else null end),
+                  warnings: ($warnings | map(select(.kind == "scrub" and (.mount as $w | $volume.mounts | index($w) != null))))
+                }
+            ] | sort_by(.role as $role | ["system", "boot", "data", "swap"] | index($role))
+          }
+      # The disk the system is on comes first.
+      ] | sort_by(if any(.volumes[]; .role == "system") then 0 else 1 end)
+    }'
+
+status() {
+  local devices kept keepable writable running=false available=false mount
+  # lsblk asks each mounted filesystem on a block device for its space; none
+  # of those is a network share, but a failing disk shouldn't hold the page.
+  devices=$(timeout 10 lsblk -J -b -o NAME,PATH,TYPE,SIZE,MODEL,SERIAL,TRAN,ROTA,RM,HOTPLUG,FSTYPE,LABEL,UUID,PARTTYPE,MOUNTPOINTS,FSSIZE,FSUSED,FSAVAIL) ||
+    fail "The disks could not be read (lsblk)."
+
+  kept=$({ grep -F "$DISK_MARKER" "$FSTAB" 2>/dev/null || true; } | awk '$1 ~ /^UUID=/ { print substr($1, 6) "\t" $2 }' |
+    jq -R -s -c 'split("\n") | map(select(. != "") | split("\t") | {uuid: .[0], mount: .[1]})')
+  keepable=$({ karchy-disk-fstab list 2>/dev/null || true; } | cut -f1 | jq -R -s -c 'split("\n") | map(select(. != ""))')
+  # Where a speed test could write its files.
+  writable=$(jq -r '.. | objects | select(.fstype != null) | (.mountpoints // [])[] | select(. != null and startswith("/"))' <<<"$devices" |
+    while IFS= read -r mount; do
+      if [[ -d $mount && -w $mount ]]; then printf '%s\n' "$mount"; fi
+    done | jq -R -s -c 'split("\n") | map(select(. != ""))')
+  [[ $(systemctl is-active "$MEASURE_UNIT" 2>/dev/null) == activating ]] && running=true
+  [[ -x $ROOT_HELPER ]] && available=true
+
+  jq -c --argjson measurement "$(measurement)" --argjson warnings "$(warnings)" --argjson kept "$kept" \
+    --argjson keepable "$keepable" --argjson writable "$writable" --argjson running "$running" \
+    --argjson available "$available" "$STATUS_FILTER" <<<"$devices"
+}
+
+# The file system mounted at a folder ("cifs", "autofs" under it, …), one per
+# line, from the mount table alone: nothing here touches the mount.
+mounted_types() {
+  T="$1" awk '{
+    point = $5
+    gsub(/\\040/, " ", point); gsub(/\\011/, "\t", point)
+    if (point != ENVIRON["T"]) next
+    for (i = 7; i <= NF; i++) if ($i == "-") { print $(i + 1); break }
+  }' /proc/self/mountinfo
+}
+
+dir=""
+shares() {
+  local -a sources=() targets=() states=() results=()
+  local source target types i tries line
+  while read -r source target _; do
+    [[ -n $target ]] || continue
+    sources+=("$(fstab_unescape "$source")")
+    targets+=("$(fstab_unescape "$target")")
+  done < <({ grep -F "$SHARE_MARKER" "$FSTAB" 2>/dev/null || true; } | grep -v '^[[:space:]]*#')
+
+  dir=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/karchy-storage-shares.XXXXXX")
+  trap 'rm -rf "$dir"' EXIT
+  for i in "${!targets[@]}"; do
+    types=$(mounted_types "${targets[i]}")
+    if grep -qvx 'autofs' <<<"${types:-autofs}"; then
+      # Connected. Asking for its space waits on the server, so it is asked
+      # in a process of its own that this one never waits for: with the
+      # server gone the question can hang for minutes.
+      states+=("asked")
+      (
+        setsid timeout -k 1 2 stat -f -c '%S %b %a' -- "${targets[i]}" >"$dir/$i.new" 2>/dev/null </dev/null &&
+          mv "$dir/$i.new" "$dir/$i"
+      ) >/dev/null 2>&1 &
+    else
+      # Only the automount point is there: it connects when opened. Looking
+      # at it would connect it, so it is left alone.
+      states+=("idle")
+    fi
+  done
+
+  # Up to 2.5 seconds for the answers, then whatever has arrived.
+  local waiting
+  for ((tries = 0; tries < 25; tries++)); do
+    waiting=0
+    for i in "${!targets[@]}"; do
+      [[ ${states[i]} == asked && ! -s $dir/$i ]] && waiting=1
+    done
+    (( waiting )) || break
+    sleep 0.1
+  done
+
+  for i in "${!targets[@]}"; do
+    line="0 0 0"
+    if [[ ${states[i]} == asked ]]; then
+      if [[ -s $dir/$i ]]; then
+        states[i]=connected
+        line=$(<"$dir/$i")
+      else
+        states[i]=unreachable
+      fi
+    fi
+    results+=("$(jq -n -c --arg source "${sources[i]}" --arg target "${targets[i]}" --arg state "${states[i]}" --arg space "$line" '
+      ($space | split(" ") | map(tonumber? // 0)) as $s
+      | {source: $source, target: $target, state: $state}
+        + (if $state == "connected" then {size: ($s[0] * $s[1]), avail: ($s[0] * $s[2])} else {} end)')")
+  done
+  if ((${#results[@]})); then printf '%s\n' "${results[@]}" | jq -s -c .; else echo '[]'; fi
+}
+
+# The last value a bees.conf gives ENABLED, without sourcing the file.
+conf_enabled() {
+  local value
+  value=$(sed -n -E 's/^[[:space:]]*(export[[:space:]]+)?ENABLED=//p' "$1" 2>/dev/null | tail -n 1)
+  value=${value//[\"\']/}
+  printf '%s' "${value%%[[:space:]]*}"
+}
+
+bees_status() {
+  local available=false on=false active=false locked=false waits=false packaged override enabled since=0 stamp summary=""
+  packaged=$(conf_enabled /usr/share/karchy/bees.conf)
+  override=$(conf_enabled /etc/karchy/bees.conf)
+  if [[ -x /usr/lib/bees/bees && -x $ROOT_HELPER && $(findmnt -no FSTYPE /) == btrfs ]]; then available=true; fi
+  [[ ${packaged:-yes} == yes ]] || locked=true
+  enabled=${override:-${packaged:-yes}}
+  if [[ $enabled == yes ]] && systemctl --quiet is-enabled "$BEES_UNIT" 2>/dev/null; then on=true; fi
+  if systemctl --quiet is-active "$BEES_UNIT" 2>/dev/null; then
+    active=true
+    stamp=$(systemctl show "$BEES_UNIT" -P ActiveEnterTimestamp 2>/dev/null || true)
+    [[ -z $stamp ]] || since=$(date -d "$stamp" +%s 2>/dev/null || echo 0)
+    # Its progress is root's to read; the helper hands out the summary.
+    [[ $available == false ]] || summary=$(pkexec "$ROOT_HELPER" show=bees 2>/dev/null || true)
+  elif [[ $on == true && $(systemctl show "$BEES_UNIT" -P ConditionResult 2>/dev/null) == no ]]; then
+    # karchy-laptop runs it only while plugged in.
+    waits=true
+  fi
+  jq -n -c -R --argjson available "$available" --argjson on "$on" --argjson active "$active" \
+    --argjson lockedOff "$locked" --argjson waitsForPower "$waits" --argjson since "$since" --arg summary "$summary" '
+    ($summary | split("\n") | map(select(test("^[a-z_]+=[a-z0-9-]+$")) | split("=") | {key: .[0], value: .[1]}) | from_entries) as $s
+    | {
+        available: $available, on: $on, active: $active, lockedOff: $lockedOff, waitsForPower: $waitsForPower,
+        state: (if $active then ($s.state // "unknown") else "stopped" end),
+        firstPass: ($s.first_pass == "1"),
+        percent: ($s.percent // "0" | tonumber? // 0),
+        secondsLeft: ($s.seconds_left // "-1" | tonumber? // -1),
+        backlog: ($s.backlog // "-1" | tonumber? // -1),
+        dedupBytes: ($s.dedup_bytes // "0" | tonumber? // 0),
+        since: $since
+      }'
+}
+
+# pkexec exits 126 when the password prompt is dismissed and 127 when the
+# request is refused; the helper's own words come through otherwise.
+as_root() {
+  local out code=0
+  [[ -x $ROOT_HELPER ]] || fail "$ROOT_HELPER is missing; update karchy-settings."
+  out=$(pkexec "$ROOT_HELPER" "$1" 2>&1 >/dev/null) || code=$?
+  case $code in
+    0) ;;
+    126 | 127) fail "Not changed: the password prompt was closed or the request was refused." ;;
+    *)
+      out=$(tail -n 1 <<<"${out:-The request failed.}")
+      out=${out#storage-settings: }
+      fail "${out^}"
+      ;;
+  esac
+}
+
+bees() {
+  case ${1:-} in
+    "") bees_status ;;
+    on | off)
+      as_root "bees=$1"
+      bees_status
+      ;;
+    *) usage ;;
+  esac
+}
+
+mount_volume() {
+  local device
+  device=$(device_arg "${1:-}")
+  udisks mount -b "$device"
+}
+
+unmount_volume() {
+  local device
+  device=$(device_arg "${1:-}")
+  udisks unmount -b "$device"
+}
+
+# Every mounted volume of the disk is unmounted and every opened encrypted
+# volume locked before the power goes; the first one that is busy stops it.
+eject() {
+  local disk path type mounts
+  disk=$(device_arg "${1:-}")
+  [[ $(lsblk -dno TYPE "$disk") == disk ]] || fail "$disk is not a whole disk."
+  # Deepest first: a filesystem before the encrypted volume it is in.
+  while IFS=$'\t' read -r path type mounts; do
+    if [[ -n $mounts ]]; then
+      udisks unmount -b "$path" || fail "$(lsblk -dno LABEL "$path" | grep . || echo "$path") is in use, so the disk was not ejected. Close what has it open and try again."
+    fi
+    if [[ $type == crypt ]]; then
+      udisks lock -b "$(lsblk -dno PKNAME -p "$path" 2>/dev/null | head -n 1)" || true
+    fi
+  done < <(lsblk -J -o PATH,TYPE,MOUNTPOINTS "$disk" |
+    jq -r '[.. | objects | select(.path != null)] | reverse | .[] | [.path, .type, ((.mountpoints // []) | map(select(. != null)) | join(","))] | @tsv')
+  udisks power-off -b "$disk"
+}
+
+# In the floating terminal: the password prompt is udisks' own.
+unlock() {
+  local device clear
+  device=$(device_arg "${1:-}")
+  echo "Unlock the encrypted volume $device"
+  echo
+  # A cancelled or wrong password closes the window or shows why.
+  udisksctl unlock -b "$device" || exit 1
+  clear=$(lsblk -nrpo NAME,TYPE "$device" | awk '$2 == "crypt" { print $1; exit }')
+  [[ -n $clear ]] || exit 1
+  udisksctl mount -b "$clear"
+}
+
+# Keep an internal data disk mounted. karchy-disk-keep takes one that is not
+# mounted, so one the file manager mounted is unmounted first.
+keep() {
+  local device mount
+  device=$(device_arg "${1:-}")
+  mount=$(lsblk -dno MOUNTPOINTS "$device" | head -n 1)
+  if [[ -n $mount ]]; then
+    udisks unmount -b "$device" || fail "It is in use, so it couldn't be unmounted to keep it. Close what has it open and try again."
+  fi
+  # The terminal is its own window from here on: this returns at once, and
+  # what the terminal program prints is not this command's.
+  setsid karchy-launch-floating-terminal-with-presentation karchy-disk-keep "$device" </dev/null >/dev/null 2>&1 &
+}
+
+# In the floating terminal: the scrub btrfs-scrub@.timer runs every month,
+# now. systemd runs it (at idle priority, and karchy's disk-health helper
+# records what it finds), so it goes on if this window is closed.
+check() {
+  local mount=${1:-} unit started
+  [[ $mount == /* && $(findmnt -n -o FSTYPE --mountpoint "$mount" 2>/dev/null | head -n 1) == btrfs ]] ||
+    fail "$mount is not a mounted btrfs filesystem; only those can be checked while in use."
+  unit="btrfs-scrub@$(systemd-escape -p "$mount").service"
+  echo "Check $mount for errors"
+  echo
+  echo "Every file is read and compared with its checksum; damage that can be"
+  echo "repaired from a second copy is repaired. It runs at low priority and"
+  echo "takes a few minutes per 100 GB. You can keep working, and it goes on"
+  echo "if you close this window: a warning appears if it finds anything."
+  echo
+  # A closed password prompt closes the window (exit 130).
+  sudo -v -p "Your password, to start the check: " || exit 130
+  started=$(date '+%Y-%m-%d %H:%M:%S')
+  if gum spin --title "Checking $mount…" -- sudo -n systemctl start --wait "$unit"; then
+    echo "Finished: no errors that couldn't be repaired."
+  else
+    echo "The check found errors it could not repair, or was stopped."
+  fi
+  echo
+  journalctl -u "$unit" --since "$started" -o cat --no-pager 2>/dev/null |
+    grep -Ei 'scrub (done|started)|duration|total bytes|rate|error' || true
+}
+
+# One line per change. Each of the three watchers waits on the kernel:
+# mounts (findmnt --poll), disks and partitions (udev), and the files the
+# page shows (inotify: fstab is replaced by rename or appended to, the
+# measurement and the warnings are renamed into place). Stopping this stops
+# them, and so does its end by any other way (--pdeathsig).
+watch() {
+  local -a pids=() dirs=(/etc)
+  [[ -d ${MEASUREMENT%/*} ]] && dirs+=("${MEASUREMENT%/*}")
+  [[ -d $HEALTH_DIR ]] && dirs+=("$HEALTH_DIR")
+  trap 'kill "${pids[@]}" 2>/dev/null; exit 0' TERM INT HUP
+  trap 'kill "${pids[@]}" 2>/dev/null' EXIT
+  setpriv --pdeathsig TERM findmnt --poll -n -o ACTION &
+  pids+=($!)
+  setpriv --pdeathsig TERM udevadm monitor --udev --subsystem-match=block &
+  pids+=($!)
+  setpriv --pdeathsig TERM inotifywait -m -q -e close_write -e moved_to -e delete --format 'file %w%f' \
+    --include '(/fstab|/measurement\.json|/disk-health/(smart|scrub)-[^/]*)$' "${dirs[@]}" &
+  pids+=($!)
+  wait
+}
+
+case "${1:-}" in
+  "") exec karchy-settings storage ;;
+  status) (( $# == 1 )) || usage; status ;;
+  shares) (( $# == 1 )) || usage; shares ;;
+  bees) (( $# <= 2 )) || usage; bees "${2:-}" ;;
+  measure) (( $# == 1 )) || usage; as_root measure=now ;;
+  mount) (( $# == 2 )) || usage; mount_volume "$2" ;;
+  unmount) (( $# == 2 )) || usage; unmount_volume "$2" ;;
+  eject) (( $# == 2 )) || usage; eject "$2" ;;
+  unlock) (( $# == 2 )) || usage; unlock "$2" ;;
+  keep) (( $# == 2 )) || usage; keep "$2" ;;
+  check) (( $# == 2 )) || usage; check "$2" ;;
+  watch) (( $# == 1 )) || usage; watch ;;
+  *) usage ;;
+esac

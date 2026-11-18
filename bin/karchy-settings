@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Open the karchy Settings window
-# karchy:args=[displays|input|power|network|ssh|appearance|apps|about] [item]
+# karchy:args=[displays|input|power|network|storage|ssh|appearance|apps|about] [item]
 # karchy:examples=karchy settings | karchy settings displays | karchy settings power | karchy settings network Home-5G
 
 # `karchy settings <section>` runs this for every section, also where a
@@ -15,7 +15,7 @@
 #   --sections   Print the section names, one per line
 
 # The window's sections, as listed in shell/plugins/settings/Settings.qml.
-sections=(displays input power network ssh appearance apps about)
+sections=(displays input power network storage ssh appearance apps about)
 
 if [[ ${1:-} == --sections ]]; then
   printf '%s\n' "${sections[@]}"
