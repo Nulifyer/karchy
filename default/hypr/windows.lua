@@ -18,6 +18,9 @@ o.window(
 -- App-specific tweaks and terminal tags.
 require("default.hypr.apps")
 
+-- A fullscreen game holds idle off and keeps the keyboard.
+require("default.hypr.games")
+
 -- A window that asks for focus gets it.
 require("default.hypr.activation")
 

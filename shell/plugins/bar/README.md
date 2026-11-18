@@ -58,7 +58,7 @@ Example `shell.json` (bar subtree only shown):
 | Name | What it does | Interactions |
 |---|---|---|
 | `karchy.menu` | Karchy menu launcher | left = menu · right = terminal |
-| `karchy.workspaces` | Hyprland workspace switcher; the focused workspace shows its layout | left = focus workspace, or cycle the focused one's layout |
+| `karchy.workspaces` | Hyprland workspace switcher; the focused workspace shows its layout, and one holding a window that asked for focus and was not given it takes the urgent color | left = focus workspace, or cycle the focused one's layout |
 | `karchy.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping | left = popup · right = cycle label format · middle = timezone selector |
 | `karchy.media` | MPRIS now-playing — scrolling track + artist, cover-art popup | left = play/pause · middle = next · scroll = prev/next · right = popup |
 | `karchy.indicators` | Manual state indicators | left = indicator action |

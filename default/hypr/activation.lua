@@ -12,21 +12,11 @@
 -- Hyprland cannot tell such a request from an app that only wants attention
 -- (Qt's alert(), which Telegram calls for every message). Windows tagged
 -- attention-only keep the urgent mark without taking focus; the rule at the
--- end of this file tags Telegram's.
-
-local function attention_only(window)
-  for _, tag in ipairs(window.tags or {}) do
-    -- A tag set by a dispatcher rather than a rule reads "attention-only*".
-    if tag == "attention-only" or tag == "attention-only*" then
-      return true
-    end
-  end
-
-  return false
-end
+-- end of this file tags Telegram's. A request that is not followed keeps the
+-- mark too, and the bar shows it on the window's workspace.
 
 hl.on("window.urgent", function(window)
-  if not (window and window.mapped) or attention_only(window) then return end
+  if not (window and window.mapped) or o.window_tagged(window, "attention-only") then return end
 
   -- The mark is set in the middle of Hyprland handling the request, and a
   -- request with proof is focused by Hyprland right after. Wait a loop, then
@@ -44,6 +34,10 @@ hl.on("window.urgent", function(window)
     for _, layer in ipairs(hl.get_layers() or {}) do
       if layer.mapped and layer.keyboard_interactivity == 1 then return end
     end
+
+    -- So does a fullscreen game: losing the keyboard in the middle of a match
+    -- costs more than an answer that waits. The window stays urgent.
+    if o.fullscreen_game(hl.get_active_window()) then return end
 
     local before = hl.get_active_workspace()
     hl.dispatch(hl.dsp.focus({ window = target }))

@@ -324,6 +324,18 @@ function o.window(match, rules)
   end
 end
 
+-- Whether a window carries a tag. Hyprland reports a tag set by a rule as
+-- "<tag>*" and one set by the tag dispatcher as "<tag>".
+function o.window_tagged(window, tag)
+  for _, name in ipairs(window and window.tags or {}) do
+    if name == tag or name == tag .. "*" then
+      return true
+    end
+  end
+
+  return false
+end
+
 -- Opt a window in to Karchy's standard active/inactive transparency. The tag
 -- lets Appearance > Windows > Window Opacity turn these windows opaque or glassy.
 function o.transparent_window(match, opacity)

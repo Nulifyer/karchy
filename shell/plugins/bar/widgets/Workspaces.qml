@@ -111,6 +111,62 @@ BarWidget {
     }
   }
 
+  // Windows that asked for focus and were not given it, by address: the
+  // workspace holding one is drawn in the bar's urgent color. Hyprland says so
+  // in its "urgent" event and keeps the mark until the window is focused. Here
+  // it also goes once another window on the same workspace is focused, since
+  // the workspace has been looked at by then, and when the window closes.
+  // Quickshell's own workspace.urgent drops the mark on any switch to the
+  // workspace, and a request made under the lock screen switches there and
+  // back (default/hypr/activation.lua), so it would be lost.
+  property var urgentWindows: ({})
+
+  function toplevelByAddress(address) {
+    var values = Hyprland.toplevels.values
+    for (var i = 0; i < values.length; i++) {
+      if (values[i].address === address) return values[i]
+    }
+
+    return null
+  }
+
+  function markUrgent(address) {
+    if (address === "" || root.urgentWindows[address] === true) return
+    var active = Hyprland.activeToplevel
+    if (active && active.address === address) return
+    var next = Object.assign({}, root.urgentWindows)
+    next[address] = true
+    root.urgentWindows = next
+  }
+
+  function clearUrgent(addresses) {
+    var next = null
+    for (var i = 0; i < addresses.length; i++) {
+      if (root.urgentWindows[addresses[i]] !== true) continue
+      if (next === null) next = Object.assign({}, root.urgentWindows)
+      delete next[addresses[i]]
+    }
+    if (next !== null) root.urgentWindows = next
+  }
+
+  function windowFocused(address) {
+    if (address === "" || Object.keys(root.urgentWindows).length === 0) return
+    var addresses = [address]
+    var toplevel = root.toplevelByAddress(address)
+    var neighbours = toplevel && toplevel.workspace ? toplevel.workspace.toplevels.values : []
+    for (var i = 0; i < neighbours.length; i++) addresses.push(neighbours[i].address)
+    root.clearUrgent(addresses)
+  }
+
+  function holdsUrgent(workspace) {
+    var toplevels = workspace.toplevels.values
+    for (var i = 0; i < toplevels.length; i++) {
+      if (root.urgentWindows[toplevels[i].address] === true) return true
+    }
+
+    return false
+  }
+
   // A wheel notch moves one entry along the row, and a touchpad adds up its
   // smaller deltas until they make a notch's worth.
   property real wheelAccumulator: 0
@@ -198,6 +254,9 @@ BarWidget {
     function onRawEvent(event) {
       var name = event ? String(event.name) : ""
       if (name === "configreloaded") root.refresh()
+      else if (name === "urgent") root.markUrgent(String(event.data))
+      else if (name === "activewindowv2") root.windowFocused(String(event.data))
+      else if (name === "closewindow") root.clearUrgent([String(event.data)])
       // Quickshell credits every workspace switch to the focused monitor, as
       // the event doesn't say which one switched, and misses the workspace a
       // monitor falls back to when its own is moved away. Moving workspaces
@@ -261,6 +320,7 @@ BarWidget {
         readonly property var workspace: root.workspaceById(modelData)
         readonly property bool occupied: workspace !== null && workspace.toplevels.values.length > 0
         readonly property bool shown: root.monitor !== null && root.monitor.activeWorkspace !== null && root.monitor.activeWorkspace.id === modelData
+        readonly property bool urgent: workspace !== null && root.holdsUrgent(workspace)
         readonly property int slot: root.slotOf(modelData)
         readonly property bool firstGuest: root.blockOf(modelData) !== root.block && index > 0 && root.blockOf(root.workspaceIds()[index - 1]) === root.block
         required property int index
@@ -271,6 +331,7 @@ BarWidget {
 
         bar: root.bar
         text: shown ? root.modeGlyph(root.activeMode) : (slot === root.slots ? "0" : String(slot))
+        active: urgent
         opacity: occupied || shown ? 1 : 0.5
         horizontalMargin: 6
         verticalPadding: 6
