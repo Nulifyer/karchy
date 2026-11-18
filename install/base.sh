@@ -93,32 +93,45 @@ base_repos_live() {
     done <"$keyring/karchy-trusted"
   fi
 
-  # Bootstrap mirrors until the cachyos-mirrorlist packages are installed:
-  # CachyOS's own list, shipped with the installer (install/cachyos-mirrorlist),
-  # with $arch spelled out as the directory $1. All of its mirrors, because a
-  # mirror can list a package in its database before it holds the file, and
-  # pacman then tries the next server.
-  cachyos_bootstrap_mirrors() {
+  # The keys and the mirror list above and below only start things off: once
+  # the repositories answer, the projects' own packages replace them (further
+  # down), as on an installed machine.
+  #
+  # Bootstrap mirrors: CachyOS's own list, shipped with the installer
+  # (install/cachyos-mirrorlist). All of its mirrors, because a mirror can
+  # list a package in its database before it holds the file, and pacman then
+  # tries the next server.
+  # The servers of the mirror list $1, with $arch spelled out as the
+  # directory $2.
+  cachyos_mirrors() {
     local line
     while IFS= read -r line; do
-      [[ $line == "Server = "* ]] && printf '%s\n' "${line//\$arch/$1}"
-    done <"$KARCHY_SRC/install/cachyos-mirrorlist"
+      [[ $line == "Server = "* ]] && printf '%s\n' "${line//\$arch/$2}"
+    done <"$1"
+  }
+  # The tuned repos' lists, with the architecture spelled out: the packaged
+  # lists use $arch_v3/$arch_v4, which only CachyOS's pacman expands.
+  cachyos_tuned_mirrors() {
+    case "$(cachyos_level)" in
+      v3) cachyos_mirrors "$1" x86_64_v3 >/etc/pacman.d/cachyos-v3-mirrorlist ;;
+      v4 | znver4) cachyos_mirrors "$1" x86_64_v4 >/etc/pacman.d/cachyos-v4-mirrorlist ;;
+    esac
   }
   if [[ ! -f /etc/pacman.d/cachyos-mirrorlist ]]; then
     # shellcheck disable=SC2016  # pacman expands $arch and $repo
-    cachyos_bootstrap_mirrors '$arch' >/etc/pacman.d/cachyos-mirrorlist
+    cachyos_mirrors "$KARCHY_SRC/install/cachyos-mirrorlist" '$arch' >/etc/pacman.d/cachyos-mirrorlist
   fi
-  # ...and for the tuned repos, with the architecture spelled out: the
-  # packaged lists use $arch_v3/$arch_v4, which only CachyOS's pacman expands.
-  # shellcheck disable=SC2016  # pacman expands $repo
-  case "$(cachyos_level)" in
-    v3) [[ -f /etc/pacman.d/cachyos-v3-mirrorlist ]] ||
-      cachyos_bootstrap_mirrors x86_64_v3 >/etc/pacman.d/cachyos-v3-mirrorlist ;;
-    v4 | znver4) [[ -f /etc/pacman.d/cachyos-v4-mirrorlist ]] ||
-      cachyos_bootstrap_mirrors x86_64_v4 >/etc/pacman.d/cachyos-v4-mirrorlist ;;
-  esac
+  cachyos_tuned_mirrors /etc/pacman.d/cachyos-mirrorlist
   base_add_repos /etc/pacman.conf
   pacman -Sy
+  # Arch's keyring first, so an install medium built months ago knows the
+  # packagers who signed today's packages. Then CachyOS's and Omarchy's
+  # keyrings and CachyOS's mirror list, which takes the bootstrap list's
+  # place; the tuned repos' lists are written again from it.
+  pacman -S --noconfirm --needed archlinux-keyring
+  pacman -S --noconfirm --needed --overwrite etc/pacman.d/cachyos-mirrorlist \
+    cachyos-keyring omarchy-keyring cachyos-mirrorlist
+  cachyos_tuned_mirrors /etc/pacman.d/cachyos-mirrorlist
   # karchy-disk-fstab (data disks) reads lsblk's JSON with jq.
   pacman -S --noconfirm --needed jq
 }

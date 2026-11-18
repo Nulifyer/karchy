@@ -2,9 +2,13 @@
 
 `cachyos.gpg` and `omarchy.gpg` are the public keys of the `[cachyos]` and
 `[omarchy]` repositories, shipped so the installer doesn't depend on a key
-server (it trusts only the fingerprints pinned in `install/base.sh`). They come
-from `cachyos-keyring` and keys.openpgp.org; refresh them if either project
-rotates its key. `karchy-keyring` packages only karchy's own files.
+server (it trusts only the fingerprints pinned in `install/base.sh`). They only
+start an install off: with them the installer fetches `cachyos-keyring` and
+`omarchy-keyring`, and the packages' keys are used from then on, as on an
+installed machine. They come from `cachyos-keyring` and keys.openpgp.org;
+refresh them, and the fingerprints, if either project replaces its key
+(`tools/repos-check`, run daily, reports when they stop working).
+`karchy-keyring` packages only karchy's own files.
 
 Created 2026-11-14: ed25519, fingerprint `70BC96FE5BD73CD9006C46D6BB27EDD9081A7977`, no expiry. The private half is the `KARCHY_SIGNING_KEY` secret on GitHub, with one backup on the NAS at `/mnt/truenas/homelab/backups/karchy/karchy-signing-key.asc`. The steps below are for replacing it.
 
