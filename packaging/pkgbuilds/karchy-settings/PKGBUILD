@@ -144,6 +144,12 @@ package() {
   install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"
   install -Dm644 systemd/system/user@.service.d/karchy-keyring.conf \
     "$pkgdir/usr/lib/systemd/system/user@.service.d/karchy-keyring.conf"
+  # A boot into a snapshot is noted before the session starts, so the login
+  # notice can name the snapshot (karchy-snapshot-boot).
+  install -Dm644 systemd/system/karchy-snapshot-boot.service "$pkgdir/usr/lib/systemd/system/karchy-snapshot-boot.service"
+  install -Dm644 systemd/system/user@.service.d/karchy-snapshot-boot.conf \
+    "$pkgdir/usr/lib/systemd/system/user@.service.d/karchy-snapshot-boot.conf"
+
 
   cd "$srcdir/karchy"
   # User units and drop-ins; the installer enables the units per machine.

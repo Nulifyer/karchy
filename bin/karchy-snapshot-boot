@@ -1,0 +1,187 @@
+#!/bin/bash
+
+# karchy:summary=Say when the running system is a snapshot started from the boot menu, and restore it
+# karchy:args=check | restore | record
+# karchy:hidden=true
+
+# A snapshot entry of the boot menu starts that snapshot on a writable layer
+# held in memory (limine-mkinitcpio-hook's sd-btrfs-overlayfs). The desktop
+# works as usual and looks like the normal system, and whatever changes outside
+# the home folder is gone at the next start. docs/recovery.md has the whole flow.
+#
+#   check    At login (karchy/hypr/autostart.lua): on a snapshot boot, a
+#            notification that stays until it is answered says which snapshot
+#            is running and offers to restore it.
+#   restore  From that notification, in the floating terminal: runs
+#            limine-snapper-restore, which makes this snapshot the normal
+#            system and keeps the system it replaces as a new snapshot.
+#   record   As root, once per boot (karchy-snapshot-boot.service): writes the
+#            snapshot's date and description to /run/karchy/snapshot-boot.
+#            snapper keeps them outside the snapshot, where only root reads,
+#            so the login check can't look them up. Without the file the
+#            notification gives the number alone.
+#
+# The kernel command line tells a snapshot boot apart: the root subvolume it
+# names ends in /.snapshots/<number>/snapshot. limine-snapper-restore goes by
+# the same. KARCHY_SNAPSHOT_BOOT_CMDLINE names a file to read in its place, to
+# try the notification on a normal boot.
+
+set -euo pipefail
+
+RECORD=/run/karchy/snapshot-boot
+
+number=""
+subvolume=""
+taken=""
+description=""
+
+# Sets `number` and `subvolume` on a snapshot boot; fails on a normal one.
+booted_snapshot() {
+  local cmdline
+  cmdline=$(<"${KARCHY_SNAPSHOT_BOOT_CMDLINE:-/proc/cmdline}")
+  [[ $cmdline =~ (^|[[:space:]])rootflags=([^[:space:]]*,)?subvol=([^[:space:],]*/([0-9]+)/snapshot)([[:space:],]|$) ]] || return 1
+  subvolume=${BASH_REMATCH[3]}
+  number=${BASH_REMATCH[4]}
+}
+
+# Sets `taken` (the date, in this locale) and `description` from root's record
+# of this boot's snapshot, where there is one.
+read_record() {
+  local key value epoch=""
+  [[ -r $RECORD ]] || return 0
+  while IFS='=' read -r key value; do
+    case $key in
+      number) [[ $value == "$number" ]] || return 0 ;;
+      date) epoch=$value ;;
+      description) description=$value ;;
+    esac
+  done <"$RECORD"
+  [[ $epoch =~ ^[0-9]+$ ]] && taken=$(date -d "@$epoch" '+%-d %b %Y, %H:%M')
+  return 0
+}
+
+# karchy-i18n prints the string without a line end.
+say() {
+  karchy-i18n "$@"
+  echo
+}
+
+# "Taken 17 Nov 2026, 23:35: karchy karchy-themes.", as far as it is known.
+snapshot_line() {
+  if [[ -n $taken && -n $description ]]; then
+    karchy-i18n snapshotBoot.takenWithDescription "$taken" "$description"
+  elif [[ -n $taken ]]; then
+    karchy-i18n snapshotBoot.taken "$taken"
+  fi
+}
+
+check() {
+  booted_snapshot || exit 0
+  karchy-notifications-wait || exit 0
+  read_record
+
+  # A toast shows two lines of this until it is pointed at, so what matters
+  # most comes first.
+  local line body
+  line=$(snapshot_line)
+  body=$(karchy-i18n snapshotBoot.body)
+  [[ -z $line ]] || body+=" $line"
+  body+=" $(karchy-i18n snapshotBoot.homeKept)"
+
+  # Critical, so it stays until it is answered. Transient, so the shell does
+  # not bring it back after the next start, which may be the normal system;
+  # this check sends it again at each login from a snapshot.
+  karchy-notification-send -g snapshot -u critical -t 0 --transient \
+    "$(karchy-i18n snapshotBoot.title "$number")" "$body" \
+    --action "$(karchy-i18n snapshotBoot.restore)" karchy-launch-floating-terminal-with-presentation karchy-snapshot-boot restore \
+    --action "$(karchy-i18n snapshotBoot.notNow)" true
+}
+
+# What the boot menu holds now. A restore adds the replaced system to it.
+boot_menu() {
+  sudo cksum /boot/limine.conf 2>/dev/null || true
+}
+
+restore() {
+  if ! booted_snapshot; then
+    say snapshotBoot.notASnapshot
+    exit 1
+  fi
+  read_record
+
+  # Ctrl+C at a prompt closes the window with nothing changed (exit 130, the
+  # floating terminal's cancel).
+  trap 'exit 130' INT
+
+  local line
+  line=$(snapshot_line)
+  say snapshotBoot.restoreHeading "$number"
+  [[ -z $line ]] || echo "$line"
+  echo
+  say snapshotBoot.restoreExplain
+  echo
+  if ! sudo -n true 2>/dev/null && ! sudo -v -p "$(karchy-i18n snapshotBoot.passwordPrompt) "; then
+    say snapshotBoot.needsPassword
+    exit 1
+  fi
+
+  # limine-snapper-restore shows the snapshot and asks before it restores
+  # (r, or c to cancel), asks for a name for the system it replaces, and
+  # offers to restart. It ends with 0 when cancelled too, so the boot menu
+  # tells whether it restored.
+  say snapshotBoot.restoreSteps
+  echo
+  local before code=0
+  before=$(boot_menu)
+  sudo limine-snapper-restore || code=$?
+  if (( code != 0 )); then
+    say snapshotBoot.restoreFailed
+    exit "$code"
+  fi
+  if [[ -n $before && $(boot_menu) == "$before" ]]; then
+    exit 130
+  fi
+  echo
+  say snapshotBoot.restartToFinish
+}
+
+record() {
+  if (( EUID != 0 )); then
+    echo "karchy-snapshot-boot record runs as root (karchy-snapshot-boot.service)." >&2
+    exit 1
+  fi
+  booted_snapshot || exit 0
+
+  local root="" word words device mount info utc epoch
+  read -ra words </proc/cmdline
+  for word in "${words[@]}"; do
+    [[ $word == root=* ]] && root=${word#root=}
+  done
+  # The overlay hides the snapshot's own mount, so snapper's folder (the
+  # snapshot's parent's parent) is mounted read-only for the moment it is read.
+  device=$(findfs "$root") || exit 0
+  mount=$(mktemp -d /run/karchy-snapshot-boot.XXXXXX)
+  # The path is expanded now: `mount` is gone by the time the script exits.
+  # shellcheck disable=SC2064
+  trap "umount '$mount' 2>/dev/null || true; rmdir '$mount' 2>/dev/null || true" EXIT
+  mount -t btrfs -o "ro,subvol=${subvolume%/*/snapshot}" "$device" "$mount" || exit 0
+  info=$mount/$number/info.xml
+  [[ -r $info ]] || exit 0
+
+  # snapper writes the date in UTC and the description with XML's escapes.
+  utc=$(sed -n 's:.*<date>\(.*\)</date>.*:\1:p' "$info" | head -n 1)
+  epoch=$(date -u -d "$utc" +%s 2>/dev/null) || epoch=""
+  description=$(sed -n 's:.*<description>\(.*\)</description>.*:\1:p' "$info" | head -n 1 |
+    sed -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&quot;/"/g' -e "s/&apos;/'/g" -e 's/&amp;/\&/g')
+
+  install -d -m 0755 /run/karchy
+  printf 'number=%s\ndate=%s\ndescription=%s\n' "$number" "$epoch" "$description" |
+    install -m 0644 /dev/stdin "$RECORD"
+}
+
+case "${1:-}" in
+  check) check ;;
+  restore) restore ;;
+  record) record ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-snapshot-boot /p' "$0" >&2; exit 1 ;;
+esac

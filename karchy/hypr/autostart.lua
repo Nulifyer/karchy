@@ -25,6 +25,8 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("karchy-disks-check")
   -- Offer to re-enroll Secure Boot keys a firmware update cleared (D-31).
   hl.exec_cmd("karchy-secureboot check")
+  -- Say so when the boot menu started a snapshot, and offer to restore it.
+  hl.exec_cmd("karchy-snapshot-boot check")
   -- Warn when the desktop draws on the processor (no usable GPU driver).
   hl.exec_cmd("karchy-hw-renderer check")
   hl.exec_cmd("karchy-powerprofiles-init")
