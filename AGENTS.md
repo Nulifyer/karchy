@@ -17,7 +17,7 @@ karchy is a personal Arch-based Linux setup built from selected Omarchy v4.5.0 c
 
 ## Delivery
 
-- One logical change per branch and PR, with atomic commits (D-26). Don't commit to `main` directly.
+- Atomic commits, one logical change each (D-26). During initial development, tested work goes straight to `main`, which only feeds the nightly channel (user, 2026-11-17). Tagging an rc or stable release needs the user's go-ahead.
 - Don't create, rename, delete or push GitHub repos without the user's approval at the time.
 
 ## Project continuity
