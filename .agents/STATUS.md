@@ -11,6 +11,8 @@ The rc.5 page (https://github.com/Nulifyer/karchy/releases/tag/v0.1.0-rc.5) carr
 
 Verified in VMs: installs from GitHub on the rc channel, updates rc.1 → rc.4, the Updates window, and the rc.5 ISO from CI (checksum OK, boots to the installer; release file `version=v0.1.0-rc.5`, `builder=localhost/karchy-build:908342b4bcef`). Nothing yet on real hardware (`.agents/TESTING.md`).
 
+Maintenance (D-89, docs/maintenance.md), verified 2026-11-17 at `7e3d526`: a fresh install from the Arch ISO on the nightly channel in VM `upkeep` (24 steps, no errors; the live system took its keys and mirror list from `archlinux-keyring`, `cachyos-keyring`, `omarchy-keyring` and `cachyos-mirrorlist`; boots to the desktop with no failed units; the repositories sync with the installed keys; the titlebars load into CachyOS's tuned Hyprland build). `upkeep.yml` ran on GitHub: checks as locally, state kept between runs, and a run with "report now" opened issue #17 (CachyOS's tuned `libffi` behind Arch's stops the legacy NVIDIA driver resolving on tuned machines; it closes by itself when CachyOS catches up).
+
 ## Current batch
 
 None: everything is merged.
