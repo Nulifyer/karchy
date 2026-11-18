@@ -115,6 +115,10 @@ hl.config({
     -- Let a fresh shell re-acquire the session lock after the lock client
     -- died, so karchy-restart-shell can recover the LOCK failsafe.
     allow_session_lock_restore = true,
+    -- Don't chime on every terminal BEL (tab-completion misses, TUI alerts):
+    -- Hyprland 0.57 plays a sound for each xdg-system-bell ring, and foot
+    -- forwards each BEL there. A compositor older than 0.57 lacks the option.
+    bell_sound = hl.get_config("misc.bell_sound") ~= nil and "none" or nil,
   },
 
   cursor = {
