@@ -90,7 +90,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | Browser | Brave Origin (`brave-origin-bin`, `[cachyos]`); removing it leaves links to another installed browser; PDFs open in the browser; video is decoded on the graphics card (VA-API flags in `brave-origin-flags.conf`, NVIDIA through `nvidia-vaapi-driver`) | [O] |
 | File manager | Thunar + gvfs, gvfs-smb, gvfs-mtp, tumbler; right-click actions per D-36 and D-76; Send To › LocalSend; Create Document offers Text File and Markdown Document; Desktop is home (no desktop icons) | [New] |
 | Default apps | Settings › Default apps, writing `mimeapps.list` (D-37) | [New] |
-| Editor | VS Code (`visual-studio-code-bin`, `[omarchy]`) with the user's own settings | [O] |
+| Editor | None in the base (D-88): the user picks one in Quick install (VS Code, Zed and others). micro is the terminal editor (D-58) and Omawrite the notepad | [New] |
 | Terminal editor | micro or nano, still open | |
 | Images | imv | [O] |
 | Media | mpv with hardware decoding config | [O] |
@@ -98,7 +98,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | About | fastfetch | [O] |
 | Screenshots | Omasnap (screenshot + annotation, `[omarchy]`), plus screen recording | [O] |
 | Calculator | omacalc (`[omarchy]`) | [O] |
-| Notepad | Omawrite (`[omarchy]`); Markdown files open in it, plain text in VS Code | [O] |
+| Notepad | Omawrite (`[omarchy]`); plain text and Markdown files open in it | [O] |
 | Disk utility | GNOME Disks | [O] |
 | Disk usage | Disktree (`disktree-bin`, `[omarchy]`): treemap, mark and trash; Open in Disktree on folders in Thunar (D-74) | [O] + [New] |
 | File sharing | LocalSend (`localsend-bin`, `[omarchy]`), port open only on trusted networks (router included, D-68); closed at boot until one connects | [O] + [New] |
@@ -122,7 +122,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 - `fstrim.timer`, monthly btrfs scrub, `smartd` disk-health warnings
 - `paccache` cleanup, `.pacnew` alerts (`pacdiff`)
 - the rate-mirrors timer
-- a default-apps list: links → Brave Origin, PDF → Brave Origin, images → imv, video and audio → mpv, folders → Thunar, Markdown → Omawrite, plain text → VS Code
+- a default-apps list: links → Brave Origin, PDF → Brave Origin, images → imv, video and audio → mpv, folders → Thunar, plain text and Markdown → Omawrite
 - Thunar archive actions (`thunar-archive-plugin` + xarchiver + `7zip`) and the karchy right-click actions (D-36, D-40)
 - `avahi` + `nss-mdns`
 - LocalSend, GNOME Disks, Disktree, omacalc, Omawrite, Omasnap; Omarchy's theme path `~/.local/state/omarchy/current` links to karchy's, so the `[omarchy]` apps follow the theme (D-72)

@@ -11,5 +11,5 @@ video/x-matroska=mpv.desktop
 audio/mpeg=mpv.desktop
 audio/flac=mpv.desktop
 audio/ogg=mpv.desktop
-text/plain=com.microsoft.VSCode.desktop
+text/plain=omawrite.desktop
 text/markdown=omawrite.desktop

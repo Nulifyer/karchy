@@ -60,6 +60,9 @@ refresh_window() {
   # Thunar's right-click actions follow what is installed (Open in VS Code,
   # Disktree, LocalSend).
   command -v karchy-thunar-actions >/dev/null && karchy-thunar-actions >/dev/null 2>&1
+  # A code editor installed just now (VS Code, VSCodium, Cursor) gets the
+  # generated "Karchy" color theme without waiting for a theme switch (D-88).
+  command -v karchy-theme-set-vscode >/dev/null && karchy-theme-set-vscode >/dev/null 2>&1
   return 0
 }
 

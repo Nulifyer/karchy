@@ -1047,7 +1047,7 @@
         "writing"
       ],
       "setup": {
-        "note": "Markdown files open in it."
+        "note": "Plain text and Markdown files open in it."
       }
     },
     {
@@ -3478,13 +3478,12 @@
       "id": "vs-code",
       "name": "Visual Studio Code",
       "category": "editors",
-      "description": "Microsoft's code editor, with its extension marketplace; karchy's default code editor",
+      "description": "Microsoft's code editor, with its extension marketplace",
       "icon": "visual-studio-code",
       "packages": [
         "visual-studio-code-bin"
       ],
       "source": "omarchy",
-      "default": true,
       "keywords": [
         "vscode",
         "code"

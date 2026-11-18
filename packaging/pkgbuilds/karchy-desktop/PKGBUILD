@@ -55,10 +55,9 @@ depends=(
 # tools/catalog-check keeps this list and those entries the same.
 optdepends=(
   'brave-origin-bin: the default web browser'
-  'visual-studio-code-bin: the default code editor'
   'localsend-bin: send files to nearby devices'
   'omacalc: the calculator'
-  'omawrite: the notepad, and Markdown files open in it'
+  'omawrite: the notepad; plain text and Markdown files open in it'
   'disktree-bin: see what fills a disk (Open in Disktree on folders)'
   'imv: the image viewer'
   'mpv: the video and audio player'
