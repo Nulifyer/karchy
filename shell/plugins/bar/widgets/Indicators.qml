@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "IndicatorsModel.js" as IndicatorsModel
 
 BarWidget {
   id: root
@@ -53,24 +54,10 @@ BarWidget {
     return copy
   }
 
+  // `hidden`, `items` and how indicators added later reach a custom list:
+  // IndicatorsModel.js.
   function indicatorEntriesFromSettings(settings) {
-    var source = defaultIndicatorEntries
-    if (settings.items && typeof settings.items.length === "number" && settings.items.length > 0) source = settings.items
-    else if (settings.indicators && typeof settings.indicators.length === "number" && settings.indicators.length > 0) source = settings.indicators
-
-    var result = []
-    for (var i = 0; i < source.length; i++) {
-      var item = source[i]
-      if (typeof item !== "string" && item !== null && typeof item === "object") {
-        try {
-          item = JSON.parse(JSON.stringify(item))
-        } catch (error) {
-        }
-      }
-      var id = entryId(item)
-      if (id !== "") result.push(item)
-    }
-    return result
+    return IndicatorsModel.entries(settings, defaultIndicatorEntries)
   }
 
   function setIndicatorAreaHovered(hovered) {

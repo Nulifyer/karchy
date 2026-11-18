@@ -29,15 +29,7 @@
       ],
       "centerBegin": [
         {
-          "id": "karchy.indicators",
-          "items": [
-            "Updates",
-            "ScreenRecording",
-            "Dnd",
-            "StayAwake",
-            "Reminder",
-            "Minimized"
-          ]
+          "id": "karchy.indicators"
         }
       ],
       "center": [

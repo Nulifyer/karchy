@@ -18,10 +18,51 @@
     "allowMultiple": true,
     "schema": [
       {
+        "key": "hidden",
+        "type": "multiselect",
+        "label": "Hidden",
+        "description": "Indicators this widget instance never shows. Indicators karchy adds later still show.",
+        "noSelectionText": "None",
+        "placeholderText": "Search indicators...",
+        "emptyText": "No indicators",
+        "options": [
+          {
+            "value": "Updates",
+            "label": "Updates",
+            "description": "Shows while karchy or package updates are waiting; click to update"
+          },
+          {
+            "value": "ScreenRecording",
+            "label": "Screen recording",
+            "description": "GPU screen recorder status"
+          },
+          {
+            "value": "Dnd",
+            "label": "Do Not Disturb",
+            "description": "Shows while Do Not Disturb is on; click to turn it off"
+          },
+          {
+            "value": "StayAwake",
+            "label": "Stay Awake",
+            "description": "Shows while Stay Awake is on; click to turn it off"
+          },
+          {
+            "value": "Reminder",
+            "label": "Reminder",
+            "description": "Queued reminder status"
+          },
+          {
+            "value": "Minimized",
+            "label": "Minimized windows",
+            "description": "Shows while windows are minimized; click to bring one back"
+          }
+        ]
+      },
+      {
         "key": "items",
         "type": "multiselect",
         "label": "Indicators",
-        "description": "Choose which indicators this widget instance should show. Leave empty to show all indicators.",
+        "description": "The indicators to show, in order (the older setting; Hidden is simpler). Indicators karchy adds later are put in too, unless Hidden names them. Leave empty to show all indicators.",
         "noSelectionText": "All indicators",
         "placeholderText": "Search indicators...",
         "emptyText": "No indicators",
@@ -72,6 +113,10 @@
       {
         "source": "../indicators",
         "target": "indicators"
+      },
+      {
+        "source": "IndicatorsModel.js",
+        "target": "IndicatorsModel.js"
       }
     ]
   }

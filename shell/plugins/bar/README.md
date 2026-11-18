@@ -73,7 +73,7 @@ Example `shell.json` (bar subtree only shown):
 | `karchy.monitor` | Brightness and laptop display controls | left = popup |
 | `karchy.vms` | Shown only while a QEMU/KVM VM runs: count + popup to show, shut down, force off or start VMs | left = popup · right = Virtual machines window |
 
-The `karchy.indicators` widget loads individual bar indicators from `indicators/`. Omit `items` (or set it to an empty array) to show all indicators in the default order, or set `items` to a subset such as `["Dnd", "Reminder", "NightLight"]`. Set `alwaysShow` to `true` to keep inactive indicators visible instead of revealing them only on hover. Multiple `karchy.indicators` instances are allowed, so different sections can show different subsets.
+The `karchy.indicators` widget loads individual bar indicators from `indicators/`. With no settings it shows all indicators in the default order. Set `hidden` to leave some out, such as `["Reminder"]`; indicators karchy adds later still show. The older `items` setting lists the indicators to show, in order; an indicator karchy added after the list was written is put in at its default place unless `hidden` names it (`known` names the indicators a list was written knowing about; without it, the four that existed before 2026-11-17). Set `alwaysShow` to `true` to keep inactive indicators visible instead of revealing them only on hover. Multiple `karchy.indicators` instances are allowed, so different sections can show different subsets.
 
 ## Orientation
 
