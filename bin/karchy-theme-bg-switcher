@@ -12,3 +12,11 @@ karchy-menu-images \
   --selected "$current_background" \
   "$HOME/.local/state/karchy/current/theme/backgrounds" \
   "$HOME/.config/karchy/backgrounds/$theme_name"
+status=$?
+
+# Exit 3: no backgrounds to offer (karchy-menu-images opens no empty picker).
+if (( status == 3 )); then
+  karchy-notification-send -g look.background "$(karchy-i18n theme.noBackground)" -t 2000
+fi
+
+exit "$status"

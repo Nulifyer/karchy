@@ -895,6 +895,9 @@ Item {
     if (fromPointer) pointerGate.allowInitialSample()
     else root.disarmPointer()
     root.rebuildDisplay()
+    // A pointer that jumps onto a row and clicks in one event gets no hover on
+    // the new row under it, so select that row from the click's own point.
+    if (fromPointer && fromPointer.x !== undefined) root.selectUnderPointer(fromPointer)
     root.invalidateVolatileProvider(id)
     root.loadProviderForMenu(id)
   }
@@ -980,7 +983,15 @@ Item {
     root.deleteConfirmOpen = false
     root.deleteTarget = null
     if (!target) return
-    root.cancel()
+    // The menu stays open: the app drops out of the list once it is gone, and
+    // only an uninstall that needs a terminal closes it. An app library that
+    // can't say when that is closes the menu first, as before.
+    if (root.appLibrary && root.appLibrary.removalNeedsTerminal) {
+      root.disarmPointer()
+      Qt.callLater(function() { filterInput.forceActiveFocus() })
+    } else {
+      root.cancel()
+    }
     if (root.appLibrary) root.appLibrary.remove(target.appId, target.label)
   }
 
@@ -1095,6 +1106,14 @@ Item {
     pointerGate.reset()
   }
 
+  function selectUnderPointer(point) {
+    resultList.forceLayout()
+    var at = resultList.contentItem.mapFromItem(null, point.x, point.y)
+    var index = resultList.indexAt(at.x, at.y)
+    var item = resultList.itemAtIndex(index)
+    if (item) root.selectFromPointer(index, item, item.mapFromItem(null, point.x, point.y))
+  }
+
   function selectFromPointer(index, item, mouse) {
     if (!pointerGate.moved(item, mouse)) return
     if (!root.rowSelectable(index)) return
@@ -1196,8 +1215,12 @@ Item {
 
   Connections {
     target: root.appLibrary
+    ignoreUnknownSignals: true
     function onAppsChanged() {
       if (root.providersLoaded["apps"]) root.mergeAppRows()
+    }
+    function onRemovalNeedsTerminal() {
+      if (root.opened) root.cancel()
     }
   }
 
@@ -1706,7 +1729,7 @@ Item {
                   if (row.disabled) return
                   root.cursorActive = true
                   root.selectedIndex = row.index
-                  root.activateIndex(row.index, true)
+                  root.activateIndex(row.index, mouseArea.mapToItem(null, mouse.x, mouse.y))
                 }
               }
             }

@@ -46,6 +46,7 @@
   "audio.micMuted": "Microphone muted",
   "audio.micOn": "Microphone on",
   "audio.noDevices": "No audio devices found",
+  "audio.noMicrophone": "No microphone found",
   "battery.criticalBodyHibernate": "Battery is down to %1%. Plug in now, or the computer will hibernate shortly.",
   "battery.criticalBodyPowerOff": "Battery is down to %1%. Plug in now or save your work: the computer will shut down shortly.",
   "battery.criticalTitle": "Battery almost empty",

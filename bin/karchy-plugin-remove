@@ -60,10 +60,11 @@ done
 
 if [[ -z $id ]]; then
   interactive || fail "a plugin-id is required"
-  id=$(find "$PLUGINS_DIR" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) \
-    ! -name '.*' -printf '%f\n' 2>/dev/null |
-    sort |
-    gum choose --header="$(karchy-i18n plugin.removeWhich)") || exit 130
+  plugins=$(find "$PLUGINS_DIR" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) \
+    ! -name '.*' -printf '%f\n' 2>/dev/null | sort) || fail "could not read $PLUGINS_DIR"
+  # gum with nothing to choose from shows an empty list that only Esc leaves.
+  [[ -n $plugins ]] || fail "no plugins installed"
+  id=$(gum choose --header="$(karchy-i18n plugin.removeWhich)" <<<"$plugins") || exit 130
   [[ -n $id ]] || exit 130
 fi
 valid_plugin_id "$id" || fail "invalid plugin id '$id'"
