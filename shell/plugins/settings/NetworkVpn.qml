@@ -274,14 +274,23 @@ ColumnLayout {
     onDismissed: root.setupDone = ""
   }
 
-  Section {
+  // What it is doing now: rows under the VPN heading, not a section of
+  // their own (a rule inside a section reads as a new one).
+  KeyValueGrid {
     visible: root.packaged && root.facts.length > 0
-    title: "What it's doing"
-    subtitle: "The internet is blocked while it connects, and stays blocked if it can't."
-    KeyValueGrid {
-      Layout.fillWidth: true
-      rows: root.facts
-    }
+    Layout.fillWidth: true
+    rows: root.facts
+  }
+  Text {
+    visible: root.packaged && root.facts.length > 0 && root.vpn.mode !== "off"
+    Layout.fillWidth: true
+    Layout.maximumWidth: Style.space(620)
+    wrapMode: Text.Wrap
+    textFormat: Text.PlainText
+    text: "The internet is blocked while it connects, and stays blocked if it can't."
+    color: Commons.Color.textSecondary
+    font.family: Style.font.family
+    font.pixelSize: Style.font.body
   }
 
   SettingRow {
