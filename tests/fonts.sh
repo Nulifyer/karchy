@@ -38,10 +38,11 @@ families() {
   FONTCONFIG_FILE=$tmp/fonts.conf fc-pattern -c "$1" family | grep -o '"[^"]*"' | tr -d '"' | paste -sd, -
 }
 if command -v fc-pattern >/dev/null; then
-  check "monospace is the default font, then icons, then emoji" "$(families monospace)" \
-    "JetBrainsMono Nerd Font,monospace,Symbols Nerd Font Mono,Noto Color Emoji"
-  check "sans-serif gets icons from the symbols font" "$(families 'sans\-serif')" "sans-serif,Symbols Nerd Font Mono,Noto Color Emoji"
-  check "serif gets icons from the symbols font" "$(families serif)" "serif,Symbols Nerd Font Mono,Noto Color Emoji"
+  check "monospace is the default font, then icons, the mark, then emoji" "$(families monospace)" \
+    "JetBrainsMono Nerd Font,monospace,Symbols Nerd Font Mono,karchy Symbols,Noto Color Emoji"
+  check "sans-serif gets icons from the symbols font" "$(families 'sans\-serif')" "sans-serif,Symbols Nerd Font Mono,karchy Symbols,Noto Color Emoji"
+  check "serif gets icons from the symbols font" "$(families serif)" "serif,Symbols Nerd Font Mono,karchy Symbols,Noto Color Emoji"
+  check "the mark follows the symbols font asked for by name" "$(families 'Symbols Nerd Font Mono')" "Symbols Nerd Font Mono,karchy Symbols"
   check "ui-monospace is the monospace font" "$(families 'ui\-monospace' | cut -d, -f1-2)" "ui-monospace,JetBrainsMono Nerd Font"
   check "a font asked for by name stays first" "$(families 'Hack:family=monospace' | cut -d, -f1-2)" "Hack,JetBrainsMono Nerd Font"
   check "system-ui is Noto Sans" "$(families 'system\-ui' | cut -d, -f1)" "Noto Sans"

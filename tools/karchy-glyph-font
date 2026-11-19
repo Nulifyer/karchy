@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+"""Build "karchy Symbols", a font whose one glyph is karchy's mark (Tiles).
+
+  tools/karchy-glyph-font                 Write system/fonts/karchy-symbols.ttf
+  tools/karchy-glyph-font --check         Fail if a Nerd Font on this machine
+                                          already uses the codepoint
+  tools/karchy-glyph-font --out file.ttf  Write somewhere else
+
+No font carries the mark, so text could only show it as a picture. This one
+puts it at U+100000 (icon name brand.karchy in default/karchy/icons.json),
+where fontconfig finds it as a fallback for any text font
+(system/fontconfig/50-karchy.conf): in the fish prompt, the bar, and anything
+else that prints "$(karchy-icon brand.karchy)".
+
+The outline is read from docs/logo.svg, the mark's one source. The result is
+committed, so building karchy's packages needs neither this script nor
+fonttools (python-fonttools, 4.68 when this was written). Run it again only
+when the mark changes. The font is karchy's own design and under karchy's
+licence (MIT).
+
+Codepoint: Nerd Fonts 3 fill most of U+E000-F8FF and U+F0001-F1AF0
+(Supplementary Private Use Area-A). U+100000 is the first codepoint of Area-B,
+which they leave empty; --check reads the cmap of every Nerd Font installed
+here to confirm it.
+
+Size and place: the glyph is one terminal cell wide, so it needs no scaling
+and never overlaps its neighbour: foot and Alacritty draw a fallback glyph at
+its own size, kitty and Ghostty shrink one that is wider than a cell. The em,
+ascent and descent are those of Symbols Nerd Font Mono (2048, 1638, -410). The
+advance is JetBrains Mono's, 0.6 em. The mark is a square the size of JetBrains
+Mono's x-height (0.55 em) standing on the baseline, so it lines up with the
+lowercase text beside it. The x-height and cap height in the OS/2 table are
+JetBrains Mono's, for terminals that match a fallback font to the text font by
+them (Ghostty).
+"""
+
+import argparse
+import glob
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+from fontTools.fontBuilder import FontBuilder
+from fontTools.misc.timeTools import timestampFromString
+from fontTools.pens.ttGlyphPen import TTGlyphPen
+from fontTools.ttLib import TTFont
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOGO = os.path.join(ROOT, "docs/logo.svg")
+OUT = os.path.join(ROOT, "system/fonts/karchy-symbols.ttf")
+
+FAMILY = "karchy Symbols"
+VERSION = "1.000"
+CODEPOINT = 0x100000
+GLYPH = "karchy"
+
+# Symbols Nerd Font Mono's em and vertical metrics.
+UPM = 2048
+ASCENT = 1638
+DESCENT = -410
+# JetBrains Mono's proportions (1000 units per em: advance 600, x-height 550,
+# cap height 730).
+ADVANCE = round(UPM * 0.6)
+X_HEIGHT = round(UPM * 0.55)
+CAP_HEIGHT = round(UPM * 0.73)
+
+# The mark's ink in docs/logo.svg: a 20-unit square at (2, 2) of the 24-unit
+# design.
+DESIGN_ORIGIN = 2
+DESIGN_SIZE = 20
+
+NERD_FONT_DIRS = ("/usr/share/fonts", "/usr/lib/kitty/fonts", os.path.expanduser("~/.local/share/fonts"))
+
+
+def mark_contours():
+    """The mark's paths from docs/logo.svg, as lists of design-unit points."""
+    ns = {"svg": "http://www.w3.org/2000/svg"}
+    group = ET.parse(LOGO).getroot().find("svg:g", ns)
+    contours = []
+    for path in group.findall("svg:path", ns):
+        d = path.get("d")
+        if not re.fullmatch(r"\s*M[\d.\s]+(L[\d.\s]+)+Z\s*", d):
+            sys.exit(f"{LOGO}: this script reads only M, L and Z paths, not {d!r}")
+        numbers = [float(n) for n in re.findall(r"[\d.]+", d)]
+        contours.append(list(zip(numbers[0::2], numbers[1::2])))
+    if not contours:
+        sys.exit(f"{LOGO}: no paths in the mark's group")
+    return contours
+
+
+def glyph_contours():
+    """The mark in font units: on the baseline, centred in the advance."""
+    scale = X_HEIGHT / DESIGN_SIZE
+    left = (ADVANCE - X_HEIGHT) / 2
+    out = []
+    for contour in mark_contours():
+        # SVG's y runs down, a font's up.
+        points = [
+            (round(left + (x - DESIGN_ORIGIN) * scale), round((DESIGN_ORIGIN + DESIGN_SIZE - y) * scale))
+            for x, y in contour
+        ]
+        area = sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(points, points[1:] + points[:1]))
+        # TrueType fills clockwise contours.
+        out.append(points[::-1] if area > 0 else points)
+    return out
+
+
+def build(out):
+    pen = TTGlyphPen(None)
+    for contour in glyph_contours():
+        pen.moveTo(contour[0])
+        for point in contour[1:]:
+            pen.lineTo(point)
+        pen.closePath()
+    glyphs = {".notdef": TTGlyphPen(None).glyph(), GLYPH: pen.glyph()}
+
+    fb = FontBuilder(UPM, isTTF=True)
+    fb.setupGlyphOrder(list(glyphs))
+    fb.setupCharacterMap({CODEPOINT: GLYPH})
+    fb.setupGlyf(glyphs)
+    fb.setupHorizontalMetrics({name: (ADVANCE, glyphs[name].xMin if name == GLYPH else 0) for name in glyphs})
+    fb.setupHorizontalHeader(ascent=ASCENT, descent=DESCENT, lineGap=0)
+    fb.setupNameTable({
+        "copyright": "Copyright (c) 2026 Nulifyer",
+        "familyName": FAMILY,
+        "styleName": "Regular",
+        "uniqueFontIdentifier": f"{FAMILY} {VERSION}",
+        "fullName": FAMILY,
+        "version": f"Version {VERSION}",
+        "psName": "karchySymbols-Regular",
+        "licenseDescription": "MIT License",
+        "licenseInfoURL": "https://github.com/Nulifyer/karchy/blob/main/LICENSE",
+    })
+    fb.setupOS2(
+        version=4,
+        sTypoAscender=ASCENT, sTypoDescender=DESCENT, sTypoLineGap=0,
+        usWinAscent=ASCENT, usWinDescent=-DESCENT,
+        sxHeight=X_HEIGHT, sCapHeight=CAP_HEIGHT,
+        xAvgCharWidth=ADVANCE,
+        # Regular, and line spacing from the typo metrics.
+        fsSelection=(1 << 6) | (1 << 7),
+        fsType=0,
+        achVendID="KRCH",
+        # Bit 90: Private Use (plane 16).
+        ulUnicodeRange3=1 << (90 - 64),
+    )
+    # Monospaced, as fontconfig and terminals read it.
+    fb.font["OS/2"].panose.bFamilyType = 2
+    fb.font["OS/2"].panose.bProportion = 9
+    fb.setupPost(isFixedPitch=1, underlinePosition=-255, underlineThickness=102)
+    # The same bytes on every run.
+    fb.font["head"].created = fb.font["head"].modified = timestampFromString("Thu Nov 19 00:00:00 2026")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    fb.save(out)
+
+
+def check_codepoint():
+    """Exit 1 if an installed Nerd Font maps the codepoint."""
+    files = sorted({
+        path
+        for folder in NERD_FONT_DIRS
+        for ext in ("ttf", "otf")
+        for path in glob.glob(os.path.join(folder, "**", f"*Nerd*.{ext}"), recursive=True)
+    })
+    if not files:
+        sys.exit("no Nerd Font found to check against")
+    taken = []
+    highest = 0
+    for path in files:
+        cmap = TTFont(path, lazy=True).getBestCmap()
+        highest = max(highest, max(cmap))
+        if CODEPOINT in cmap:
+            taken.append(path)
+    for path in taken:
+        print(f"U+{CODEPOINT:X} is taken in {path}")
+    print(f"U+{CODEPOINT:X}: {len(files)} Nerd Font files checked, highest codepoint used U+{highest:X}, "
+          f"{len(taken)} collisions", file=sys.stderr)
+    return 1 if taken else 0
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--out", default=OUT, help="the TTF to write")
+    parser.add_argument("--check", action="store_true", help="check the codepoint against installed Nerd Fonts")
+    args = parser.parse_args()
+    if args.check:
+        return check_codepoint()
+    build(args.out)
+    print(f"{args.out}: {FAMILY}, U+{CODEPOINT:X}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

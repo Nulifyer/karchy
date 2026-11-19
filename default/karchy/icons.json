@@ -30,6 +30,7 @@
   "brand.emacs": {"cp": "e632", "nf": "custom-emacs"},
   "brand.firefox": {"cp": "f0239", "nf": "md-firefox"},
   "brand.hyprland": {"cp": "f359", "nf": "linux-hyprland"},
+  "brand.karchy": {"cp": "100000", "nf": "karchy-tiles"},
   "brand.linux": {"cp": "f033d", "nf": "md-linux"},
   "brand.neovim": {"cp": "e6ae", "nf": "custom-neovim"},
   "brand.sublime": {"cp": "e7aa", "nf": "dev-sublime"},

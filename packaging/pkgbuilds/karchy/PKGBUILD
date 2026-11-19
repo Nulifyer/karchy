@@ -69,6 +69,10 @@ package() {
       if [[ -f $migration ]]; then : >"$pkgdir/etc/skel/.local/state/karchy/migrations/${migration##*/}"; fi
     done
   fi
+  # karchy's mark as a font glyph (U+100000, tools/karchy-glyph-font), for the
+  # prompt, the bar and any other text. fontconfig's pacman hook adds it to
+  # the font cache.
+  install -Dm644 -t "$pkgdir/usr/share/fonts/karchy" system/fonts/karchy-symbols.ttf
   # Pause Hyprland's config auto-reload while karchy's files are replaced.
   install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" system/pacman/hooks/*.hook
   # The password prompt's words for the root helpers above.
