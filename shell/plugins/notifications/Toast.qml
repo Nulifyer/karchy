@@ -404,8 +404,10 @@ Item {
                    - Style.space(8))
             text: card.redacted ? I18n.t("notifications.redactedSummary") : String(card.row.summary || "")
             color: Commons.Color.notifications.text
-            font.family: "Liberation Sans"
-            font.pixelSize: Style.font.title
+            // The shell's own family and type roles, as the panel draws the
+            // same notification once it waits there.
+            font.family: Style.font.family
+            font.pixelSize: Style.font.subtitle
             font.bold: true
             wrapMode: Text.Wrap
             maximumLineCount: card.bodyOpen ? 8 : 3
@@ -498,8 +500,8 @@ Item {
 
         FontMetrics {
           id: metrics
-          font.family: "Liberation Sans"
-          font.pixelSize: Style.font.title
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
         }
 
         // StyledText, not RichText: it covers the tags Markup lets through,
@@ -516,8 +518,8 @@ Item {
           text: card.redacted ? I18n.t("notifications.redactedBody") : String(card.row.bodyRich || "")
           color: card.bodyColor
           linkColor: Commons.Color.notifications.countdown
-          font.family: "Liberation Sans"
-          font.pixelSize: Style.font.title
+          font.family: Style.font.family
+          font.pixelSize: Style.font.body
           wrapMode: Text.Wrap
           maximumLineCount: card.bodyLines
           elide: Text.ElideRight
