@@ -1,4 +1,4 @@
-# karchy's fish prompt (components.md): the Arch logo, user@host, the folder,
+# karchy's fish prompt (components.md): karchy's mark, user@host, the folder,
 # the git branch (or short commit when detached), and a › that turns red when
 # the last command failed. Earlier prompts collapse to the ›, so scrollback
 # shows commands, not prompts. Colors follow the current theme. A
@@ -16,8 +16,10 @@ function fish_prompt
     set -q karchy_prompt_muted; or set -g karchy_prompt_muted brblack
     set -q karchy_prompt_error; or set -g karchy_prompt_error red
 
-    # The console's font has no Nerd Font icons.
-    set -l logo ' '
+    # The mark is U+100000 in karchy Symbols (the karchy package), which
+    # fontconfig finds whatever the text font is. The console's font has
+    # neither it nor the Nerd Font icons.
+    set -l logo 􀀀' '
     set -l branch_icon ' '
     set -l end 
     if test "$TERM" = linux
