@@ -4,35 +4,53 @@
 # karchy:hidden=true
 
 # foot's server reads its config once, when it starts, so after a theme
-# switch it would keep opening windows in the old colors. When the theme's
-# foot.ini is newer than the running server, this passes the theme's colors
-# to the new window as overrides. karchy-theme-set-foot stops a server that
-# has no windows, so this is only needed while old windows are open.
+# switch or a text size change it would keep opening windows the old way.
+# When one of karchy's included files (the theme's colors, the text size) is
+# newer than the running server: a server with no windows is stopped, so its
+# socket starts a fresh one for this window; with windows open, the newer
+# file's values go to the new window as overrides.
 
 foot_ini=$HOME/.local/state/karchy/current/theme/foot.ini
+size_ini=${XDG_STATE_HOME:-$HOME/.local/state}/karchy/terminal/foot.ini
 overrides=()
 
-# The starter foot.ini also includes karchy's text-size file, and foot refuses
-# a config whose include is missing: put the file back if it has gone.
-[[ -f ${XDG_STATE_HOME:-$HOME/.local/state}/karchy/terminal/foot.ini ]] ||
-  karchy-display-text-size sync >/dev/null 2>&1 || true
+# The starter foot.ini includes the text-size file, and foot refuses a config
+# whose include is missing: put the file back if it has gone.
+[[ -f $size_ini ]] || karchy-display-text-size sync >/dev/null 2>&1 || true
 
-if [[ -f $foot_ini ]]; then
-  started=$(systemctl --user show foot-server.service -p ExecMainStartTimestamp --value 2>/dev/null)
-  started=$(date -d "$started" +%s 2>/dev/null || echo 0)
-  if ((started > 0 && $(stat -L -c %Y "$foot_ini") > started)); then
-    section=""
-    while IFS= read -r line; do
-      line=${line%%#*}
-      line=${line#"${line%%[![:space:]]*}"}
-      line=${line%"${line##*[![:space:]]}"}
-      [[ -z $line ]] && continue
-      if [[ $line == \[*\] ]]; then
-        section=${line:1:-1}
-      elif [[ -n $section && $line == *=* ]]; then
-        overrides+=(-o "$section.${line%%=*}=${line#*=}")
-      fi
-    done <"$foot_ini"
+# An ini file's values as footclient overrides (-o section.key=value).
+overrides_from() {
+  local section="" line
+  while IFS= read -r line; do
+    line=${line%%#*}
+    line=${line#"${line%%[![:space:]]*}"}
+    line=${line%"${line##*[![:space:]]}"}
+    [[ -z $line ]] && continue
+    if [[ $line == \[*\] ]]; then
+      section=${line:1:-1}
+    elif [[ -n $section && $line == *=* ]]; then
+      overrides+=(-o "$section.${line%%=*}=${line#*=}")
+    fi
+  done <"$1"
+}
+
+newer_than_server() {
+  [[ -f $1 ]] && (($(stat -L -c %Y "$1") > started))
+}
+
+started=$(systemctl --user show foot-server.service -p ExecMainStartTimestamp --value 2>/dev/null)
+started=$(date -d "$started" +%s 2>/dev/null || echo 0)
+if ((started > 0)) && { newer_than_server "$foot_ini" || newer_than_server "$size_ini"; }; then
+  server_pid=$(systemctl --user show foot-server.service -p MainPID --value 2>/dev/null)
+  if [[ ${server_pid:-0} != 0 && -z $(pgrep -P "$server_pid") ]]; then
+    systemctl --user stop foot-server.service 2>/dev/null || true
+  else
+    if newer_than_server "$foot_ini"; then overrides_from "$foot_ini"; fi
+    # The size, unless the user's foot.ini sets a font of its own, which wins
+    # over karchy's include and must win over this too.
+    if newer_than_server "$size_ini" && ! grep -qE '^[[:space:]]*font[[:space:]]*=' "$HOME/.config/foot/foot.ini" 2>/dev/null; then
+      overrides_from "$size_ini"
+    fi
   fi
 fi
 
