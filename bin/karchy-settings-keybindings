@@ -325,7 +325,9 @@ def source_label(entry):
     if layer == "default":
         return "karchy"
     if layer == "addon":
-        return (entry.get("owner") or "add-on").replace("-", " ").capitalize()
+        # The package's file, "50-karchy-project-picker", as a name.
+        name = re.sub(r"^\d+-", "", entry.get("owner") or "add-on")
+        return re.sub(r"^karchy-", "", name).replace("-", " ").capitalize()
     if layer == "settings":
         owner = entry.get("owner") or "keybindings"
         return "Settings" if owner == "keybindings" else "Settings › " + owner.capitalize()

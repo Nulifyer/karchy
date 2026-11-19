@@ -137,6 +137,9 @@ if (( code == 0 && ${#aur_packages[@]} )); then
   echo "From the AUR, built on this computer from user-submitted scripts: ${aur_packages[*]#aur/}"
   # paru keeps its questions (D-77): the build files are shown to be read.
   paru --color auto -S -- "${aur_packages[@]}" || code=$?
-  sudo updatedb --prune-bind-mounts=no --add-prunepaths=/.snapshots
+  # Where a locate database is kept (plocate is no part of karchy), tell it.
+  if command -v updatedb >/dev/null; then
+    sudo updatedb --prune-bind-mounts=no --add-prunepaths=/.snapshots
+  fi
 fi
 karchy-show-done $code
