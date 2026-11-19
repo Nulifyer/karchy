@@ -254,6 +254,10 @@ base_locale() {
     "$KARCHY_MNT/usr/share/systemd/kbd-model-map" 2>/dev/null) || true
   {
     echo "KEYMAP=$KARCHY_KEYMAP"
+    # karchy's monospace font on the console (karchy-settings ships it), in
+    # the size that suits this machine's screen; sd-vconsole loads it before
+    # the disk-password prompt.
+    echo "FONT=$(console_font)"
     if [[ -n $xlayout ]]; then
       echo "XKBLAYOUT=$xlayout"
       [[ $xvariant == - || -z $xvariant ]] || echo "XKBVARIANT=$xvariant"

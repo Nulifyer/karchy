@@ -39,6 +39,10 @@ package() {
   install -m440 sudoers.d/karchy sudoers.d/karchy-theme-browser "$pkgdir/etc/sudoers.d/"
   install -Dm755 limine/95-karchy-limine-fallback "$pkgdir/etc/boot/hooks/post.d/95-karchy-limine-fallback"
   install -Dm644 makepkg.conf.d/karchy.conf "$pkgdir/etc/makepkg.conf.d/karchy.conf"
+  # The console font (D-119): karchy's monospace font as bitmaps
+  # (tools/console-font), which the installer names in vconsole.conf.
+  install -Dm644 -t "$pkgdir/usr/share/kbd/consolefonts" console/karchy-*.psfu
+  install -Dm644 console/OFL.txt "$pkgdir/usr/share/licenses/$pkgname/OFL-JetBrainsMono.txt"
   # Hooks that must be in place before the desktop packages arrive (karchy-settings
   # is pacstrapped with the base system), such as limiting nethogs.
   install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" pacman/settings-hooks/*.hook

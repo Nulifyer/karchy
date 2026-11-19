@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""Render karchy's monospace font as bitmap fonts for the screens before the
+desktop: the Linux console (PSF2) and Limine (a raw 8-pixel-wide font).
+
+  tools/console-font --fonts /usr/share/fonts/TTF --out system/console
+
+The TTFs come from ttf-jetbrains-mono-nerd (karchy-desktop's font, SIL OFL 1.1
+without a reserved name, so a bitmap derivative may keep the name; the licence
+ships beside the fonts). The results are committed, so building karchy's
+packages needs neither this script nor the TTF. Needs python-pillow.
+
+Every font holds the 256 characters of code page 437 in that order: Limine
+requires it, and the console's 256-glyph limit keeps all 16 colours. Letters
+and symbols are rendered from the TTF without antialiasing. Lines, blocks and
+shades are drawn here so they meet at the cell edges, which the TTF's own
+don't at a bitmap cell's proportions.
+"""
+
+import argparse
+import struct
+import sys
+import unicodedata
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFont
+
+# Cell sizes: 8x16 is Limine's (it only takes 8-wide fonts and scales them);
+# the others are the console's, picked by screen height at boot.
+CONSOLE_SIZES = [(10, 20), (12, 24), (16, 32)]
+LIMINE_SIZE = (8, 16)
+# Without antialiasing, Medium's stems come out an even two pixels in the
+# large cells; in the small ones only Regular keeps the letters open.
+WEIGHTS = {8: "Regular", 10: "Regular", 12: "Medium", 16: "Medium"}
+TTF_NAME = "JetBrainsMonoNerdFont-{}.ttf"
+
+# Code page 437 as Unicode, including its graphics in the control positions.
+LOW = "\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼"
+CP437 = [LOW[i] if i < 32 else "⌂" if i == 127 else bytes([i]).decode("cp437") for i in range(256)]
+
+# More characters the console can show with glyphs the font already has.
+ALIASES = {
+    "√": "✓✔",
+    "•": "●∙",
+    "○": "◯",
+    "►": "▶▸❯",
+    "◄": "◀◂",
+    "■": "◼",
+    "─": "━—–",
+    "│": "┃",
+    "·": "⋅",
+    "'": "’‘",
+    '"': "“”",
+    "-": "‐‑",
+    " ": " ",
+}
+
+DIRECTIONS = {
+    "UP": ("up",),
+    "DOWN": ("down",),
+    "LEFT": ("left",),
+    "RIGHT": ("right",),
+    "VERTICAL": ("up", "down"),
+    "HORIZONTAL": ("left", "right"),
+}
+
+
+def box_arms(char):
+    """The four arms of a box-drawing character: 0 none, 1 single, 2 double."""
+    name = unicodedata.name(char, "")
+    if not name.startswith("BOX DRAWINGS "):
+        return None
+    arms = dict(up=0, down=0, left=0, right=0)
+    weight = 1
+    for part in name[len("BOX DRAWINGS "):].split(" AND "):
+        for word in part.split():
+            if word in ("LIGHT", "SINGLE"):
+                weight = 1
+            elif word == "DOUBLE":
+                weight = 2
+        # "DOWN SINGLE AND RIGHT DOUBLE": a weight after the direction is its own.
+        words = part.split()
+        own = {"SINGLE": 1, "DOUBLE": 2}.get(words[-1], weight)
+        for word in words:
+            for arm in DIRECTIONS.get(word, ()):
+                arms[arm] = own
+    return arms
+
+
+def draw_box(arms, w, h):
+    px = [[0] * w for _ in range(h)]
+    t = max(1, round(w / 8))  # line thickness
+    gap = t  # between the two lines of a double
+    band = 2 * t + gap  # a double line's full width
+    cx, cy = (w - t) // 2, (h - t) // 2  # where a single line runs
+    bx, by = cx - t - gap // 2, cy - t - gap // 2  # where a double's band starts
+    if gap % 2 == 0:
+        bx, by = cx - (band - t) // 2, cy - (band - t) // 2
+    across = {"up": max(arms["left"], arms["right"]), "left": max(arms["up"], arms["down"])}
+    across["down"], across["right"] = across["up"], across["left"]
+
+    def fill(a0, a1, b0, b1, vertical, value):
+        """Fill along an arm: a is the arm's axis, b its width."""
+        (y0, y1, x0, x1) = (a0, a1, b0, b1) if vertical else (b0, b1, a0, a1)
+        for y in range(max(0, y0), min(h, y1)):
+            for x in range(max(0, x0), min(w, x1)):
+                px[y][x] = value
+
+    # Each arm runs from its edge towards the centre. `length` is the cell's
+    # size along the arm, `c` and `b` the single and double positions across it.
+    def geometry(arm):
+        vertical = arm in ("up", "down")
+        length, c_along, b_along = (h, cy, by) if vertical else (w, cx, bx)
+        c_across, b_across = (cx, bx) if vertical else (cy, by)
+        return vertical, length, c_along, b_along, c_across, b_across, arm in ("up", "left")
+
+    def span(from_edge, stop, length, first):
+        """From the edge to `stop` (first arms) or from `stop` to the edge."""
+        return (0, stop) if first else (stop, length)
+
+    for arm, weight in arms.items():
+        if weight == 0:
+            continue
+        vertical, length, c_along, b_along, c_across, b_across, first = geometry(arm)
+        if weight == 2:
+            # Into a double crossing: fill its whole band, hollowed below.
+            # Otherwise stop at the single line (or meet the opposite arm).
+            stop = (b_along + band if first else b_along) if across[arm] == 2 else (c_along + t if first else c_along)
+            fill(*span(0, stop, length, first), b_across, b_across + band, vertical, 1)
+        else:
+            # A single arm stops at the near line of a double crossing.
+            stop = (b_along + t if first else b_along + t + gap) if across[arm] == 2 else (c_along + t if first else c_along)
+            fill(*span(0, stop, length, first), c_across, c_across + t, vertical, 1)
+    for arm, weight in arms.items():
+        if weight != 2:
+            continue
+        vertical, length, c_along, b_along, c_across, b_across, first = geometry(arm)
+        if across[arm] == 2:
+            stop = b_along + t + gap if first else b_along + t
+        elif across[arm] == 1:
+            stop = c_along if first else c_along + t
+        else:
+            stop = c_along + t if first else c_along
+        fill(*span(0, stop, length, first), b_across + t, b_across + t + gap, vertical, 0)
+    # A single line that runs straight through crosses whatever it meets.
+    if arms["up"] == 1 and arms["down"] == 1:
+        fill(0, h, cx, cx + t, True, 1)
+    if arms["left"] == 1 and arms["right"] == 1:
+        fill(0, w, cy, cy + t, False, 1)
+    return px
+
+
+def draw_block(char, w, h):
+    """Blocks and shades as exact fractions of the cell."""
+    px = [[0] * w for _ in range(h)]
+    regions = {
+        "█": (0, 0, w, h),
+        "▀": (0, 0, w, h // 2),
+        "▄": (0, h // 2, w, h),
+        "▌": (0, 0, w // 2, h),
+        "▐": (w // 2, 0, w, h),
+    }
+    if char in regions:
+        x0, y0, x1, y1 = regions[char]
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                px[y][x] = 1
+        return px
+    shades = {
+        "░": lambda x, y: x % 2 == 0 and y % 2 == 0 and (x // 2 + y // 2) % 2 == 0,
+        "▒": lambda x, y: (x + y) % 2 == 0,
+        "▓": lambda x, y: not (x % 2 == 0 and y % 2 == 0 and (x // 2 + y // 2) % 2 == 0),
+    }
+    if char in shades:
+        return [[int(shades[char](x, y)) for x in range(w)] for y in range(h)]
+    return None
+
+
+def render(char, font, w, h, baseline):
+    image = Image.new("1", (w * 3, h * 3), 0)
+    draw = ImageDraw.Draw(image)
+    draw.fontmode = "1"
+    draw.text((w, h + baseline), char, font=font, fill=1, anchor="ls")
+    cell = image.crop((w, h, 2 * w, 2 * h))
+    return [[1 if cell.getpixel((x, y)) else 0 for x in range(w)] for y in range(h)]
+
+
+def glyphs(ttf, w, h):
+    # The font's advance is 0.6 em; the size that makes it exactly w.
+    font = ImageFont.truetype(str(ttf), w / 0.6)
+    baseline = round(h * 0.77)
+    missing = render("\uffff", font, w, h, baseline)
+    out = []
+    for char in CP437:
+        px = None
+        if char in "\u0000  ":
+            px = [[0] * w for _ in range(h)]
+        if px is None:
+            arms = box_arms(char)
+            if arms:
+                px = draw_box(arms, w, h)
+        if px is None:
+            px = draw_block(char, w, h)
+        if px is None:
+            px = render(char, font, w, h, baseline)
+            if px == missing:  # the font's "no such character" box
+                px = [[0] * w for _ in range(h)]
+        out.append(px)
+    return out
+
+
+def pack(px, w):
+    """Rows of bits, each row padded to whole bytes."""
+    data = bytearray()
+    for row in px:
+        bits = "".join(map(str, row)).ljust((w + 7) // 8 * 8, "0")
+        data += int(bits, 2).to_bytes(len(bits) // 8, "big")
+    return bytes(data)
+
+
+def psf2(all_px, w, h):
+    row_bytes = (w + 7) // 8
+    header = struct.pack("<4s7I", b"\x72\xb5\x4a\x86", 0, 32, 1, len(all_px), h * row_bytes, h, w)
+    body = b"".join(pack(px, w) for px in all_px)
+    table = bytearray()
+    for index, char in enumerate(CP437):
+        chars = char if index else ""  # glyph 0 is blank and maps to nothing
+        chars += ALIASES.get(char, "")
+        table += chars.encode("utf-8") + b"\xff"
+    return header + body + bytes(table)
+
+
+def preview(all_px, w, h, path):
+    image = Image.new("1", (w * 32, h * 8), 0)
+    for index, px in enumerate(all_px):
+        ox, oy = index % 32 * w, index // 32 * h
+        for y in range(h):
+            for x in range(w):
+                if px[y][x]:
+                    image.putpixel((ox + x, oy + y), 1)
+    image.save(path)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--fonts", required=True, type=Path, help="directory holding ttf-jetbrains-mono-nerd's TTFs")
+    parser.add_argument("--out", required=True, type=Path, help="directory for the fonts")
+    parser.add_argument("--preview", type=Path, help="also write a PNG of each font here")
+    args = parser.parse_args()
+    args.out.mkdir(parents=True, exist_ok=True)
+
+    for w, h in [LIMINE_SIZE, *CONSOLE_SIZES]:
+        all_px = glyphs(args.fonts / TTF_NAME.format(WEIGHTS[w]), w, h)
+        if (w, h) == LIMINE_SIZE:
+            target = args.out / f"karchy-{w}x{h}.bin"
+            target.write_bytes(b"".join(pack(px, w) for px in all_px))
+        else:
+            target = args.out / f"karchy-{w}x{h}.psfu"
+            target.write_bytes(psf2(all_px, w, h))
+        print(f"{target} ({target.stat().st_size} bytes)")
+        if args.preview:
+            args.preview.mkdir(parents=True, exist_ok=True)
+            preview(all_px, w, h, args.preview / f"karchy-{w}x{h}.png")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -65,6 +65,27 @@ partition() {
   fi
 }
 
+# The console font for this machine's screen: karchy's monospace font in a
+# cell that keeps text readable at the screen's height in pixels (a Framework
+# 13 at 2256x1504 gets 16x32: 141 columns by 47 lines). KARCHY_CONSOLE_FONT
+# in an unattended config overrides it.
+console_font() {
+  local height=0
+  if [[ -n ${KARCHY_CONSOLE_FONT:-} ]]; then
+    echo "$KARCHY_CONSOLE_FONT"
+    return
+  fi
+  IFS=, read -r _ height </sys/class/graphics/fb0/virtual_size 2>/dev/null || true
+  [[ $height =~ ^[0-9]+$ ]] || height=0
+  if ((height >= 1400)); then
+    echo karchy-16x32
+  elif ((height >= 1000)); then
+    echo karchy-12x24
+  else
+    echo karchy-10x20
+  fi
+}
+
 # Total RAM in whole GiB, rounded up.
 ram_gib() {
   awk '/^MemTotal:/ { printf "%d\n", ($2 + 1048575) / 1048576 }' /proc/meminfo
