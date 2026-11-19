@@ -47,6 +47,8 @@ Item {
   readonly property var appChanges: Model.apps(plan)
   readonly property var systemChanges: Model.system(plan)
   readonly property var aurChanges: Model.ofKind(plan, "aur")
+  readonly property var retiredRemove: Model.retired(plan, "remove")
+  readonly property var retiredKeep: Model.retired(plan, "keep")
   readonly property var restartParts: Model.restartParts(plan)
 
   function open(payloadJson) {
@@ -394,6 +396,33 @@ Item {
                 name: modelData.name
                 oldVersion: modelData.old
                 newVersion: modelData.new
+              }
+            }
+          }
+
+          // Packages karchy no longer uses (D-108): removed by the update
+          // when nothing else needs them; one you installed yourself stays.
+          Card {
+            Layout.fillWidth: true
+            visible: root.retiredRemove.length + root.retiredKeep.length > 0
+            title: "No longer part of karchy"
+            subtitle: root.retiredKeep.length > 0
+              ? "Removed by karchy when nothing else needs them. The ones you installed yourself stay."
+              : "Removed by karchy when nothing else needs them."
+            Repeater {
+              model: root.retiredRemove
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData
+                detail: "Removed by karchy"
+              }
+            }
+            Repeater {
+              model: root.retiredKeep
+              delegate: ChangeRow {
+                required property var modelData
+                name: modelData
+                detail: "Kept: you installed it"
               }
             }
           }

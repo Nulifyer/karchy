@@ -1,0 +1,6 @@
+# Core packages karchy no longer depends on. `karchy update` removes each one
+# that is installed as a dependency and that nothing else requires; one the
+# user installed explicitly is kept and listed (karchy-package-retire,
+# docs/maintenance.md › The package set). One name per line, under a comment
+# naming the release that retired it. Names stay listed for good: a machine
+# may skip releases.

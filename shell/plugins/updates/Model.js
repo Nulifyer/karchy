@@ -52,8 +52,16 @@ function restartParts(plan) {
   return names
 }
 
+// Core packages karchy retired (karchy-package-retire): ones the update
+// removes, and ones kept because you installed them yourself.
+function retired(plan, which) {
+  var r = plan && plan.retired
+  return r && Array.isArray(r[which]) ? r[which] : []
+}
+
+// A removal is a change too: an update can consist of nothing else.
 function count(plan) {
-  return plan ? plan.changes.length : 0
+  return plan ? plan.changes.length + retired(plan, "remove").length : 0
 }
 
 function plural(n, one, many) {

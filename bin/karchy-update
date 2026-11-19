@@ -118,8 +118,11 @@ emit_plan() {
     --arg notes "$(notes_url "$latest")" --arg size "${size:-}" --arg error "$error" \
     --arg checked "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson changes "${items:-[]}" \
     --argjson news "$(jq -Rn '[inputs | select(length > 0) | split("\t") | {date: .[0], title: .[1]}]' <<<"${news_tsv:-}")" \
+    --argjson retire "$(jq -n '$ARGS.positional' --args "${retire_remove[@]}")" \
+    --argjson keep "$(jq -n '$ARGS.positional' --args "${retire_keep[@]}")" \
     '{checked: $checked, channel: $channel, release: {installed: $installed, available: $available, notes: $notes},
       size: $size, error: $error, changes: $changes, news: $news,
+      retired: {remove: $retire, keep: $keep},
       restart: ($changes | any(.restart))}' >&3
 }
 
@@ -142,6 +145,14 @@ if ((rc != 0 && rc != 2)); then
   exit 1
 fi
 aur_updates=$(paru -Qua 2>/dev/null || true)
+# Core packages karchy has retired (karchy-package-retire): removed by this
+# update when nothing needs them; kept and named when you installed one
+# yourself.
+retire_remove=() retire_keep=()
+while read -r action name; do
+  [[ $action == remove ]] && retire_remove+=("$name")
+  [[ $action == keep ]] && retire_keep+=("$name")
+done < <(karchy-package-retire plan 2>/dev/null || true)
 declare -A aur_names=()
 while read -r name _; do [[ -n $name ]] && aur_names[$name]=1; done <<<"$aur_updates"
 
@@ -151,7 +162,7 @@ if [[ -n $server ]] && remote=$(curl -fsSL --max-time 15 "$server/release" 2>/de
   [[ -n $before && -n $latest && $(vercmp "$latest" "$before") -gt 0 ]] || latest=""
 fi
 
-if [[ -z $repo_updates && -z $aur_updates ]]; then
+if [[ -z $repo_updates && -z $aur_updates && ${#retire_remove[@]} -eq 0 ]]; then
   if [[ $plan_only == "true" ]]; then
     is_karchy() { return 1; }
     friendly() { echo "$1"; }
@@ -264,6 +275,12 @@ show_summary() {
     fi
     printf '\n      %sSystem%s  %s\n' "$bold" "$reset" "$line"
   fi
+  if ((${#retire_remove[@]} > 0)); then
+    printf '\n      %sRemoved by karchy%s  %s %s(no longer part of karchy)%s\n' "$bold" "$reset" "${retire_remove[*]}" "$dim" "$reset"
+  fi
+  if ((${#retire_keep[@]} > 0)); then
+    printf '\n      %sKept%s  %s %s(no longer part of karchy, but you installed it yourself)%s\n' "$bold" "$reset" "${retire_keep[*]}" "$dim" "$reset"
+  fi
   [[ -n $size ]] && printf '\n      %s%s to download%s\n' "$dim" "$size" "$reset"
   if [[ $needs_restart == "true" ]]; then
     printf '      %s↻ A restart finishes this update.%s\n' "$yellow" "$reset"
@@ -370,6 +387,22 @@ if [[ -n $repo_updates ]]; then
 else
   good "Nothing to update"
 fi
+# What karchy no longer uses goes, if nothing else needs it (pacman decides;
+# never forced). One you installed yourself was never on this list.
+if ((${#retire_remove[@]} > 0)); then
+  mapfile -t removable < <(karchy-package-retire removable 2>/dev/null || true)
+  if ((${#removable[@]} > 0)); then
+    if sudo pacman --color auto -Rn --noconfirm -- "${removable[@]}"; then
+      good "Removed what karchy no longer uses: ${removable[*]}"
+    else
+      warn "Couldn't remove ${removable[*]}; the next update tries again"
+    fi
+  fi
+  for name in "${retire_remove[@]}"; do
+    printf '%s\n' "${removable[@]:-}" | grep -qxF -- "$name" && continue
+    pacman -Qq -- "$name" >/dev/null 2>&1 && note "$name stays: another installed package still needs it"
+  done
+fi
 
 # ------------------------------------------------------------- 5. AUR packages
 step 4 "AUR packages"
@@ -447,6 +480,12 @@ if [[ -n $after && $after != "$before" ]]; then
   printf '  karchy %s → %s\n' "$before" "$after"
   notes=$(notes_url "$after")
   [[ -z $notes ]] || printf '  %sRelease notes: %s%s\n' "$dim" "$notes" "$reset"
+fi
+# Packages nothing needs any more that karchy didn't retire: yours to judge.
+mapfile -t orphans < <(karchy-package-retire orphans 2>/dev/null || true)
+if ((${#orphans[@]} > 0)); then
+  printf '  %sNo longer needed by anything (left installed): %s%s\n' "$dim" "${orphans[*]}" "$reset"
+  printf '  %sRemove them with: sudo pacman -Rns %s%s\n' "$dim" "${orphans[*]}" "$reset"
 fi
 # The running kernel's modules are gone once its package was replaced.
 if [[ ! -d /usr/lib/modules/$(uname -r) ]] || [[ $needs_restart == "true" ]]; then

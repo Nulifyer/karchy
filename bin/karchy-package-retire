@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# karchy:summary=Which core packages karchy has retired, and which an update removes
+# karchy:args=plan | removable | orphans
+# karchy:hidden=true
+
+# karchy owns its core package set: the dependencies of karchy, karchy-desktop,
+# karchy-settings and the meta-packages. Additions arrive through pacman. A
+# package karchy stops depending on stays installed as an orphan, so the
+# karchy package ships the list of packages it has retired,
+# default/karchy/retired-packages, and `karchy update` removes them
+# (docs/maintenance.md › The package set). Two guards:
+#   - a package the user installed explicitly (`pacman -Qeq`) is theirs: it
+#     is kept and listed, never removed;
+#   - pacman must agree that nothing installed still requires it: only
+#     packages nothing requires (`pacman -Qttdq`; an optional dependency of
+#     another package doesn't count) are removed, never with force.
+#
+#   plan       before the update: "remove <name>" for each retired package
+#              installed as a dependency, "keep <name>" for each one the user
+#              installed explicitly
+#   removable  after the update's upgrade: the retired packages that are
+#              installed as dependencies and that nothing requires any more,
+#              one per line (karchy update removes them with pacman -Rn)
+#   orphans    other packages nothing requires any more, not on the list
+#              (the update names them and leaves them)
+#
+# PACMAN overrides the pacman command (tests).
+
+set -euo pipefail
+
+list="${KARCHY_PATH:-/usr/share/karchy}/default/karchy/retired-packages"
+pacman_cmd=${PACMAN:-pacman}
+
+retired() {
+  [[ -f $list ]] || return 0
+  sed 's/#.*//; s/[[:space:]]//g' "$list" | grep -E '^[a-z0-9@._+-]+$' | sort -u
+}
+
+# Exact names: pacman -Q also answers for what a package provides.
+installed_as() {
+  local flag=$1 name=$2
+  [[ $($pacman_cmd "-Q${flag}q" -- "$name" 2>/dev/null) == "$name" ]]
+}
+
+case ${1:-} in
+  plan)
+    while IFS= read -r name; do
+      if installed_as e "$name"; then
+        echo "keep $name"
+      elif installed_as d "$name"; then
+        echo "remove $name"
+      fi
+    done < <(retired)
+    ;;
+  removable)
+    # -tt: an optional dependency of something (exfatprogs for udisks2) still
+    # counts as unneeded, as pacman -Rn would remove it without complaint.
+    orphans=$($pacman_cmd -Qttdq 2>/dev/null || true)
+    while IFS= read -r name; do
+      grep -qxF -- "$name" <<<"$orphans" && echo "$name"
+    done < <(retired)
+    ;;
+  orphans)
+    retired_names=$(retired)
+    while IFS= read -r name; do
+      [[ -n $name ]] && ! grep -qxF -- "$name" <<<"$retired_names" && echo "$name"
+    done < <($pacman_cmd -Qtdq 2>/dev/null || true)
+    ;;
+  *)
+    echo "Usage: karchy-package-retire plan | removable | orphans" >&2
+    exit 2
+    ;;
+esac
+exit 0

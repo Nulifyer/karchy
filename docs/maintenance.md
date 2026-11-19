@@ -17,6 +17,19 @@ An installed machine runs `karchy update` (or the Updates window). That is one f
 
 The base install has no AUR package. karchy rebuilds no third-party package except the two in the register (titlebars, bees).
 
+### The package set (D-108)
+
+karchy owns its core packages and changes that set over time; the apps a fresh install adds are the user's from then on.
+
+- **Core:** the dependencies of `karchy`, `karchy-desktop`, `karchy-settings` and the meta-packages (`karchy-laptop`, `karchy-nvidia`, …), always installed as dependencies.
+  - **Add** one: add it to the right `depends`. Machines get it with the next update.
+  - **Retire** one: take it out of `depends` and add its name to `default/karchy/retired-packages` under a comment naming the release; names stay listed for good, as a machine may skip releases. `karchy update` shows it under "Removed by karchy" (terminal and Updates window) and, after the upgrade, removes it with `pacman -Rn` only if it is installed as a dependency and nothing installed requires it (`karchy-package-retire`). A copy the user installed explicitly is kept and named. Other packages nothing needs any more are named in the summary and left alone.
+  - **Rename** one: `replaces=` (with `conflicts=` and `provides=`) in the PKGBUILD that depends on it when the new package replaces the old; otherwise depend on the new name and retire the old one.
+  - **Promote** an app to core: add it to `depends`. An explicitly installed copy stays explicit, which is harmless.
+  - **Demote** a core package to a removable app: move it from `depends` to `optdepends`, and ship a migration in the same release that marks it explicit (`sudo pacman -D --asexplicit <name>`, when installed), or a later cleanup would treat it as unneeded.
+- **Removable apps:** the catalog's `default` entries (`default/karchy/quick-install.json`, D-71) are installed explicitly by a fresh install only. From then on they are the user's: they update like any package and stay or go as the user decides. Adding, changing or dropping a default affects fresh installs only; an update never installs or removes an app because the defaults changed. Anything in karchy that calls such an app works without it: it hides the entry (a menu `when`, a desktop file's `TryExec`) or falls back (Ctrl+Shift+Esc opens btop without Mission Center, a saved recording opens with `xdg-open` without mpv).
+- **Everything else** is the user's.
+
 ### Changes pacman can't make: migrations
 
 pacman replaces packaged files in `/usr` on its own, so a change there needs nothing more. A change that alters files in a user's home, or files in `/etc` that pacman no longer updates (a copy the installer or a command wrote, or a config file the user changed), ships with a migration in the same commit. Without one, machines installed before the change keep the old files, and a karchy machine is updated, never reinstalled.
