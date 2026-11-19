@@ -31,6 +31,9 @@ Item {
   property double fingerprintLastNudgeMs: 0
   property double fingerprintLastSettleMs: 0
   property double fingerprintResumedAtMs: 0
+  // When the sleep watch last saw this lock come back from a suspend or
+  // hibernation (wall clock), 0 when it hasn't.
+  property double resumedAtMs: 0
   property int fingerprintProbeStreak: 0
   // While the lock has the displays off no new attempt starts, so the reader
   // isn't held awake all night; any wake starts it again.
@@ -227,13 +230,14 @@ Item {
     fingerprintLastNudgeMs = 0
     fingerprintLastSettleMs = 0
     fingerprintResumedAtMs = 0
+    resumedAtMs = 0
     fingerprintProbeStreak = 0
     fingerprintPaused = false
     fingerprintSleptWhilePaused = false
     fingerprintRecheckTimer.stop()
     fingerprintRetryTimer.stop()
     fingerprintReachTimer.stop()
-    fingerprintResumeTimer.stop()
+    sleepWatchTimer.stop()
     if (passwordPam.active) passwordPam.abort()
     if (fingerprintPam.active) fingerprintPam.abort()
   }
@@ -272,14 +276,42 @@ Item {
     runWake()
   }
 
+  // Right after a resume the screen stays on for the normal screen-off time
+  // (Settings › Power), at least resumeMs, before the 5 seconds of D-100
+  // apply again: the person who just opened the lid or pressed a key needs
+  // time to start typing. Every arm in that window (the screen coming back,
+  // a key, a failed password) waits at least until it ends.
+  function resumeBlankMs() {
+    var screenOff = idleService && idleService.screenOffTimeoutSeconds > 0
+      ? idleService.screenOffTimeoutSeconds * 1000 : 0
+    return Math.max(idleBlankTimer.resumeMs, screenOff)
+  }
+
   function armBlankTimer(delayMs) {
     if (!blankWhenLocked) {
       idleBlankTimer.stop()
       return
     }
-    idleBlankTimer.interval = delayMs || idleBlankTimer.idleMs
-    idleBlankTimer.armedAt = Date.now()
+    var now = Date.now()
+    var delay = delayMs || idleBlankTimer.idleMs
+    var sinceResume = now - resumedAtMs
+    var window = resumeBlankMs()
+    if (resumedAtMs > 0 && sinceResume >= 0 && sinceResume < window)
+      delay = Math.max(delay, window - sinceResume)
+    idleBlankTimer.interval = delay
+    idleBlankTimer.armedAt = now
     idleBlankTimer.restart()
+  }
+
+  // The sleep watch saw a suspend or hibernation end while locked.
+  function noteResumed() {
+    resumedAtMs = Date.now()
+    logEvent("resumed: screen off in " + Math.round(resumeBlankMs() / 1000) + "s unless used")
+    if (fingerprintPaused) {
+      fingerprintSleptWhilePaused = true
+      resumeFingerprint()
+    }
+    armBlankTimer()
   }
 
   function runWake() {
@@ -314,16 +346,18 @@ Item {
     if (lockRequested && fingerprintConfigured && !fingerprintAuthenticating) fingerprintRetryTimer.restart()
   }
 
-  // A resume can light the panel with no input to wake the lock, so after a
-  // lock request the reader comes back once a sleep is seen; the blank
-  // countdown then pauses it again if nothing else happens. The idle service
-  // repeats the same request without sleeping, so the sleep has to be seen.
-  function noteSleepRequested() {
-    if (!lockRequested || !fingerprintPaused) return
+  // karchy-system-sleep-lock asks for the lock before every suspend and
+  // hibernation, so a lock request starts a short watch for one: a resume can
+  // light the panel with no input to wake the lock, and the screen should stay
+  // on for a while after it (resumeBlankMs), with the reader back. The idle
+  // service makes the same request without sleeping, so the sleep has to be
+  // seen.
+  function watchForSleep() {
+    if (!lockRequested) return
     // logind holds a suspend for its inhibitor delay, at most 15 seconds here.
-    fingerprintResumeTimer.ticksLeft = 20
-    fingerprintResumeTimer.lastTickMs = Date.now()
-    fingerprintResumeTimer.restart()
+    sleepWatchTimer.ticksLeft = 20
+    sleepWatchTimer.lastTickMs = Date.now()
+    sleepWatchTimer.restart()
   }
 
   // User activity advances retries without recreating a busy retry loop.
@@ -689,7 +723,7 @@ Item {
   // sees the wall clock jump. Runs only for the seconds after a lock request
   // that a suspend can take to begin.
   Timer {
-    id: fingerprintResumeTimer
+    id: sleepWatchTimer
     interval: 1000
     repeat: true
     property int ticksLeft: 0
@@ -698,12 +732,10 @@ Item {
       var now = Date.now()
       var slept = FingerprintModel.spannedSleep(now - lastTickMs, interval)
       lastTickMs = now
-      if (slept && root.lockRequested && root.fingerprintPaused) {
+      if (slept) {
         stop()
-        root.fingerprintSleptWhilePaused = true
-        root.resumeFingerprint()
-        root.armBlankTimer(idleBlankTimer.resumeMs)
-      } else if (slept || !root.fingerprintPaused || --ticksLeft <= 0) {
+        if (root.lockRequested) root.noteResumed()
+      } else if (--ticksLeft <= 0) {
         stop()
       }
     }
@@ -811,7 +843,8 @@ Item {
       // blank the freshly woken unlock screen under the user. Wall-clock time
       // exposes the gap: take a fresh run-up instead of blanking.
       if (Date.now() - armedAt > interval + 2000) {
-        root.armBlankTimer(resumeMs)
+        root.resumedAtMs = Date.now()
+        root.armBlankTimer()
         return
       }
       // Only a password check in flight should hold the display up. The
@@ -917,9 +950,9 @@ Item {
 
     function lock(): string {
       if (!root.passwordPamConfigured) return "missing-pam"
-      // karchy-system-sleep-lock asks for the lock before every suspend.
-      if (root.currentlyLocked()) root.noteSleepRequested()
       if (!root.currentlyLocked() && !root.beginLock()) return "failed"
+      // karchy-system-sleep-lock asks for the lock before every suspend.
+      root.watchForSleep()
       return "ok"
     }
 
