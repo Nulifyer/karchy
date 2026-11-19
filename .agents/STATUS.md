@@ -62,6 +62,18 @@ Local commits on `main` after `v0.1.0-rc.7`, not pushed. Evidence in `out/rc7-fi
 - Not reproduced: the shell's "Icons: no icon named …" at boot (no such line in three boots and three shell restarts on the rc.7 install and with `karchy` built from the tree; every name the shell builds is in the map). The names it printed are needed to go further.
 - VM `inst`: a fresh install from the second test ISO on the rc channel, with `karchy` and `karchy-settings` built from the tree on top, shut down; snapshot `rc7fix-unbooted` is the first install before its first boot.
 
+## Disk encryption choice, login screen and data disks (D-130 to D-132), 2026-11-19
+
+Local commits on `main`, not pushed. Tested in VM `inst` with packages built from the tree (`out/encrypt-greeter/repo`); screenshots in `out/encrypt-greeter/`. `inst` is shut down with a default encrypted install on it, and its definition is `tools/vm define`'s again (4 GiB of memory; it had 6 before).
+
+- **Installer.** One question, Encrypted selected: encrypted, or not encrypted with karchy's login screen at every boot. No install starts without a password. With encryption, each other internal disk can be erased and encrypted to open with the system disk.
+- **Login screen.** greetd's greeter in every install, in the boot splash's look, with the text greeter behind it.
+- **Keyring.** By the login password without encryption (`pam_oo7`), by D-57's key with it.
+- **Seen:** the four installs (encrypted; not encrypted; encrypted with a second disk chosen and a third kept; the fallback), the interactive form's new screens, hibernate and resume in both modes, the lock screen with the shared password entry. Details and what was not tested are in the decision rows.
+- **Found, not fixed (outside this work):** in `inst`, a VM that resumed from hibernation resets about a minute later, in both modes. The resume itself works (same `boot_id`, session kept). Writing `V` to `/dev/watchdog0` right after resume prevents the reset, so it is the VM's emulated iTCO watchdog (`<watchdog model='itco' action='reset'>`) running after resume while the kernel reports it inactive. Whether real Intel hardware does the same is not known.
+- **Found, not fixed:** the installer's bees question is wider than an 80-column screen and is cut at the right edge.
+- **For the user:** fingerprint. Enrolment is in the menu (Setup › Security › Set Up Fingerprint, shown with a reader), not in the Settings window. It unlocks polkit prompts and the lock screen (D-79). The login screen takes the password only; adding the reader there needs a decision, since a fingerprint login can't open the keyring on an install without encryption.
+
 ## Current batch
 
 None: everything is merged.
