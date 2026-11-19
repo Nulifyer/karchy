@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "nulifyer.project-picker",
+  "name": "Project Picker",
+  "version": "1.1.0",
+  "author": "Nulifyer",
+  "license": "MIT",
+  "description": "Find projects across your home directory and open an editor or terminal.",
+  "kinds": ["overlay"],
+  "keepLoaded": true,
+  "entryPoints": { "overlay": "ProjectPicker.qml" }
+}
