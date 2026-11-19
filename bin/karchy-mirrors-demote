@@ -23,7 +23,10 @@
 #   --config                 leave /etc alone: write a copy of pacman.conf
 #                            whose Include lines point at reordered copies,
 #                            and print its path (karchy update, which passes
-#                            it to pacman --config for that one run)
+#                            it to pacman --config for that one run). Run it
+#                            as root (karchy update does, through sudo): root's
+#                            pacman reads the copy, so it must be in a folder
+#                            only root can write.
 #
 # Prints "demoted <host>" on standard error for each host moved. Exits 0 when
 # an order changed, 1 when there was nothing to move (no such line, or the
@@ -75,7 +78,8 @@ case $mode in
     done
     ;;
   --config)
-    dir=$(mktemp -d "${TMPDIR:-/tmp}/karchy-mirrors.XXXXXX")
+    ((EUID == 0)) || { echo "karchy-mirrors-demote --config: run as root" >&2; exit 2; }
+    dir=$(mktemp -d /tmp/karchy-mirrors.XXXXXX)
     chmod 755 "$dir"
     cp /etc/pacman.conf "$dir/pacman.conf"
     while IFS= read -r list; do

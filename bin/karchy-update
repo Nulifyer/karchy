@@ -376,15 +376,19 @@ pacman_sync() {
   for ((try = 1; try <= 5; try++)); do
     # Download only: what is already in the cache is not fetched again.
     sudo env LC_ALL=C pacman ${conf:+--config "$conf"} --color never --noprogressbar -w "$@" >"$out" 2>&1 || true
-    [[ -z $conf ]] || rm -rf "${conf%/*}"
-    conf=$(karchy-mirrors-demote --config <"$out" 2>/dev/null) || { conf=""; break; }
+    [[ -z $conf ]] || sudo rm -rf "${conf%/*}"
+    # Made by root, in a folder only root can write: root's pacman reads this
+    # configuration, so no file of the user's may be part of it (pacman.conf
+    # can name hooks and download commands). pacman's output is only read.
+    conf=$(sudo karchy-mirrors-demote --config <"$out" 2>/dev/null) || { conf=""; break; }
     warn "A mirror could not serve a package; trying the next ones"
     if sudo pacman --config "$conf" --color auto "$@"; then
-      rm -rf "$out" "${conf%/*}"
+      rm -f "$out"
+      sudo rm -rf "${conf%/*}"
       return 0
     fi
   done
-  [[ -z $conf ]] || rm -rf "${conf%/*}"
+  [[ -z $conf ]] || sudo rm -rf "${conf%/*}"
   rm -f "$out"
   # For the message of the trap above, which would name "return 1".
   failed_command="sudo pacman $*"
