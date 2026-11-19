@@ -74,6 +74,26 @@ Local commits on `main`, not pushed. Tested in VM `inst` with packages built fro
 - **Found, not fixed:** the installer's bees question is wider than an 80-column screen and is cut at the right edge.
 - **For the user:** fingerprint. Enrolment is in Settings › Security (shown with a reader; D-133). It unlocks polkit prompts and the lock screen (D-79). The login screen takes the password only; adding the reader there needs a decision, since a fingerprint login can't open the keyring on an install without encryption.
 
+## Menu, Settings and the keybinding editor (D-133 to D-135), 2026-11-19
+
+Local commits on `main` (`aca1d86` to the commit of this entry), not pushed. Screenshots in `out/menu-settings/`.
+
+- **Menu (D-133, D-135).** Eight rows: Apps, Packages, Recording, Keybinds, Update, Settings, Reload, Power. A search result from a submenu reads as its path ("Power › Reboot", "Settings › Security"); every Settings page and every row that left the menu is found by the words people type; Theme and Background are found by search only. One Install Package list over the repositories and the AUR, repositories first.
+- **Settings.** New pages Security, Date & Time and Keybindings; SSH became SSH & Git; the workspace layout is on Appearance; "More details…" on About; the Updates window has a Firmware part; a page whose area has a file of the user's own links it in its header; the sidebar is in five groups.
+- **Keybindings (D-134).** Four layers (karchy, add-ons, Settings, the user's `bindings.lua`), recorded inside Hyprland by `karchy/hypr/keys.lua`, resolved by `karchy-settings-keybindings`, edited in Settings › Keybindings as VS Code's Keyboard Shortcuts are. The viewer `karchy-menu-keybindings` is gone.
+- **Checks without a VM:** `tests/menu-search.js`, `tests/keybindings.py` (96 checks, including karchy's real Lua layer under a stand-in Hyprland), `tests/keybindings-model.js`, `tests/agent-skills.sh`, `tools/icon-check`, shellcheck on the new and changed commands.
+- **Seen in VM `inst`** (the encrypted install; dev mode, then `karchy`, `karchy-settings` and `karchy-project-picker` built from this tree and installed with `pacman -U`, dev mode off, after a restart):
+  - The root at 1280×800 scale 1 and at 1920×1200 scale 1.6 with Power on screen; the sidebar at both.
+  - Fourteen aliases typed into the menu, each opening its page; "restart", "update" and "theme" giving the orders D-135 names; "firmware" opening the Updates window on its Firmware button, which ran `karchy-update-firmware`.
+  - By keyboard alone: the user password and the drive password changed from Security (the new drive password opened `/dev/vda2`, the old did not; both put back afterwards); the timezone changed, canceled at the password dialog (no error, the dropdown went back) and changed again; automatic time off and on; Sync now; the clock's format; the workspace layout; Git's name through `karchy-setup-git`; `input.lua` recreated from the starter by its link.
+  - Keybindings: Terminal moved onto Super+T (the conflict shown, Replace) and Super+T opened a terminal; a binding set before a restart still worked after it; Super+T and Super+E were captured without running; reset, remove, an unbound action given keys, a custom command added and deleted, Record keys; the project picker's packaged binding + a Settings change + a `bindings.lua` override shown as one three-link chain, read-only, with `hyprctl binds` agreeing; a broken `keybindings.json` (change refused, file kept) and a broken generated Lua (defaults bound, the error shown).
+  - Install Package: `sl` from a repository and `nerdfetch` from the AUR picked in one selection; pacman installed the first, paru showed its review and built the second.
+  - Security, Date & Time, SSH & Git, Appearance, About and Keybindings in the dark theme and Flexoki Light. No QML errors in the journal.
+- **Not tested:** fingerprint and FIDO2 enrolment from the page (no hardware in the VM; Fingerprint is hidden there and the page's (i) says why); the GitHub sign-in (`gh` not installed); firmware on real hardware; a non-US keyboard layout in the keybinding editor (key caps and capture), real media keys, a vertical bar's clock formats; VS Code as the editor a config link opens; the Bluetooth and Trackpad rows of Reload; a slow or failing AUR list download; an AUR-only and a repository-only run of Install Package were not repeated separately after the mixed one.
+- **Found, not fixed (outside this work):** the Updates window logs "Qt Quick Layouts: Detected recursive rearrange" for its `ChangeRow` when updates are listed (`shell/plugins/updates/Window.qml`); the rows draw correctly.
+- **For the user to decide:** pages for Sound, Bluetooth and Users don't exist (the bar panels cover the first two; Security holds the current user's password). Theme and Background are out of the root by D-135; say if they should come back. The clock's middle click still opens the standalone timezone picker.
+- VM `inst` is shut down on these packages with dev mode off and its passwords as before; snapshot `pre-menu-settings` is the state before this work.
+
 ## Current batch
 
 None: everything is merged.

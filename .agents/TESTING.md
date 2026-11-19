@@ -128,7 +128,8 @@ Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/p
 - Steam at the panel's scale is neither tiny nor blurry; one Proton game runs, and the screen doesn't lock while it is fullscreen.
 - KDE Connect pairs with a phone on the trusted home network and not on an untrusted one.
 - Boot a snapshot: the notice names it; "Restore this snapshot" restores it.
-- Fingerprint: lock screen and polkit prompts take it, sudo asks for the password.
+- Fingerprint: Settings › Security shows Fingerprint with "Set up…"; after enrolling there the row reads "Set up", the lock screen and polkit prompts take it, sudo asks for the password; Remove puts the password back.
+- Settings › Keybindings on the laptop's own keyboard: change a binding, capture a media key (it is saved by keycode) and a Super combination; the key caps match what is printed on the keys.
 - A USB4 dock: Ethernet and USB behind it work (bolt).
 - Suspend with a VM running.
 - Charge limit set in the BIOS or with `sudo framework_tool --charge-limit 80`: `sudo framework_tool --charge-limit` reports 80 and charging stops there. The battery panel shows no limit and `/sys/class/power_supply/BAT1/charge_control_end_threshold` does not exist; both are expected (the kernel's charge-control driver does not load on Framework, `03-framework-readiness.md` row 15).
