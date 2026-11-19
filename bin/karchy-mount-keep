@@ -181,9 +181,14 @@ keep() {
   # moved into place (a new share's), the fstab line, the mount folder.
   local new_cred="$cred.karchy-new" wrote_new="" placed_cred="" added_fstab="" made_dir=""
   trap 'give_up' HUP TERM
-  user=${user:-$USER}
+  # Your name on this computer is the default: shown as a placeholder, which
+  # typing replaces (a prefilled value would be added to). A name already
+  # given, by a kept share or an earlier try, is in the field to be corrected.
+  local user_header="Username for //$server/$share"
+  [[ -n $user ]] || user_header+=" (Enter keeps $USER)"
   while true; do
-    user=$(gum input --header "Username for //$server/$share" --value "$user") || give_up
+    user=$(gum input --header "$user_header" --placeholder "$USER" --value "$user") || give_up
+    user=${user:-$USER}
     password=$(gum input --password --header "Password for //$server/$share" --placeholder "empty for a guest share") || give_up
     sudo -v -p "Your password for this computer, to save the share: " ||
       give_up 1 "This computer's password wasn't accepted."

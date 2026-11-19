@@ -140,8 +140,14 @@ form_run() {
     form_retry "That doesn't look like an email address (name@example.com). Leave it empty to skip."
   done
 
+  # The default shows as a placeholder, which typing replaces; a prefilled
+  # value would be added to ("karchykarchy"). Only a name that was typed and
+  # refused comes back in the field, to be corrected.
+  KARCHY_HOSTNAME=""
   while true; do
-    KARCHY_HOSTNAME=$(gum input --header "Computer name" --value "karchy") || form_cancel
+    KARCHY_HOSTNAME=$(gum input --header "Computer name (Enter keeps karchy)" --placeholder "karchy" \
+      --value "$KARCHY_HOSTNAME") || form_cancel
+    KARCHY_HOSTNAME=${KARCHY_HOSTNAME:-karchy}
     [[ $KARCHY_HOSTNAME =~ ^[A-Za-z0-9][A-Za-z0-9-]{0,62}$ ]] && break
     form_retry "Use letters, digits and -."
   done
