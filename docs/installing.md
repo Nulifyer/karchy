@@ -29,7 +29,9 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
 3. Answer the form: keyboard, disk (typed confirmation), username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; only channels with a published release are offered, so stable appears from karchy's first release on), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees background deduplication (on by default; answer No to leave it off). The keyboard layout applies as soon as it's picked, so the password is typed in the layout the disk prompt will use. Esc or Ctrl-C at a question that asks for an answer stops the installer with nothing changed; at a yes/no question Esc means No.
 4. Check the summary, which lists every answer and says in red which disk is erased, then confirm "Erase and install". Nothing is written to the disk before this.
 5. The installer shows its steps as a numbered list: a check mark and the time for each finished one, the time of the step under way, and the last line of the log. A step that fails turns red, with the end of the log and how to try again under it.
-6. The last screen says what to do next: remove the install media and restart (it offers to), then type the password at the disk-password screen.
+6. The last screen says what to do next. Choose **Restart now** with the install media still in: the live system runs from it. When the screen goes dark, take the media out. Then type the password at the disk-password screen. If the installer's boot menu comes up again instead, the media was still in and the computer started from it: take it out and restart.
+
+   Restart now restarts at once, without the live system's usual shutdown (the installed system is already unmounted and closed by then), so a stick pulled out too early no longer leaves the computer stuck on read errors. "Stay in the live system" leaves a root shell; restart from there with `reboot` and take the media out once the screen goes dark.
 
 Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
 
@@ -51,7 +53,7 @@ The karchy ISO is the Arch Linux ISO (archiso's `releng` profile) with the insta
 2. The installer starts by itself on the first console. It waits for the network: a cable connects by itself; otherwise it offers to retry, to connect to Wi-Fi with `iwctl`, or a shell.
 3. Answer the form and confirm, as above.
 
-Esc or Ctrl-C at a question leaves the installer for a root shell; `karchy-install` starts it again, and Alt+F2 opens another console. `karchy-install --config FILE` works there too. For an install with no form at all, add `karchy.config=<file or http(s) URL>` to the boot entry (`e` in the UEFI menu): the ISO downloads the answer file once the network is up and runs `karchy-install --config` with it. As with any answer file, the disk named in it is erased without asking. When such an install is done, the ISO says so and stays at the shell; remove the stick and reboot.
+Esc or Ctrl-C at a question leaves the installer for a root shell; `karchy-install` starts it again, and Alt+F2 opens another console. `karchy-install --config FILE` works there too. For an install with no form at all, add `karchy.config=<file or http(s) URL>` to the boot entry (`e` in the UEFI menu): the ISO downloads the answer file once the network is up and runs `karchy-install --config` with it. As with any answer file, the disk named in it is erased without asking. When such an install is done, the ISO says so and stays at the shell; type `reboot`, and take the stick out once the screen goes dark.
 
 ### Building the ISO
 

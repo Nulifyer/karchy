@@ -71,21 +71,34 @@ summary() {
   ui_line
 }
 
+# Restart at once, without the live system's shutdown. The install is
+# unmounted and closed by now, so nothing is lost; the live system itself may
+# be reading its files from a USB stick that is already out, where a normal
+# shutdown stops on read errors and never restarts. systemctl syncs and calls
+# the kernel's reboot directly; when even systemctl can't be read from the
+# missing stick, the kernel's own reboot key does it (a shell builtin, no
+# file needed).
+restart_now() {
+  systemctl reboot --force --force 2>/dev/null || true
+  echo b >/proc/sysrq-trigger
+}
+
 # The last screen: what was done and what the user does next.
 finish() {
   local elapsed note
   elapsed=$(ui_duration $((SECONDS - UI_STARTED)))
   if [[ $KARCHY_UI != tui ]]; then
     log "karchy is installed."
-    [[ $reboot_after == "true" ]] || log "Remove the install media and reboot."
+    [[ $reboot_after == "true" ]] || log "Reboot, and take the install media out once the screen goes dark."
     return 0
   fi
   echo "$(date +%H:%M:%S) karchy is installed." >>"$KARCHY_INSTALL_LOG"
   ui_header "karchy is installed" $((10 + ${#KARCHY_NOTES[@]}))
   ui_line "✓ Installed on $KARCHY_DISK in $elapsed" "$UI_GREEN"
   ui_line
-  ui_line "1  Remove the USB stick."
-  ui_line "2  Restart the computer."
+  ui_line "1  Choose Restart now below. Leave the USB stick in until the screen"
+  ui_line "   goes dark: the installer runs from it."
+  ui_line "2  Then take the USB stick out."
   ui_line "3  Type your password at the disk-password screen. It is the one"
   ui_line "   you chose here; it unlocks the disk and logs $KARCHY_USER in."
   if ((${#KARCHY_NOTES[@]})); then
@@ -149,12 +162,12 @@ cryptsetup close "$KARCHY_ROOT_MAPPER" || true
 finish
 
 if [[ $reboot_after == "true" ]]; then
-  reboot
+  restart_now
 elif [[ -z $config_file && $KARCHY_UI == tui ]]; then
   # Stay in the live system on No, Esc or Ctrl-C: the shell is the way back
   # to the log or to a second look at the disk.
   if gum confirm --default=true --affirmative "Restart now" --negative "Stay in the live system" \
-    "Is the USB stick out?"; then
-    reboot
+    "Restart now? Take the USB stick out once the screen goes dark."; then
+    restart_now
   fi
 fi
