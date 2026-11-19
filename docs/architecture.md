@@ -232,7 +232,6 @@ karchy ships [Agent Skills](https://agentskills.io) so an AI coding agent on the
 | `karchy-troubleshoot` | `karchy` | Logs, core dumps, boot problems and rollback, hardware and network checks, bug reports |
 | `karchy-vms` | `karchy`, linked only while QEMU is installed | `karchy vm` and `~/VMs` |
 | `karchy-containers` | `karchy-containers` | Rootless Podman, the `docker` command and Compose |
-| `karchy-vpn` | `karchy-vpn` | The WireGuard VPN and its kill switch |
 
 Every package installs its skills into one folder, `/usr/share/karchy/agents/skills/<name>`. VMs are not a karchy package (Quick install adds QEMU itself, D-67), so `karchy-vms` ships in `karchy` with a `.requires` file naming `qemu-system-x86_64`; a skill with that file is linked only while each command in it is installed.
 
