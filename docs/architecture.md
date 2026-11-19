@@ -107,7 +107,8 @@ Every component owns its look; a caller places it and never overrides its height
 |---|---|
 | `Button` | `variant`: `neutral` (default), `primary` (accent fill; the one action a page or dialog is for), `destructive` (error text and border; keep it apart and confirm it). `busy` spins `ui.busy` and takes no clicks. `focusable: true` in windows. The accessible name is the label, else the tooltip. |
 | `PanelActionButton` | The icon button. Its tooltip is its accessible name. |
-| `ToggleSwitch`, `Toggle` | The switch and the labelled switch row. `busy` pulses the knob (dims it under reduced motion). `accessibleName` wherever no label sits in the control. |
+| `SettingRow` | A switch as one line of a form on a window page: label in the label column, switch, optional `info` behind an (i), and one short `note` (with `warning`) for a consequence or why the setting has no effect, shown only while it applies. The form for every switch in Settings and the VM page (D-113). |
+| `ToggleSwitch`, `Toggle` | The switch and the labelled switch row of the bar panels (`flat: true` there: no box inside the panel's own). `busy` pulses the knob (dims it under reduced motion). `accessibleName` wherever no label sits in the control. |
 | `PanelToolTip` | The one tooltip. `Button` and `PanelActionButton` use it; the bar's own tooltip window in `Bar.qml` does not yet. |
 | `PageHeader` | The top of a window page: title, optional caps status in a status color, optional icon, trailing controls (moved under the title when the page is narrow), and `explanation` behind an (i) button. |
 | `InfoTip` | An (i) for one control or label, opening on click, Enter or Space. Not for errors, warnings or what an action does. |
