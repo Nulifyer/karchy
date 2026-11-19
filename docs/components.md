@@ -28,7 +28,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Secure Boot | sbctl + Microsoft keys, signed Limine, config hash enrollment (installer step) | [C] |
 | Firmware | fwupd (menu entry) | [O] |
 | AUR helper | paru (from `[cachyos]`) | [C] |
-| Fonts | JetBrains Mono Nerd; Noto (+ CJK, emoji); Symbols Nerd Font Mono for icons. Settings › Fonts (D-120) sets the monospace font (shell, terminals, code editors), the app font (GTK and Qt apps, Adwaita Sans by default) and the text size, and installs 15 more Nerd Fonts from Arch's repositories | [O] + [New] |
+| Fonts | JetBrains Mono Nerd; Noto (+ CJK, emoji); Symbols Nerd Font Mono for icons; karchy Symbols for karchy's mark (D-125). Settings › Fonts (D-120) sets the monospace font (shell, terminals, code editors), the app font (GTK and Qt apps, Adwaita Sans by default) and the text size, and installs 15 more Nerd Fonts from Arch's repositories | [O] + [New] |
 
 ## Desktop
 
@@ -73,7 +73,7 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, weather, wor
 | GTK | `adw-gtk-theme`; GTK 3 and GTK 4 (libadwaita) apps get the theme's full palette (`default/themed/gtk.css.tpl`, `gtk4.css.tpl`) and follow a switch live in open apps; checked with Thunar, GNOME Disks and Mission Center | [New] |
 | Qt | Qt's GTK 3 platform theme (`QT_QPA_PLATFORMTHEME=gtk3`), so Qt apps take the generated GTK 3 colors and follow a theme switch live; checked with qpwgraph. No separate Qt template | [O] |
 | VS Code | Generated theme extension; `settings.json` never edited. Pick "Karchy" once in the color theme picker | [New] |
-| fish prompt | Native prompt + theme-color template: Arch logo, user@host, folder, git branch, a › that turns red on failure; earlier prompts collapse to › | [New] |
+| fish prompt | Native prompt + theme-color template: karchy's mark (a font glyph, D-125), user@host, folder, git branch, a › that turns red on failure; earlier prompts collapse to › | [New] |
 | fish listings | `ls`, `la`, `ll`, `lt`, `tree` and `l.` through eza (folders first, icons) | [New] |
 | fish greeting | None (fish's "Welcome to fish" is turned off; your own `fish_greeting` still shows) | [New] |
 | Terminal | foot include line. Starter configs for Ghostty, kitty and Alacritty (in `/etc/skel`) include the theme file the same way, so one installed later follows the theme; `karchy-restart-terminal` reloads open windows on a switch. All four also include karchy's text-size file (`~/.local/state/karchy/terminal/`, D-117), so `karchy display text size` never edits them | [O] |
