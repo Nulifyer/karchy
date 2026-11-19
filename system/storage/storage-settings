@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy: Settings › Storage's four requests that need root.
+# karchy: Settings › Storage's five requests that need root.
 # Installed as /usr/lib/karchy/storage-settings and run only through
 #   pkexec /usr/lib/karchy/storage-settings <key>=<value>
 # by karchy-settings-storage (polkit action org.karchy.storage-settings).
@@ -24,28 +24,37 @@
 #   show=health          Print each disk's SMART health as the JSON array of
 #                        /usr/lib/karchy/storage-health: asked of the disks
 #                        now, without waking one that sleeps.
+#   show=subvolumes      Print each mounted btrfs filesystem's top-level
+#                        subvolume names and how many snapshots and other
+#                        subvolumes it has, as the JSON array of
+#                        /usr/lib/karchy/storage-subvolumes.
 #
 # Threat reasoning. polkit lets an active, local member of wheel run this
 # without a password (50-karchy-storage-settings.rules); everyone else must
 # authenticate as an administrator. So assume the caller is any program in
 # that user's session, hostile ones included.
 # - What it can reach: whether bees runs, when a measurement starts, six
-#   numbers about bees, and each disk's health summary (its serial, which
-#   lsblk shows everyone, a verdict, wear and temperature). Stopping bees loses nothing (space that is already
+#   numbers about bees, each disk's health summary (its serial, which
+#   lsblk shows everyone, a verdict, wear and temperature), and each btrfs
+#   filesystem's top-level subvolume names with two counts (the mount table
+#   shows everyone the mounted ones; no path below the top level is given,
+#   since a nested subvolume can sit in someone's home folder).
+#   Stopping bees loses nothing (space that is already
 #   shared stays shared, and its state is kept for the next start); starting
 #   it costs idle CPU and disk time under the service's own limits.
 #   A measurement reads file metadata at idle priority and one runs at a
 #   time, so asking again and again costs no more than one that never ends.
 #   Asking for health is one short SMART query per disk, which changes
-#   nothing on it and leaves a sleeping disk asleep.
+#   nothing on it and leaves a sleeping disk asleep. Listing subvolumes
+#   reads the filesystem's own tree of them, 20 seconds at most each.
 #   None of it changes a file's contents, and each choice is undone from the
 #   same page.
 # - What it cannot reach: bees' status file itself, which can name the files
 #   being read. Only bees-summary reads it, and it prints fixed names with
 #   whole numbers. A file whose name holds line breaks could fake lines of
 #   that status file; the worst that does is a wrong percentage on the page.
-# - Input is argv only: one argument, one of the three keys, each with a
-#   value from a fixed list. Nothing is read from the caller's files or
+# - Input is argv only: one argument, one of the three keys (bees, measure,
+#   show), each with a value from a fixed list. Nothing is read from the caller's files or
 #   environment, nothing of the caller's is sourced or evaluated, and no
 #   argument is ever used as a path, a unit name or part of a command.
 #   Anything else ends the call before a file or a service is touched.
@@ -77,15 +86,15 @@ fail() {
 }
 
 usage() {
-  fail "usage: storage-settings bees=on|off | measure=now | show=bees|health" 64
+  fail "usage: storage-settings bees=on|off | measure=now | show=bees|health|subvolumes" 64
 }
 
 # The request is checked before anything else, also before who is asking: a
-# call that is not one of the five is turned away the same for everyone.
+# call that is not one of the six is turned away the same for everyone.
 (( $# == 1 )) || usage
 
 case $1 in
-  bees=on | bees=off | measure=now | show=bees | show=health) request=$1 ;;
+  bees=on | bees=off | measure=now | show=bees | show=health | show=subvolumes) request=$1 ;;
   *) usage ;;
 esac
 (( EUID == 0 )) || fail "must run as root, through pkexec" 77
@@ -158,5 +167,8 @@ case $request in
     ;;
   show=health)
     /usr/lib/karchy/storage-health
+    ;;
+  show=subvolumes)
+    /usr/lib/karchy/storage-subvolumes
     ;;
 esac

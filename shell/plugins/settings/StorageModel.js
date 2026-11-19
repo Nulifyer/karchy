@@ -325,6 +325,150 @@ function isDataPartition(volume) {
     && volume.parttype !== efi && volume.parttype !== recovery
 }
 
+// ---------------------------------------------------------------- the stack
+
+var layerNames = { luks: "LUKS encryption", lvm: "LVM", raid: "RAID" }
+
+// A partition's type as lsblk names it, in the page's words. The types that
+// only say "a filesystem goes here" say nothing the filesystem doesn't.
+function partitionKind(kind) {
+  var names = { "EFI System": "EFI system partition", "BIOS boot": "BIOS boot partition",
+                "Microsoft reserved": "reserved by Windows", "Windows recovery environment": "Windows recovery",
+                "Linux filesystem": "", "Microsoft basic data": "", "Linux root (x86-64)": "", "Linux home": "",
+                "Linux LVM": "", "Linux RAID": "", "Linux LUKS": "" }
+  var text = String(kind || "")
+  return names[text] !== undefined ? names[text] : text
+}
+
+// What a volume sits on, outermost first: "vda2 › LUKS encryption › btrfs",
+// "sda1, EFI system partition › FAT", "the whole disk › ext4". For a locked
+// volume the stack ends at the encryption: what is inside isn't known.
+function stackText(volume) {
+  if (!volume) return ""
+  var parts = []
+  var p = volume.partition
+  if (p && p.name) parts.push(p.name + (partitionKind(p.kind) !== "" ? ", " + partitionKind(p.kind) : ""))
+  else parts.push("the whole disk")
+  ;(volume.layers || []).forEach(function(layer) { if (layerNames[layer]) parts.push(layerNames[layer]) })
+  if (!volume.locked && volume.fstype) parts.push(fsName(volume.fstype))
+  return parts.join(" › ")
+}
+
+// A partition with nothing the page lists as a volume: "vda3 · reserved by
+// Windows · 16 MB".
+function otherPartitionText(partition) {
+  if (!partition) return ""
+  var kind = partitionKind(partition.kind) || (partition.label ? String(partition.label) : "nothing recognized on it")
+  return partition.name + " · " + kind + " · " + bytes(partition.size)
+}
+
+// What karchy's own layout keeps in a subvolume, by where it is mounted or,
+// for one that is never mounted, by its name.
+var subvolumePurposes = {
+  "/": "the system", "/home": "home folders", "/root": "the administrator's home", "/swap": "the swap file",
+  "/var/log": "logs", "/var/cache": "caches", "/var/tmp": "temporary files", "/srv": "files this computer serves"
+}
+
+// The rows under a btrfs volume, from `karchy-settings-storage subvolumes`
+// (its entry for the filesystem): { name, where, what } for each top-level
+// subvolume, the system's first, then /home, then the other mounted ones by
+// path, then the ones that are not mounted. `where` is "" when it is not
+// mounted, `what` "" when karchy has no word for it.
+function subvolumeRows(info) {
+  var list = ((info && info.subvolumes) || []).map(function(sub) {
+    var mounts = (sub.mounts || []).slice().sort(function(a, b) { return a.length - b.length || (a < b ? -1 : 1) })
+    var where = mounts.length ? mounts[0] : ""
+    var what = subvolumePurposes[where] || (sub.name === ".beeshome" ? "background deduplication's own data" : "")
+    return { name: sub.name === "" ? "(top level)" : String(sub.name), where: where, what: what }
+  })
+  var rank = function(row) { return row.where === "/" ? 0 : row.where === "/home" ? 1 : row.where !== "" ? 2 : 3 }
+  return list.sort(function(a, b) {
+    return rank(a) - rank(b) || (a.where < b.where ? -1 : a.where > b.where ? 1 : 0) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)
+  })
+}
+
+// "9 subvolumes · 26 snapshots" for the line that opens the rows; the
+// snapshots only when they were counted (root lists them).
+function subvolumeSummary(info) {
+  var count = ((info && info.subvolumes) || []).length
+  if (count === 0) return ""
+  var text = plural(count, "subvolume")
+  if (info.snapshots !== null && info.snapshots !== undefined) text += " · " + plural(Number(info.snapshots), "snapshot")
+  return text
+}
+
+// ------------------------------------------------------------ the overview
+
+// A filesystem the file manager can show, on a partition that is not a
+// boot or recovery one. Removable drives count whatever their size.
+function opensAsPlace(volume, disk) {
+  var efi = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b", recovery = "de94bba4-06d1-4d40-a16a-bfd50179d6ac"
+  if (!volume || volume.role !== "data") return false
+  if (volume.locked || (volume.mounts || []).length > 0) return true
+  if (["ntfs", "ntfs3", "exfat", "vfat", "ext2", "ext3", "ext4", "btrfs", "xfs", "f2fs", "udf", "iso9660", "hfsplus"].indexOf(volume.fstype) === -1) return false
+  if (volume.parttype === efi || volume.parttype === recovery) return false
+  return !!(disk && disk.removable) || Number(volume.size) >= 1073741824
+}
+
+// The tiles at the top of the page: every place files are opened from. The
+// system first, then the other volumes of the internal disks, the USB
+// drives, and the kept network shares. Each is
+//   { key, kind: "system" | "disk" | "usb" | "share", name,
+//     state: "open" | "mount" | "unlock" | "unreachable",
+//     target (the folder it opens at, "" until it is mounted),
+//     path (the device), space: { free, size, share } | null, line }
+// `line` is what the tile says under the name: the room left, or its state.
+// `usage` is the newest reading by UUID, as live() takes it.
+function places(disks, shares, usage) {
+  var out = []
+  var parts = split(disks)
+  // `wantSystem` picks the pass: the system's tile leads, wherever its disk
+  // is, and the rest follow in the disks' own order.
+  var add = function(disk, kind, wantSystem) {
+    ;(disk.volumes || []).forEach(function(volume) {
+      var system = volume.role === "system"
+      if (system !== wantSystem) return
+      if (!system && !opensAsPlace(volume, disk)) return
+      var figures = live(volume, usage && volume.uuid ? usage[volume.uuid] : null)
+      var mounted = (volume.mounts || []).length > 0
+      var state = volume.locked ? "unlock" : mounted ? "open" : "mount"
+      var space = mounted && figures && figures.free !== null ? { free: figures.free, size: figures.size, share: figures.share } : null
+      out.push({
+        key: volume.path, kind: system ? "system" : kind, name: volumeName(volume), state: state,
+        target: !mounted ? "" : system ? "/" : mainMount(volume), path: volume.path, space: space,
+        line: space ? bytes(space.free) + " free of " + bytes(space.size)
+          : state === "unlock" ? "Locked · " + bytes(volume.size)
+          : state === "mount" ? "Not mounted · " + bytes(volume.size) : bytes(volume.size)
+      })
+    })
+  }
+  parts.internal.concat(parts.removable).forEach(function(disk) { add(disk, "disk", true) })
+  parts.internal.forEach(function(disk) { add(disk, "disk", false) })
+  parts.removable.forEach(function(disk) { add(disk, "usb", false) })
+  ;(shares || []).forEach(function(share) {
+    var names = shareName(share)
+    var connected = share.state === "connected" && Number(share.size) > 0
+    var space = connected ? { free: Number(share.avail), size: Number(share.size),
+      share: Math.min(1, Math.max(0, 1 - Number(share.avail) / Number(share.size))) } : null
+    out.push({
+      key: "share:" + share.target, kind: "share", name: names.name,
+      state: share.state === "unreachable" ? "unreachable" : "open", target: share.target, path: "", space: space,
+      line: space ? bytes(space.free) + " free of " + bytes(space.size)
+        : share.state === "unreachable" ? "Not reachable" : share.state === "connected" ? "On " + names.server : "Connects when opened"
+    })
+  })
+  return out
+}
+
+// What activating a tile does, as its button says it.
+function placeAction(place) {
+  if (!place) return ""
+  if (place.state === "unlock") return "Unlock " + place.name + "…"
+  if (place.state === "mount") return "Mount " + place.name
+  if (place.state === "unreachable") return place.name + " can't be reached"
+  return "Open " + place.name + " in Files"
+}
+
 // Internal disks first, as the system sees them; removable ones apart.
 function split(disks) {
   var internal = [], removable = []
@@ -338,6 +482,8 @@ if (typeof module !== "undefined") {
     mountsText: mountsText, mainMount: mainMount, volumeName: volumeName, volumeDetail: volumeDetail,
     diskTitle: diskTitle, diskKind: diskKind, healthFor: healthFor, health: health, roughly: roughly, when: when,
     beesLine: beesLine, beesTotal: beesTotal, shareName: shareName, shareState: shareState,
-    volumeActions: volumeActions, split: split
+    volumeActions: volumeActions, split: split, stackText: stackText, otherPartitionText: otherPartitionText,
+    partitionKind: partitionKind, subvolumeRows: subvolumeRows, subvolumeSummary: subvolumeSummary,
+    opensAsPlace: opensAsPlace, places: places, placeAction: placeAction, plural: plural
   }
 }

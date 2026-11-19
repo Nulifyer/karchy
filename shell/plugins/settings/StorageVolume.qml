@@ -12,6 +12,13 @@ import "StorageModel.js" as Model
 // what its files hold against what they take on the disk. That part carries
 // its date and never a figure that was not counted. The system disk carries
 // the switch for background deduplication.
+//
+// Under the name, quietly, what the volume sits on (the partition, any
+// encryption, the filesystem). A btrfs filesystem also lists its subvolumes,
+// one click away: their names and where each is mounted, and how many
+// snapshots there are. They share the filesystem's one pool of space, so no
+// subvolume gets a size or free space of its own: btrfs only knows those
+// with quotas on or by walking every file.
 ColumnLayout {
   id: root
 
@@ -30,6 +37,11 @@ ColumnLayout {
   readonly property var bars: Model.bars(volume)
   readonly property bool measuring: !!page && page.measurement.running === true
   readonly property string name: Model.volumeName(volume)
+  // The filesystem's subvolumes (the page's `subvolumes`, by UUID), and
+  // whether their rows are open.
+  readonly property var subvolumeInfo: btrfs && page && volume.uuid ? (page.subvolumes[volume.uuid] || null) : null
+  readonly property var subvolumeRows: Model.subvolumeRows(subvolumeInfo)
+  property bool subvolumesOpen: false
   // Replaced only when the set of actions changes, so a refresh doesn't
   // rebuild the buttons (and take the keyboard out of them).
   property var actions: []
@@ -124,7 +136,8 @@ ColumnLayout {
     Text {
       textFormat: Text.PlainText
       text: root.name
-      color: Commons.Color.foreground
+      // The boot partition is part of the layout, not somewhere files go.
+      color: root.volume.role === "boot" ? Commons.Color.textSecondary : Commons.Color.foreground
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       font.bold: true
@@ -155,6 +168,15 @@ ColumnLayout {
     }
   }
 
+  // What it sits on, outermost first.
+  Quiet {
+    Layout.fillWidth: true
+    Layout.topMargin: -Style.spacing.sm
+    text: Model.stackText(root.volume)
+    color: Commons.Color.disabledText(Commons.Color.foreground)
+    elide: Text.ElideRight
+  }
+
   // Now: how much of it is taken, from the filesystem itself.
   StorageMeter {
     visible: root.live !== null
@@ -167,6 +189,64 @@ ColumnLayout {
     wrapMode: Text.Wrap
     font.features: { "tnum": 1 }
     text: Model.liveLine(root.live)
+  }
+
+  // A btrfs filesystem's subvolumes, one click away.
+  RowLayout {
+    visible: root.subvolumeRows.length > 0
+    Layout.fillWidth: true
+    spacing: Style.spacing.sm
+
+    Button {
+      focusable: true
+      leftAlign: true
+      // The arrow lines up with the text above; the button's padding hangs out.
+      Layout.leftMargin: -horizontalPadding
+      iconText: Icons.glyph(root.subvolumesOpen ? "ui.chevron.down" : "ui.chevron.right")
+      text: Model.subvolumeSummary(root.subvolumeInfo)
+      accessibleName: (root.subvolumesOpen ? "Hide the subvolumes of " : "Show the subvolumes of ") + root.name
+      onClicked: root.subvolumesOpen = !root.subvolumesOpen
+    }
+    InfoTip {
+      subject: "subvolumes"
+      text: "A btrfs filesystem is one pool of space, divided into subvolumes that all draw on it: the room left above is the room every one of them has. A subvolume has no size of its own to show without counting its files. A snapshot is a read-only copy of a subvolume as it was, such as the ones taken before each update; it takes only the room of what has changed since."
+    }
+    Item { Layout.fillWidth: true; implicitHeight: 1 }
+  }
+
+  GridLayout {
+    visible: root.subvolumesOpen && root.subvolumeRows.length > 0
+    Layout.fillWidth: true
+    Layout.leftMargin: Style.spacing.xxl
+    columns: 3
+    columnSpacing: Style.spacing.xxl
+    rowSpacing: Style.spacing.sm
+
+    Repeater {
+      model: root.subvolumesOpen ? root.subvolumeRows.length * 3 : 0
+      delegate: Text {
+        required property int index
+        readonly property var entry: root.subvolumeRows[Math.floor(index / 3)] || ({})
+        readonly property int column: index % 3
+        Layout.fillWidth: column === 2
+        textFormat: Text.PlainText
+        text: column === 0 ? entry.name : column === 1 ? (entry.where !== "" ? entry.where : "not mounted") : entry.what
+        color: column === 0 ? Commons.Color.foreground : Commons.Color.textSecondary
+        font.family: Style.font.family
+        font.pixelSize: Style.font.bodySmall
+        elide: Text.ElideRight
+      }
+    }
+  }
+  // What the rows leave out: subvolumes made inside these ones (the folder
+  // snapshots are kept in, a container store).
+  Quiet {
+    visible: root.subvolumesOpen && !!root.subvolumeInfo && root.subvolumeInfo.nested > 0
+    Layout.fillWidth: true
+    Layout.leftMargin: Style.spacing.xxl
+    wrapMode: Text.Wrap
+    text: root.subvolumeInfo && root.subvolumeInfo.nested > 0
+      ? "and " + Model.plural(Number(root.subvolumeInfo.nested), "other subvolume") + " inside these" : ""
   }
 
   // The breakdown, which has to be counted: when it was, and counting again.

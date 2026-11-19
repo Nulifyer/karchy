@@ -6,9 +6,10 @@ Read this before you mount or unmount storage, change `/etc/fstab`, switch backg
 
 `karchy-settings-storage` is the Settings › Storage page's command. Nothing in it runs as root.
 
-- `karchy-settings-storage status` prints JSON: every disk with its volumes, space and mount points, what karchy keeps mounted, the counted btrfs breakdown when there is one, and current disk-health warnings.
+- `karchy-settings-storage status` prints JSON: every disk with its volumes, space and mount points, the partition and layers each volume sits on (`partition`, `layers`), the disk's other partitions (`others`), what karchy keeps mounted, the counted btrfs breakdown when there is one, and current disk-health warnings.
 - `karchy-settings-storage usage` prints only the space figures, by filesystem UUID: `fsSize`, `fsUsed`, `fsAvail`, and for btrfs `onDisk` with `data` and `metadata` in bytes. It is instant and needs no root.
 - `karchy-settings-storage health` prints each disk's SMART health, wear and temperature, asked of the disks now. No password for the person at the computer.
+- `karchy-settings-storage subvolumes` prints, for each mounted btrfs filesystem by UUID, its top-level subvolumes with where each is mounted, and how many snapshots and nested subvolumes it has. btrfs lets only root list them: the person at the computer gets the full list without a password; anyone else gets the mounted ones and `null` counts. No size per subvolume exists: they share the filesystem's space.
 - `karchy-settings-storage shares` prints the network shares kept at `/mnt`, each `connected`, `idle` or `unreachable`. It never waits on a server that is away. Prefer it to `df` or `ls /mnt/<share>`, which can block for about 30 seconds on an unreachable share.
 - `karchy-settings-storage bees` prints whether deduplication is on, running, and how far it is.
 - `karchy settings storage` opens the page.

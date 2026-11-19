@@ -54,6 +54,7 @@
   "dev.tools": {"cp": "f1323", "nf": "md-hammer_wrench"},
   "disc": {"cp": "f05ee", "nf": "md-disc"},
   "disk": {"cp": "f02ca", "nf": "md-harddisk"},
+  "disk.usb": {"cp": "f129e", "nf": "md-usb_flash_drive"},
   "display": {"cp": "f0379", "nf": "md-monitor"},
   "display.multiple": {"cp": "f037a", "nf": "md-monitor_multiple"},
   "features": {"cp": "f19d8", "nf": "md-package_variant_plus"},

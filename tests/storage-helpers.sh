@@ -1,7 +1,7 @@
 #!/bin/bash
 # Settings › Storage's root side: what the helpers turn away, and how bees'
 # status file is read.
-# Usage: tests/storage-helpers.sh [folder holding the four helpers]
+# Usage: tests/storage-helpers.sh [folder holding the five helpers]
 #   from a checkout:   tests/storage-helpers.sh system/storage
 #   on an install:     tests/storage-helpers.sh            (/usr/lib/karchy)
 # As a user it checks that a bad request is refused as bad (exit 64) and a
@@ -11,6 +11,7 @@
 # It never sends a good request as root.
 dir=${1:-/usr/lib/karchy}
 settings=$dir/storage-settings measure=$dir/storage-measure health=$dir/storage-health summary=$dir/bees-summary
+subvolumes=$dir/storage-subvolumes
 fails=0
 scratch=$(mktemp)
 trap 'rm -f "$scratch"' EXIT
@@ -62,6 +63,9 @@ refused "the measurement with an option" "$measure" --now
 refused "health for one disk" "$settings" show=health=sda
 refused "the health reader with an argument" "$health" /dev/sda
 refused "the health reader with an option" "$health" --all
+refused "subvolumes of one filesystem" "$settings" show=subvolumes=/home
+refused "the subvolume lister with a path" "$subvolumes" /home
+refused "the subvolume lister with an option" "$subvolumes" -a
 
 # Nothing counts files in the background (D-123): no timer for the
 # measurement ships, and only "Measure now" starts it.
@@ -81,7 +85,7 @@ if ((EUID == 0)); then
   if [[ $(state) == "$before" ]]; then ok "refused requests changed nothing"; else bad "a refused request changed bees' config, its service or the measurement"; fi
 else
   # A good request gets as far as "are you root", and no further.
-  for request in bees=on bees=off measure=now show=bees show=health; do
+  for request in bees=on bees=off measure=now show=bees show=health show=subvolumes; do
     code=0
     out=$("$settings" "$request" 2>/dev/null) || code=$?
     if ((code == 77)) && [[ -z $out ]]; then ok "needs root: $request"; else bad "$request as a user: exit $code, stdout [$out]"; fi
@@ -92,6 +96,9 @@ else
   code=0
   "$health" >/dev/null 2>&1 || code=$?
   if ((code == 77)); then ok "needs root: the health reader"; else bad "the health reader as a user: exit $code"; fi
+  code=0
+  "$subvolumes" >/dev/null 2>&1 || code=$?
+  if ((code == 77)); then ok "needs root: the subvolume lister"; else bad "the subvolume lister as a user: exit $code"; fi
 fi
 
 # bees-summary: status files as bees writes them (karchy's fork 0.11, taken
@@ -261,6 +268,41 @@ health_is "a disk with no SMART (a virtual one, a USB stick)" '{"name":"sdx","se
 health_is "values of the wrong kind are not passed on" '{"name":"sdx","serial":"12345","health":"good","problems":[],"wear":null,"temperature":null}' '
   {"serial_number": 12345, "rotation_rate": 0, "smart_status": {"passed": true},
    "ata_smart_attributes": {"table": [{"id": 231, "value": "full", "raw": {"value": 0}}]}, "temperature": {"current": "hot"}}'
+
+# The subvolume lister's reading of `btrfs subvolume list`: the jq filter,
+# taken from the script, over the lists as btrfs prints them.
+# subvolumes_are <name> <expected JSON> <read-only list> <whole list>
+eval "$(sed -n "/^SUBVOLUME_FILTER='\$/,/^     nested: .*}'\$/p" "$subvolumes")"
+subvolumes_are() {
+  local name=$1 want=$2 readonly_list=$3 list=$4 got
+  got=$(jq -R -s -c --arg uuid u --arg readonly "$readonly_list" "$SUBVOLUME_FILTER" <<<"$list" 2>&1)
+  if [[ $got == "$want" ]]; then ok "subvolumes: $name"; else bad "subvolumes: $name: want [$want] got [$got]"; fi
+}
+
+subvolumes_are "karchy's layout with two snapshots" '{"uuid":"u","top":["@","@home","@swap",".beeshome"],"snapshots":2,"nested":3}' \
+'ID 268 gen 112 top level 266 path .snapshots/1/snapshot
+ID 269 gen 114 top level 266 path .snapshots/2/snapshot' \
+'ID 256 gen 229 top level 5 path @
+ID 257 gen 226 top level 5 path @home
+ID 263 gen 10 top level 5 path @swap
+ID 264 gen 14 top level 256 path var/lib/portables
+ID 265 gen 14 top level 256 path var/lib/machines
+ID 266 gen 175 top level 256 path .snapshots
+ID 267 gen 162 top level 5 path .beeshome
+ID 268 gen 112 top level 266 path .snapshots/1/snapshot
+ID 269 gen 114 top level 266 path .snapshots/2/snapshot'
+subvolumes_are "a snapshot at the top level is a snapshot, not a row" '{"uuid":"u","top":["@music","@archive"],"snapshots":1,"nested":0}' \
+'ID 258 gen 9 top level 5 path @music-2026-11' \
+'ID 256 gen 9 top level 5 path @music
+ID 257 gen 8 top level 5 path @archive
+ID 258 gen 9 top level 5 path @music-2026-11'
+subvolumes_are "a filesystem with none" '{"uuid":"u","top":[],"snapshots":0,"nested":0}' '' ''
+subvolumes_are "a name with spaces, and no path below the top level given" '{"uuid":"u","top":["my data"],"snapshots":0,"nested":1}' '' \
+'ID 256 gen 5 top level 5 path my data
+ID 257 gen 5 top level 256 path home/alex/secret project'
+subvolumes_are "lines that are not subvolumes are dropped" '{"uuid":"u","top":["@"],"snapshots":0,"nested":0}' '' \
+'ERROR: something
+ID 256 gen 5 top level 5 path @'
 
 ((fails == 0)) && echo "storage helpers ok"
 exit "$fails"

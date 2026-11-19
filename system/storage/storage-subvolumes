@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# karchy: lists the subvolumes of each mounted btrfs filesystem for Settings ›
+# Storage, as root (btrfs lets only root list them).
+# Installed as /usr/lib/karchy/storage-subvolumes and run only by the root
+# helper /usr/lib/karchy/storage-settings for its request show=subvolumes,
+# when the page opens. It takes no arguments, reads no file a user can write,
+# changes nothing, and prints one JSON array:
+#
+#   [{"uuid": "2ff7…", "top": ["@", "@home", "@log"], "snapshots": 26,
+#     "nested": 3}, ...]
+#
+# One entry per mounted btrfs filesystem, by its UUID:
+#   top        the names of the writable subvolumes at the filesystem's top
+#              level, the ones a system is laid out in (@, @home, …)
+#   snapshots  how many read-only subvolumes it has, which is what snapshots
+#              are (snapper's before each update, and any made by hand)
+#   nested     how many other subvolumes lie below the top level
+#              (/.snapshots itself, /var/lib/machines, a container store)
+# Names are given for the top level only, which the mount table already shows
+# everyone for the mounted ones. Below it there are two counts and no paths:
+# a nested subvolume can sit in someone's home folder, and its path is not
+# for every user of the computer to read.
+#
+# Sizes are not given: btrfs knows a subvolume's size only with quotas on
+# (which slow every write) or by walking it. The filesystem's space is one
+# pool that all its subvolumes share.
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+
+fail() {
+  echo "storage-subvolumes: $1" >&2
+  exit "${2:-1}"
+}
+
+(( $# == 0 )) || fail "usage: storage-subvolumes (it takes no arguments)" 64
+(( EUID == 0 )) || fail "must run as root (through storage-settings)" 77
+
+# One filesystem's entry from `btrfs subvolume list` (stdin), which names
+# each subvolume with its parent's id (the top level's id is 5), and the same
+# list of only the read-only ones ($readonly, as text).
+# shellcheck disable=SC2016 # jq variables, not shell ones
+SUBVOLUME_FILTER='
+  def listed: [split("\n")[] | select(. != "")
+    | capture("^ID (?<id>[0-9]+) gen [0-9]+ top level (?<parent>[0-9]+) path (?<path>.*)$")];
+  listed as $all
+  | ($readonly | listed | map(.id)) as $snapshots
+  | [$all[] | select(.parent == "5" and (.path | contains("/") | not) and ((.id | IN($snapshots[])) | not)) | .path] as $top
+  | {uuid: $uuid, top: $top, snapshots: ($snapshots | length),
+     nested: ([($all | length) - ($top | length) - ($snapshots | length), 0] | max)}'
+
+seen=" "
+entries=()
+while read -r uuid target; do
+  [[ $uuid =~ ^[0-9a-fA-F-]{36}$ && $seen != *" $uuid "* ]] || continue
+  seen+="$uuid "
+  # findmnt writes a space in a path as \x20.
+  target=$(printf '%b' "$target")
+  list=$(timeout 20 btrfs subvolume list -- "$target" 2>/dev/null) || continue
+  readonly_list=$(timeout 20 btrfs subvolume list -r -- "$target" 2>/dev/null) || readonly_list=""
+  entries+=("$(jq -R -s -c --arg uuid "$uuid" --arg readonly "$readonly_list" "$SUBVOLUME_FILTER" <<<"$list")")
+done < <(findmnt -rn -t btrfs -o UUID,TARGET)
+
+if ((${#entries[@]})); then printf '%s\n' "${entries[@]}" | jq -s -c .; else echo '[]'; fi

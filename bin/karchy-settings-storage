@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Show disks, mounted storage and how full it is (Settings › Storage)
-# karchy:args=[status | usage | health | shares | bees [on|off] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
+# karchy:args=[status | usage | health | subvolumes | shares | bees [on|off] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
 # karchy:examples=karchy settings storage | karchy-settings-storage status | karchy-settings-storage bees off
 # karchy:hidden=true
 
@@ -26,6 +26,11 @@
 #                      these totals.
 #   health             JSON: each disk's SMART health, asked of the disks now
 #                      (the root helper; a sleeping disk is left asleep)
+#   subvolumes         JSON: what each mounted btrfs filesystem is divided
+#                      into, by UUID: its top-level subvolumes with where
+#                      each is mounted, and how many snapshots and other
+#                      subvolumes it has (the root helper; without it, only
+#                      the mounted ones, from the mount table)
 #   shares             JSON: the network shares kept mounted at /mnt, each
 #                      "connected" (with its space), "idle" (it connects when
 #                      opened) or "unreachable". A share is only asked for its
@@ -151,20 +156,27 @@ STATUS_FILTER='
   # What a disk holds that is worth a line: each filesystem, swap space, and
   # each encrypted volume that is still locked. Partitions with nothing
   # recognizable on them are left out.
-  def volumes($encrypted):
-    if .fstype == "crypto_LUKS" then
-      if ((.children // []) | length) > 0 then .children[] | volumes(true)
-      else {path, name, label, fstype: null, size, uuid, encrypted: true, locked: true, mounts: [], fsSize: null, fsUsed: null, fsAvail: null, parttype}
+  # `$part` is the partition a volume lies on (null for a disk used whole)
+  # and `$layers` what sits between the two, outermost first: "luks", "lvm",
+  # "raid". Together they are the stack the page shows under a volume.
+  def partition: {name, size, kind: (.parttypename // ""), label: (.partlabel // "")};
+  def volumes($encrypted; $part; $layers):
+    (if $part == null and .type == "part" then partition else $part end) as $on
+    | if .fstype == "crypto_LUKS" then
+      if ((.children // []) | length) > 0 then .children[] | volumes(true; $on; $layers + ["luks"])
+      else {path, name, label, fstype: null, size, uuid, encrypted: true, locked: true, mounts: [], fsSize: null, fsUsed: null, fsAvail: null, parttype,
+            partition: $on, layers: ($layers + ["luks"])}
       end
     elif ((.children // []) | length) > 0 then
       # Partitions, or the volumes of an LVM group or a RAID: what is on
       # them counts, not what the device around them looks like.
-      .children[] | volumes($encrypted)
+      (if .fstype == "LVM2_member" then ["lvm"] elif ((.fstype // "") | test("_raid_member$")) then ["raid"] else [] end) as $layer
+      | .children[] | volumes($encrypted; $on; $layers + $layer)
     elif .fstype == null or .fstype == "LVM2_member" or (.fstype | test("_raid_member$")) then
       empty
     else
       {path, name, label, fstype, size, uuid, encrypted: $encrypted, locked: false, mounts: mounts,
-       fsSize: .fssize, fsUsed: .fsused, fsAvail: .fsavail, parttype}
+       fsSize: .fssize, fsUsed: .fsused, fsAvail: .fsavail, parttype, partition: $on, layers: $layers}
     end;
   ($measurement | if . == null then {filesystems: []} else . end) as $m
   | {
@@ -179,8 +191,13 @@ STATUS_FILTER='
             removable: (.rm == true or .hotplug == true or .tran == "usb"),
             warnings: ($warnings | map(select(.kind == "smart" and ((.device | sub("^/dev/"; "")) as $d
               | $d == $disk.name or ($d != "" and ($disk.name | startswith($d + "n"))))))),
+            # Partitions with nothing on them the page lists as a volume (a
+            # BIOS boot or reserved partition, one never formatted): shown
+            # dimmed, so the whole layout of the disk is there.
+            others: [(.children // [])[] | select(.type == "part")
+                     | select([volumes(false; null; [])] | length == 0) | partition],
             volumes: [
-              volumes(false)
+              volumes(false; null; [])
               | . as $volume
               | . + {
                   role: (if (.mounts | index("/")) != null then "system"
@@ -204,7 +221,7 @@ status() {
   local devices kept keepable writable running=false available=false mount
   # lsblk asks each mounted filesystem on a block device for its space; none
   # of those is a network share, but a failing disk shouldn't hold the page.
-  devices=$(timeout 10 lsblk -J -b -o NAME,PATH,TYPE,SIZE,MODEL,SERIAL,TRAN,ROTA,RM,HOTPLUG,FSTYPE,LABEL,UUID,PARTTYPE,MOUNTPOINTS,FSSIZE,FSUSED,FSAVAIL) ||
+  devices=$(timeout 10 lsblk -J -b -o NAME,PATH,TYPE,SIZE,MODEL,SERIAL,TRAN,ROTA,RM,HOTPLUG,FSTYPE,LABEL,UUID,PARTTYPE,PARTTYPENAME,PARTLABEL,MOUNTPOINTS,FSSIZE,FSUSED,FSAVAIL) ||
     fail "The disks could not be read (lsblk)."
 
   kept=$({ grep -F "$DISK_MARKER" "$FSTAB" 2>/dev/null || true; } | awk '$1 ~ /^UUID=/ { print substr($1, 6) "\t" $2 }' |
@@ -233,12 +250,57 @@ usage_now() {
          onDisk: (if .fstype == "btrfs" then ($btrfs[.uuid] // null) else null end)}}] | from_entries' <<<"$devices"
 }
 
+# One of the helper's read-only requests (show=…), only where polkit lets
+# this session have it without asking: the page reads these by itself when
+# it opens and again while it is in view, and a password dialog nobody asked
+# for must never come of that. For anyone polkit would ask (a standard user,
+# a remote session) the answer is empty and the page shows what it can read
+# without root.
+root_read() {
+  [[ -x $ROOT_HELPER ]] || return 0
+  pkcheck --action-id org.karchy.storage-settings --process $$ >/dev/null 2>&1 || return 0
+  pkexec "$ROOT_HELPER" "$1" 2>/dev/null || true
+}
+
 # Each disk's SMART health, from the root helper: a JSON array, empty when
 # the helper is missing, refused or said something else.
 health() {
-  local out=""
-  [[ ! -x $ROOT_HELPER ]] || out=$(pkexec "$ROOT_HELPER" show=health 2>/dev/null || true)
+  local out
+  out=$(root_read show=health)
   jq -c 'if type == "array" then . else [] end' <<<"$out" 2>/dev/null | head -n 1 | grep . || echo '[]'
+}
+
+# What each mounted btrfs filesystem is divided into, by UUID. The root
+# helper lists the subvolumes (btrfs lets only root); the mount table, which
+# everyone can read, says where each is mounted and stands in for the list
+# when the helper is missing or refuses: then only the mounted ones show and
+# the counts are null.
+#   {"<uuid>": {"subvolumes": [{"name": "@home", "mounts": ["/home"]}, ...],
+#               "snapshots": 26, "nested": 3}}
+# A mount of the filesystem's own top level has the name "".
+subvolumes() {
+  local listed mounted
+  listed=$(root_read show=subvolumes)
+  listed=$(jq -c 'if type == "array" then . else [] end' <<<"$listed" 2>/dev/null | head -n 1 | grep . || echo '[]')
+  # findmnt writes a space in a path as \x20.
+  mounted=$(findmnt -rn -t btrfs -o UUID,FSROOT,TARGET 2>/dev/null | jq -R -s -c '
+    def plain: gsub("\\\\x20"; " ");
+    [split("\n")[] | select(. != "") | split(" ") | select(length == 3)
+     | {uuid: .[0], root: (.[1] | plain), target: (.[2] | plain)}]')
+  jq -n -c --argjson listed "$listed" --argjson mounted "$mounted" '
+    # The mounts of a top-level subvolume: its root is "/<name>" ("/" for
+    # the top level itself).
+    def mounts($uuid; $name): [$mounted[] | select(.uuid == $uuid and .root == "/" + $name) | .target];
+    ([$mounted[].uuid] | unique) as $uuids
+    | [$uuids[] as $uuid
+       | ($listed | map(select(.uuid == $uuid)) | first) as $entry
+       | ([$mounted[] | select(.uuid == $uuid) | .root | ltrimstr("/") | select(contains("/") | not)] | unique) as $seen
+       | (if $entry != null then ($entry.top + ($seen - $entry.top)) else $seen end) as $names
+       | {key: $uuid, value: {
+           subvolumes: [$names[] | {name: ., mounts: mounts($uuid; .)}],
+           snapshots: (if $entry != null then $entry.snapshots else null end),
+           nested: (if $entry != null then $entry.nested else null end)}}]
+    | from_entries'
 }
 
 # The file system mounted at a folder ("cifs", "autofs" under it, …), one per
@@ -332,7 +394,7 @@ bees_status() {
     stamp=$(systemctl show "$BEES_UNIT" -P ActiveEnterTimestamp 2>/dev/null || true)
     [[ -z $stamp ]] || since=$(date -d "$stamp" +%s 2>/dev/null || echo 0)
     # Its progress is root's to read; the helper hands out the summary.
-    [[ $available == false ]] || summary=$(pkexec "$ROOT_HELPER" show=bees 2>/dev/null || true)
+    [[ $available == false ]] || summary=$(root_read show=bees)
   elif [[ $on == true && $(systemctl show "$BEES_UNIT" -P ConditionResult 2>/dev/null) == no ]]; then
     # karchy-laptop runs it only while plugged in.
     waits=true
@@ -492,6 +554,7 @@ case "${1:-}" in
   status) (( $# == 1 )) || usage; status ;;
   usage) (( $# == 1 )) || usage; usage_now ;;
   health) (( $# == 1 )) || usage; health ;;
+  subvolumes) (( $# == 1 )) || usage; subvolumes ;;
   shares) (( $# == 1 )) || usage; shares ;;
   bees) (( $# <= 2 )) || usage; bees "${2:-}" ;;
   measure) (( $# == 1 )) || usage; as_root measure=now ;;

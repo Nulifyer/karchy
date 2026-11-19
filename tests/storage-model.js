@@ -145,4 +145,69 @@ eq(M.volumeActions(null, disk), [])
 eq(M.split([{ name: "a", removable: false }, { name: "b", removable: true }, { name: "c", removable: false }]),
   { internal: [{ name: "a", removable: false }, { name: "c", removable: false }], removable: [{ name: "b", removable: true }] })
 eq(M.split(null), { internal: [], removable: [] })
+
+// The stack a volume sits on, outermost first.
+eq(M.stackText({ fstype: "btrfs", partition: { name: "vda2", kind: "" }, layers: ["luks"] }), "vda2 › LUKS encryption › btrfs")
+eq(M.stackText({ fstype: "vfat", partition: { name: "nvme0n1p1", kind: "EFI System" }, layers: [] }), "nvme0n1p1, EFI system partition › FAT")
+eq(M.stackText({ fstype: "ext4", partition: null, layers: [] }), "the whole disk › ext4")
+eq(M.stackText({ fstype: "xfs", partition: { name: "sdb1", kind: "Linux LVM" }, layers: ["lvm"] }), "sdb1 › LVM › xfs")
+// A type that only says a filesystem goes there adds nothing.
+eq(M.stackText({ fstype: "ext4", partition: { name: "vdb2", kind: "Linux filesystem" }, layers: [] }), "vdb2 › ext4")
+eq(M.stackText({ fstype: "exfat", partition: { name: "vdb4", kind: "Microsoft basic data" }, layers: [] }), "vdb4 › exFAT")
+// A locked volume: what is inside isn't known.
+eq(M.stackText({ fstype: null, locked: true, partition: { name: "sdc1", kind: "" }, layers: ["luks"] }), "sdc1 › LUKS encryption")
+eq(M.otherPartitionText({ name: "sda3", kind: "Microsoft reserved", size: 16 * MB }), "sda3 · reserved by Windows · 16 MB")
+eq(M.otherPartitionText({ name: "sdb2", kind: "", label: "", size: 2 * GB }), "sdb2 · nothing recognized on it · 2 GB")
+
+// A btrfs filesystem's subvolumes: the system's first, then /home, the other
+// mounted ones by path, then the ones that are not mounted.
+const subs = { subvolumes: [{ name: "@swap", mounts: ["/swap"] }, { name: ".beeshome", mounts: [] }, { name: "@log", mounts: ["/var/log"] },
+  { name: "@home", mounts: ["/home"] }, { name: "@", mounts: ["/"] }, { name: "@data", mounts: ["/mnt/data"] }], snapshots: 26, nested: 3 }
+eq(M.subvolumeRows(subs).map(r => r.name), ["@", "@home", "@data", "@swap", "@log", ".beeshome"])
+eq(M.subvolumeRows(subs)[0], { name: "@", where: "/", what: "the system" })
+eq(M.subvolumeRows(subs)[2], { name: "@data", where: "/mnt/data", what: "" })
+eq(M.subvolumeRows(subs)[5], { name: ".beeshome", where: "", what: "background deduplication's own data" })
+eq(M.subvolumeSummary(subs), "6 subvolumes · 26 snapshots")
+// Without root's list the snapshots are not counted, and no number stands in.
+eq(M.subvolumeSummary({ subvolumes: [{ name: "@", mounts: ["/"] }], snapshots: null, nested: null }), "1 subvolume")
+eq(M.subvolumeSummary(null), ""); eq(M.subvolumeRows(null), [])
+// A filesystem mounted whole has its top level as the one row.
+eq(M.subvolumeRows({ subvolumes: [{ name: "", mounts: ["/mnt/photos"] }] }), [{ name: "(top level)", where: "/mnt/photos", what: "" }])
+
+// The overview's tiles: the system, data volumes, USB drives, kept shares;
+// never the boot partition, swap, or a recovery partition.
+const efiType = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+const overviewDisks = [
+  { name: "sdb", removable: false, volumes: [
+    { path: "/dev/sdb1", role: "data", label: "Photos", fstype: "ext4", size: 500 * GB, uuid: "p", mounts: ["/mnt/photos"], fsSize: 500 * GB, fsUsed: 100 * GB, fsAvail: 380 * GB },
+    { path: "/dev/sdb2", role: "data", label: "", fstype: "ntfs", size: 200 * GB, uuid: "w", mounts: [] },
+    { path: "/dev/sdb3", role: "data", fstype: null, locked: true, encrypted: true, size: 100 * GB, mounts: [] },
+    { path: "/dev/sdb4", role: "data", fstype: "ntfs", size: 600 * MB, mounts: [] },
+    { path: "/dev/sdb5", role: "data", fstype: "vfat", size: 2 * GB, parttype: efiType, mounts: [] }] },
+  { name: "nvme0n1", removable: false, volumes: [
+    { path: "/dev/mapper/luks-1", role: "system", fstype: "btrfs", encrypted: true, size: 40 * GB, uuid: "s", mounts: ["/home", "/"], fsSize: 40 * GB, fsAvail: 27 * GB, onDisk: { data: 10 * GB, metadata: 1 * GB } },
+    { path: "/dev/nvme0n1p1", role: "boot", fstype: "vfat", size: 4 * GB, mounts: ["/boot"], fsSize: 4 * GB, fsUsed: 1 * GB, fsAvail: 3 * GB },
+    { path: "/dev/nvme0n1p3", role: "swap", fstype: "swap", size: 8 * GB, mounts: [] }] },
+  { name: "sdc", removable: true, volumes: [
+    { path: "/dev/sdc1", role: "data", label: "STICK", fstype: "vfat", size: 500 * MB, uuid: "u", mounts: [] }] }
+]
+const overviewShares = [
+  { source: "//nas/media", target: "/mnt/media", state: "connected", size: 8000 * GB, avail: 2000 * GB },
+  { source: "//nas/backup", target: "/mnt/backup", state: "idle" },
+  { source: "//old/files", target: "/mnt/files", state: "unreachable" }]
+const tiles = M.places(overviewDisks, overviewShares, {})
+eq(tiles.map(t => t.name + ":" + t.kind + ":" + t.state), ["System:system:open", "Photos:disk:open", "200 GB volume:disk:mount",
+  "Encrypted volume:disk:unlock", "STICK:usb:mount", "media:share:open", "backup:share:open", "files:share:unreachable"])
+eq(tiles[0].target, "/"); eq(tiles[0].line, "27 GB free of 40 GB"); eq(tiles[0].space.share, 11 / 40)
+eq(tiles[1].target, "/mnt/photos"); eq(tiles[1].line, "380 GB free of 500 GB")
+eq(tiles[2].line, "Not mounted · 200 GB"); eq(tiles[2].space, null); eq(tiles[2].target, "")
+eq(tiles[3].line, "Locked · 100 GB")
+eq(tiles[5].line, "2 TB free of 8 TB"); eq(tiles[5].space.share, 0.75)
+eq(tiles[6].line, "Connects when opened"); eq(tiles[7].line, "Not reachable")
+// The newest reading replaces the figures status came with.
+eq(M.places(overviewDisks, [], { p: { fsSize: 500 * GB, fsUsed: 300 * GB, fsAvail: 180 * GB } })[1].line, "180 GB free of 500 GB")
+eq(M.placeAction(tiles[0]), "Open System in Files"); eq(M.placeAction(tiles[2]), "Mount 200 GB volume")
+eq(M.placeAction(tiles[3]), "Unlock Encrypted volume…"); eq(M.placeAction(tiles[7]), "files can't be reached")
+eq(M.places([], [], {}), []); eq(M.places(null, null, null), [])
+
 console.log("storage model ok")

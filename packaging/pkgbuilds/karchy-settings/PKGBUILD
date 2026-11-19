@@ -196,10 +196,11 @@ package() {
   # Settings › Storage: the root helper behind the page (disk health, bees'
   # progress and switch, "Measure now"), with its polkit action and the rule
   # that spares the person at the computer the password; the count "Measure
-  # now" starts (no timer runs it, D-123); the SMART reader; and the one
-  # reader of bees' status file.
+  # now" starts (no timer runs it, D-123); the SMART reader; the lister of a
+  # btrfs filesystem's subvolumes (D-141); and the one reader of bees' status
+  # file.
   install -Dm755 -t "$pkgdir/usr/lib/karchy" storage/storage-measure storage/storage-settings storage/storage-health \
-    storage/bees-summary
+    storage/storage-subvolumes storage/bees-summary
   # Quick install's root side (D-109): installs and removes catalog apps by
   # id, always with an administrator's password.
   install -Dm755 packages/app-packages "$pkgdir/usr/lib/karchy/app-packages"
