@@ -13,7 +13,7 @@ fi
 HOOK=$1
 
 # Hook names are fixed labels chosen by Karchy code (post-update, theme-set,
-# font-set). The name becomes a filename under the hooks directory. A slash
+# font-set, battery-low, battery-critical). The name becomes a filename under the hooks directory. A slash
 # would turn it into directory levels, and a bare `.` or `..` would point bash
 # at the directory itself or its parent. Refuse those rather than follow them.
 # Dots inside a name (a..b) are fine; once slashes are out, only the whole

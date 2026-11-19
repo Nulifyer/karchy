@@ -66,7 +66,7 @@ Do not edit these files. Find the command that writes them.
 
 `karchy-hook <name>` runs `~/.config/karchy/hooks/<name>` and then every file in `~/.config/karchy/hooks/<name>.d/`, with bash. Files that end in `.sample` are skipped. A hook that fails is reported and does not stop the caller.
 
-karchy calls these names: `theme-set <theme>`, `font-set <font>`, `battery-low <percent>`, `battery-critical <percent>`. To confirm the list, run `grep -rn "karchy-hook " /usr/share/karchy/bin`. Use a hook when the user wants their own command to run on one of those events.
+karchy calls these names: `theme-set <theme>`, `font-set <font>`, `battery-low <percent>`, `battery-critical <percent>`, and `post-update` (no arguments) at the end of a `karchy update` that installed something, after the packages, migrations and desktop reload, as the user and while sudo still holds the password. To confirm the list, run `grep -rn "karchy-hook " /usr/share/karchy/bin`. Use a hook when the user wants their own command to run on one of those events.
 
 ## Rules that decide where a change goes
 

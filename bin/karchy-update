@@ -16,7 +16,8 @@
 #      and karchy-settings' hooks pause Hyprland's auto-reload meanwhile)
 #   5. AUR packages (paru)
 #   6. config files left as .pacnew, then karchy migrations, the agent skills
-#      of the installed packages (karchy-agent-skills) and a desktop reload;
+#      of the installed packages (karchy-agent-skills), a desktop reload and
+#      the user's post-update hook (karchy-hook);
 #      at the end, the release notes and a restart offer when the kernel or
 #      other boot-time parts changed
 # Colors are the terminal's 16 ANSI colors, which follow the current theme,
@@ -473,6 +474,12 @@ if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
 else
   good "Done (no desktop session to reload)"
 fi
+# The user's own post-update hook (~/.config/karchy/hooks/post-update and
+# post-update.d/), as Omarchy runs it: as the user, with no arguments, after
+# the packages, migrations and reload, while sudo still holds the password so
+# a hook that calls sudo isn't asked again. A failing hook is reported and
+# doesn't fail the update.
+karchy-hook post-update || true
 kill "$keepalive" 2>/dev/null || true
 karchy-update-check --quiet >/dev/null 2>&1 || true
 date +%s >"$state_dir/last-update"
