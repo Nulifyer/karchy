@@ -45,9 +45,14 @@ in_target() {
   arch-chroot "$KARCHY_MNT" "$@"
 }
 
-# Run a command in the target as the new user.
+# Run a command in the target as the new user. The live system's root session
+# must not leak in: its XDG_RUNTIME_DIR (/run/user/0) isn't the user's to
+# write, so karchy-theme-set's lock there failed with "Permission denied", and
+# its session bus isn't the user's either. Without them, commands fall back to
+# /tmp and to working without a session, as they do in the chroot anyway.
 as_user() {
-  arch-chroot -u "$KARCHY_USER" "$KARCHY_MNT" env HOME="/home/$KARCHY_USER" "$@"
+  arch-chroot -u "$KARCHY_USER" "$KARCHY_MNT" \
+    env -u XDG_RUNTIME_DIR -u DBUS_SESSION_BUS_ADDRESS HOME="/home/$KARCHY_USER" "$@"
 }
 
 # The partition device for partition N of a disk (sda1, vda1, nvme0n1p1).
