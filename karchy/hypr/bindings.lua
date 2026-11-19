@@ -1,9 +1,14 @@
--- karchy's keybindings: exactly docs/keybindings.md (D-17). Media, volume,
--- brightness and the universal clipboard come from Omarchy's
+-- karchy's default keybindings: docs/keybindings.md (D-17, D-134). Media,
+-- volume, brightness and the universal clipboard come from Omarchy's
 -- default/hypr/bindings/{media,clipboard}.lua, loaded by karchy/hypr/init.lua.
--- Add personal bindings in ~/.config/hypr/bindings.lua, not here.
+--
+-- A new default is one o.bind line here, under the o.bind_group it belongs
+-- to: o.bind(keys, name, what it runs). The name is the action's identity in
+-- Settings › Keybindings, where the line appears by itself, so give each
+-- action its own. People change these in Settings or in their
+-- ~/.config/hypr/bindings.lua, never here.
 
--- Windows
+o.bind_group("Windows")
 o.bind("ALT + F4", "Close window", hl.dsp.window.close())
 o.bind("SUPER + UP", "Maximize window", hl.dsp.window.fullscreen({ mode = "maximized", action = "set" }))
 o.bind("SUPER + DOWN", "Restore window, or minimize it", "karchy-hyprland-window-minimize --down")
@@ -43,7 +48,8 @@ o.bind("ALT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
 o.bind("ALT + SHIFT + TAB", "Focus on previous window", hl.dsp.window.cycle_next({ next = false }))
 o.bind("ALT + SHIFT + TAB", "Reveal active window on top", hl.dsp.window.alter_zorder({ mode = "bottom" }))
 
--- Workspaces and monitors (per-monitor blocks of 10, D-13 in the audit)
+-- Per-monitor blocks of 10 (D-13 in the audit)
+o.bind_group("Workspaces and monitors")
 for workspace = 1, 10 do
   local key = "code:" .. tostring(workspace + 9)
   o.bind("SUPER + " .. key, "Switch to workspace " .. workspace, o.workspaces.focus(workspace))
@@ -62,7 +68,7 @@ o.bind("CTRL + ALT + TAB", "Focus on next monitor", hl.dsp.focus({ monitor = "+1
 -- Ctrl+Alt+P (the project picker) comes with its package, karchy-project-picker
 -- (/usr/share/karchy/hypr.d, loaded by karchy/hypr/init.lua).
 
--- Shell and system
+o.bind_group("Shell and system")
 o.bind("SUPER + SPACE", "Menu", { menu = "root" })
 o.bind("SUPER + L", "Lock", "karchy-system-lock")
 o.bind("SUPER + ESCAPE", "Power menu", { menu = "system" })
@@ -79,16 +85,17 @@ o.bind("SUPER + SHIFT + ALT + comma", "Open notification history", { ipc = "noti
 o.bind("CTRL + SHIFT + ESCAPE", "Task manager",
   "command -v missioncenter >/dev/null && karchy-launch-or-focus io.missioncenter.MissionCenter missioncenter || karchy-launch-or-focus-tui btop")
 
--- Apps
+o.bind_group("Apps")
 o.bind("SUPER + RETURN", "Terminal", o.launch_terminal())
 o.bind("SUPER + E", "File manager", "karchy-launch-files")
 
--- Capture (Omasnap, D-34)
+-- Omasnap, D-34
+o.bind_group("Capture")
 o.bind("PRINT", "Screenshot", "karchy-capture-screenshot")
 o.bind("SUPER + SHIFT + S", "Screenshot region", "karchy-capture-screenshot region")
 o.bind("ALT + PRINT", "Screen recording", "karchy-capture-screenrecording --stop-recording || karchy-capture-screenrecording")
 
--- Laptop lid
+o.bind_group("Laptop lid")
 o.bind("switch:on:Lid Switch", nil, "karchy-system-lid-close", { locked = true })
 o.bind("switch:off:Lid Switch", nil, "karchy-hyprland-monitor-clamshell", { locked = true })
 

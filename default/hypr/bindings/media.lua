@@ -1,4 +1,5 @@
 -- Volume, brightness, keyboard backlight, and touchpad controls.
+o.bind_group("Hardware keys")
 o.bind("XF86AudioRaiseVolume", "Volume up", { audio = "raise" }, { locked = true, repeating = true })
 o.bind("XF86AudioLowerVolume", "Volume down", { audio = "lower" }, { locked = true, repeating = true })
 o.bind("XF86AudioMute", "Mute", { audio = "mute-toggle" }, { locked = true })

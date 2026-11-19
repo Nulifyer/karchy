@@ -9,16 +9,22 @@
 require("default.hypr.helpers")
 local require_optional = require("default.hypr.require_optional")
 
+-- The keybinding layers (karchy/hypr/keys.lua): loaded before anything
+-- binds a key, so every bind is recorded with the layer it came from. The
+-- order below is the order of the layers: karchy's defaults, add-ons, the
+-- Settings window's files, and after this file the person's own.
+local keybindings = require("karchy.hypr.keys")
+
 require("karchy.hypr.autostart")
 require("default.hypr.monitor-workspaces")
 
--- Bindings: Omarchy's media keys and universal clipboard kept whole, then
--- karchy's own set (docs/keybindings.md).
+-- Bindings, layer 1: Omarchy's media keys and universal clipboard kept whole,
+-- then karchy's own set (docs/keybindings.md).
 require("default.hypr.bindings.media")
 require("default.hypr.bindings.clipboard")
 require("karchy.hypr.bindings")
 
--- Add-on packages (karchy's addons/) bring their own bindings and rules in
+-- Layer 2. Add-on packages (karchy's addons/) bring their own bindings and rules in
 -- root-owned /usr/share/karchy/hypr.d, so they exist only while the package is
 -- installed; karchy's pacman hooks reload Hyprland when they change.
 do
@@ -50,3 +56,9 @@ for _, name in ipairs({ "displays", "input", "power" }) do
     dofile(file)
   end
 end
+
+-- Keybinding changes made in Settings › Keybindings (keybindings.lua, from
+-- ~/.config/karchy/keybindings.json). A file that fails costs those changes
+-- only: karchy's defaults above are bound already.
+keybindings.load_settings()
+keybindings.publish_when_loaded()

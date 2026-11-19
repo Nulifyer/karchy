@@ -1,0 +1,775 @@
+#!/usr/bin/env python3
+# karchy:summary=List and change keybindings: every binding, the layer that set it and what overrides what (Settings › Keybindings)
+# karchy:args=list [--json] [--predicted] | conflicts <keys> | set <action> <keys> [--from <keys>] [--replace|--keep-both] | add <keys> (--action <name> | --command <cmd> --description <text>) [--replace|--keep-both] | remove <action> [<keys>] | reset <action> [<keys>] | reset --all | reset --stale | apply
+# karchy:hidden=true
+"""karchy's keybindings come in four layers, lowest first (D-134):
+
+  1 default   karchy's own (karchy/hypr/bindings.lua, and the media and
+              clipboard keys under default/hypr/bindings)
+  2 addon     an add-on package's file in /usr/share/karchy/hypr.d
+  3 settings  the changes made here, kept in ~/.config/karchy/keybindings.json
+              (only the changes) and generated into
+              ~/.local/state/karchy/hypr/keybindings.lua
+  4 user      the person's own ~/.config/hypr/bindings.lua, which loads last
+              and wins
+
+Hyprland's Lua layer (karchy/hypr/keys.lua) records every bind and
+unbind with the layer it came from and publishes the record when the config
+has loaded. This command resolves that record into rows and owns the settings
+layer. The Settings page and agents read the same `list --json`.
+
+  list [--json]      every binding: the action, its keys, the layer that set
+                     them, and the chain of what it overrides or is overridden
+                     by. Plain text without --json. --predicted resolves the
+                     saved rules against the lower layers instead of reading
+                     what Hyprland loaded (the two agree after a reload).
+  conflicts <keys>   JSON: the actions bound to these keys now
+  set <action> <keys> [--from <keys>]
+                     move an action to other keys. --from names which of its
+                     bindings, when it has several. On a default this writes
+                     two rules, as VS Code does: the old keys unbound, the new
+                     ones bound. On a change of your own it edits that rule.
+  add <keys> --action <name>
+                     one more binding for an action that exists
+  add <keys> --command <cmd> --description <text>
+                     a binding of your own that runs a command
+  remove <action> [<keys>]
+                     take the binding away (a default is unbound by a rule; a
+                     rule of your own is deleted)
+  reset <action> [<keys>] | reset --all | reset --stale
+                     delete your rules for it, which brings the default back;
+                     --stale deletes the rules that no longer match anything
+  apply              generate the Lua again from keybindings.json and reload
+
+Keys are written as Hyprland reads them: "SUPER + SHIFT + T", "CTRL + ALT +
+code:20", "XF86AudioMute". set and add refuse keys another action has unless
+--replace (unbind the other action) or --keep-both is given, and refuse a
+change that would leave no binding for the menu, a terminal or this page.
+A change prints the new list (--json for JSON) once Hyprland has reloaded.
+Exit 1 with one line on stderr when a change is refused.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config") / "karchy/keybindings.json"
+GENERATED = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local/state") / "karchy/hypr/keybindings.lua"
+TRACE = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "karchy-keybindings.json"
+USER_FILE = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config") / "hypr/bindings.lua"
+
+LAYERS = [
+    {"id": "default", "label": "karchy", "what": "karchy's defaults"},
+    {"id": "addon", "label": "Add-on", "what": "an add-on package's bindings"},
+    {"id": "settings", "label": "Settings", "what": "changes made in Settings"},
+    {"id": "user", "label": "bindings.lua", "what": "your own ~/.config/hypr files, which win"},
+]
+
+# What a desktop can't be left without: a change that removes the last
+# binding of one of these is refused. Matched on what the binding runs.
+ESSENTIAL = {
+    "menu": ("the menu", lambda what: what == "menu=root" or "karchy-menu" in what and "keybindings" not in what),
+    "terminal": ("a terminal", lambda what: "karchy-launch-terminal" in what or "xdg-terminal-exec" in what),
+    "keybindings": ("Settings › Keybindings", lambda what: "karchy-settings keybindings" in what),
+}
+
+
+class Refused(Exception):
+    pass
+
+
+# ---- keys -------------------------------------------------------------------
+
+MODIFIERS = {"super": 0, "ctrl": 1, "control": 1, "alt": 2, "shift": 3}
+MODIFIER_NAMES = ["SUPER", "CTRL", "ALT", "SHIFT"]
+MODIFIER_LABELS = ["Super", "Ctrl", "Alt", "Shift"]
+
+# X11 keycodes of a US keyboard's keys that karchy binds by code, used when
+# xkbcli can't say what the layout prints on them.
+FALLBACK_KEYCODES = {
+    10: "1", 11: "2", 12: "3", 13: "4", 14: "5", 15: "6", 16: "7", 17: "8", 18: "9", 19: "0",
+    20: "minus", 21: "equal", 34: "bracketleft", 35: "bracketright", 47: "semicolon",
+    48: "apostrophe", 49: "grave", 51: "backslash", 59: "comma", 60: "period", 61: "slash",
+}
+
+KEY_LABELS = {
+    "return": "Enter", "escape": "Esc", "space": "Space", "tab": "Tab", "backspace": "Backspace",
+    "delete": "Delete", "insert": "Insert", "home": "Home", "end": "End", "prior": "Page Up",
+    "next": "Page Down", "left": "Left", "right": "Right", "up": "Up", "down": "Down", "print": "Print",
+    "minus": "-", "equal": "=", "grave": "`", "comma": ",", "period": ".", "slash": "/",
+    "semicolon": ";", "apostrophe": "'", "bracketleft": "[", "bracketright": "]", "backslash": "\\",
+    "mouse:272": "Left mouse", "mouse:273": "Right mouse", "mouse:274": "Middle mouse",
+    "mouse_down": "Scroll down", "mouse_up": "Scroll up",
+    "xf86audioraisevolume": "Volume up", "xf86audiolowervolume": "Volume down", "xf86audiomute": "Mute",
+    "xf86audiomicmute": "Mic mute", "xf86monbrightnessup": "Brightness up",
+    "xf86monbrightnessdown": "Brightness down", "xf86kbdbrightnessup": "Keyboard light up",
+    "xf86kbdbrightnessdown": "Keyboard light down", "xf86kbdlightonoff": "Keyboard light",
+    "xf86audionext": "Next track", "xf86audioprev": "Previous track", "xf86audioplay": "Play",
+    "xf86audiopause": "Pause", "xf86poweroff": "Power", "xf86rfkill": "Airplane",
+    "xf86touchpadtoggle": "Touchpad", "xf86touchpadon": "Touchpad on", "xf86touchpadoff": "Touchpad off",
+    "xf86eject": "Eject",
+}
+
+
+def split_keys(keys):
+    """(modifier flags, key as written) of "SUPER + SHIFT + T"."""
+    mods, key = [False] * 4, ""
+    for part in str(keys or "").split("+"):
+        word = part.strip()
+        if word.lower() in MODIFIERS:
+            mods[MODIFIERS[word.lower()]] = True
+        elif word:
+            key = word
+    return mods, key
+
+
+def normalize(keys):
+    """One spelling per combination, as the Lua layer's normalize(): what
+    Hyprland's own unbind treats as the same keys."""
+    mods, key = split_keys(keys)
+    return "+".join([name.lower() for name, on in zip(MODIFIER_NAMES, mods) if on] + [key.lower()])
+
+
+def canonical(keys):
+    """How the command writes keys it is given: "SUPER + SHIFT + T"."""
+    mods, key = split_keys(keys)
+    if len(key) == 1 or re.fullmatch(r"[A-Za-z]+[0-9]*", key) and not key.lower().startswith("xf86"):
+        key = key.upper()
+    return " + ".join([name for name, on in zip(MODIFIER_NAMES, mods) if on] + [key])
+
+
+def identity(keys, keymap):
+    """The physical combination: a key written by name and the same key
+    written by code compare equal when the layout says they are one key."""
+    mods, key = split_keys(keys)
+    key = key.lower()
+    match = re.fullmatch(r"code:(\d+)", key)
+    if match:
+        key = keymap.get(int(match.group(1)), key).lower()
+    return "+".join([name.lower() for name, on in zip(MODIFIER_NAMES, mods) if on] + [key])
+
+
+def labels(keys, keymap):
+    """The key caps: ["Super", "Shift", "T"]."""
+    mods, key = split_keys(keys)
+    lower = key.lower()
+    match = re.fullmatch(r"code:(\d+)", lower)
+    if match:
+        lower = keymap.get(int(match.group(1)), lower).lower()
+    if lower in KEY_LABELS:
+        cap = KEY_LABELS[lower]
+    elif lower.startswith("xf86"):
+        cap = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", key[4:])
+    elif len(lower) == 1:
+        cap = lower.upper()
+    else:
+        cap = lower[:1].upper() + lower[1:]
+    return [name for name, on in zip(MODIFIER_LABELS, mods) if on] + [cap]
+
+
+def valid_keys(keys):
+    mods, key = split_keys(keys)
+    return bool(key) and re.fullmatch(r"[A-Za-z0-9_:]+", key) is not None
+
+
+def load_keymap():
+    """keycode -> the keysym the leading layout puts on the key."""
+    keymap = dict(FALLBACK_KEYCODES)
+    try:
+        layout = variant = ""
+        for option in ("kb_layout", "kb_variant"):
+            out = subprocess.run(["hyprctl", "-j", "getoption", "input:" + option], capture_output=True, text=True, timeout=2).stdout
+            value = (json.loads(out).get("str") or "").split(",")[0]
+            if re.fullmatch(r"[A-Za-z0-9_-]*", value):
+                if option == "kb_layout":
+                    layout = value
+                else:
+                    variant = value
+        command = ["xkbcli", "compile-keymap"]
+        if layout:
+            command += ["--layout", layout]
+            if variant:
+                command += ["--variant", variant]
+        text = subprocess.run(command, capture_output=True, text=True, timeout=3, stdin=subprocess.DEVNULL).stdout
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return keymap
+    codes = {name: int(code) for name, code in re.findall(r"<([A-Za-z0-9_]+)>\s*=\s*(\d+)\s*;", text)}
+    for name, symbol in re.findall(r"key\s*<([A-Za-z0-9_]+)>\s*\{[^\[]*\[\s*([^,\s\]]+)", text):
+        if name in codes and symbol != "NoSymbol":
+            keymap[codes[name]] = symbol
+    return keymap
+
+
+# ---- the rules (keybindings.json) -------------------------------------------
+
+def read_rules(path=None):
+    """The saved rules, and why they couldn't be read (a hand edit gone wrong
+    must not lose the file: nothing is written over one that doesn't parse)."""
+    path = path or CONFIG
+    try:
+        data = json.loads(path.read_text())
+    except FileNotFoundError:
+        return [], ""
+    except (OSError, ValueError) as error:
+        return [], f"{path} is not valid JSON ({error}). Fix or remove it."
+    rules = data.get("rules") if isinstance(data, dict) else None
+    if not isinstance(rules, list):
+        return [], f"{path} has no \"rules\" list. Fix or remove it."
+    clean = []
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        if isinstance(rule.get("unbind"), str) and valid_keys(rule["unbind"]):
+            clean.append({key: rule[key] for key in ("unbind", "action") if isinstance(rule.get(key), str)})
+        elif isinstance(rule.get("bind"), str) and valid_keys(rule["bind"]):
+            if isinstance(rule.get("command"), str) and rule["command"].strip():
+                clean.append({key: rule[key] for key in ("bind", "description", "command") if isinstance(rule.get(key), str)})
+            elif isinstance(rule.get("action"), str):
+                clean.append({key: rule[key] for key in ("bind", "action", "replaces") if isinstance(rule.get(key), str)})
+    return clean, ""
+
+
+def lua_string(text):
+    """A Lua string literal for any text: every byte outside printable ASCII
+    as a decimal escape, so nothing in a name or command can end the string."""
+    out = []
+    for byte in str(text).encode():
+        char = chr(byte)
+        if char in '"\\':
+            out.append("\\" + char)
+        elif 32 <= byte < 127:
+            out.append(char)
+        else:
+            out.append(f"\\{byte:03d}")
+    return '"' + "".join(out) + '"'
+
+
+def generate_lua(rules):
+    """The settings layer as Hyprland loads it: data for the Lua layer's
+    apply(), which knows how each action is bound."""
+    lines = [
+        "-- Generated by karchy-settings-keybindings from ~/.config/karchy/keybindings.json",
+        "-- (Settings › Keybindings). Don't edit: change it there, or write your own",
+        "-- bindings in ~/.config/hypr/bindings.lua, which loads later and wins.",
+        'require("karchy.hypr.keys").apply({',
+    ]
+    for rule in rules:
+        fields = [f"{name} = {lua_string(rule[name])}" for name in ("unbind", "bind", "action", "replaces", "description", "command") if name in rule]
+        lines.append("  { " + ", ".join(fields) + " },")
+    lines.append("})")
+    return "\n".join(lines) + "\n"
+
+
+# ---- resolving the record into rows -----------------------------------------
+
+def predict(events, rules):
+    """The record as it will be once these rules are loaded: the lower
+    layers' events, the rules applied as karchy/hypr/keys.lua applies
+    them, then the person's own files."""
+    lower = [e for e in events if e.get("layer") in ("default", "addon") or (e.get("layer") == "settings" and e.get("owner") != "keybindings")]
+    user = [e for e in events if e.get("layer") == "user"]
+    active = []
+    for event in lower:
+        if event["op"] == "bind":
+            active.append(dict(event, norm=normalize(event["keys"]), on=True))
+        elif event["op"] == "unbind":
+            for entry in active:
+                if entry["on"] and entry["norm"] == normalize(event["keys"]):
+                    entry["on"] = False
+    out = list(lower)
+    for index, rule in enumerate(rules, start=1):
+        base = {"layer": "settings", "owner": "keybindings", "rule": index}
+        if "unbind" in rule:
+            norm = normalize(rule["unbind"])
+            matched = [e for e in active if e["on"] and e["norm"] == norm and ("action" not in rule or e.get("description") == rule["action"])]
+            if not matched:
+                out.append(dict(base, op="stale", why="nothing bound"))
+                continue
+            for entry in matched:
+                entry["on"] = False
+            out.append(dict(base, op="unbind", keys=rule["unbind"], **({"action": rule["action"]} if "action" in rule else {})))
+        elif "command" in rule:
+            event = dict(base, op="bind", keys=rule["bind"], description=rule.get("description") or rule["command"], what=rule["command"], group="Your own", custom=True)
+            active.append(dict(event, norm=normalize(rule["bind"]), on=True))
+            out.append(event)
+        else:
+            source, replaces = None, normalize(rule["replaces"]) if "replaces" in rule else None
+            for entry in active:
+                if entry.get("description") == rule["action"] and entry.get("layer") in ("default", "addon"):
+                    if replaces and entry["norm"] == replaces:
+                        source = entry
+                        break
+                    source = source or entry
+            if not source:
+                out.append(dict(base, op="stale", why="no such action"))
+                continue
+            event = dict(base, op="bind", keys=rule["bind"], description=rule["action"], what=source.get("what", ""), group=source.get("group"))
+            for flag in ("mouse", "locked", "release"):
+                if source.get(flag):
+                    event[flag] = True
+            if "replaces" in rule:
+                event["replaces"] = rule["replaces"]
+            active.append(dict(event, norm=normalize(rule["bind"]), on=True))
+            out.append(event)
+    return out + user
+
+
+def source_label(entry):
+    layer = entry["layer"]
+    if layer == "default":
+        return "karchy"
+    if layer == "addon":
+        return (entry.get("owner") or "add-on").replace("-", " ").capitalize()
+    if layer == "settings":
+        owner = entry.get("owner") or "keybindings"
+        return "Settings" if owner == "keybindings" else "Settings › " + owner.capitalize()
+    return "your " + os.path.basename(entry.get("owner") or "bindings.lua")
+
+
+def resolve(events, keymap=None):
+    """Rows for the list. Each row is one binding and its history: the chain
+    runs from the lowest layer that bound it to the one that wins."""
+    keymap = keymap if keymap is not None else dict(FALLBACK_KEYCODES)
+    entries, stale = [], []
+
+    for event in events:
+        op = event.get("op")
+        if op == "stale":
+            stale.append({"rule": event.get("rule"), "why": event.get("why", "")})
+        elif op == "unbind":
+            norm = normalize(event["keys"])
+            for entry in entries:
+                if entry["active"] and entry["norm"] == norm and ("action" not in event or entry["action"] == event["action"]):
+                    entry["active"] = False
+                    entry["removedBy"] = {"layer": event["layer"], "owner": event.get("owner"), "rule": event.get("rule")}
+        elif op == "bind":
+            entry = {
+                "action": event.get("description") or event.get("what") or "",
+                "named": bool(event.get("description")),
+                "keys": event["keys"], "norm": normalize(event["keys"]),
+                "layer": event["layer"], "owner": event.get("owner"), "group": event.get("group"),
+                "what": event.get("what") or "", "rule": event.get("rule"), "custom": bool(event.get("custom")),
+                "mouse": bool(event.get("mouse")), "active": True, "removedBy": None, "before": None, "after": None,
+            }
+            # What this bind takes over from: the binding a Settings rule says
+            # it replaces; for the person's own files, what they just unbound
+            # on the same keys or under the same name.
+            previous = None
+            if event.get("replaces"):
+                wanted = normalize(event["replaces"])
+                previous = next((e for e in reversed(entries) if e["action"] == entry["action"] and e["norm"] == wanted and not e["active"] and e["after"] is None), None)
+            elif event["layer"] == "user":
+                gone = [e for e in entries if not e["active"] and e["after"] is None and (e["removedBy"] or {}).get("layer") == "user"]
+                # The same action on the same keys first (o.rebind of a default),
+                # then whatever had the keys, then the action wherever it was.
+                previous = (next((e for e in reversed(gone) if e["norm"] == entry["norm"] and e["action"] == entry["action"]), None)
+                            or next((e for e in reversed(gone) if e["norm"] == entry["norm"]), None)
+                            or next((e for e in reversed(gone) if e["action"] == entry["action"]), None))
+            if previous is not None:
+                root = previous
+                while root["before"] is not None:
+                    root = root["before"]
+                entry["before"], previous["after"] = previous, entry
+                entry["group"] = entry["group"] or root["group"]
+            entries.append(entry)
+
+    rows = []
+    for first in (e for e in entries if e["before"] is None):
+        chain = []
+        entry = first
+        while entry is not None:
+            chain.append(entry)
+            entry = entry["after"]
+        last = chain[-1]
+        effective = last if last["active"] else None
+        if first["keys"].lower().startswith("switch:") or not first["action"]:
+            continue
+        # A binding the person's own file made and took away again is no row.
+        # One made in Settings that their file unbinds stays, so the rule
+        # behind it can be seen and removed.
+        if effective is None and first["layer"] == "user":
+            continue
+
+        top = effective or last
+        removed = (last["removedBy"] or {}) if effective is None else {}
+        if effective is None:
+            state = "removed"
+        elif len(chain) > 1:
+            state = "changed"
+        elif top["layer"] == "settings" and top["owner"] == "keybindings":
+            state = "added"
+        else:
+            state = "default" if top["layer"] in ("default", "addon") else "yours"
+        winner = effective["layer"] if effective else removed.get("layer", first["layer"])
+        winner_owner = effective["owner"] if effective else removed.get("owner")
+        read_only = ""
+        if first["mouse"] or re.match(r"mouse[:_]", split_keys(first["keys"])[1].lower()):
+            read_only = "A mouse binding. Change it in your bindings.lua."
+        elif winner == "user" and effective is None and first["layer"] == "settings" and first["owner"] == "keybindings":
+            read_only = ""
+        elif winner == "user":
+            read_only = "Set in your " + os.path.basename(winner_owner or "bindings.lua") + ", which wins. Change it there."
+        elif winner == "settings" and winner_owner != "keybindings":
+            read_only = "Set in Settings › " + str(winner_owner).capitalize() + "."
+
+        links = []
+        for index, item in enumerate(chain):
+            link = {
+                "layer": item["layer"], "source": source_label(item), "keys": item["keys"], "labels": labels(item["keys"], keymap),
+                "action": item["action"], "state": "wins" if item is effective else "replaced" if index < len(chain) - 1 else "removed",
+            }
+            if link["state"] != "wins" and item["removedBy"]:
+                link["by"] = source_label({"layer": item["removedBy"]["layer"], "owner": item["removedBy"].get("owner")})
+            links.append(link)
+
+        rows.append({
+            "id": f"{first['action']}\t{first['norm']}",
+            "action": top["action"], "group": first["group"] or ("Your own" if first["layer"] in ("settings", "user") else "Other"),
+            "keys": effective["keys"] if effective else "", "labels": labels(effective["keys"], keymap) if effective else [],
+            "identity": identity(effective["keys"], keymap) if effective else "",
+            "layer": winner, "source": source_label({"layer": winner, "owner": winner_owner}),
+            "state": state, "custom": top["custom"], "what": top["what"], "readOnly": read_only,
+            "defaultKeys": first["keys"] if first["layer"] in ("default", "addon") else "",
+            "firstKeys": first["keys"],
+            "chain": links, "conflicts": [],
+            "_entries": chain,
+        })
+
+    # Two different actions on the same keys both run. karchy's own pairs
+    # (Alt+Tab focuses, then raises) are meant; anything else is a conflict.
+    by_identity = {}
+    for row in rows:
+        if row["identity"]:
+            by_identity.setdefault(row["identity"], []).append(row)
+    for same in by_identity.values():
+        if len(same) > 1 and not all(row["_entries"][-1]["layer"] == "default" for row in same):
+            for row in same:
+                row["conflicts"] = [other["action"] for other in same if other is not row and other["action"] != row["action"]]
+    return rows, stale
+
+
+def essential_bindings(rows):
+    found = {name: 0 for name in ESSENTIAL}
+    for row in rows:
+        if row["keys"]:
+            for name, (_, runs) in ESSENTIAL.items():
+                if runs(row["what"]):
+                    found[name] += 1
+    return found
+
+
+# ---- changes to the rules ----------------------------------------------------
+
+def find_row(rows, action, keys=None):
+    """The row an action name (and, where it has several bindings, its keys)
+    means. Keys match what the row has now or what its default was."""
+    named = [row for row in rows if row["action"] == action or any(link["action"] == action for link in row["chain"])]
+    if not named:
+        raise Refused(f"No action is called \"{action}\". See: karchy-settings-keybindings list")
+    if keys:
+        wanted = normalize(keys)
+        match = [row for row in named if wanted in (normalize(row["keys"]), normalize(row["defaultKeys"])) or any(normalize(link["keys"]) == wanted for link in row["chain"])]
+        if not match:
+            raise Refused(f"\"{action}\" has no binding on {canonical(keys)}.")
+        return match[0]
+    if len(named) > 1:
+        have = ", ".join(canonical(row["keys"] or row["defaultKeys"]) for row in named)
+        raise Refused(f"\"{action}\" has {len(named)} bindings ({have}). Say which keys.")
+    return named[0]
+
+
+def check_editable(row):
+    if row["readOnly"]:
+        raise Refused(f"\"{row['action']}\" can't be changed here. {row['readOnly']}")
+
+
+def numbered(rules):
+    """The saved rules, each carrying its place in the file ("_n", the number
+    the loaded record knows it by), so a change made of several steps still
+    finds a rule after earlier steps took others out."""
+    return [dict(rule, _n=index) for index, rule in enumerate(rules, start=1)]
+
+
+def unnumbered(rules):
+    return [{name: value for name, value in rule.items() if name != "_n"} for rule in rules]
+
+
+def rules_without_row(rules, row):
+    """The rules with everything this row's history put there taken out."""
+    mine = {entry["rule"] for entry in row["_entries"] if entry["layer"] == "settings" and entry["owner"] == "keybindings" and entry["rule"]}
+    mine |= {(entry["removedBy"] or {}).get("rule") for entry in row["_entries"] if (entry["removedBy"] or {}).get("layer") == "settings"}
+    return [rule for rule in rules if rule.get("_n") not in mine]
+
+
+def change_rules(rules, row, new_keys):
+    """Move a row to other keys; "" removes its binding. A default is unbound
+    by one rule and bound by another; a rule of the person's own is edited or
+    deleted; keys that are the default again are a reset."""
+    check_editable(row)
+    last = row["_entries"][-1]
+    first = row["_entries"][0]
+    kept = rules_without_row(rules, row)
+    if first["layer"] in ("default", "addon"):
+        if new_keys and normalize(new_keys) == first["norm"]:
+            return kept
+        out = kept + [{"unbind": first["keys"], "action": first["action"]}]
+        if new_keys:
+            out.append({"bind": canonical(new_keys), "action": first["action"], "replaces": first["keys"]})
+        return out
+    # A binding made in Settings: one rule, edited in place or deleted.
+    index = last["rule"]
+    if not new_keys:
+        return kept
+    return [dict(rule, bind=canonical(new_keys)) if rule.get("_n") == index else rule for rule in rules]
+
+
+def conflicts_for(rows, keys, keymap, except_row=None):
+    wanted = identity(keys, keymap)
+    return [row for row in rows if row["identity"] == wanted and row is not except_row and (except_row is None or row["id"] != except_row["id"])]
+
+
+def with_conflicts(rules, rows, keys, keymap, row, mode):
+    """Keys another action has: refuse, keep both, or unbind the other."""
+    others = [other for other in conflicts_for(rows, keys, keymap, row) if row is None or other["action"] != row["action"]]
+    if not others or mode == "keep":
+        return rules
+    names = ", ".join(f"\"{other['action']}\"" for other in others)
+    if mode != "replace":
+        raise Refused(f"{canonical(keys)} is also bound to {names}. Add --replace to unbind that, or --keep-both.")
+    for other in others:
+        if other["readOnly"]:
+            raise Refused(f"{canonical(keys)} is bound to {names}, which can't be unbound here. {other['readOnly']}")
+        rules = change_rules(rules, other, "")
+    return rules
+
+
+def check_essentials(before_rows, after_rows):
+    before, after = essential_bindings(before_rows), essential_bindings(after_rows)
+    for name, (label, _) in ESSENTIAL.items():
+        if before[name] > 0 and after[name] == 0:
+            raise Refused(f"That would leave no key for {label}. Give it other keys first.")
+
+
+# ---- files and Hyprland -------------------------------------------------------
+
+def read_trace():
+    try:
+        data = json.loads(TRACE.read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data.get("events"), list) else None
+
+
+def write_atomic(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, temporary = tempfile.mkstemp(dir=path.parent, prefix="." + path.name + ".")
+    with os.fdopen(handle, "w") as out:
+        out.write(text)
+    os.replace(temporary, path)
+
+
+def save(rules):
+    """keybindings.json holds only the changes, so no changes is no file; the
+    generated Lua follows it."""
+    if rules:
+        write_atomic(CONFIG, json.dumps({"version": 1, "rules": rules}, indent=2, ensure_ascii=False) + "\n")
+        write_atomic(GENERATED, generate_lua(rules))
+    else:
+        for path in (CONFIG, GENERATED):
+            path.unlink(missing_ok=True)
+
+
+def reload(previous_stamp):
+    """Reload Hyprland and wait for it to publish what it loaded."""
+    subprocess.run(["karchy-restart-hyprctl"], check=False)
+    for _ in range(40):
+        trace = read_trace()
+        if trace and trace.get("stamp") != previous_stamp:
+            return trace
+        time.sleep(0.05)
+    return read_trace()
+
+
+def public(rows):
+    return [{name: value for name, value in row.items() if not name.startswith("_")} for row in rows]
+
+
+def listing(trace, rules_error, predicted=False):
+    keymap = load_keymap()
+    events = trace["events"] if trace else []
+    if predicted:
+        events = predict(events, read_rules()[0])
+    rows, stale = resolve(events, keymap)
+    errors = list(trace.get("errors") or []) if trace else ["Hyprland has not published its keybindings. Is the desktop running? Try: hyprctl reload"]
+    if rules_error:
+        errors.append(rules_error)
+    rules = read_rules()[0]
+    return {
+        "version": 1,
+        "layers": LAYERS,
+        "userFile": str(USER_FILE),
+        "changesFile": str(CONFIG),
+        "changes": len(rules),
+        "errors": errors,
+        "stale": [dict(item, text=describe_rule(rules[item["rule"] - 1])) for item in stale if item.get("rule") and item["rule"] <= len(rules)],
+        "rows": public(rows),
+    }
+
+
+def describe_rule(rule):
+    if "unbind" in rule:
+        return f"unbind {rule['unbind']}" + (f" ({rule['action']})" if "action" in rule else "")
+    return f"bind {rule['bind']} to {rule.get('action') or rule.get('description') or rule.get('command')}"
+
+
+def print_listing(data, as_json):
+    if as_json:
+        json.dump(data, sys.stdout, ensure_ascii=False)
+        print()
+        return
+    for error in data["errors"]:
+        print("! " + error)
+    group = None
+    order = list(dict.fromkeys(row["group"] for row in data["rows"]))
+    for row in sorted(data["rows"], key=lambda r: order.index(r["group"])):
+        if row["group"] != group:
+            group = row["group"]
+            print(f"\n{group}")
+        keys = "+".join(row["labels"]) if row["labels"] else "(not bound)"
+        line = f"  {row['action']:<38} {keys:<26} {row['source']}"
+        if len(row["chain"]) > 1 or row["state"] == "removed":
+            line += "   [" + " · ".join(f"{link['source']}: {'+'.join(link['labels'])}" + (" (wins)" if link["state"] == "wins" else f" ({link['state']} by {link.get('by', '?')})") for link in row["chain"]) + "]"
+        if row["conflicts"]:
+            line += "   conflicts with " + ", ".join(row["conflicts"])
+        print(line)
+
+
+# ---- the command --------------------------------------------------------------
+
+def usage():
+    print("Usage: karchy-settings-keybindings list [--json] | conflicts <keys> | set <action> <keys> [--from <keys>] | "
+          "add <keys> --action <name> | add <keys> --command <cmd> --description <text> | remove <action> [<keys>] | "
+          "reset <action> [<keys>] | reset --all | reset --stale | apply\n"
+          "set and add take --replace or --keep-both for keys another action has. Keys look like \"SUPER + SHIFT + T\".",
+          file=sys.stderr)
+    sys.exit(1)
+
+
+def take_flag(args, name, has_value=False):
+    if name not in args:
+        return None
+    index = args.index(name)
+    args.pop(index)
+    if not has_value:
+        return True
+    if index >= len(args):
+        usage()
+    return args.pop(index)
+
+
+def main(argv):
+    args = list(argv)
+    if not args:
+        usage()
+    verb = args.pop(0)
+    as_json = bool(take_flag(args, "--json"))
+
+    if verb in ("list", "status"):
+        # `status` is `list --json`, as every karchy-settings-* command has one.
+        as_json = as_json or verb == "status"
+        predicted = bool(take_flag(args, "--predicted"))
+        if args:
+            usage()
+        print_listing(listing(read_trace(), read_rules()[1], predicted), as_json)
+        return 0
+
+    trace = read_trace()
+    if trace is None:
+        raise Refused("Hyprland has not published its keybindings, so nothing can be checked. Is the desktop running? Try: hyprctl reload")
+    keymap = load_keymap()
+    rows, _ = resolve(trace["events"], keymap)
+
+    if verb == "conflicts":
+        if len(args) != 1 or not valid_keys(args[0]):
+            usage()
+        json.dump({"keys": canonical(args[0]), "labels": labels(args[0], keymap), "rows": public(conflicts_for(rows, args[0], keymap))}, sys.stdout, ensure_ascii=False)
+        print()
+        return 0
+
+    rules, rules_error = read_rules()
+    if rules_error:
+        raise Refused(rules_error)
+    rules = numbered(rules)
+    mode = "replace" if take_flag(args, "--replace") else "keep" if take_flag(args, "--keep-both") else ""
+
+    if verb == "apply":
+        new_rules = rules
+    elif verb == "set":
+        from_keys = take_flag(args, "--from", True)
+        if len(args) != 2 or not valid_keys(args[1]):
+            usage()
+        row = find_row(rows, args[0], from_keys)
+        new_rules = change_rules(with_conflicts(rules, rows, args[1], keymap, row, mode), row, args[1])
+    elif verb == "add":
+        action, command, description = take_flag(args, "--action", True), take_flag(args, "--command", True), take_flag(args, "--description", True)
+        if len(args) != 1 or not valid_keys(args[0]) or bool(action) == bool(command):
+            usage()
+        new_rules = with_conflicts(rules, rows, args[0], keymap, None, mode)
+        if action:
+            if not any(row["action"] == action and row["layer"] != "user" and not row["custom"] for row in rows):
+                raise Refused(f"No action is called \"{action}\". See: karchy-settings-keybindings list")
+            new_rules = new_rules + [{"bind": canonical(args[0]), "action": action}]
+        else:
+            if not command.strip():
+                usage()
+            new_rules = new_rules + [{"bind": canonical(args[0]), "description": (description or command).strip(), "command": command.strip()}]
+    elif verb == "remove":
+        if len(args) not in (1, 2):
+            usage()
+        new_rules = change_rules(rules, find_row(rows, args[0], args[1] if len(args) == 2 else None), "")
+    elif verb == "reset":
+        if take_flag(args, "--all"):
+            if args:
+                usage()
+            new_rules = []
+        elif take_flag(args, "--stale"):
+            # Rules that no longer match anything (an add-on was removed, an
+            # update renamed the action): kept until asked, as the add-on
+            # may come back.
+            if args:
+                usage()
+            dead = {event.get("rule") for event in trace["events"] if event.get("op") == "stale"}
+            new_rules = [rule for rule in rules if rule.get("_n") not in dead]
+        else:
+            if len(args) not in (1, 2):
+                usage()
+            row = find_row(rows, args[0], args[1] if len(args) == 2 else None)
+            check_editable(row)
+            if row["custom"] or row["state"] == "added":
+                raise Refused(f"\"{row['action']}\" is a binding of your own, so there is no default to go back to. Remove it instead.")
+            new_rules = rules_without_row(rules, row)
+    else:
+        usage()
+
+    new_rules = unnumbered(new_rules)
+    if verb != "apply":
+        after_rows, _ = resolve(predict(trace["events"], new_rules), keymap)
+        check_essentials(rows, after_rows)
+
+    save(new_rules)
+    print_listing(listing(reload(trace.get("stamp")), ""), as_json)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main(sys.argv[1:]))
+    except Refused as refusal:
+        print(refusal, file=sys.stderr)
+        sys.exit(1)

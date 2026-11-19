@@ -1,4 +1,6 @@
--- Your keybindings. karchy's set is karchy/hypr/bindings.lua (docs/keybindings.md).
+-- Your keybindings. This file loads last, so what it says wins over karchy's
+-- set (karchy/hypr/bindings.lua, docs/keybindings.md) and over changes made in
+-- Settings › Keybindings, which shows these as yours.
 -- Add one:       o.bind("SUPER + SHIFT + R", "SSH", "footclient ssh my-server")
 -- Replace one:   o.rebind("SUPER + E", "File manager", "karchy-launch-files ~/Projects")
 -- Remove one:    hl.unbind("SUPER + K")

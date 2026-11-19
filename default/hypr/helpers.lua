@@ -135,6 +135,25 @@ function o.preinstalled_bindings_enabled()
   return not file_exists((os.getenv("HOME") or "") .. "/.local/state/karchy/preinstalls-removed")
 end
 
+-- What a bind runs, in words for the keybinding list (Settings ›
+-- Keybindings): the command, "menu=root" for a shell target, or the command
+-- or expression a function stands for.
+local function describe_dispatcher(value)
+  if type(value) == "string" then
+    return value
+  elseif type(value) == "table" then
+    for _, kind in ipairs({ "menu", "panel", "ipc", "audio", "brightness", "karchy", "launch", "webapp", "tui" }) do
+      if value[kind] then return kind .. "=" .. tostring(value[kind]) end
+    end
+    return ""
+  end
+  return o.bind_commands[value] or o.bind_expressions[value] or ""
+end
+
+-- Binds keys to an action. `description` is the action's name: it is what the
+-- keybinding list shows, and what a change made in Settings refers to, so two
+-- different actions must not share one. karchy/hypr/keys.lua records
+-- the call and the layer it came from.
 function o.bind(keys, description, dispatcher, options)
   local opts = options or {}
 
@@ -142,6 +161,7 @@ function o.bind(keys, description, dispatcher, options)
     opts.description = description
   end
 
+  o.bind_what = describe_dispatcher(dispatcher)
   dispatcher = command_from(dispatcher, description)
 
   if type(dispatcher) == "string" then
@@ -149,6 +169,14 @@ function o.bind(keys, description, dispatcher, options)
   end
 
   hl.bind(keys, dispatcher, opts)
+  o.bind_what = nil
+end
+
+-- Names the part of the keybinding list ("Windows", "Media") that the binds
+-- after it belong to, up to the next call or the end of the file.
+function o.bind_group(name)
+  local keybindings = package.loaded["karchy.hypr.keys"]
+  if keybindings then keybindings.set_group(name) end
 end
 
 function o.rebind(keys, description, dispatcher, options)
@@ -160,12 +188,12 @@ function o.launch(command)
   return "uwsm-app -- " .. command
 end
 
--- The command each function bind stands for, so the keybindings menu can still
--- run a bind that Hyprland only reports as Lua.
+-- The command each function bind stands for: what Settings › Keybindings
+-- shows and searches for a bind that Hyprland only reports as Lua.
 o.bind_commands = {}
 
 -- The Lua expression each function bind stands for, for binds with no command
--- to run instead. The menu dispatches it as `hyprctl dispatch <expression>`.
+-- to name instead.
 o.bind_expressions = {}
 
 -- Hand the launcher the focused window's pid, which it would otherwise ask
