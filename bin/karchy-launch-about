@@ -5,6 +5,11 @@
 # karchy simplification (D-48): Karchy's version sized the window to its logo
 # and animated a sheen across it. This shows the same facts in the floating
 # About window and waits for a key.
+#
+# The Terminal Font row is left out: fastfetch reads the size from the
+# terminal's own config and doesn't follow includes, and the size is in a file
+# karchy includes there (D-117), so it would show the terminal's built-in
+# default (foot: 8pt) whatever the real size is.
 logo="$KARCHY_PATH/logo-mark.txt"
 exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.karchy.about --title=About -e bash -c \
-  "fastfetch --logo '$logo' --logo-type file --logo-color-1 yellow; read -rsn1"
+  "fastfetch --logo '$logo' --logo-type file --logo-color-1 yellow --structure \"\$(fastfetch --print-structure | sed s/:TerminalFont//)\"; read -rsn1"
