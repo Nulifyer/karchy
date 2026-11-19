@@ -382,7 +382,7 @@ Historical: the selection before the ownership audit (`docs/ownership-audit.md`)
 - **launch:** `launch-about`, `launch-browser`, `launch-config-editor`, `launch-editor`, `launch-or-focus`, `launch-or-focus-tui`, `launch-or-focus-webapp`, `launch-screensaver`, `launch-shell`, `launch-terminal`, `launch-tui`, `launch-webapp`
 - **menu:** `menu`, `menu-images`, `menu-select`, `menu-timezone`
 - **network:** `network-band`, `network-captive-portal`, `network-qr`, `network-speedtest`, `network-status`
-- **pkg:** `pkg-add`, `pkg-aur-install` (override: paru), `pkg-drop`, `pkg-install`, `pkg-missing`, `pkg-present`, `pkg-remove`
+- **pkg:** `pkg-add`, `pkg-aur-install` (the AUR part of `pkg-install`, through paru), `pkg-drop`, `pkg-install` (one list: repositories first, then the AUR; D-135), `pkg-missing`, `pkg-present`, `pkg-remove`
 - **plugin:** `plugin-disable`, `plugin-enable`, `plugin-list` (installed plugins; add-ons are packages, D-106)
 - **powerprofiles:** `powerprofiles-init`, `powerprofiles-list`, `powerprofiles-set`
 - **remove/setup:** `remove-launcher-entry`, `remove-security-fido2`, `remove-security-fingerprint`, `remove-security-ssh-agent`, `remove-security-sshd`, `setup-git`, `setup-input`, `setup-keyboard`, `setup-security-fido2`, `setup-security-fingerprint`, `setup-security-ssh-agent`, `setup-security-sshd`

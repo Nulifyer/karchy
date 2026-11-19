@@ -17,7 +17,7 @@ An AUR package runs a stranger's build script with the user's rights.
 - Accept an AUR package only when it is well kept: many votes, a current maintainer, not flagged out of date. Quick install applies that rule to its own list (100 or more votes).
 - Prefer the `-bin` build when Arch has no package. Build from source only when no `-bin` exists.
 - Let the user read paru's review of the build files. Do not pass `--skipreview` or `--noconfirm` to paru for a new AUR package.
-- Run paru in a terminal with the user present. `karchy-pkg-aur-install` is the interactive picker.
+- Run paru in a terminal with the user present. `karchy-pkg-install` is the interactive picker: one list, repository packages first, then the AUR, each row marked with its source.
 
 ## Updating
 
@@ -56,8 +56,7 @@ An update is a large change that already takes its own snapshots. If an update b
 | Install named repo packages without questions | `karchy-pkg-add <packages...>` |
 | Remove named packages when installed | `karchy-pkg-drop <packages...>` |
 | Test whether packages are installed | `karchy-pkg-present <packages...>`, `karchy-pkg-missing <packages...>` |
-| Let the user pick repo packages | `karchy-pkg-install` (interactive) |
-| Let the user pick AUR packages | `karchy-pkg-aur-install` (interactive) |
+| Let the user pick packages, from the repositories or the AUR | `karchy-pkg-install` (interactive; repository packages are listed first, AUR rows say so; `--aur` lists only the AUR) |
 | Let the user pick packages to remove | `karchy-pkg-remove` (interactive) |
 
 `karchy-pkg-add` and `karchy-pkg-drop` use sudo. Run them in a terminal with the user present. `karchy-pkg-drop` removes with `pacman -Rns`, so it also removes unneeded dependencies and config files.

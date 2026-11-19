@@ -1,26 +1,142 @@
 #!/bin/bash
 
-# karchy:summary=Show a fuzzy-finder TUI for picking new Arch and OPR packages to install.
+# karchy:summary=Pick packages to install from one list: the repositories first, then the AUR, each marked with where it comes from
+# karchy:args=[--aur]
+# karchy:examples=karchy pkg install | karchy pkg install --aur
 # karchy:requires-sudo=true
+
+# One list over pacman's repositories and the AUR (D-135), so a name is easy
+# to find and the repository package is always the first offer:
+#
+#   - Every row says its source: the repository's name, or AUR with the
+#     reminder that it is built here from a user-submitted script.
+#   - Repository packages are listed before AUR ones, whatever is typed, and a
+#     name that is in both shows the repository's first. The list is not
+#     re-sorted by the search: within each source the shortest names come
+#     first, so the package named exactly what was typed leads.
+#   - The list opens on the repositories at once; the AUR's names are added
+#     behind them as they arrive (paru fetches or reads its copy of the list).
+#   - Tab selects several. Repository packages are installed with pacman and
+#     AUR ones with paru, in one run, repositories first. paru shows each AUR
+#     package's build files and asks before it builds.
+#
+#   --aur   only the AUR's packages (karchy pkg aur-install)
+#
+# The list calls this command again for a row's preview (--preview) and its
+# build script (--pkgbuild).
+
+AUR_NOTE="AUR · built here from a user-submitted script"
+
+# name<TAB>source for every repository package, shortest names first. A name
+# several repositories carry is listed once, from the one pacman would use
+# (the first in pacman.conf's order, which is the order pacman -Sl prints).
+repo_rows() {
+  pacman -Sl 2>/dev/null | awk '!seen[$2]++ { printf "%d\t%s\t%s\n", length($2), $2, $1 }' | sort -s -n -k1,1 | cut -f2-
+}
+
+aur_rows() {
+  command -v paru >/dev/null || return 0
+  paru -Slqa 2>/dev/null | awk '{ printf "%d\t%s\tAUR\n", length($1), $1 }' | sort -s -n -k1,1 | cut -f2-
+}
+
+# The rows as the list shows them: the name padded to a column, the source
+# after it, colored. The name is the first tab-separated field (padded) and
+# the plain source the third, for the preview and for the install.
+format_rows() {
+  awk -F'\t' -v note="$AUR_NOTE" '{
+    if ($2 == "AUR") printf "%-38s\t\033[33m%s\033[0m\t%s\n", $1, note, $2
+    else printf "%-38s\t\033[2m%s\033[0m\t%s\n", $1, $2, $2
+  }'
+}
+
+case ${1:-} in
+  --preview)
+    name=${2%% *}
+    if [[ ${3:-} == AUR ]]; then
+      echo "From the AUR: built on this computer from a script a user submitted."
+      echo "alt-b shows the script. Nobody at Arch or karchy has reviewed it."
+      echo
+      paru -Siia "$name" 2>/dev/null
+    else
+      pacman -Sii "${3:+$3/}$name" 2>/dev/null
+    fi
+    exit 0
+    ;;
+  --pkgbuild)
+    name=${2%% *}
+    if [[ ${3:-} == AUR ]]; then
+      paru -Gpa "$name" 2>/dev/null | tail -n +5
+    else
+      echo "$name comes from the $3 repository, built and signed by its packagers."
+      echo "Only AUR packages have a build script to read here."
+    fi
+    exit 0
+    ;;
+  --rows)
+    # The list's rows, for a test or a look: repositories, then the AUR.
+    { [[ ${2:-} == --aur ]] || repo_rows; aur_rows; } | format_rows
+    exit 0
+    ;;
+  --aur | "") ;;
+  *)
+    echo "Usage: karchy pkg install [--aur]" >&2
+    exit 1
+    ;;
+esac
+
+only_aur=${1:-}
+self=$(command -v karchy-pkg-install || echo "$0")
 
 fzf_args=(
   --multi
-  --preview 'pacman -Sii {1}'
-  --preview-label='alt-p: toggle description, alt-j/k: scroll, tab: multi-select'
+  --ansi
+  --delimiter '\t'
+  --with-nth '1,2'
+  --nth 1
+  # Substring search in list order: repositories stay above the AUR, and the
+  # exact name, being the shortest match, comes first.
+  --exact
+  --no-sort
+  --header $'Repository packages first, then the AUR.  tab: select several  enter: install'
+  --preview "$self --preview {1} {3}"
+  --preview-label='alt-p: toggle description, alt-b/B: build script (AUR), alt-j/k: scroll'
   --preview-label-pos='bottom'
-  --preview-window 'down:65%:wrap'
+  --preview-window 'down:60%:wrap'
   --bind 'alt-p:toggle-preview'
   --bind 'alt-d:preview-half-page-down,alt-u:preview-half-page-up'
   --bind 'alt-k:preview-up,alt-j:preview-down'
+  --bind "alt-b:change-preview:$self --pkgbuild {1} {3}"
+  --bind "alt-B:change-preview:$self --preview {1} {3}"
   --color 'pointer:green,marker:green'
 )
 
-pkg_names=$(pacman -Slq | fzf "${fzf_args[@]}")
+picked=$({ [[ $only_aur == --aur ]] || repo_rows; aur_rows; } | format_rows | fzf "${fzf_args[@]}")
+[[ -n $picked ]] || exit 0
 
-if [[ -n $pkg_names ]]; then
-  source karchy-sudo-keepalive
+repo_packages=() aur_packages=()
+while IFS=$'\t' read -r name _ source; do
+  name=${name%% *}
+  [[ -n $name ]] || continue
+  if [[ $source == AUR ]]; then
+    aur_packages+=("aur/$name")
+  else
+    repo_packages+=("$source/$name")
+  fi
+done <<<"$picked"
 
-  # Convert newline-separated selections to space-separated for pacman
-  echo "$pkg_names" | tr '\n' ' ' | xargs sudo pacman --color auto -S --noconfirm
-  karchy-show-done $?
+# shellcheck source=/dev/null
+source karchy-sudo-keepalive
+
+code=0
+if (( ${#repo_packages[@]} )); then
+  sudo pacman --color auto -S --noconfirm -- "${repo_packages[@]}" || code=$?
 fi
+# The AUR packages wait for the repositories' to succeed: one may need the other.
+if (( code == 0 && ${#aur_packages[@]} )); then
+  echo
+  echo "From the AUR, built on this computer from user-submitted scripts: ${aur_packages[*]#aur/}"
+  # paru keeps its questions (D-77): the build files are shown to be read.
+  paru --color auto -S -- "${aur_packages[@]}" || code=$?
+  sudo updatedb --prune-bind-mounts=no --add-prunepaths=/.snapshots
+fi
+karchy-show-done $code
