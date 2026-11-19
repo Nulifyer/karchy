@@ -17,6 +17,17 @@ An installed machine runs `karchy update` (or the Updates window). That is one f
 
 The base install has no AUR package. karchy rebuilds no third-party package except the two in the register (titlebars, bees).
 
+### Changes pacman can't make: migrations
+
+pacman replaces packaged files in `/usr` on its own, so a change there needs nothing more. A change that alters files in a user's home, or files in `/etc` that pacman no longer updates (a copy the installer or a command wrote, or a config file the user changed), ships with a migration in the same commit. Without one, machines installed before the change keep the old files, and a karchy machine is updated, never reinstalled.
+
+- **Where:** `migrations/` in the repository; the karchy package installs it as `/usr/share/karchy/migrations`.
+- **Name:** `<unix time>-<what it does>.sh`, the time the migration was written (`date +%s`), so the names sort in the order they were written and run in that order: `1795100000-indicators-hidden.sh`.
+- **How it runs:** `karchy update` (step 6) runs `karchy-migrate run` as the user who runs the update, after the packages are installed, each migration with `bash -euo pipefail`. A migration may change that user's home and, through `sudo` (the update already holds the password), files in `/etc`. It may not install or remove packages (that is the packages' job) and doesn't ask questions. Every user of a machine runs it once, so a change to `/etc` must be idempotent, and so must everything else: it can meet files that are already new.
+- **When it fails:** it is not marked done, its output stays in `~/.local/state/karchy/migrations/<name>.log`, the update's summary and a notification name it, the update carries on with the rest, and the next update runs it again.
+- **New users:** the installer runs `karchy-migrate baseline` for the first user, marking every migration shipped at install time as done without running it; the karchy package puts the same marks in `/etc/skel`, so a user created later starts with the migrations of that day done. Their files are made by the karchy installed then, so older fixes don't apply.
+- **Test it** on a machine, or VM, installed before the change: `karchy-migrate status` shows it pending, `karchy update` runs it, `status` shows it done.
+
 The release channel (stable, rc, nightly) covers only karchy's packages. Arch and CachyOS packages are the same on every channel, on the day the machine updates.
 
 ## What is watched

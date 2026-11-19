@@ -1,0 +1,77 @@
+#!/bin/bash
+
+# karchy:summary=Run karchy's migrations for this user, or mark them all done
+# karchy:args=run | baseline | status
+# karchy:hidden=true
+
+# A migration changes what pacman can't: files in a user's home, or files in
+# /etc that are no longer the package's own. Each is a bash script in
+# $KARCHY_PATH/migrations (the repository's migrations/, installed by the
+# karchy package), named <unix time>-<what it does>.sh so the names sort in
+# the order they were written. The rules are in docs/maintenance.md.
+#
+# Which ones ran is kept per user: an empty file per migration in
+# $XDG_STATE_HOME/karchy/migrations.
+#
+#   run       runs each migration not yet done, in name order (karchy update,
+#             step 6), under `bash -euo pipefail`. One that fails is not
+#             marked done, so the next update tries it again; the others still run. Each one's output goes to
+#             migrations/<name>.log. Prints one line per migration
+#             ("done <name>" or "failed <name>") and exits 1 if any failed.
+#   baseline  marks every migration shipped now as done without running it:
+#             for a user whose files were made by this karchy, so older
+#             fixes don't apply. The installer runs it for the first user;
+#             /etc/skel carries the same marks for users created later.
+#   status    lists each migration as done or pending.
+
+set -euo pipefail
+
+migrations_dir="${KARCHY_PATH:-/usr/share/karchy}/migrations"
+done_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/migrations"
+
+shipped() {
+  [[ -d $migrations_dir ]] || return 0
+  local migration
+  for migration in "$migrations_dir"/*.sh; do
+    [[ -f $migration ]] && printf '%s\n' "${migration##*/}"
+  done
+  return 0
+}
+
+case ${1:-} in
+  run)
+    mkdir -p "$done_dir"
+    failed=0
+    while IFS= read -r name; do
+      [[ -n $name && ! -e $done_dir/$name ]] || continue
+      # Run in a bash of its own with errexit, so any failing command fails
+      # the migration; a failure must not stop the rest, and must not mark it
+      # done.
+      if bash -euo pipefail "$migrations_dir/$name" >"$done_dir/$name.log" 2>&1; then
+        touch "$done_dir/$name"
+        rm -f "$done_dir/$name.log"
+        echo "done $name"
+      else
+        echo "failed $name"
+        failed=1
+      fi
+    done < <(shipped)
+    exit "$failed"
+    ;;
+  baseline)
+    mkdir -p "$done_dir"
+    while IFS= read -r name; do
+      [[ -n $name ]] && touch "$done_dir/$name"
+    done < <(shipped)
+    ;;
+  status)
+    while IFS= read -r name; do
+      [[ -n $name ]] || continue
+      if [[ -e $done_dir/$name ]]; then echo "done $name"; else echo "pending $name"; fi
+    done < <(shipped)
+    ;;
+  *)
+    echo "Usage: karchy-migrate run | baseline | status" >&2
+    exit 2
+    ;;
+esac

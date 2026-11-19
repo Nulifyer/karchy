@@ -40,7 +40,6 @@ case ${1:-} in
 esac
 
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy"
-migrations_dir="$KARCHY_PATH/migrations"
 mkdir -p "$state_dir"
 
 # --plan: the JSON goes to the caller's stdout (fd 3); the terminal's report
@@ -409,16 +408,20 @@ else
 fi
 
 step 6 "Desktop"
-if [[ -d $migrations_dir ]]; then
-  mkdir -p "$state_dir/migrations"
-  for migration in "$migrations_dir"/*.sh; do
-    [[ -f $migration ]] || continue
-    name=$(basename "$migration")
-    [[ -f $state_dir/migrations/$name ]] && continue
+# Migrations (karchy-migrate): one that fails is reported and tried again at
+# the next update; the update itself carries on.
+failed_migrations=()
+while read -r result name; do
+  if [[ $result == "done" ]]; then
     note "migration $name"
-    bash "$migration"
-    touch "$state_dir/migrations/$name"
-  done
+  else
+    warn "migration $name failed; it runs again at the next update (log: $state_dir/migrations/$name.log)"
+    failed_migrations+=("$name")
+  fi
+done < <(karchy-migrate run || true)
+if ((${#failed_migrations[@]} > 0)); then
+  karchy-notification-send -u critical -g update "An update step failed" \
+    "${#failed_migrations[@]} karchy migration(s) failed and will run again at the next update. Logs: $state_dir/migrations" || true
 fi
 if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   karchy-reload-desktop
@@ -433,7 +436,13 @@ date +%s >"$state_dir/last-update"
 # ------------------------------------------------------------------- summary
 after=$(release_version)
 echo
-printf '%s✓ Update complete%s\n' "$green$bold" "$reset"
+if ((${#failed_migrations[@]} > 0)); then
+  printf '%s! Update complete, but %s migration(s) failed:%s\n' "$yellow$bold" "${#failed_migrations[@]}" "$reset"
+  printf '    %s\n' "${failed_migrations[@]}"
+  printf '  %sThey run again at the next update. Logs: %s/migrations%s\n' "$dim" "$state_dir" "$reset"
+else
+  printf '%s✓ Update complete%s\n' "$green$bold" "$reset"
+fi
 if [[ -n $after && $after != "$before" ]]; then
   printf '  karchy %s → %s\n' "$before" "$after"
   notes=$(notes_url "$after")

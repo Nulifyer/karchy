@@ -50,7 +50,16 @@ package() {
   cp -a default "$share/"
   install -d "$share/install"
   cp -a install/helpers install/provisioning "$share/install/"
-  [[ ! -d migrations ]] || cp -a migrations "$share/"
+  # Migrations (karchy-migrate), and /etc/skel marks for each one shipped, so
+  # a user created later counts them as done, as the installer does for the
+  # first user.
+  if [[ -d migrations ]]; then
+    cp -a migrations "$share/"
+    install -d "$pkgdir/etc/skel/.local/state/karchy/migrations"
+    for migration in migrations/*.sh; do
+      if [[ -f $migration ]]; then : >"$pkgdir/etc/skel/.local/state/karchy/migrations/${migration##*/}"; fi
+    done
+  fi
   # Pause Hyprland's config auto-reload while karchy's files are replaced.
   install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" system/pacman/hooks/*.hook
   # The password prompt's words for the root helpers above.
