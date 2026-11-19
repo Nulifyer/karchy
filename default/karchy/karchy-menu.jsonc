@@ -15,7 +15,7 @@
   "background": {"iconName":"look.background","label":"Background","aliases":["wallpaper"],"action":"background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\""},
   "settings": {"iconName":"settings","label":"Settings","aliases":["preferences","control panel"],"action":"karchy-settings"},
   "update": {"iconName":"update.system","label":"Update System","aliases":["upgrade","updates","karchy update","channel"],"action":"karchy-updates"},
-  "keybindings": {"iconName":"input.keyboard","label":"Keybindings","aliases":["shortcuts","keys"],"searchTerms":["keyboard shortcuts"],"action":"karchy-menu-keybindings"},
+  "keybindings": {"iconName":"input.keyboard","label":"Keybindings","aliases":["shortcuts","keys"],"searchTerms":["keyboard shortcuts"],"action":"karchy-settings keybindings"},
   "restart": {"iconName":"restart","label":"Restart","aliases":["reload"]},
   "system": {"iconName":"system.power","label":"Power","aliases":["power-menu","system"]},
 

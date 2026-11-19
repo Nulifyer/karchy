@@ -76,7 +76,7 @@ o.bind("XF86PowerOff", "Power menu", { menu = "system" }, { locked = true })
 -- The kernel turns the radios off or on for this key; karchy-airplane shows
 -- the result, and toggles only on a kernel that doesn't (D-68).
 o.bind("XF86RFKill", "Airplane mode", "karchy-airplane key", { locked = true })
-o.bind("SUPER + K", "Keybindings", "karchy-menu-keybindings")
+o.bind("SUPER + K", "Keybindings", "karchy-settings keybindings")
 o.bind("SUPER + CTRL + R", "Set reminder", "karchy-reminder -i")
 o.bind("SUPER + comma", "Dismiss last notification", { ipc = "notifications.dismissOne" })
 o.bind("SUPER + SHIFT + comma", "Dismiss all notifications", { ipc = "notifications.dismissAll" })

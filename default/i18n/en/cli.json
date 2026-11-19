@@ -203,7 +203,6 @@
   "kernel.retryInTerminal": "Retry in a terminal",
   "kernel.switchFailed": "Couldn't switch to %1",
   "keybindings.herdrTitle": "Herdr keybindings",
-  "keybindings.title": "Keybindings",
   "keybindings.tmuxTitle": "Tmux keybindings",
   "language.changed": "Language is now set to %1",
   "language.newApps": "Apps you open from now on use it too; restart any that are already open",

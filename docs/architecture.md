@@ -15,7 +15,7 @@ karchy/
 │                             karchy/karchy-menu.jsonc (the menu), karchy/icons.json
 │                             (the icon map), user systemd units
 ├── karchy/                   karchy's composition layer
-│   ├── hypr/                 init.lua, bindings.lua, autostart.lua
+│   ├── hypr/                 init.lua, bindings.lua, keys.lua (the keybinding layers), autostart.lua
 │   └── shell.json            default bar layout and plugin list
 ├── skills/                   agent skills, one folder each (SKILL.md and references/);
 │                             see Agent skills below
@@ -380,7 +380,7 @@ Historical: the selection before the ownership audit (`docs/ownership-audit.md`)
 - **hw:** `hw-clamshell`, `hw-display`, `hw-external-monitors`, `hw-fingerprint`, `hw-laptop`, `hw-laptop-closed`, `hw-match`, `hw-nvidia`, `hw-nvidia-display`, `hw-nvidia-gsp`, `hw-nvidia-without-gsp`, `hw-platform`
 - **hyprland:** `hyprland-corners`, `hyprland-focus-app`, `hyprland-monitor-clamshell`, `hyprland-monitor-external-active`, `hyprland-monitor-focused`, `hyprland-monitor-focused-apple`, `hyprland-monitor-internal`, `hyprland-monitor-internal-mirror`, `hyprland-monitor-laptop`, `hyprland-monitor-modeless`, `hyprland-monitor-scaling`, `hyprland-monitor-watch`, `hyprland-reload-guard`, `hyprland-session-lock-stranded`, `hyprland-session-locked`, `hyprland-toggle`, `hyprland-toggle-disabled`, `hyprland-toggle-enabled`, `hyprland-window-close-all`, `hyprland-window-minimize`, `hyprland-window-transparency`, `hyprland-workspace-layout-current`, `hyprland-workspace-layout-default`, `hyprland-workspace-layout-toggle`
 - **launch:** `launch-about`, `launch-browser`, `launch-config-editor`, `launch-editor`, `launch-or-focus`, `launch-or-focus-tui`, `launch-or-focus-webapp`, `launch-screensaver`, `launch-shell`, `launch-terminal`, `launch-tui`, `launch-webapp`
-- **menu:** `menu`, `menu-images`, `menu-keybindings`, `menu-select`, `menu-timezone`
+- **menu:** `menu`, `menu-images`, `menu-select`, `menu-timezone`
 - **network:** `network-band`, `network-captive-portal`, `network-qr`, `network-speedtest`, `network-status`
 - **pkg:** `pkg-add`, `pkg-aur-install` (override: paru), `pkg-drop`, `pkg-install`, `pkg-missing`, `pkg-present`, `pkg-remove`
 - **plugin:** `plugin-disable`, `plugin-enable`, `plugin-list` (installed plugins; add-ons are packages, D-106)

@@ -100,7 +100,6 @@ bin/karchy-launch-tui	bin/omarchy-launch-tui	bd67c64ca94e067f2e98ce5243f9ab063ae
 bin/karchy-launch-webapp	bin/omarchy-launch-webapp	1c8c31f073dce361003b904e21dde30e502cfc0f
 bin/karchy-menu	bin/omarchy-menu	c9aa676ae0d8d93dc0fa3c9ac2afbf707b1122a8
 bin/karchy-menu-images	bin/omarchy-menu-images	a9f59b457747072b70012b4eed6af537af2d3e9d
-bin/karchy-menu-keybindings	bin/omarchy-menu-keybindings	e5372f740ab3b44ecac12723bf2228dc5ffaeae0
 bin/karchy-menu-plugin	bin/omarchy-menu-plugin	830da38542a737862ec8fa1d21473c56fc352ca2
 bin/karchy-menu-select	bin/omarchy-menu-select	18f3ed140b7914201f8f26e73ee92f47032ca41a
 bin/karchy-menu-timezone	bin/omarchy-menu-timezone	57e090e74ffb3e672425b6af9bb8dfcd1543bdd0
@@ -250,7 +249,6 @@ default/hypr/windows.lua	default/hypr/windows.lua	88040a9a84ac02463ba83190a07cdd
 default/hypr/workspace-layouts.lua	default/hypr/workspace-layouts.lua	27fec5ba4ccecbd876fb45a91dc647a08a785088
 default/hypr/workspace-modes.lua	default/hypr/workspace-modes.lua	07eed95562aaf366e811223038d38d8585c8459f
 default/i18n/en/cli.json	default/i18n/en/cli.json	51bc05e5cd03a2c36a6eb2d4a0b233e1ce27897d
-default/i18n/en/keybindings.json	default/i18n/en/keybindings.json	bf5f5c94b222e07618d9fec2edd9210e92cfb497
 default/i18n/en/menu.json	default/i18n/en/menu.json	37780342e7926c7cc1f4e1f7159b8b7998f2448c
 default/i18n/en/shell.json	default/i18n/en/shell.json	235c89e45d37d83ff37e535c4096eac74637abe8
 default/i18n/locales.json	default/i18n/locales.json	54be20de9535c571b767248b3d94bb0f6e7b2c98

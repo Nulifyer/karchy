@@ -36,6 +36,7 @@ Item {
   readonly property var sections: [
     { id: "displays", label: "Displays", iconName: "display" },
     { id: "input", label: "Input", iconName: "input.keyboard" },
+    { id: "keybindings", label: "Keybindings", iconName: "config.keybindings" },
     { id: "power", label: "Power", iconName: "system.power" },
     { id: "network", label: "Network", iconName: "net.network" },
     { id: "notifications", label: "Notifications", iconName: "notify.bell" },
@@ -293,6 +294,7 @@ Item {
           source: {
             switch (root.section) {
               case "input": return "InputSection.qml"
+              case "keybindings": return "KeybindingsSection.qml"
               case "power": return "PowerSection.qml"
               case "network": return "NetworkSection.qml"
               case "notifications": return "NotificationsSection.qml"
