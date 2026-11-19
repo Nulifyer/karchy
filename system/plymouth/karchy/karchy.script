@@ -4,10 +4,18 @@
 # The mark sits a little above the middle. Under it, while a password is
 # asked: a box with one bullet per typed character, and one line that says
 # what is going on ("Enter the disk password", "Caps Lock is on", "Wrong
-# password. Try again.", "Unlocking..."). Nothing moves. The pictures come
-# from tools/plymouth-theme, which holds the same sizes; the colours are the
+# password. Try again.", "Unlocking..."). The pictures come from
+# tools/plymouth-theme, which holds the same sizes; the colours are the
 # default theme's (themes/nulifyer), as on the other screens before the
 # desktop (D-121).
+#
+# While nothing is asked (the boot after the disk opened, a boot that asks
+# nothing, shutdown) three small tiles under the mark say that the machine is
+# at work: each brightens and dims in turn, one round in 2.4 seconds, and
+# nothing else moves. They are not a progress bar: there is nothing honest to
+# measure. They come in softly, so the moment before the password box
+# appears shows no flash of them, and they are gone while a password is
+# asked or tried.
 #
 # Plymouth gives a script theme no scale for high-resolution screens, so
 # there are two sets of pictures and the screen's height picks one, at the
@@ -30,6 +38,15 @@ global.bullet_step = 14;
 global.bullet_max = 19;
 global.mark_to_entry = 56;
 global.entry_to_caption = 12;
+global.tile_width = 16;
+global.tile_height = 10;
+global.tile_step = 22;
+# The tiles' pace, in refreshes (50 a second): one round, how long they take
+# to come in, and how often their brightness is set (every third refresh is
+# smooth enough for something this slow, and a third of the drawing).
+global.tile_round = 120;
+global.tile_fade_in = 60;
+global.tile_every = 3;
 
 # What is on screen: "plain" (the mark alone), "prompt" or "busy" (an answer
 # was sent and nothing has come back yet).
@@ -38,9 +55,11 @@ global.bullets = 0;
 global.wrong = 0;
 global.caps = 0;
 global.busy_frames = 0;
+global.plain_frames = 0;
 global.answered_prompt = "";
 global.have_answered = 0;
 global.current_prompt = "";
+global.question_shown = 0;
 
 global.layout_width = 0;
 global.layout_height = 0;
@@ -50,6 +69,11 @@ mark.sprite = Sprite();
 entry.sprite = Sprite();
 caption.sprite = Sprite();
 bullet.sprites = [];
+tile.sprites = [];
+for (index = 0; index < 3; index++) {
+  tile.sprites[index] = Sprite();
+  tile.sprites[index].SetOpacity(0);
+}
 message.sprite = Sprite();
 question.sprite = Sprite();
 
@@ -82,6 +106,10 @@ fun load_images() {
   caption.wrong = Image("caption-wrong" + suffix + ".png");
   caption.wrong_caps = Image("caption-wrong-caps" + suffix + ".png");
   caption.unlocking = Image("caption-unlocking" + suffix + ".png");
+  tile.image = Image("tile" + suffix + ".png");
+  for (index = 0; index < 3; index++) {
+    tile.sprites[index].SetImage(tile.image);
+  }
   mark.sprite.SetImage(mark.image);
 }
 
@@ -104,7 +132,32 @@ fun layout() {
   for (index = 0; bullet.sprites[index]; index++) {
     place_bullet(index);
   }
+  # The tiles, centred where the middle of the password box is.
+  tiles_x = Math.Int(global.layout_width / 2 - (2 * global.tile_step + global.tile_width) * s / 2);
+  tiles_y = entry.y + (global.entry_height - global.tile_height) / 2 * s;
+  for (index = 0; index < 3; index++) {
+    tile.sprites[index].SetPosition(tiles_x + index * global.tile_step * s, tiles_y, 15);
+  }
   draw();
+}
+
+# The tiles' brightness for this refresh: each follows the one before it by
+# a fifth of a round, between a faint 0.2 and full.
+fun animate_tiles() {
+  enter = global.plain_frames / global.tile_fade_in;
+  if (enter > 1) enter = 1;
+  for (index = 0; index < 3; index++) {
+    phase = global.plain_frames / global.tile_round - index * 0.2;
+    wave = 0.5 - 0.5 * Math.Cos(2 * Math.Pi * phase);
+    tile.sprites[index].SetOpacity(enter * (0.2 + 0.8 * wave * wave));
+  }
+}
+
+fun hide_tiles() {
+  global.plain_frames = 0;
+  for (index = 0; index < 3; index++) {
+    tile.sprites[index].SetOpacity(0);
+  }
 }
 
 fun place_bullet(index) {
@@ -132,6 +185,7 @@ fun draw() {
     }
     return;
   }
+  hide_tiles();
 
   busy = (global.state == "busy");
   if (busy) {
@@ -176,16 +230,19 @@ fun display_password_callback(prompt, bullets) {
   global.current_prompt = prompt;
   global.bullets = bullets;
   question.sprite.SetOpacity(0);
+  global.question_shown = 0;
   draw();
 }
 
 fun display_normal_callback() {
   question.sprite.SetOpacity(0);
+  global.question_shown = 0;
   if (global.state == "prompt") {
     # The password went to whoever asked. Until the boot moves on or the
     # question returns, show that it is being tried.
     global.state = "busy";
     global.busy_frames = 0;
+global.plain_frames = 0;
     global.answered_prompt = global.current_prompt;
     global.have_answered = 1;
   } else if (global.state != "busy") {
@@ -220,6 +277,8 @@ fun root_mounted_callback() {
 fun display_question_callback(prompt, answer) {
   global.state = "plain";
   draw();
+  global.question_shown = 1;
+  hide_tiles();
   image = Image.Text(prompt + " " + answer, 0.867, 0.78, 0.631);
   question.sprite.SetImage(image);
   question.sprite.SetPosition(Math.Int(global.layout_width / 2 - image.GetWidth() / 2), entry.y, 20);
@@ -243,7 +302,13 @@ fun refresh_callback() {
   if (Window.GetWidth() != global.layout_width || Window.GetHeight() != global.layout_height) {
     layout();
   }
-  if (global.state == "plain") return;
+  if (global.state == "plain") {
+    if (!global.question_shown) {
+      global.plain_frames++;
+      if (global.plain_frames % global.tile_every == 0) animate_tiles();
+    }
+    return;
+  }
 
   caps = 0;
   if (Plymouth.GetCapslockState()) caps = 1;

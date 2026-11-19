@@ -45,6 +45,9 @@ ENTRY_W, ENTRY_H, ENTRY_R, ENTRY_BORDER = 320, 48, 6, 2
 BULLET, BULLET_X, BULLET_STEP = 8, 44, 14
 CAPTION_H, CAPTION_SIZE = 24, 15
 MARK_TO_ENTRY, ENTRY_TO_CAPTION = 56, 12
+# The activity tiles under the mark: three small ones with the slant of the
+# mark's arms, lit one after the other.
+TILE_W, TILE_H, TILE_SLANT, TILE_STEP = 16, 10, 5, 22
 
 CAPTIONS = {
     "caption-enter": ("Enter the disk password", SOFT),
@@ -107,9 +110,16 @@ def caption(text, colour, width):
     )
 
 
+def tile():
+    # The upper arm's shape in small: a rectangle leaning to the right.
+    w, h, slant = TILE_W, TILE_H, TILE_SLANT
+    return svg(w, h, f'<path fill="{ACCENT}" d="M{slant} 0 L{w} 0 L{w - slant} {h} L0 {h} Z"/>')
+
+
 def pictures():
     result = {
         "mark": mark(),
+        "tile": tile(),
         "entry": entry(ACCENT, SOFT),
         "entry-wrong": entry(RED, SOFT),
         "entry-busy": entry(MUTED, MUTED),
@@ -149,6 +159,8 @@ def preview(out, directory):
         "unlocking": ("entry-busy", "bullet-busy", 9, "caption-unlocking"),
         "boot": (None, None, 0, None),
     }
+    # The three tiles as they are a third of the way through a round.
+    lit = (100, 45, 22)
     directory.mkdir(parents=True, exist_ok=True)
     for width, height in ((1280, 800), (2256, 1504)):
         suffix, s = ("@2x", 2) if height >= 1400 else ("", 1)
@@ -170,6 +182,14 @@ def preview(out, directory):
                     check=True, capture_output=True, text=True,
                 ).stdout
                 put(text, (width - int(size)) // 2, entry_y + (ENTRY_H + ENTRY_TO_CAPTION) * s)
+            else:
+                left = (width - (2 * TILE_STEP + TILE_W) * s) // 2
+                for i, percent in enumerate(lit):
+                    command.extend([
+                        "(", str(out / f"tile{suffix}.png"), "-alpha", "on", "-channel", "A",
+                        "-evaluate", "multiply", str(percent / 100), "+channel", ")",
+                        "-geometry", f"+{left + i * TILE_STEP * s}+{entry_y + (ENTRY_H - TILE_H) // 2 * s}", "-composite",
+                    ])
             command.append(str(directory / f"design-{state}-{width}.png"))
             subprocess.run(command, check=True)
 
