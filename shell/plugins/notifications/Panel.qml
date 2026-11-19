@@ -278,8 +278,10 @@ Panel {
       radius: width / 2
       antialiasing: true
       color: Commons.Color.accent
-      x: Math.round(parent.width / 2 + Style.bar.iconSize * 0.2)
-      y: Math.round(parent.height / 2 - Style.bar.iconSize * 0.2 - height)
+      // Centred on the icon's top-right corner, so it sits clear of the
+      // bell's shoulder instead of touching it.
+      x: Math.round(parent.width / 2 + Style.bar.iconSize * 0.45 - width / 2)
+      y: Math.round(parent.height / 2 - Style.bar.iconSize * 0.45 - height / 2)
     }
   }
 
