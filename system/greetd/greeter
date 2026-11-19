@@ -1,0 +1,68 @@
+#!/bin/bash
+# karchy's login screen, as greetd's greeter (D-130). greetd runs this as the
+# `greeter` user whenever nobody is logged in on its terminal: at boot when
+# the install has no disk encryption, and after every log out.
+#
+# The screen is a Quickshell config (/usr/share/karchy/shell/greeter.qml) in a
+# Hyprland started for it alone (hyprland.lua beside this file's data).
+#
+# It must fail open: a machine always has a login. The text greeter (agreety)
+# takes over when
+#   - the kernel line has karchy.greeter=text (add it in the boot menu's
+#     editor), or /etc/karchy/greeter-text exists (sudo touch it);
+#   - Hyprland or Quickshell is missing, can't start, or ends without having
+#     started a session;
+#   - the screen isn't up 20 seconds after Hyprland started (greeter-session
+#     ends Hyprland then).
+# Why it fell back is in the journal: journalctl -t karchy-greeter.
+#
+# Runs as an unprivileged user and takes no arguments or input but the
+# environment greetd gives it.
+
+session=/usr/lib/karchy/session
+share=/usr/share/karchy
+
+text_greeter() {
+  [[ -z ${1:-} ]] || echo "karchy-greeter: $1; using the text greeter" | systemd-cat -t karchy-greeter -p warning
+  exec agreety --cmd "$session"
+}
+
+[[ ! -e /etc/karchy/greeter-text ]] || text_greeter
+if grep -qw 'karchy.greeter=text' /proc/cmdline; then
+  text_greeter
+fi
+for needed in start-hyprland quickshell; do
+  command -v "$needed" >/dev/null || text_greeter "$needed is not installed"
+done
+[[ -f $share/shell/greeter.qml ]] || text_greeter "$share/shell/greeter.qml is missing"
+[[ -n ${XDG_RUNTIME_DIR:-} && -d $XDG_RUNTIME_DIR ]] || text_greeter "no runtime directory"
+
+# A fresh folder for this run: the marks greeter-session and the screen
+# leave, a home (the greeter user has none of its own to write in), and a
+# runtime folder of the screen's own.
+run="$XDG_RUNTIME_DIR/karchy-greeter"
+# Its name is short because Hyprland's sockets go three folders down in it,
+# and a socket's whole path has to fit in 108 characters.
+runtime="$XDG_RUNTIME_DIR/kg"
+rm -rf "$run" "$runtime"
+(umask 077 && mkdir -p "$run/home" "$runtime") || text_greeter "can't write $run"
+
+export KARCHY_GREETER_RUN="$run"
+export HOME="$run/home" XDG_CACHE_HOME="$run/home/.cache" XDG_CONFIG_HOME="$run/home/.config"
+# The runtime folder of its own keeps Hyprland and Quickshell away from the
+# greeter user's systemd and D-Bus: Hyprland otherwise starts its session
+# target there, and with it every desktop service karchy enables for users
+# (sound, portals, the disk-health and sleep watchers), for a screen that
+# needs none of them. greetd's socket (GREETD_SOCK) is a full path.
+export KARCHY_PATH="$share"
+# The default theme: no one's own theme applies before login (D-121).
+export KARCHY_THEME_DIR="$share/themes/nulifyer"
+export XDG_CURRENT_DESKTOP=Hyprland QT_QPA_PLATFORM=wayland
+
+env -u DBUS_SESSION_BUS_ADDRESS XDG_RUNTIME_DIR="$runtime" \
+  start-hyprland -- --config "$share/greeter/hyprland.lua" 2>&1 | systemd-cat -t karchy-greeter
+
+# greeter-session marks a session greetd was told to start; greetd starts it
+# once this script is gone.
+[[ ! -e $run/started ]] || exit 0
+text_greeter "the login screen ended without a login"

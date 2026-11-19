@@ -1,0 +1,8 @@
+#!/bin/sh
+# karchy: the desktop session greetd starts for a user (D-13): Hyprland
+# through uwsm. One owner for the command, used by the automatic login
+# (/etc/greetd/config.toml), by karchy's login screen and by the text greeter
+# behind it. uwsm's start messages go to the journal only (>/dev/null): on the
+# screen they were a second of text between the boot splash and the desktop.
+# Its errors still reach the screen.
+exec uwsm start -g -1 -e -D Hyprland hyprland.desktop >/dev/null

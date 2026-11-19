@@ -1,14 +1,13 @@
-# karchy (D-13): after the disk is unlocked, log straight into the Hyprland
-# session. Logging out shows the text greeter. uwsm's start messages go to the
-# journal only (>/dev/null): on the screen they were a second of text between
-# the boot splash and the desktop. Its errors still reach the screen.
+# karchy (D-13, D-130): an encrypted install. After the disk is unlocked, go
+# straight into the Hyprland session. Logging out shows karchy's login screen (/usr/lib/karchy/greeter; the text greeter
+# when it can't start).
 [terminal]
 vt = 1
 
 [initial_session]
-command = "uwsm start -g -1 -e -D Hyprland hyprland.desktop >/dev/null"
+command = "/usr/lib/karchy/session"
 user = "@USER@"
 
 [default_session]
-command = "agreety --cmd 'uwsm start -g -1 -e -D Hyprland hyprland.desktop'"
+command = "/usr/lib/karchy/greeter"
 user = "greeter"

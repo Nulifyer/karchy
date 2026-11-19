@@ -19,7 +19,9 @@ QtObject {
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string stateHome: home + "/.local/state"
-  readonly property string currentThemePath: stateHome + "/karchy/current/theme"
+  // KARCHY_THEME_DIR names a theme folder outright: the login screen runs
+  // before anyone has a theme of their own and wears the default one.
+  readonly property string currentThemePath: Quickshell.env("KARCHY_THEME_DIR") || (stateHome + "/karchy/current/theme")
 
   property color foreground: "#cacccc"
   property color background: "#101315"

@@ -1,0 +1,37 @@
+#!/bin/bash
+# karchy: what runs inside the login screen's Hyprland (hyprland.lua starts
+# it): the screen itself, then the end of that Hyprland. See ./greeter.
+#
+# The screen makes $KARCHY_GREETER_RUN/ready once a display shows it. Without
+# that after 20 seconds it is stopped, and the launcher falls back to the
+# text greeter. An exit status of 0 means it handed a session to greetd.
+
+run=${KARCHY_GREETER_RUN:?}
+
+quickshell -p "$KARCHY_PATH/shell/greeter.qml" &
+screen=$!
+
+# The watchdog. A mark made before the watch is set is found by the check
+# after it, 20 seconds late at worst.
+(
+  inotifywait -qq -t 20 -e create "$run"
+  [[ -e $run/ready ]] && exit 0
+  echo "karchy-greeter: the login screen did not come up in 20 seconds"
+  kill "$screen" 2>/dev/null
+) &
+watchdog=$!
+
+wait "$screen"
+status=$?
+pkill -P "$watchdog" 2>/dev/null
+kill "$watchdog" 2>/dev/null
+
+if ((status == 0)) && [[ -e $run/ready ]]; then
+  : >"$run/started"
+else
+  echo "karchy-greeter: the login screen ended with status $status"
+fi
+# End this Hyprland; by name if it doesn't take the request.
+hyprctl dispatch 'hl.dsp.exit()' >/dev/null 2>&1 || hyprctl dispatch exit >/dev/null 2>&1
+sleep 3
+pkill -u "$UID" -x Hyprland

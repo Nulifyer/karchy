@@ -22,6 +22,9 @@ depends=(
   'pipewire' 'pipewire-pulse' 'wireplumber' 'brightnessctl' 'ddcutil' 'bluez-utils' 'networkmanager' 'iw'
   'fastfetch' 'btop' 'qrencode' 'ttfx' 'omarchy-speedtest'
   'karchy-settings' 'karchy-themes'
+  # The login screen (D-130) is greetd's greeter; its launcher falls back to
+  # greetd's own text greeter (agreety).
+  'greetd'
   # The shell's icons: Material Design from the Nerd Font symbols, kept apart
   # from the text font so `karchy font set` doesn't change them
   'ttf-nerd-fonts-symbols-mono'
@@ -73,6 +76,14 @@ package() {
   # prompt, the bar and any other text. fontconfig's pacman hook adds it to
   # the font cache.
   install -Dm644 -t "$pkgdir/usr/share/fonts/karchy" system/fonts/karchy-symbols.ttf
+  # The login screen (D-130): greetd's greeter is /usr/lib/karchy/greeter,
+  # which starts a Hyprland of its own (greeter/hyprland.lua) for
+  # shell/greeter.qml, and the text greeter when that fails. The session all
+  # of them start is /usr/lib/karchy/session. tmpfiles.d makes the folder
+  # where the screen remembers who signed in last.
+  install -Dm755 -t "$pkgdir/usr/lib/karchy" system/greetd/greeter system/greetd/greeter-session system/greetd/session
+  install -Dm644 system/greetd/hyprland.lua "$share/greeter/hyprland.lua"
+  install -Dm644 system/greetd/tmpfiles.conf "$pkgdir/usr/lib/tmpfiles.d/karchy-greeter.conf"
   # Pause Hyprland's config auto-reload while karchy's files are replaced.
   install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" system/pacman/hooks/*.hook
   # The password prompt's words for the root helpers above.
