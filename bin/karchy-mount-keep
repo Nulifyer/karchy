@@ -12,7 +12,13 @@
 #   /etc/karchy/smb/<server>-<share>.cred   username and password, root only
 #   an fstab line tagged "# karchy-kept-mount" that automounts the share at
 #   /mnt/<share> on first use (nofail, _netdev, idle timeout), so boot never
-#   waits for a NAS that is away.
+#   waits for a NAS that is away. echo_interval=5: the kernel gives up on a
+#   server that stopped answering after 3 echo intervals, so the first thing
+#   to touch the share (a file manager, `df`, statfs) once the NAS has gone
+#   waits about 30 seconds instead of 3 minutes; each later call still waits
+#   about 20 seconds for the kernel's reconnect attempt, which no option
+#   shortens. The cost is a small echo packet every 5 seconds while the share
+#   is mounted and idle.
 # Each system change goes through sudo; this script itself never runs as root.
 
 set -euo pipefail
@@ -210,7 +216,7 @@ keep() {
       sudo mkdir -p "$target" || give_up 1 "Couldn't create $target."
     fi
     added_fstab=1
-    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s 0 0 %s\n' \
+    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,echo_interval=5,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s 0 0 %s\n' \
       "$(fstab_escape "//$server/$share")" "$(fstab_escape "$target")" "$(fstab_escape "$cred")" \
       "$(id -u)" "$(id -g)" "$MARKER" | sudo tee -a "$FSTAB" >/dev/null || give_up 1 "Couldn't add the share to /etc/fstab."
     sudo systemctl daemon-reload || give_up 1 "systemd couldn't read the new /etc/fstab."
