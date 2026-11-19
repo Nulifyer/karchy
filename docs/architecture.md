@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **approved for phase 1** on 2026-11-13, with Q1–Q4 answered (D-41 to D-44). Q5 is still open, for phase 2. It is based on Omarchy `v4.5.0` (`ac2690cd7`), read at `/home/nulifyer/Projects/Omarchy/reference/omarchy-v4.5.0`.
+Status: **approved for phase 1** on 2026-11-13, with Q1–Q4 answered (D-41 to D-44). Q5 is still open, for phase 2. It is based on Omarchy `v4.5.0` (`ac2690cd7`), read at `~/Projects/Omarchy/reference/omarchy-v4.5.0`.
 
 ## Repository layout
 
