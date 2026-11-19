@@ -389,15 +389,18 @@ else
 fi
 # What karchy no longer uses goes, if nothing else needs it (pacman decides;
 # never forced). One you installed yourself was never on this list.
-if ((${#retire_remove[@]} > 0)); then
-  mapfile -t removable < <(karchy-package-retire removable 2>/dev/null || true)
-  if ((${#removable[@]} > 0)); then
-    if sudo pacman --color auto -Rn --noconfirm -- "${removable[@]}"; then
-      good "Removed what karchy no longer uses: ${removable[*]}"
-    else
-      warn "Couldn't remove ${removable[*]}; the next update tries again"
-    fi
+# Asked again after the upgrade, without waiting for the plan: the release
+# just installed may have retired a package (its list and the dropped
+# dependency both arrive with it), and the plan read the old list.
+mapfile -t removable < <(karchy-package-retire removable 2>/dev/null || true)
+if ((${#removable[@]} > 0)); then
+  if sudo pacman --color auto -Rn --noconfirm -- "${removable[@]}"; then
+    good "Removed what karchy no longer uses: ${removable[*]}"
+  else
+    warn "Couldn't remove ${removable[*]}; the next update tries again"
   fi
+fi
+if ((${#retire_remove[@]} > 0)); then
   for name in "${retire_remove[@]}"; do
     printf '%s\n' "${removable[@]:-}" | grep -qxF -- "$name" && continue
     pacman -Qq -- "$name" >/dev/null 2>&1 && note "$name stays: another installed package still needs it"
