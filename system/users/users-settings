@@ -85,9 +85,9 @@
 #   by a temporary file and a rename; keys in /etc/credstore (root only).
 #   A kept home is handed to root and closed (0700), so a later account
 #   that gets the same user number doesn't own it.
-# - user-setup runs as the new account, never as root, with a fresh
-#   environment. Only packaged, root-owned programs are run, from a fixed
-#   PATH.
+# - user-setup runs as the new account, never as root (setpriv drops to
+#   its user, group and groups), with a fresh environment. Only packaged,
+#   root-owned programs are run, from a fixed PATH.
 
 set -uo pipefail
 PATH=/usr/bin
@@ -151,8 +151,17 @@ other_admins() {
   echo "$count"
 }
 
-# Signed in: logind knows a session of theirs. (None in the installer.)
-signed_in() { [[ -n $(loginctl show-user "$1" -p Sessions --value 2>/dev/null) ]]; }
+# Signed in: logind has a login session of theirs (the desktop, a console,
+# SSH). Their user manager's own session and background ones (a job run for
+# them) don't count: those linger a while after a log out. None in the
+# installer, where no logind answers.
+signed_in() {
+  local id
+  for id in $(loginctl show-user "$1" -p Sessions --value 2>/dev/null); do
+    [[ $(loginctl show-session "$id" -p Class --value 2>/dev/null) != user* ]] || return 0
+  done
+  return 1
+}
 
 # The system disk is encrypted: a LUKS volume lies beneath /.
 encrypted() {
@@ -446,8 +455,11 @@ add() {
   # The desktop's made files (the theme), as the new account. Absent while
   # the installer makes the first account, before the desktop is installed:
   # it runs the same program for that account afterwards.
+  # setpriv, not runuser: no login session is opened for it, so no user
+  # manager starts and the account doesn't count as signed in afterwards.
   if [[ -x $USER_SETUP ]]; then
-    out=$(runuser -u "$name" -- env -i HOME="$home" USER="$name" LOGNAME="$name" SHELL="$LOGIN_SHELL" \
+    out=$(setpriv --reuid "$uid" --regid "$(id -g -- "$name")" --init-groups -- \
+      env -i HOME="$home" USER="$name" LOGNAME="$name" SHELL="$LOGIN_SHELL" \
       PATH=/usr/local/bin:/usr/bin LANG="${LANG:-C.UTF-8}" "$USER_SETUP" 2>&1) ||
       undo_add "$uid" "its desktop couldn't be set up (${out##*$'\n'})"
   fi

@@ -125,7 +125,9 @@ fi
 # another person's or written at all. Skipped where the kernel doesn't allow
 # that. /run is empty there but for udev's records (lsblk reads a disk's
 # encryption from them): room for the helper's lock, and no logind, so nobody
-# counts as signed in. PKEXEC_UID says who is asking, as pkexec does.
+# counts as signed in. /etc/greetd is an empty folder of the sandbox's own
+# (an installed one belongs to an account the namespace doesn't have).
+# PKEXEC_UID says who is asking, as pkexec does.
 sandbox=$(mktemp -d)
 # (The overlay leaves a work folder nobody may read.)
 trap 'rm -f "$scratch"; chmod -R u+rwx "$sandbox" 2>/dev/null; rm -rf "$sandbox"' EXIT
@@ -135,6 +137,7 @@ inside='
   mount -t overlay overlay -o "lowerdir=/etc,upperdir=$1/upper,workdir=$1/work" /etc || exit 90
   mount --bind /run/udev "$1/udev" && mount -t tmpfs tmpfs /run && mkdir /run/udev &&
     mount --bind "$1/udev" /run/udev || exit 90
+  mkdir -p /etc/greetd && mount -t tmpfs tmpfs /etc/greetd || exit 90
   shift
   exec bash "$@"'
 if ! unshare -rm bash -c "$inside" _ "$sandbox" -c true 2>/dev/null; then
@@ -163,7 +166,6 @@ accounts() {
   } >/etc/passwd
 }
 config() {
-  mkdir -p /etc/greetd
   printf '%s\n' "# a comment at the top" "[terminal]" "vt = 1" "" "$@" \
     "[default_session]" 'command = "/usr/lib/karchy/greeter"' 'user = "greeter"' >/etc/greetd/config.toml
 }
