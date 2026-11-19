@@ -269,12 +269,14 @@ Panel {
       else root.toggle()
     }
 
-    // Notifications wait unseen in the panel.
+    // Notifications wait unseen in the panel. A dot is round in every theme,
+    // square corners or not: a square read as a second icon beside the bell.
     Rectangle {
       visible: root.unseenCount > 0
-      width: Style.space(6)
+      width: Style.space(5)
       height: width
-      radius: Style.cornerRadius > 0 ? width / 2 : 0
+      radius: width / 2
+      antialiasing: true
       color: Commons.Color.accent
       x: Math.round(parent.width / 2 + Style.bar.iconSize * 0.2)
       y: Math.round(parent.height / 2 - Style.bar.iconSize * 0.2 - height)
