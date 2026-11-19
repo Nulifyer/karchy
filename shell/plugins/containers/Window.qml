@@ -490,7 +490,7 @@ Item {
       Layout.fillWidth: true
       iconName: "containers"
       title: "Containers aren't set up"
-      body: "Neither Podman nor Docker is installed. Install Containers from Quick install › System features for rootless Podman with the docker command and Compose."
+      body: "Install Containers from Quick install › System features."
       actionText: "Open Quick install"
       onAction: Quickshell.execDetached(["karchy-quick-install", "window", "@system"])
     }

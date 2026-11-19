@@ -279,7 +279,7 @@ Item {
             centered: true
             iconName: "update"
             title: "Checking for updates"
-            body: "Reading karchy's, Arch's and CachyOS's repositories and the AUR."
+            body: ""
           }
 
           EmptyState {
@@ -440,7 +440,9 @@ Item {
             Layout.fillWidth: true
             visible: root.channel !== ""
             title: "Release channel"
-            subtitle: (Model.channelText[root.channel] || "") + ". Only karchy's own parts follow the channel; Arch, CachyOS and AUR packages update as usual."
+            // A channel with no description of its own (dev) adds nothing.
+            subtitle: (Model.channelText[root.channel] ? Model.channelText[root.channel] + ". " : "")
+              + "Only karchy's own parts follow the channel; Arch, CachyOS and AUR packages update as usual."
             ButtonGroup {
               options: root.channels.length > 0 ? root.channels : [root.channel]
               value: root.channel

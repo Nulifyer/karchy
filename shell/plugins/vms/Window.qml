@@ -479,7 +479,7 @@ Item {
       Layout.fillWidth: true
       iconName: "vms"
       title: "Virtual machines aren't set up"
-      body: "Install Virtual machines from Quick install › System features: that installs QEMU, the UEFI firmware, a software TPM and the viewer."
+      body: "Install Virtual machines from Quick install › System features."
       actionText: "Open Quick install"
       onAction: Quickshell.execDetached(["karchy-quick-install", "window", "@system"])
     }
@@ -572,14 +572,13 @@ Item {
 
         Body {
           visible: form.os === "windows"
-          text: "Windows gets a TPM 2.0 and Secure Boot firmware for Windows 11, a SATA disk and an Intel network card, so its installer works without extra drivers."
+          text: "Set up for Windows 11: its installer needs no extra drivers."
         }
 
-        Toggle {
-          Layout.fillWidth: true
+        SettingRow {
           label: "Start it and show its screen"
           checked: form.startNow
-          onClicked: form.startNow = !form.startNow
+          onToggled: form.startNow = !form.startNow
         }
       }
 
@@ -780,33 +779,29 @@ Item {
           spacing: Style.spacing.md
           enabled: detail.editable
 
-          Toggle {
-            Layout.fillWidth: true
+          SettingRow {
             label: "Network"
-            description: "Internet through the host (QEMU user networking)."
+            info: "Internet through the host (QEMU user networking)."
             checked: detail.vm.net === "user"
-            onClicked: root.setKey("net", checked ? "none" : "user")
+            onToggled: root.setKey("net", checked ? "none" : "user")
           }
-          Toggle {
-            Layout.fillWidth: true
+          SettingRow {
             label: "UEFI firmware"
-            description: "Off boots with a legacy BIOS."
+            info: "Off boots with a legacy BIOS."
             checked: detail.vm.uefi === "yes"
-            onClicked: root.setKey("uefi", checked ? "no" : "yes")
+            onToggled: root.setKey("uefi", checked ? "no" : "yes")
           }
-          Toggle {
-            Layout.fillWidth: true
+          SettingRow {
             label: "Secure Boot firmware"
-            description: "Firmware that can enforce Secure Boot; it starts with no keys enrolled."
+            info: "Firmware that can enforce Secure Boot; it starts with no keys enrolled."
             checked: detail.vm.secureboot === "yes"
-            onClicked: root.setKey("secureboot", checked ? "no" : "yes")
+            onToggled: root.setKey("secureboot", checked ? "no" : "yes")
           }
-          Toggle {
-            Layout.fillWidth: true
+          SettingRow {
             label: "TPM 2.0"
-            description: "A software TPM (swtpm), as Windows 11 needs."
+            info: "A software TPM (swtpm), as Windows 11 needs."
             checked: detail.vm.tpm === "yes"
-            onClicked: root.setKey("tpm", checked ? "no" : "yes")
+            onToggled: root.setKey("tpm", checked ? "no" : "yes")
           }
         }
       }
