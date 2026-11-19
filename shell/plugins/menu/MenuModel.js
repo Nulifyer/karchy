@@ -334,12 +334,42 @@ function leafIdFor(id) {
   return parts.length > 0 ? parts[parts.length - 1] : id
 }
 
-function nameSearchText(entry) {
+// What a row is also known by: its aliases, search terms and the last part
+// of its id, as words. An alias with a hyphen or a dot is there both ways,
+// so "auto-login" and "auto login" find it.
+function aliasSearchText(entry) {
   if (!entry) return ""
   var aliases = []
   var values = (Array.isArray(entry.aliases) ? entry.aliases : []).concat(Array.isArray(entry.searchTerms) ? entry.searchTerms : [])
-  for (var i = 0; i < values.length; i++) aliases.push(searchableToken(values[i]))
-  return [entry.label, searchableToken(leafIdFor(entry.id)), aliases.join(" ")].join(" ").toLowerCase()
+  for (var i = 0; i < values.length; i++) {
+    var words = searchableToken(values[i])
+    aliases.push(words)
+    if (words !== String(values[i])) aliases.push(String(values[i]))
+  }
+  aliases.push(searchableToken(leafIdFor(entry.id)))
+  return aliases.join(" ").toLowerCase()
+}
+
+// The row's name and everything it is also known by.
+function nameSearchText(entry) {
+  if (!entry) return ""
+  return (entry.label + " " + aliasSearchText(entry)).toLowerCase()
+}
+
+function isWordCharacter(character) {
+  return character.toLowerCase() !== character.toUpperCase() || (character >= "0" && character <= "9")
+}
+
+// Where `needle` begins a word of `text` (both lower case): at its start, or
+// after anything that is not a letter or a digit. -1 when no word starts
+// with it. "pack" begins a word of "install package"; "up" begins none of
+// "backup".
+function wordStartIndex(text, needle) {
+  if (!needle) return -1
+  for (var i = text.indexOf(needle); i >= 0; i = text.indexOf(needle, i + 1)) {
+    if (i === 0 || !isWordCharacter(text.charAt(i - 1))) return i
+  }
+  return -1
 }
 
 function termInSearchWords(term, text) {
@@ -358,37 +388,62 @@ function descriptionTextMatches(query, text) {
   return true
 }
 
-// `parentPath` is where the row lives ("Power", "Settings"), which a search
-// result shows before its label, so its words find the row too: "power
-// restart", "reload hyprland", "settings displays".
+// Letters inside a word count only from this many on, and only in the row's
+// own name: "fox" finds Firefox, but "b" doesn't find About, nor "the" a row
+// whose alias is "ethernet".
+var INSIDE_WORD_MIN = 3
+// One letter is too little to mean an alias: "b" lists what is named b…, not
+// Disks for its keyword "backup".
+var ALIAS_MIN = 2
+
+// A row is a result when every word typed is found in it: at the start of a
+// word of its name or of where it lives (`parentPath`: "Power", "Settings",
+// which a result shows before its label, so "power restart", "reload
+// hyprland" and "settings displays" work); from two letters on, at the start
+// of a word of an alias; from three, inside a word of its name or as a whole
+// word of its description.
 function matchesQuery(entry, query, visible, parentPath) {
   if (!entry || entry.id === "root") return false
   if (!visible) return false
 
-  var nameText = nameSearchText(entry)
+  var label = String(entry.label || "").toLowerCase()
+  var aliasText = aliasSearchText(entry)
   var pathText = String(parentPath || "").toLowerCase()
   var descriptionText = String(entry.description || "").toLowerCase()
   var terms = String(query || "").toLowerCase().trim().split(/\s+/)
 
   for (var i = 0; i < terms.length; i++) {
-    if (!terms[i]) continue
-    if (nameText.indexOf(terms[i]) >= 0) continue
-    if (pathText.indexOf(terms[i]) >= 0) continue
-    if (termInSearchWords(terms[i], descriptionText)) continue
+    var term = terms[i]
+    if (!term) continue
+    if (wordStartIndex(label, term) >= 0) continue
+    if (wordStartIndex(pathText, term) >= 0) continue
+    if (term.length >= ALIAS_MIN && wordStartIndex(aliasText, term) >= 0) continue
+    if (term.length >= INSIDE_WORD_MIN && label.indexOf(term) >= 0) continue
+    if (term.length >= INSIDE_WORD_MIN && termInSearchWords(term, descriptionText)) continue
     return false
   }
 
   return true
 }
 
+// The order of results, best first (lower is better):
+//    0  a root row named exactly what was typed; an app with it as a word
+//    2  another row named exactly that     3  its path reads exactly that
+//    5  an alias is exactly that
+//   10  the name starts with it           12  a later word of the name does
+//   20  the path starts with it           22  a later word of the path does
+//   26  an alias starts with it           28  a later word of an alias does
+//   30  it is inside a word of the name   32  of the path
+//   60  the description has its words     80  its words are found apart
 function searchScore(items, entry, query) {
   var needle = String(query || "").toLowerCase().trim()
   var label = entry.label.toLowerCase()
-  var nameText = nameSearchText(entry)
+  var aliasText = aliasSearchText(entry)
   var descriptionText = String(entry.description || "").toLowerCase()
   // The row as a search result reads it: "power › reboot" as "power reboot".
   var parentPath = parentPathFor(items, entry.id).toLowerCase().replace(/ › /g, " ")
   var pathLabel = parentPath ? parentPath + " " + label : label
+  var aliases = (entry.aliases || []).map(function(a) { return String(a).toLowerCase() })
   var score = 80
 
   // A root row named exactly what was typed is what was meant ("power" is the
@@ -400,12 +455,15 @@ function searchScore(items, entry, query) {
   else if (entry.kind === "app" && label.split(/\s+/).indexOf(needle) >= 0) score = 0
   // A row that names the query as one of its aliases ("network" on Network
   // Settings) beats rows whose label merely starts with it (Network Shares).
-  else if (entry.kind !== "app" && (entry.aliases || []).some(function(a) { return String(a).toLowerCase() === needle })) score = 5
+  else if (entry.kind !== "app" && aliases.indexOf(needle) >= 0) score = 5
   else if (label.indexOf(needle) === 0) score = 10
-  else if (pathLabel.indexOf(needle) === 0) score = 12
+  else if (wordStartIndex(label, needle) >= 0) score = 12
+  else if (pathLabel.indexOf(needle) === 0) score = 20
+  else if (wordStartIndex(pathLabel, needle) >= 0) score = 22
+  else if (aliases.some(function(a) { return a.indexOf(needle) === 0 })) score = 26
+  else if (wordStartIndex(aliasText, needle) >= 0) score = 28
   else if (label.indexOf(needle) >= 0) score = 30
   else if (pathLabel.indexOf(needle) >= 0) score = 32
-  else if (nameText.indexOf(needle) >= 0) score = 40
   else if (descriptionTextMatches(needle, descriptionText)) score = 60
 
   if (entry.kind === "menu" || entry.kind === "link") score -= 2
@@ -740,6 +798,8 @@ if (typeof module !== "undefined") {
     searchableToken: searchableToken,
     leafIdFor: leafIdFor,
     nameSearchText: nameSearchText,
+    aliasSearchText: aliasSearchText,
+    wordStartIndex: wordStartIndex,
     termInSearchWords: termInSearchWords,
     descriptionTextMatches: descriptionTextMatches,
     matchesQuery: matchesQuery,

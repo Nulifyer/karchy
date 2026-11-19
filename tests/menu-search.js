@@ -101,6 +101,64 @@ assert.strictEqual(search("settings").length, 14)
 // D-77's rule holds: a name match comes before a row matched only by an alias.
 assert.deepStrictEqual(top("install package", 1), ["Packages › Install Package"])
 
+// Loose matches are gone: a word typed is found at the start of a word (of a
+// name or a path; of an alias from two letters on), and inside a word only
+// from three letters on and only in a row's own name. Checked with apps in the list, as the menu has
+// them (Menu.qml mergeAppRows: the generic name and the keywords are aliases).
+const app = (id, label, generic, keywords) => ({ id: "apps." + id, parent: "apps", kind: "app", label: label,
+  description: generic, aliases: (generic ? [generic] : []).concat(keywords ? keywords.split(";").filter(k => k) : []),
+  searchTerms: [], when: "", order: 0 })
+const withApps = M.mergeAppRows(items, order, [
+  app("org.gnome.DiskUtility", "Disks", "", "disk;drive;volume;harddisk;hdd;disc;cdrom;dvd;partition;iso;image;backup;restore;benchmark;raid;luks;encryption;S.M.A.R.T.;smart;"),
+  app("io.missioncenter.MissionCenter", "Mission Center", "", "Task manager;Resource monitor;System monitor;Processor;Processes;Performance monitor;CPU;GPU;Disc;Disk;Memory;Network;Utilisation;Utilization;Service;Services;systemd;systemctl"),
+  app("disktree", "disktree", "Disk space treemap", "disk;space;usage;du;treemap;cleanup;"),
+  app("firefox", "Firefox", "Web Browser", "Internet;WWW;Browser;Web;Explorer"),
+  app("thunar", "Thunar File Manager", "File Manager", "file manager;explorer;finder;browser;folders;network;devices;"),
+  app("btop", "btop++", "System Monitor", "system;process;task"),
+  app("localsend", "LocalSend", "An open source cross-platform alternative to AirDrop", "Sharing;LAN;Files;")
+])
+function searchAll(query) {
+  const rows = []
+  for (const id of withApps.itemOrder) {
+    const entry = withApps.items[id]
+    if (id === "root" || !M.matchesQuery(entry, query, true, M.parentPathFor(withApps.items, id))) continue
+    rows.push({ reads: M.pathFor(withApps.items, id), score: M.searchScore(withApps.items, entry, query) })
+  }
+  return rows.sort((a, b) => a.score - b.score || a.reads.localeCompare(b.reads)).map(r => r.reads)
+}
+const found = (query, reads) => searchAll(query).indexOf(reads) >= 0
+// The reported ones: "sc" gave Disks and Mission Center (the keyword "disc"),
+// "b" gave About and Hibernate, "up" gave Disks and disktree ("backup",
+// "cleanup"), "the" gave Settings › Network ("ethernet").
+for (const [query, reads] of [["sc", "Apps › Disks"], ["sc", "Apps › Mission Center"], ["b", "Settings › About"],
+  ["b", "Power › Hibernate"], ["up", "Apps › Disks"], ["up", "Apps › disktree"], ["the", "Settings › Network"],
+  ["a", "Power › Shutdown"], ["he", "Settings › Network"], ["in", "Apps › Thunar File Manager"]])
+  assert.ok(!found(query, reads), JSON.stringify(query) + " should not find " + reads + " (" + searchAll(query).join(", ") + ")")
+// What they give now, best first.
+assert.deepStrictEqual(searchAll("sc"), ["Recording", "Settings › Displays", "Settings › Appearance"])
+assert.deepStrictEqual(searchAll("up").slice(0, 3), ["Update", "Update › Firmware", "Settings › About"])
+assert.deepStrictEqual(searchAll("the"), ["Theme"])
+// One letter finds names only: no Disks for "backup", no Settings › Power for "battery".
+assert.deepStrictEqual(searchAll("b"), ["Apps › btop++", "Background", "Reload › Bluetooth"])
+assert.ok(found("ba", "Settings › Power") && found("ba", "Apps › Disks") && searchAll("ba")[0] === "Background")
+// An exact alias, then names, then other aliases; a word start before the inside of a word.
+assert.deepStrictEqual(searchAll("disk").slice(0, 3), ["Settings › Storage", "Apps › Disks", "Apps › disktree"])
+assert.deepStrictEqual(searchAll("pack").slice(0, 3), ["Packages", "Packages › Install Package", "Packages › Remove Package"])
+assert.strictEqual(searchAll("net")[0], "Settings › Network")
+assert.strictEqual(searchAll("ethernet")[0], "Settings › Network")
+assert.strictEqual(searchAll("browser")[0], "Apps › Firefox")
+assert.strictEqual(searchAll("file")[0], "Apps › Thunar File Manager")
+assert.strictEqual(searchAll("wall")[0], "Background")
+// Inside a word of a name from three letters on ("fox", "send"), never of an alias ("ernet").
+assert.deepStrictEqual(searchAll("fox"), ["Apps › Firefox"])
+assert.deepStrictEqual(searchAll("send"), ["Apps › LocalSend"])
+assert.deepStrictEqual(searchAll("ox"), [])
+assert.deepStrictEqual(searchAll("ernet"), [])
+// Several words, in any order, each at a word's start; a hyphen in an alias or in what is typed.
+assert.strictEqual(searchAll("manager file")[0], "Apps › Thunar File Manager")
+assert.ok(found("wi fi", "Reload › Wi-Fi") && found("wi-fi", "Settings › Network"))
+assert.ok(found("quick-install", "Packages › Quick Install") && found("screen record", "Recording"))
+
 // The English catalog names every row as the menu does.
 const catalog = JSON.parse(fs.readFileSync(root + "/default/i18n/en/menu.json", "utf8"))
 for (const id of order) if (id !== "root") assert.strictEqual((catalog[id] || {}).label, items[id].label, "en/menu.json: " + id)
