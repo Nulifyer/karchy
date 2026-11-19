@@ -32,6 +32,16 @@ Fonts (D-120), 2026-11-19 (local commits on `main`, not pushed): Settings › Fo
 - Found there and fixed: the pictures were drawn fat, then solid (the mask's threshold; now the tray's values); **no terminal changes font while it runs**: kitty's `SIGUSR1` and Ghostty's `SIGUSR2` reload did nothing, so the signal is gone and the notification names kitty too ("Open foot and Kitty windows keep the old font; new ones use this one"); an idle foot server no longer counts as an open foot window; the migration also removes the empty `~/.config/fontconfig`.
 - Not tested: a window opened from inside a running Ghostty or kitty (it will keep the old font; only a newly started terminal was tried); VS Code and Brave after a restart; the install-failed message with a real failure; GTK 4 apps; the light theme in the VM; real hardware.
 
+## Wordmark, Plymouth and live storage (D-122, D-123), 2026-11-19
+
+Three follow-ups to rc.6, on `main`, not pushed, not in a release.
+
+- **Wordmark.** `logo.txt` is the Lockup the user picked (`out/wordmark/`). The installer's header, `karchy-show-logo`, the screensaver and the text boot screen take the logo's size from the file and draw `logo-mark.txt` when the screen is narrower than the wordmark.
+- **Disk-password screen (D-122).** Plymouth with karchy's theme; the D-121 text screen is what a boot without `splash` (or with `plymouth.enable=0`) shows, and what takes over by itself when Plymouth dies in the initramfs. Checked in VM `inst` at 1280x800 and 2256x1504; the list is in D-122's evidence and the screenshots in `out/plymouth/`.
+- **Storage (D-123).** Live figures from btrfs's own totals, no nightly timer, the breakdown only on "Measure now", disk health read when the page opens. Screenshots in `out/storage-live/`.
+- VM `inst` is the rc.6 install upgraded to these packages (`pacman -U`, migrations run), shut down; its snapshots `pre-plymouth` (before) and `plymouth-upgraded` (after). Its display is back at the template's default.
+- Not done: a fresh install to the end. The new ISO (`out/iso-plymouth/`) boots and the installer runs to "Install the base system" with the new header, where pacstrap stopped twice on a CachyOS mirror that listed a glibc build it did not hold yet (cdn77 and us answered 404, mirror.cachyos.org had the file; pacman gave up after two of the 24 mirrors). So the installer's two new lines (the kernel line, `plymouth-set-default-theme karchy` before `limine-update`) ran only as the migration's equivalents on the upgraded VM. Also not checked: real hardware, Secure Boot, SMART health on a real drive.
+
 ## Current batch
 
 None: everything is merged.
@@ -156,6 +166,7 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 
 ## Needs the user
 
+- Plymouth and storage (D-122, D-123, report of 2026-11-19), for your decision: (a) the splash shows the vector mark, not the Lockup wordmark; (b) no progress bar after the password, and about a second of black remains between the splash and the desktop while Hyprland starts; (c) `systemd.tty.term.console=dumb` is on the kernel line on Omarchy's evidence, not reproduced here; (d) the D-121 item about a wrong disk password having no message is answered by the splash, and remains true for the text fallback; (e) the Storage page keeps the exact breakdown behind "Measure now": it doesn't complicate the page, and my advice is to keep it; (f) disk health is now read each time the page opens rather than once a night.
 - Boot screens (D-121, report of 2026-11-19), for your decision: (a) the disk prompt reads "disk karchy (luks-<36 characters>)" because the unlocked disk is named after its UUID; naming it `root` would make it "disk karchy (root)", but changes the kernel line, `fstab` and the recovery steps (D-12); (b) a wrong disk password only asks again, with no message (systemd's behaviour); a message, or a prompt in the middle of the screen, means replacing systemd's console agent in the initramfs, which was not done because a fault there leaves a machine that can't unlock; (c) the Limine menu keeps its key help and 3 second timeout; (d) the `karchy` figlet word beside the mark is `logo.txt` as it is, thin beside the mark at large sizes; (e) kmscon on the ISO was tried and not adopted (D-121 item 2).
 
 - Try resizing the `karchy-disp` window in virt-manager (View › Scale Display › Auto resize VM with window) and say whether the desktop follows.
@@ -184,7 +195,7 @@ VM test, 2026-11-13, working tree packaged by the build now at `packaging/build`
 
 ## Project notes
 
-- Boot screens (D-121), 2026-11-19, VM `inst`: the Limine menu, the disk-password screen and the installer share the default theme's colours and JetBrains Mono as bitmap fonts. `inst` is a fresh install from this work (dev packages). Screenshots before and after are in `out/boot-tui/`. Not checked: real hardware, Secure Boot, the ISO's BIOS menu.
+- Boot screens (D-121, then D-122 for the password screen), 2026-11-19, VM `inst`: the Limine menu, the text disk-password screen and the installer share the default theme's colours and JetBrains Mono as bitmap fonts. `inst` is a fresh install from this work (dev packages). Screenshots before and after are in `out/boot-tui/`. Not checked: real hardware, Secure Boot, the ISO's BIOS menu.
 - Work happens in the checkout at `~/Projects/karchy` with no extra worktrees. Commits, PRs and merges happen only when the user asks, through `/git-delivery`.
 - `packaging/build` packages the working tree by default (uncommitted and untracked files included); `--ref` packages a commit.
 - Omarchy references: `/home/nulifyer/Projects/Omarchy/reference/omarchy-v4.5.0` and `/home/nulifyer/Projects/Omarchy/audit/`.
