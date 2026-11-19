@@ -68,10 +68,22 @@ ShellRoot {
   property bool pluginReloading: false
   property bool pluginReloadPending: false
 
+  // An add-on package was installed, upgraded or removed. Scanning again is
+  // enough: the panel, widget and service syncs add what is new and drop what
+  // is gone, while everything else, Quick install's window doing the install
+  // among it, stays up. Code an upgrade replaced runs from the next shell
+  // start, as karchy's own does.
   Timer {
-    id: localPluginReloadTimer
+    id: addonRescanTimer
     interval: 150
-    onTriggered: shell.reloadPlugins()
+    onTriggered: {
+      if (shell.pluginReloading || shell.pluginRegistry.scanning) {
+        restart()
+        return
+      }
+      console.log("Add-ons changed, scanning plugins again")
+      shell.pluginRegistry.rescan()
+    }
   }
 
   onShellConfigChanged: {
@@ -763,8 +775,7 @@ ShellRoot {
   Connections {
     target: shell.pluginRegistry
     function onAddonChanged(pluginId) {
-      console.log("Add-on changed, reloading:", pluginId)
-      localPluginReloadTimer.restart()
+      addonRescanTimer.restart()
     }
     function onScanFinished() {
       if (shell.pluginReloadPending) {
