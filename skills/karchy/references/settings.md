@@ -1,6 +1,6 @@
 # The Settings window and its commands
 
-`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names in the window's order: network, bluetooth, displays, sound, input, keybindings, appearance, fonts, notifications, apps, power, storage, datetime, security, ssh, about. `karchy settings` with no section opens the first.
+`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names in the window's order: network, bluetooth, displays, sound, input, keybindings, appearance, fonts, notifications, apps, power, storage, datetime, users, security, ssh, about. `karchy settings` with no section opens the first.
 
 Settings is where everything that is set and left lives. The menu (Super+Space) holds actions and launches only (Apps, Packages, Recording, Keybinds, Update, Settings, Reload, Power): there is no Setup or Appearance submenu, and Update opens the Updates window. Searching the menu for a word such as `fingerprint`, `timezone` or `git` offers the Settings page ("Settings › Security"). To send the user to a setting, name the page.
 
@@ -26,6 +26,7 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |
 | Storage | `karchy-settings-storage ...` | nothing in the home folder | see [storage.md](storage.md) |
 | Date & Time (section `datetime`) | `karchy-settings-datetime status \| timezones \| timezone <Area/City> \| ntp on\|off \| sync \| clock <format>` | systemd (timezone, automatic time); the clock's format in `~/.config/karchy/shell.json` | timedated over D-Bus; `karchy bar set karchy.clock format` |
+| Users | `karchy-settings-users status \| add <name> admin\|standard [full name] \| remove <name> keep-home\|delete-home \| full-name <name> [full name] \| role <name> admin\|standard \| reset-password <name> \| autologin on\|off \| password` | `/etc/passwd`, `/etc/group`, `/etc/shadow`, the `[initial_session]` part of `/etc/greetd/config.toml` | see below |
 | Security | `karchy-settings-security status` (read only) | `/etc/pam.d`, `/etc/fido2`, the LUKS header | see below |
 | SSH & Git (section `ssh`) | `karchy-settings-ssh status \| authorized add\|remove ... \| key copy\|new \| agent on\|off` | `~/.ssh`, `~/.gitconfig` | see below |
 | About | none | read only | `karchy version`, `karchy channel` |
@@ -48,7 +49,8 @@ The valid settings and values for each command are in its header comment. Read i
 - The SSH server is set up and removed in a terminal, with the password: `karchy-setup-security-sshd` and `karchy-remove-security-sshd`. Run them only when the user asked for the server to change. Opening the machine to SSH is a system-level change.
 - Trusted networks, DNS and the Wi-Fi country ask for the administrator's password. See [privilege.md](privilege.md).
 - The timezone, automatic time and `sync` ask for the password in the shell's dialog (`karchy-settings-datetime`); a dismissed dialog exits 1 with `Canceled.`. The clock's format needs none.
-- Everything on the Security page runs in a terminal with the user present, because each asks for the password, a touch or a typed secret: `passwd` (the user's password), `karchy-drive-password` (the disk's; it says so and changes nothing when the disk is not encrypted), `karchy-setup-security-fingerprint` and `karchy-remove-security-fingerprint` (only with a reader: `karchy-hw-fingerprint`), `karchy-setup-security-fido2` and `karchy-remove-security-fido2`. Never run these for the user unasked, and never type a password for them. `karchy-settings-security status` says what is set up.
+- Every change on the Users page asks for an administrator's password in the shell's dialog, each time: `karchy-settings-users add`, `remove`, `full-name`, `role`, `reset-password` and `autologin` (the root helper `/usr/lib/karchy/users-settings`; see [privilege.md](privilege.md)). Accounts are system-level: make one of these changes only when the user asked for exactly that, and never choose `delete-home` yourself. `add` and `reset-password` read the password from stdin or ask at a terminal; never pass, invent or store one, let the user type it. `karchy-settings-users status` is free to read: it lists each person (`name`, `fullName`, `admin`, `you`, `signedIn`), says in `cannotRemove` and `cannotChangeRole` why a change would be refused (the only administrator, a person who is signed in, the account that is asking), and under `autologin` whether the computer logs in by itself and, in `cannotTurnOn`, why it can't (no disk encryption, or more than one person). A refused change exits 65 with the reason on stderr, before any password is asked. On an encrypted computer, adding the second person turns automatic login off (`autologin=off` on stdout); tell the user that the login screen now follows the disk password and that their own password is still the disk password until they change it (`karchy-settings-users password`, which is `passwd`).
+- Everything on the Security page runs in a terminal with the user present, because each asks for the password, a touch or a typed secret: `karchy-settings-users password` (the user's own password, through `passwd`), `karchy-drive-password` (the disk's; it says so and changes nothing when the disk is not encrypted), `karchy-setup-security-fingerprint` and `karchy-remove-security-fingerprint` (only with a reader: `karchy-hw-fingerprint`), `karchy-setup-security-fido2` and `karchy-remove-security-fido2`. Never run these for the user unasked, and never type a password for them. `karchy-settings-security status` says what is set up.
 - `karchy-setup-git` sets the git name and email and offers the GitHub sign-in: interactive in a terminal, or `karchy-setup-git --name "…" --email …` with no questions. `karchy-settings-ssh status` shows the result under `git`.
 
 ## Examples
@@ -63,6 +65,7 @@ karchy-settings-default-apps set browser firefox.desktop
 karchy-settings-datetime timezone Europe/Berlin   # the password dialog appears on the desktop
 karchy-settings-datetime clock "h:mm AP"
 karchy-settings-security status
+karchy-settings-users status                      # who has an account, and what can change
 ```
 
 To show the user where a setting is, open the page: `karchy settings power`. For the network page, an item opens it at one thing: `karchy settings network dns`.

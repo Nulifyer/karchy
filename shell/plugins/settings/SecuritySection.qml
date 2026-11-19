@@ -126,7 +126,7 @@ ColumnLayout {
         bordered: true
         text: "Change…"
         accessibleName: "Change your password"
-        onClicked: root.inTerminal("passwd")
+        onClicked: root.inTerminal("karchy-settings-users password")
       }
     }
 

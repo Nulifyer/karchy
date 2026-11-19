@@ -39,7 +39,7 @@ assert.deepStrictEqual(order.filter(id => items[id].searchOnly).map(id => items[
 // Rows under a row that runs an action never list: Settings' pages, in the window's order.
 assert.strictEqual(items.settings.kind, "action")
 assert.strictEqual(items.update.kind, "action")
-assert.deepStrictEqual(listed("settings"), ["Network", "Bluetooth", "Displays", "Sound", "Input", "Appearance", "Fonts", "Notifications", "Default Apps", "Power", "Storage", "Date & Time", "Security", "SSH & Git", "About"])
+assert.deepStrictEqual(listed("settings"), ["Network", "Bluetooth", "Displays", "Sound", "Input", "Appearance", "Fonts", "Notifications", "Default Apps", "Power", "Storage", "Date & Time", "Users", "Security", "SSH & Git", "About"])
 const sections = fs.readFileSync(root + "/bin/karchy-settings", "utf8").match(/^sections=\(([^)]*)\)/m)[1].split(" ")
 assert.deepStrictEqual(order.filter(id => items[id].parent === "settings").map(id => id.split(".")[1]), sections.filter(id => id !== "keybindings"), "the search rows follow karchy-settings' order")
 for (const id of order) assert.ok(!/^(appearance|setup|about|restart)(\.|$)|^packages\.aur$|^update\.(restart|password|time|timezone|system)/.test(id), id + " should be gone")
@@ -48,6 +48,7 @@ for (const id of order) assert.ok(items[id].label.indexOf("›") < 0, id)
 
 const finds = {
   "Settings › Security": ["security", "fingerprint", "fido2", "yubikey", "security key", "password", "passwd", "change password", "drive password", "luks", "encryption"],
+  "Settings › Users": ["user", "users", "account", "accounts", "add user", "login", "auto-login"],
   "Settings › Date & Time": ["timezone", "time", "clock", "date", "ntp"],
   "Settings › SSH & Git": ["ssh", "git", "github"],
   "Settings › Storage": ["disk", "storage", "space", "bees", "smart", "nas", "smb", "samba", "share", "mount"],
@@ -104,7 +105,7 @@ assert.deepStrictEqual(top("audio", 2), ["Reload › Audio", "Settings › Sound
 // "restart" is the computer's first, then the parts of the desktop.
 assert.ok(top("restart", 8).indexOf("Reload › Shell") > 0 && search("restart").some(r => r.reads === "Reload"))
 // "settings" lists the window, then every page.
-assert.strictEqual(search("settings").length, 16)
+assert.strictEqual(search("settings").length, 17)
 // D-77's rule holds: a name match comes before a row matched only by an alias.
 assert.deepStrictEqual(top("install package", 1), ["Packages › Install Package"])
 

@@ -44,8 +44,8 @@ before you install karchy on a computer you need.
   apps, menu rows and every Settings page.
 - **Settings.** One window with these sections: Network, Displays, Input,
   Keybindings, Appearance, Fonts, Notifications, Default apps, Power, Storage,
-  Date & Time, Security, SSH & Git and About. Where an area has a config file
-  of your own, its page links the file, and your file wins over the window.
+  Date & Time, Users, Security, SSH & Git and About. Where an area has a config
+  file of your own, its page links the file, and your file wins over the window.
 - **Keybindings.** Settings › Keybindings lists every binding with its keys and
   where it comes from. You can search by pressing keys, change, add, remove and
   reset bindings, and it warns before two actions share the same keys.

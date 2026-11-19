@@ -68,6 +68,9 @@
   "settings.datetime": {
     "label": "Date & Time"
   },
+  "settings.users": {
+    "label": "Users"
+  },
   "settings.security": {
     "label": "Security"
   },

@@ -49,6 +49,21 @@ Every install asks for a password at boot; there is none that starts straight in
 
 After logging out, every install shows karchy's login screen: the mark, a password box, your name (the arrows or Up and Down pick another person when the computer has several), and Suspend, Restart and Shut down in the corner. If that screen can't start, greetd's text login appears instead, so there is always a way in. To get the text login on purpose, add `karchy.greeter=text` to the kernel line in the boot menu's editor for one boot, or run `sudo touch /etc/karchy/greeter-text` for every boot (`sudo rm` it to go back); `journalctl -t karchy-greeter` says why the screen fell back.
 
+### More than one person
+
+The installer makes one account, an administrator. Add the others in **Settings › Users** (an administrator's password each time): a username by the installer's rule, an optional full name, a password, and Standard or Administrator (the `wheel` group). Each person gets a home folder nobody else can open, karchy's starter files and the default theme, as the first account did. The same page changes another person's name or role, resets their password, and removes an account, keeping its home folder (closed to everyone but administrators) or deleting it. It won't remove the only administrator, a person who is signed in, or the account you are using, and says which.
+
+What that changes at boot:
+
+| Install | One person | More than one |
+| --- | --- | --- |
+| **Encrypted** | The disk password, then straight to the desktop. "Log in automatically" on the page turns that off: then the login screen follows the disk password | The disk password, then the login screen, where each person signs in as themselves. Automatic login is off and can't be turned on |
+| **Not encrypted** | The login screen | The login screen |
+
+On an encrypted install, adding the second person turns automatic login off. The first person's password is still the one typed into the installer, which is also the disk password, and everyone who starts the computer has to know that one. So the page asks them to change their own password then (Settings › Security does the same later) and keeps a note until they have. The disk password itself doesn't change; Settings › Security › Drive password changes it. The note goes by the date the password last changed, so a change made with plain `passwd` on the day of the install doesn't clear it; the page's own "Change password…" does.
+
+Saved passwords (the keyring) keep working through all of it. On an encrypted install each person's keyring opens with a key of its own in `/etc/credstore`, whether or not the computer logs in by itself (D-57, D-139); a person added later gets theirs when the account is made. Standard users can't read those keys; an administrator can, as an administrator can read everything on the computer. Without encryption each keyring opens with its owner's login password. There, a password reset by an administrator leaves that person's keyring locked with the old password.
+
 ### Other internal disks
 
 With **Encrypted**, the installer then shows each other internal disk (not USB sticks, not the install media) with its size, model, partitions and labels, and asks what should happen to it:

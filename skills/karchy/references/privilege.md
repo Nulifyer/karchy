@@ -13,7 +13,7 @@ Never do any of these:
 - add or edit a file in `/etc/sudoers.d`, or add `NOPASSWD` anywhere
 - add or edit a polkit rule in `/etc/polkit-1/rules.d` or `/usr/share/polkit-1`
 - ask the user for the password, store it, or pass it with `sudo -S` or a pipe
-- add the user to a group to get around a prompt
+- add the user to a group to get around a prompt, or make an account an administrator for that
 - change the owner or mode of a root-owned file so that it can be edited without root
 
 If the user asks for a passwordless rule, explain the risk and let the user add it. Do not write it for them.
@@ -28,6 +28,7 @@ Each helper is run through `pkexec` by the command in the second column. Call th
 | DNS on untrusted networks, encrypted DNS | `karchy-network-dns set <key=value>...` | administrator's password |
 | Wi-Fi country | `karchy network country set <XX\|auto>` | administrator's password |
 | Install or remove Quick install apps (`/usr/lib/karchy/app-packages`) | `karchy quick-install apply install\|remove <id>...` | administrator's password, every time |
+| Accounts and automatic login: add or remove a person, their name, role or password (`/usr/lib/karchy/users-settings`) | `karchy-settings-users add\|remove\|full-name\|role\|reset-password\|autologin ...` | administrator's password, every time |
 | Lid actions, hibernate delay (`/usr/lib/karchy/power-settings`) | `karchy-settings-power set ...` | none |
 | Storage: the count of the breakdown, disk health, the subvolume list, bees' progress, bees on or off (`/usr/lib/karchy/storage-settings`) | `karchy-settings-storage measure`, `health`, `subvolumes`, `bees`, `bees on\|off` | none for the person at the computer. The three reads (`health`, `subvolumes`, `bees`) never ask anyone: where polkit would ask, they return what can be read without root |
 | Browser theme color policy | `karchy theme set` | none (one fixed sudo rule that accepts a color) |

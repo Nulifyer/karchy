@@ -1,0 +1,114 @@
+#!/bin/bash
+
+# karchy:summary=List, add, change and remove this computer's accounts, and set automatic login (Settings › Users)
+# karchy:args=[status | add <name> admin|standard [full name] | remove <name> keep-home|delete-home | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off | password]
+# karchy:examples=karchy settings users | karchy-settings-users status | karchy-settings-users add sam standard "Sam Example" | karchy-settings-users remove sam keep-home
+# karchy:hidden=true
+
+# The page's side of Settings › Users. Nothing here runs as root: every
+# change goes to /usr/lib/karchy/users-settings through pkexec, which asks
+# for an administrator's password each time. That helper owns the rules (what
+# a name may be, who can't be removed, when automatic login is allowed); this
+# asks it to judge a change first, as you, so a change it would refuse says
+# why without asking for a password.
+#
+#   (nothing)           Open the Settings window at Users
+#   status              JSON: you, whether you are an administrator, whether
+#                       the disk is encrypted, automatic login (on, for whom,
+#                       why it can't be turned on), each person (name, full
+#                       name, administrator, signed in, why they can't be
+#                       removed or change role), and passwordNote: your
+#                       password is the one from the install and others use
+#                       this computer
+#   add                 A new account; "admin" is an administrator (group
+#                       wheel). The password is one line on stdin, or asked
+#                       for at a terminal. On an encrypted computer, adding
+#                       the second person turns automatic login off and
+#                       prints "autologin=off"
+#   remove              keep-home leaves /home/<name> on the disk, closed to
+#                       everyone but administrators; delete-home deletes it
+#   full-name, role     Another person's shown name, or administrator or not
+#   reset-password      Another person's password (stdin or the terminal).
+#                       Without disk encryption their keyring keeps the old
+#                       one and stays locked (D-131)
+#   autologin on|off    On an encrypted computer with one person: start the
+#                       desktop after the disk password, or show the login
+#                       screen. Applies at the next start
+#   password            Change your own password (passwd), and note that it
+#                       is no longer the one from the install
+#
+# Passwords are never arguments: argv can be read by every user.
+
+set -euo pipefail
+
+HELPER=/usr/lib/karchy/users-settings
+INSTALL_CONF=/etc/karchy/install.conf
+CHANGED_MARK=${XDG_STATE_HOME:-$HOME/.local/state}/karchy/password-changed
+
+# Messages here are shown on the Settings page as they are.
+fail() {
+  echo "$1" >&2
+  exit "${2:-1}"
+}
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-settings-users /p' "$0" >&2
+  exit 1
+}
+
+[[ -x $HELPER ]] || fail "$HELPER is missing; update karchy-settings."
+
+# A line of the installer's record (/etc/karchy/install.conf), read as text.
+install_answer() {
+  sed -n "s/^$1=//p" "$INSTALL_CONF" 2>/dev/null | head -n 1
+}
+
+# Whether your password is still the one typed into the installer. On an
+# encrypted computer that one is also the disk password, which everyone who
+# starts the computer has to know. The password itself can't be compared
+# without asking for it, so this goes by when it last changed: a day after
+# the install's, or through `password` below (a change on the install's own
+# day shows no later date).
+password_from_install() {
+  local installed changed
+  [[ $(install_answer KARCHY_USER) == "$(id -un)" ]] || return 1
+  installed=$(install_answer KARCHY_INSTALLED)
+  [[ $installed =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]] || return 1
+  [[ $(head -n 1 "$CHANGED_MARK" 2>/dev/null) != "$installed" ]] || return 1
+  # "name P 2026-11-19 …": passwd answers for one's own account without root.
+  changed=$(LC_ALL=C passwd -S 2>/dev/null | awk '$3 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ { print $3 }')
+  [[ -n $changed && ! $changed > ${installed%%T*} ]]
+}
+
+status() {
+  local from_install=false
+  ! password_from_install || from_install=true
+  "$HELPER" status | jq -c --argjson fromInstall "$from_install" \
+    '. + {passwordNote: ($fromInstall and .encrypted and (.users | length) > 1)}'
+}
+
+# The helper judges the change as you first; then pkexec runs it, with this
+# command's stdin (a password) and output. pkexec exits 126 when the
+# password prompt is closed and 127 when the request isn't authorized.
+as_root() {
+  local reason code=0
+  reason=$("$HELPER" check "$@" 2>&1 >/dev/null) || code=$?
+  ((code == 0)) || fail "${reason#users-settings: }" "$code"
+  exec pkexec "$HELPER" "$@"
+}
+
+case "${1:-}" in
+  "") exec karchy-settings users ;;
+  status)
+    (($# == 1)) || usage
+    status
+    ;;
+  add | remove | full-name | role | reset-password | autologin) as_root "$@" ;;
+  password)
+    (($# == 1)) || usage
+    passwd
+    mkdir -p "${CHANGED_MARK%/*}"
+    install_answer KARCHY_INSTALLED >"$CHANGED_MARK"
+    ;;
+  *) usage ;;
+esac

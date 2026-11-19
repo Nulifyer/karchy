@@ -209,6 +209,13 @@ To get the text login on purpose:
 
 Ctrl+Alt+F2 opens a text console with its own login at any time.
 
+## Someone can't sign in
+
+- **A person forgot their password.** An administrator opens Settings › Users, opens that person's row and chooses "Reset password…" (or runs `sudo passwd <name>`). On an install without disk encryption their saved passwords (the keyring) stay locked with the old password; on an encrypted install the keyring isn't tied to the password and keeps working.
+- **Too many wrong tries.** The account unlocks by itself after two minutes. A reset from Settings › Users also clears the count; so does `sudo faillock --user <name> --reset`.
+- **The only administrator forgot theirs.** On an encrypted computer that logs in by itself, the desktop still starts; sudo and Settings need the password, so set a new one from the install media: follow [Get into the system from the install media](#get-into-the-system-from-the-install-media) up to `arch-chroot`, then `passwd <name>`. The disk password is a separate one and still opens the disk.
+- **Automatic login, by hand.** Whether the computer logs someone in after the disk password is the `[initial_session]` part of `/etc/greetd/config.toml` (`command = "/usr/lib/karchy/session"`, `user = "<name>"`). Settings › Users writes it; taking the part out gives the login screen at every start, and it is read when the computer starts. karchy only offers it on an encrypted disk with one account.
+
 ## A data disk the installer encrypted
 
 A disk you chose to "erase and encrypt" at install opens at boot with a key file on the system disk (`/etc/cryptsetup-keys.d/luks-<UUID>.key`, named in `/etc/crypttab`) and is mounted at `/mnt/data`. Your install password opens it as well:
