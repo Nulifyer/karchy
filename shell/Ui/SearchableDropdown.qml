@@ -12,6 +12,13 @@ import qs.Commons as Commons
 // Options can be string[] or [{ value, label, description? }] — the same
 // shape Dropdown accepts. The filter clears whenever the popup closes.
 //
+// For rows that show more than a label (a font in its own face, FontPicker):
+// `rowDelegate` draws a row's content from `option`, `current` (the row under
+// the cursor) and `chosen` (the option that is the value); `popupWidth` makes
+// the popup wider than the trigger, kept inside the window; `popupRows` is
+// how many rows show before the list scrolls. An option's `group` puts a
+// heading over the first row of each run of options that share it.
+//
 // Keyboard: Tab to focus the trigger, Enter/Space opens (search focused
 // immediately). Down arrow from the search jumps to the first match;
 // Up from the first match returns to the search. Enter selects, Esc
@@ -43,6 +50,10 @@ Item {
   property int popupRowHeight: Style.spacing.popupRowHeight
   property int popupMinHeight: Style.spacing.searchablePopupMinHeight
   property bool showLabel: true
+  property Component rowDelegate: null
+  // 0: as wide as the trigger.
+  property real popupWidth: 0
+  property int popupRows: 6
 
   // Panel-cursor flag. When true, the trigger renders the shared
   // hover-cursor state. Active Qt focus defaults to the same visuals.
@@ -72,6 +83,9 @@ Item {
   }
   function optionDescription(o) {
     return (o && typeof o === "object" && o.description) ? String(o.description) : ""
+  }
+  function optionGroup(o) {
+    return (o && typeof o === "object" && o.group) ? String(o.group) : ""
   }
   function currentLabel() {
     for (var i = 0; i < options.length; i++) {
@@ -190,13 +204,15 @@ Item {
         property bool above: false
         // The most height the chosen side has room for; 0 before the first open.
         property real room: 0
+        // How far left of the trigger a wider popup starts, to stay in the window.
+        property real shift: 0
         readonly property real gap: Style.spacing.xxs
         // The tallest the popup gets with every option listed, which is what
         // has to fit: the list grows back when the filter is cleared.
         readonly property real fullHeight:
           Math.max(root.popupMinHeight,
                    Math.min(root.options.length * root.popupRowHeight + Math.max(0, root.options.length - 1) * Style.spacing.labelGap,
-                            root.popupRowHeight * 6 + 5 * Style.spacing.labelGap) + Style.space(50))
+                            root.popupRowHeight * root.popupRows + (root.popupRows - 1) * Style.spacing.labelGap) + Style.space(50))
         // The search and one row.
         readonly property real leastHeight: searchHeader.height + 1 + root.popupRowHeight + topPadding + bottomPadding
 
@@ -205,6 +221,7 @@ Item {
           if (!win) {
             popup.above = false
             popup.room = 0
+            popup.shift = 0
             return
           }
           // The window's top and bottom edges, seen from the trigger.
@@ -215,16 +232,21 @@ Item {
           var over = -windowTop - popup.gap - edge
           popup.above = popup.fullHeight > below && over > below
           popup.room = Math.max(popup.leastHeight, popup.above ? over : below)
+          // A popup wider than the trigger starts at the trigger's left edge
+          // and moves left only as far as the window's right edge asks.
+          var windowLeft = trigger.mapFromItem(null, 0, 0).x
+          var windowRight = trigger.mapFromItem(null, win.width, 0).x
+          popup.shift = Math.max(windowLeft + edge, Math.min(0, windowRight - edge - popup.width))
         }
 
-        x: 0
+        x: shift
         y: above ? -height - gap : trigger.height + gap
-        width: trigger.width
+        width: Math.max(trigger.width, root.popupWidth)
         closePolicy: QQC.Popup.CloseOnPressOutsideParent | QQC.Popup.CloseOnEscape
         readonly property real wantedHeight:
           Math.max(root.popupMinHeight,
                    Math.min(resultList.contentHeight + Style.space(50),
-                            root.popupRowHeight * 6 + 5 * Style.spacing.labelGap + Style.space(50)))
+                            root.popupRowHeight * root.popupRows + (root.popupRows - 1) * Style.spacing.labelGap + Style.space(50)))
         implicitHeight: room > 0 ? Math.min(wantedHeight, room) : wantedHeight
         onAboutToShow: place()
         padding: Style.spacing.hairline
@@ -364,54 +386,101 @@ Item {
                 }
               }
 
-              delegate: Rectangle {
+              delegate: Item {
+                id: optionItem
                 required property var modelData
                 required property int index
+                readonly property bool current: index === resultList.currentIndex
+                // The first row of a group carries the group's heading.
+                readonly property string group: root.optionGroup(modelData)
+                readonly property bool startsGroup: group !== ""
+                  && (index === 0 || root.optionGroup(root.filtered[index - 1]) !== group)
                 width: resultList.width
-                height: Math.max(root.popupRowHeight, rowContent.implicitHeight + Style.spacing.rowPaddingX)
-                radius: Style.radius.control
-                color: index === resultList.currentIndex
-                  ? Style.hoverFillFor(root.foreground, root.accent)
-                  : "transparent"
+                height: (startsGroup ? groupHeading.height : 0) + optionRow.height
 
-                FocusRing { shown: index === resultList.currentIndex; keyboardOnly: false }
-
-                Column {
-                  id: rowContent
-                  anchors.left: parent.left
-                  anchors.right: parent.right
-                  anchors.verticalCenter: parent.verticalCenter
-                  anchors.leftMargin: Style.spacing.controlPaddingX
-                  anchors.rightMargin: Style.spacing.controlPaddingX
-                  spacing: Style.spacing.xxs
-
-                  Text {
-                    textFormat: Text.PlainText
-                    text: root.optionLabel(modelData)
-                    color: index === resultList.currentIndex ? Style.hoverStateColor(root.foreground, root.accent) : root.foreground
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.body
-                    elide: Text.ElideRight
-                    width: parent.width
-                  }
-                  Text {
-                    textFormat: Text.PlainText
-                    visible: text !== ""
-                    text: root.optionDescription(modelData)
-                    color: Commons.Color.secondaryText(root.foreground, root.background)
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    elide: Text.ElideRight
-                    width: parent.width
-                  }
+                Text {
+                  id: groupHeading
+                  textFormat: Text.PlainText
+                  visible: optionItem.startsGroup
+                  // In a list that grows upward the heading still reads above its rows.
+                  y: 0
+                  x: Style.spacing.controlPaddingX
+                  height: implicitHeight + Style.spacing.lg + Style.spacing.sm
+                  verticalAlignment: Text.AlignBottom
+                  bottomPadding: Style.spacing.sm
+                  text: optionItem.group.toUpperCase()
+                  color: Commons.Color.secondaryText(root.foreground, root.background)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: Style.font.labelSpacing
                 }
 
-                MouseArea {
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onPositionChanged: resultList.currentIndex = parent.index
-                  onClicked: resultList.selectCurrent()
+                Rectangle {
+                  id: optionRow
+                  y: optionItem.startsGroup ? groupHeading.height : 0
+                  width: parent.width
+                  height: Math.max(root.popupRowHeight,
+                                   (customRow.item ? customRow.item.implicitHeight : rowContent.implicitHeight) + Style.spacing.rowPaddingX)
+                  radius: Style.radius.control
+                  color: optionItem.current
+                    ? Style.hoverFillFor(root.foreground, root.accent)
+                    : "transparent"
+
+                  FocusRing { shown: optionItem.current; keyboardOnly: false }
+
+                  Loader {
+                    id: customRow
+                    active: root.rowDelegate !== null
+                    sourceComponent: root.rowDelegate
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.spacing.controlPaddingX
+                    anchors.rightMargin: Style.spacing.controlPaddingX
+                    readonly property var option: optionItem.modelData
+                    readonly property bool current: optionItem.current
+                    readonly property bool chosen: root.optionValue(optionItem.modelData) === root.value
+                  }
+
+                  Column {
+                    id: rowContent
+                    visible: root.rowDelegate === null
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.leftMargin: Style.spacing.controlPaddingX
+                    anchors.rightMargin: Style.spacing.controlPaddingX
+                    spacing: Style.spacing.xxs
+
+                    Text {
+                      textFormat: Text.PlainText
+                      text: root.optionLabel(optionItem.modelData)
+                      color: optionItem.current ? Style.hoverStateColor(root.foreground, root.accent) : root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.body
+                      elide: Text.ElideRight
+                      width: parent.width
+                    }
+                    Text {
+                      textFormat: Text.PlainText
+                      visible: text !== ""
+                      text: root.optionDescription(optionItem.modelData)
+                      color: Commons.Color.secondaryText(root.foreground, root.background)
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      elide: Text.ElideRight
+                      width: parent.width
+                    }
+                  }
+
+                  MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onPositionChanged: resultList.currentIndex = optionItem.index
+                    onClicked: resultList.selectCurrent()
+                  }
                 }
               }
             }

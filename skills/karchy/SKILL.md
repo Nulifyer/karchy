@@ -63,7 +63,7 @@ Read [references/privilege.md](references/privilege.md) before any change that n
 | Read | When the task |
 | --- | --- |
 | [references/layout.md](references/layout.md) | needs to know where a file lives, who owns it, or whether an edit survives an update. Also for hooks, the menu extension and dev mode |
-| [references/settings.md](references/settings.md) | changes something the Settings window shows: displays, input, power, notifications, default apps, SSH, appearance |
+| [references/settings.md](references/settings.md) | changes something the Settings window shows: displays, input, power, notifications, default apps, SSH, appearance, fonts |
 | [references/hyprland.md](references/hyprland.md) | touches `~/.config/hypr`, keybindings, window rules, monitors, autostart, the bar, shell plugins, or needs a reload |
 | [references/themes.md](references/themes.md) | sets, installs, makes or adjusts a theme, a background, the font or the text size |
 | [references/privilege.md](references/privilege.md) | needs root, or meets a password prompt it did not expect |

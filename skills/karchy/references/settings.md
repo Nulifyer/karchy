@@ -1,6 +1,6 @@
 # The Settings window and its commands
 
-`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names: displays, input, power, network, notifications, storage, ssh, appearance, apps, about.
+`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names: displays, input, power, network, notifications, storage, ssh, appearance, fonts, apps, about.
 
 Most sections have a command that reads and saves the same values the page does. Use that command, not the JSON file. The command validates the value, writes the file, and applies the change to the running session. The commands are hidden from `karchy commands`. Call them by their file name: `karchy-settings-input status`.
 
@@ -19,7 +19,8 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | SSH | `karchy-settings-ssh status \| authorized add\|remove ... \| key copy\|new \| agent on\|off` | `~/.ssh` | see below |
 | Default apps | `karchy-settings-default-apps status \| set <role> <app.desktop>` | `~/.config/mimeapps.list`, `~/.config/xdg-terminals.list` | xdg-mime |
 | Network | no single command | NetworkManager, `/etc` | see [network.md](network.md) |
-| Appearance | no single command | see [themes.md](themes.md) and the bar section of [hyprland.md](hyprland.md) | `karchy theme`, `karchy font`, `karchy display text size`, `karchy bar` |
+| Appearance | no single command | see [themes.md](themes.md) and the bar section of [hyprland.md](hyprland.md) | `karchy theme`, `karchy bar` |
+| Fonts | no single command | see [themes.md](themes.md) | `karchy font` (monospace), `karchy font app` (GTK and Qt apps), `karchy display text size` |
 | About | none | read only | `karchy version`, `karchy channel` |
 
 The valid settings and values for each command are in its header comment. Read it with `sed -n 1,60p /usr/share/karchy/bin/karchy-settings-<area>`.

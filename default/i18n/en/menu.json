@@ -44,6 +44,9 @@
   "settings.appearance": {
     "label": "Appearance Settings"
   },
+  "settings.fonts": {
+    "label": "Font Settings"
+  },
   "settings.apps": {
     "label": "Default Apps"
   },

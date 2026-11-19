@@ -17,7 +17,7 @@ Layout revised 2026-11-15 from a menu audit (D-73): every row says what it does,
   - Background [O]
   - Font: must not rewrite dotfile-managed configs (D-23) [O]
   - Workspace Layout: Tiling or Floating [O]
-- **Settings:** opens the karchy Settings window (D-27). Its pages are search-only rows (user 2026-11-15): searching wifi or network offers Network Settings, keyboard or mouse Input Settings, displays or scale Display Settings, text size Appearance Settings, ssh SSH Settings, notifications or do not disturb Notification Settings, default browser Default Apps; each opens Settings at that page. In search, a row whose name matches comes before a submenu matched only by an alias ("install package" puts Install Package first) [New]
+- **Settings:** opens the karchy Settings window (D-27). Its pages are search-only rows (user 2026-11-15): searching wifi or network offers Network Settings, keyboard or mouse Input Settings, displays or scale Display Settings, bar style Appearance Settings, text size or monospace font Font Settings, ssh SSH Settings, notifications or do not disturb Notification Settings, default browser Default Apps; each opens Settings at that page. In search, a row whose name matches comes before a submenu matched only by an alias ("install package" puts Install Package first) [New]
 - **Setup**
   - Security: Set Up Fingerprint (with a reader), Set Up FIDO2 Key; Remove Fingerprint and Remove FIDO2 Key once each is set up [O]. SSH is in Settings › SSH (D-78)
   - Network Shares: Keep a Share Mounted (pick a share open in the file manager, or type `smb://server/share`) and Remove a Kept Share (once one is kept); D-24, D-76 [New]

@@ -42,6 +42,7 @@ Item {
     { id: "storage", label: "Storage", iconName: "disk" },
     { id: "ssh", label: "SSH", iconName: "security.ssh" },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
+    { id: "fonts", label: "Fonts", iconName: "look.font" },
     { id: "apps", label: "Default apps", iconName: "menu.apps" },
     { id: "about", label: "About", iconName: "info" }
   ]
@@ -296,6 +297,7 @@ Item {
               case "storage": return "StorageSection.qml"
               case "ssh": return "SshSection.qml"
               case "appearance": return "AppearanceSection.qml"
+              case "fonts": return "FontsSection.qml"
               case "apps": return "DefaultAppsSection.qml"
               case "about": return "AboutSection.qml"
               default: return "DisplaysSection.qml"

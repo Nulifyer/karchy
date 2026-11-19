@@ -6,27 +6,19 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Settings › Appearance: theme, wallpaper, terminal font, text size and bar,
-// through the same commands the menu and the display panel use, and the lock
-// screen clock, saved in shell.json.
+// Settings › Appearance: theme, wallpaper and bar, through the same commands
+// the menu uses, and the lock screen clock, saved in shell.json. Fonts and
+// the text size are Settings › Fonts.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
 
-  readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
-  property var fonts: []
-  property string currentFont: ""
   // Set by Settings when it loads the section; the bar's style comes from it.
   property var settings: null
 
   function run(command) {
     actionProc.command = ["bash", "-c", command]
     actionProc.running = true
-  }
-
-  Component.onCompleted: {
-    fontListProc.running = true
-    fontCurrentProc.running = true
   }
 
   Process { id: actionProc }
@@ -43,29 +35,9 @@ ColumnLayout {
       .replace(/-/g, " ")
   }
 
-  Process {
-    id: fontListProc
-    command: ["karchy-font-list"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.fonts = text.split("\n").filter(function(f) { return f.trim() !== "" })
-    }
-  }
-
-  Process {
-    id: fontCurrentProc
-    command: ["karchy-font-current"]
-    stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.currentFont = text.trim() }
-  }
-
-  Process {
-    id: fontSetProc
-    onRunningChanged: if (!running) fontCurrentProc.running = true
-  }
-
   PageHeader {
     title: "Appearance"
-    explanation: "Text size scales the shell and GTK apps; monitor scale is under Displays. In VS Code, pick the color theme \"Karchy\" once and it follows every theme."
+    explanation: "Fonts and the text size are under Fonts; monitor scale is under Displays. In VS Code, pick the color theme \"Karchy\" once and it follows every theme."
   }
 
   GridLayout {
@@ -87,31 +59,6 @@ ColumnLayout {
       text: "Choose background…"
       bordered: true
       onClicked: root.run("background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\"")
-    }
-
-    SettingsLabel { text: "Monospace font" }
-    SearchableDropdown {
-      value: root.currentFont
-      options: root.fonts
-      onChanged: function(value) {
-        fontSetProc.command = ["karchy-font-set", value]
-        fontSetProc.running = true
-      }
-    }
-
-    SettingsLabel { text: "Text size" }
-    // A dropdown, not a row of buttons: seven sizes overflow the page at
-    // larger scales.
-    Dropdown {
-      showLabel: false
-      options: root.textSizeStops.map(function(px) { return { value: String(px), label: px + " px" } })
-      value: {
-        var best = root.textSizeStops[0]
-        for (var i = 0; i < root.textSizeStops.length; i++)
-          if (Math.abs(root.textSizeStops[i] - Style.font.baseSize) < Math.abs(best - Style.font.baseSize)) best = root.textSizeStops[i]
-        return String(best)
-      }
-      onChanged: function(value) { root.run("karchy-display-text-size " + Number(value)) }
     }
 
     SettingsLabel { text: "Bar" }

@@ -25,7 +25,8 @@
   "settings.network": {"iconName":"net.network","label":"Network Settings","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
   "settings.notifications": {"iconName":"notify.bell","label":"Notification Settings","aliases":["notifications","do not disturb","dnd","silent"],"action":"karchy-settings notifications"},
   "settings.ssh": {"iconName":"security.ssh","label":"SSH Settings","aliases":["ssh","sshd","ssh server","ssh agent"],"action":"karchy-settings ssh"},
-  "settings.appearance": {"iconName":"menu.appearance","label":"Appearance Settings","aliases":["text size","bar style","monospace font"],"action":"karchy-settings appearance"},
+  "settings.appearance": {"iconName":"menu.appearance","label":"Appearance Settings","aliases":["bar style","lock screen clock"],"action":"karchy-settings appearance"},
+  "settings.fonts": {"iconName":"look.font","label":"Font Settings","aliases":["text size","monospace font","app font","terminal font"],"action":"karchy-settings fonts"},
   "settings.apps": {"iconName":"menu.apps","label":"Default Apps","aliases":["default apps","default browser","file associations"],"searchTerms":["settings"],"action":"karchy-settings apps"},
 
   // Power (the id stays "system": Super+Escape and the power key open it)
