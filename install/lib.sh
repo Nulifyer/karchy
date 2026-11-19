@@ -8,37 +8,81 @@ KARCHY_MNT=${KARCHY_MNT:-/mnt}
 # progress and errors must still reach the screen.
 exec {KARCHY_CONSOLE}>&2
 
+# One line for the log file, with the time. On the screen it appears as it is
+# in plain mode; the drawn screens (install/ui.sh) keep it for the end, where
+# the finish screen lists what the steps had to say.
+KARCHY_NOTES=()
+
 log() {
   local line
   line="$(date +%H:%M:%S) $*"
   echo "$line" >>"$KARCHY_INSTALL_LOG"
-  echo "$line" >&"$KARCHY_CONSOLE"
+  if [[ ${KARCHY_UI:-plain} == tui ]]; then
+    KARCHY_NOTES+=("$*")
+  else
+    echo "$line" >&"$KARCHY_CONSOLE"
+  fi
 }
 
+# Stop with a message. During a step the ERR trap does not fire for an
+# `exit`, so this reports the failure itself.
 die() {
-  log "ERROR: $*"
+  echo "$(date +%H:%M:%S) ERROR: $*" >>"$KARCHY_INSTALL_LOG"
+  if [[ ${KARCHY_UI:-plain} == tui ]]; then
+    ui_error "$*" "$KARCHY_STEP"
+  else
+    echo "$(date +%H:%M:%S) ERROR: $*" >&"$KARCHY_CONSOLE"
+  fi
   exit 1
 }
 
-# Run one named step with its output appended to the log. A failing command
-# anywhere in the step trips the ERR trap (errexit and errtrace are on), which
-# stops the install and points at the log. Steps run in the current shell so
-# the variables they set (devices, UUIDs) carry over to later steps.
+# Steps are listed first (step) and then run in order (steps_run), each with
+# its output appended to the log. A failing command anywhere in a step trips
+# the ERR trap (errexit and errtrace are on), which stops the install and
+# points at the log. Steps run in the current shell so the variables they set
+# (devices, UUIDs) carry over to later steps.
 KARCHY_STEP=""
+KARCHY_STEP_COMMANDS=()
 
 on_error() {
   local status=$?
-  log "ERROR: step '${KARCHY_STEP:-startup}' failed (exit $status); see $KARCHY_INSTALL_LOG"
-  log "To try again, fix what the log shows, reboot the install media and run karchy-install again. It starts over and erases the disk again."
+  echo "$(date +%H:%M:%S) ERROR: step '${KARCHY_STEP:-startup}' failed (exit $status)" >>"$KARCHY_INSTALL_LOG"
+  if [[ ${KARCHY_UI:-plain} == tui ]]; then
+    if [[ -n $KARCHY_STEP ]]; then
+      ui_error "\"$KARCHY_STEP\" failed (exit $status)" "$KARCHY_STEP"
+    else
+      ui_error "The installer stopped (exit $status)" "startup"
+    fi
+  else
+    {
+      echo "$(date +%H:%M:%S) ERROR: step '${KARCHY_STEP:-startup}' failed (exit $status); see $KARCHY_INSTALL_LOG"
+      echo "$(date +%H:%M:%S) To try again, fix what the log shows, reboot the install media and run karchy-install again. It starts over and erases the disk again."
+    } >&"$KARCHY_CONSOLE"
+  fi
   exit "$status"
 }
 
 step() {
-  KARCHY_STEP="$1"
+  UI_STEP_NAMES+=("$1")
   shift
-  log "==> $KARCHY_STEP"
-  "$@" >>"$KARCHY_INSTALL_LOG" 2>&1
-  KARCHY_STEP=""
+  KARCHY_STEP_COMMANDS+=("$*")
+}
+
+steps_run() {
+  local i total=${#UI_STEP_NAMES[@]}
+  local -a command
+  ui_steps_begin
+  for ((i = 0; i < total; i++)); do
+    KARCHY_STEP="${UI_STEP_NAMES[i]}"
+    echo "$(date +%H:%M:%S) ==> [$((i + 1))/$total] $KARCHY_STEP" >>"$KARCHY_INSTALL_LOG"
+    [[ $KARCHY_UI == tui ]] || echo "$(date +%H:%M:%S) ==> [$((i + 1))/$total] $KARCHY_STEP" >&"$KARCHY_CONSOLE"
+    ui_step_start "$i"
+    read -ra command <<<"${KARCHY_STEP_COMMANDS[i]}"
+    "${command[@]}" >>"$KARCHY_INSTALL_LOG" 2>&1
+    ui_step_done "$i"
+    KARCHY_STEP=""
+  done
+  ui_steps_end
 }
 
 in_target() {

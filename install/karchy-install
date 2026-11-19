@@ -9,17 +9,22 @@
 #   --reboot        Reboot when the install finishes
 #
 # Erases the chosen disk. Every step is logged to /var/log/karchy-install.log
-# and copied into the installed system.
+# and copied into the installed system. On a terminal the installer draws its
+# screens (install/ui.sh); with its output in a pipe or a file, or with
+# KARCHY_UI=plain, it prints one timestamped line per step instead.
 
 set -eEuo pipefail
 
 KARCHY_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "$KARCHY_SRC/install/lib.sh"
+source "$KARCHY_SRC/install/ui.sh"
 source "$KARCHY_SRC/install/form.sh"
 source "$KARCHY_SRC/install/disk.sh"
 source "$KARCHY_SRC/install/base.sh"
 source "$KARCHY_SRC/install/setup.sh"
 trap on_error ERR
+# However the installer ends: no clock left running, and the cursor back.
+trap 'ui_ticker_stop; [[ $KARCHY_UI != tui ]] || ui_out $'"'"'\033[?25h'"'"'' EXIT
 
 config_file=""
 reboot_after=false
@@ -46,23 +51,55 @@ preflight() {
   timedatectl set-ntp true
 }
 
+# What is about to happen, before anything is written: the answers, and what
+# is lost.
 summary() {
-  cat <<EOF
+  local size model
+  size=$(lsblk -dno SIZE "$KARCHY_DISK" 2>/dev/null | tr -d ' ')
+  model=$(lsblk -dno MODEL "$KARCHY_DISK" 2>/dev/null | sed 's/[[:space:]]*$//')
+  ui_header "Ready to install" 16
+  ui_field "Disk" "$KARCHY_DISK  ${size}${model:+  $model}"
+  ui_field "User" "$KARCHY_USER"
+  ui_field "Computer" "$KARCHY_HOSTNAME"
+  ui_field "Keyboard" "$KARCHY_KEYMAP"
+  ui_field "Timezone" "$KARCHY_TIMEZONE"
+  ui_field "Updates" "$KARCHY_CHANNEL channel"
+  ui_field "Secure Boot" "$KARCHY_SECUREBOOT"
+  ui_field "Deduplication" "$KARCHY_BEES"
+  ui_line
+  ui_line "This erases $KARCHY_DISK. Everything on it is lost." "$UI_RED$UI_BOLD"
+  ui_line
+}
 
-  Disk:         $KARCHY_DISK (will be erased)
-  User:         $KARCHY_USER
-  Computer:     $KARCHY_HOSTNAME
-  Keyboard:     $KARCHY_KEYMAP
-  Timezone:     $KARCHY_TIMEZONE
-  Channel:      $KARCHY_CHANNEL
-  Secure Boot:  $KARCHY_SECUREBOOT
-  bees:         $KARCHY_BEES
-
-EOF
+# The last screen: what was done and what the user does next.
+finish() {
+  local elapsed note
+  elapsed=$(ui_duration $((SECONDS - UI_STARTED)))
+  if [[ $KARCHY_UI != tui ]]; then
+    log "karchy is installed."
+    [[ $reboot_after == "true" ]] || log "Remove the install media and reboot."
+    return 0
+  fi
+  echo "$(date +%H:%M:%S) karchy is installed." >>"$KARCHY_INSTALL_LOG"
+  ui_header "karchy is installed" $((10 + ${#KARCHY_NOTES[@]}))
+  ui_line "✓ Installed on $KARCHY_DISK in $elapsed" "$UI_GREEN"
+  ui_line
+  ui_line "1  Remove the USB stick."
+  ui_line "2  Restart the computer."
+  ui_line "3  Type your password at the disk-password screen. It is the one"
+  ui_line "   you chose here; it unlocks the disk and logs $KARCHY_USER in."
+  if ((${#KARCHY_NOTES[@]})); then
+    ui_line
+    for note in "${KARCHY_NOTES[@]}"; do
+      ui_line "$(ui_fit "$note")" "$UI_DIM"
+    done
+  fi
+  ui_line
 }
 
 : >"$KARCHY_INSTALL_LOG"
 chmod 600 "$KARCHY_INSTALL_LOG"
+ui_init
 preflight
 
 if [[ -n $config_file ]]; then
@@ -102,15 +139,22 @@ step "Git identity" base_git_identity
 step "Set up Secure Boot" base_secureboot
 step "Link resolv.conf" base_resolved_link
 
+steps_run
+
 unset KARCHY_PASSWORD
 install -Dm 0600 "$KARCHY_INSTALL_LOG" "$KARCHY_MNT/var/log/karchy-install.log"
 swapoff "$KARCHY_MNT/swap/swapfile" || true
 umount -R "$KARCHY_MNT"
 cryptsetup close "$KARCHY_ROOT_MAPPER" || true
-log "karchy is installed."
+finish
 
 if [[ $reboot_after == "true" ]]; then
   reboot
-else
-  log "Remove the install media and reboot."
+elif [[ -z $config_file && $KARCHY_UI == tui ]]; then
+  # Stay in the live system on No, Esc or Ctrl-C: the shell is the way back
+  # to the log or to a second look at the disk.
+  if gum confirm --default=true --affirmative "Restart now" --negative "Stay in the live system" \
+    "Is the USB stick out?"; then
+    reboot
+  fi
 fi
