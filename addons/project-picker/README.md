@@ -7,7 +7,7 @@ default editor is VS Code, and terminals open through `xdg-terminal-exec`.
 ![Project picker searching for its own source repository](docs/preview.png)
 
 It is one of karchy's add-ons (`addons/project-picker` in karchy's
-repository), built and released with karchy as the `nulifyer-project-picker`
+repository), built and released with karchy as the `karchy-project-picker`
 package. The package installs the overlay into `/usr/share/karchy/plugins`
 and its Ctrl+Alt+P binding into `/usr/share/karchy/hypr.d`, so the binding
 exists only while the package is installed.
@@ -15,13 +15,14 @@ exists only while the package is installed.
 ## Install
 
 Quick install › karchy › Project picker, or
-`sudo pacman -S nulifyer-project-picker` followed by
-`karchy plugin enable nulifyer.project-picker`.
+`sudo pacman -S karchy-project-picker`. The shell loads it as soon as the
+package is installed; `karchy plugin disable karchy.project-picker` switches it
+off without removing it.
 
 ## Develop
 
 Change the files under `addons/project-picker` and build the package with
-`packaging/build nulifyer-project-picker`. Tests: `python3 -m unittest
+`packaging/build karchy-project-picker`. Tests: `python3 -m unittest
 discover addons/project-picker/tests` and `node
 addons/project-picker/tests/search.test.cjs`.
 
@@ -87,7 +88,7 @@ Edit the plugin's entry inside the existing `plugins` array in
 
 ```json
 {
-  "id": "nulifyer.project-picker",
+  "id": "karchy.project-picker",
   "projectsRoot": "~/Projects",
   "editor": ["code"]
 }
@@ -102,14 +103,14 @@ Inspect discovery without opening the UI:
 
 ```sh
 python3 projects.py scan --home "$HOME" --root "$HOME/Projects"
-karchy-shell shell call nulifyer.project-picker status '{}'
+karchy-shell shell call karchy.project-picker status '{}'
 ```
 
 The summon payload accepts an optional `query` string for opening a filtered
 picker from another command. For example:
 
 ```sh
-karchy-shell shell summon nulifyer.project-picker '{"query":"dotfiles"}'
+karchy-shell shell summon karchy.project-picker '{"query":"dotfiles"}'
 ```
 
 ## Validate
@@ -128,7 +129,7 @@ package and run `karchy restart shell`.
 ## Remove
 
 Quick install › karchy › Project picker › Remove, or
-`sudo pacman -R nulifyer-project-picker`. The overlay and the Ctrl+Alt+P
+`sudo pacman -R karchy-project-picker`. The overlay and the Ctrl+Alt+P
 binding go with the package.
 
 ## License

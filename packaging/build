@@ -48,7 +48,7 @@ the PKGBUILD, run with bash from the repository root. They are rebuilt only
 when that version is new, and their source is whatever their PKGBUILD names
 rather than karchy-src.tar.gz. A version command that prints nothing means
 there is no release to build yet, and the package is skipped. karchy's
-add-ons (addons/, such as nulifyer-vpn) are built from karchy-src.tar.gz like
+add-ons (addons/, such as karchy-vpn) are built from karchy-src.tar.gz like
 karchy itself.
 
 Hashes live next to the database in karchy.versions, so the repository is the

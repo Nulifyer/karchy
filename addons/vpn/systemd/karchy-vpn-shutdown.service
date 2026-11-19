@@ -3,10 +3,10 @@
 # removed, DNS restored) has to run here, in the system's.
 [Unit]
 Description=Take the VPN and its kill switch down for package removal
-Documentation=https://github.com/Nulifyer/omarchy-vpn-plugin
-ConditionPathExists=/etc/nulifyer-vpn/config
+Documentation=https://github.com/Nulifyer/karchy
+ConditionPathExists=/etc/karchy-vpn/config
 
 [Service]
 Type=oneshot
-ExecStart=/usr/lib/nulifyer-vpn/control shutdown
+ExecStart=/usr/lib/karchy-vpn/control shutdown
 TimeoutStartSec=60

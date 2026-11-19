@@ -1,17 +1,17 @@
-# Shared by the root helpers in /usr/lib/nulifyer-vpn. Sourced, never run.
+# Shared by the root helpers in /usr/lib/karchy-vpn. Sourced, never run.
 # shellcheck shell=bash disable=SC2034 # the variables are for the scripts that source it
 
 [[ -z ${NV_COMMON:-} ]] || return 0
 NV_COMMON=1
 
-readonly NV_LIB=/usr/lib/nulifyer-vpn
-readonly NV_CONFIG=/etc/nulifyer-vpn/config
-readonly NV_RUN=/run/nulifyer-vpn
-readonly NV_STATE=/var/lib/nulifyer-vpn
+readonly NV_LIB=/usr/lib/karchy-vpn
+readonly NV_CONFIG=/etc/karchy-vpn/config
+readonly NV_RUN=/run/karchy-vpn
+readonly NV_STATE=/var/lib/karchy-vpn
 readonly NV_MODE_FILE=$NV_STATE/mode
 readonly NV_STATUS=$NV_RUN/status
 # A dispatcher event, a command or a timer asks the policy to look again by
-# creating this file; nulifyer-vpn-policy.path starts the policy while it
+# creating this file; karchy-vpn-policy.path starts the policy while it
 # exists, so no request is lost while the policy is already running.
 readonly NV_PENDING=$NV_RUN/pending
 readonly NV_PROBE_MARK=20054

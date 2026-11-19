@@ -1,0 +1,16 @@
+# Started for every request (a dispatcher event, a command): the policy runs
+# while /run/karchy-vpn/pending exists and again if a request arrived while
+# it was running.
+[Unit]
+Description=Apply the VPN policy when asked
+Documentation=https://github.com/Nulifyer/karchy
+ConditionPathExists=/etc/karchy-vpn/config
+
+[Path]
+PathExists=/run/karchy-vpn/pending
+MakeDirectory=yes
+DirectoryMode=0755
+Unit=karchy-vpn-policy.service
+
+[Install]
+WantedBy=multi-user.target

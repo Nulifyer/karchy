@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "id": "nulifyer.vpn",
+  "id": "karchy.vpn",
   "name": "WireGuard VPN",
   "version": "2.0.0",
-  "author": "Nulifyer",
-  "description": "Bar widget for the nulifyer-vpn package: WireGuard with a kill switch, Auto on untrusted networks",
+  "author": "Karchy",
+  "description": "Bar widget for the karchy-vpn package: WireGuard with a kill switch, Auto on untrusted networks",
   "kinds": [
     "bar-widget"
   ],
@@ -19,5 +19,5 @@
     "defaultSection": "right"
   },
   "license": "MIT",
-  "homepage": "https://github.com/Nulifyer/omarchy-vpn-plugin"
+  "homepage": "https://github.com/Nulifyer/karchy"
 }

@@ -1,11 +1,11 @@
 #!/bin/bash
 # The bar widget's view of the VPN: the published status
-# (/run/nulifyer-vpn/status) plus live tunnel details. The widget runs it when
+# (/run/karchy-vpn/status) plus live tunnel details. The widget runs it when
 # the status file changes, and while its panel is open. Other readers use the
 # status file itself (see README, "Status").
 set -u
 
-readonly STATUS=/run/nulifyer-vpn/status
+readonly STATUS=/run/karchy-vpn/status
 command -v jq >/dev/null || { printf 'Missing required command: jq\n' >&2; exit 1; }
 
 status=$(cat "$STATUS" 2>/dev/null || true)
@@ -36,7 +36,7 @@ fi
 if [[ -n $iface ]]; then
   vpn_ip=$(ip -4 -o address show dev "$iface" 2>/dev/null | awk 'NR == 1 { split($4, a, "/"); print a[1] }')
 fi
-guard=$(sed -n '1p' /run/nulifyer-vpn/guard-mode 2>/dev/null || printf unknown)
+guard=$(sed -n '1p' /run/karchy-vpn/guard-mode 2>/dev/null || printf unknown)
 [[ $guard == closed || $guard == portal ]] && guard=connecting
 latest=$(wg show "$iface" latest-handshakes 2>/dev/null | awk 'BEGIN { n = 0 } $2 > n { n = $2 } END { print n }' || true)
 if [[ ${latest:-0} =~ ^[0-9]+$ ]] && (( latest > 0 )); then

@@ -1,4 +1,4 @@
-# nulifyer-vpn
+# karchy-vpn
 
 Your WireGuard VPN, with a kill switch, on karchy.
 
@@ -21,7 +21,7 @@ is protected, with a panel for switching modes and checking connection health.
 This package does not provide a VPN account or server.
 
 It is one of karchy's add-ons (`addons/vpn` in karchy's repository), built and
-released with karchy as the `nulifyer-vpn` package: the policy service, kill
+released with karchy as the `karchy-vpn` package: the policy service, kill
 switch and polkit rule, plus the bar widget in `/usr/share/karchy/plugins`.
 karchy's network panel and Settings › Network › VPN have the VPN controls too.
 
@@ -35,7 +35,7 @@ karchy's network panel and Settings › Network › VPN have the VPN controls to
 
 ### 1. Install the package
 
-Quick install › karchy › WireGuard VPN, or `sudo pacman -S nulifyer-vpn`.
+Quick install › karchy › WireGuard VPN, or `sudo pacman -S karchy-vpn`.
 Everything root runs is installed under `/usr` by pacman. Nothing runs from
 your home folder.
 
@@ -54,16 +54,16 @@ nmcli connection modify wgclient wireguard.peer-routes yes \
 ### 3. Configure and start it
 
 ```bash
-mkdir -p ~/.config/nulifyer-vpn
-cp /usr/share/nulifyer-vpn/config.example ~/.config/nulifyer-vpn/config
-${EDITOR:-nano} ~/.config/nulifyer-vpn/config
-nulifyer-vpn setup
+mkdir -p ~/.config/karchy-vpn
+cp /usr/share/karchy-vpn/config.example ~/.config/karchy-vpn/config
+${EDITOR:-nano} ~/.config/karchy-vpn/config
+karchy-vpn setup
 ```
 
 Match the connection name, interface, endpoint, ports and VPN DNS address to
 your WireGuard connection; the example explains each setting. `setup` asks for
 your password, checks the connection, installs the configuration as
-`/etc/nulifyer-vpn/config` and starts the service. A new installation starts
+`/etc/karchy-vpn/config` and starts the service. A new installation starts
 in Auto mode. Run it again after editing the file. Until then the widget says
 the VPN isn't set up.
 
@@ -91,10 +91,10 @@ Left-click the shield to open the panel. Right-click to cycle through modes.
 From a terminal:
 
 ```bash
-nulifyer-vpn status          # what the VPN does now
-nulifyer-vpn mode auto       # or off, on
-nulifyer-vpn reconnect       # restart the tunnel, keeping the mode
-nulifyer-vpn portal-pause    # let a captive portal's sign-in page through
+karchy-vpn status          # what the VPN does now
+karchy-vpn mode auto       # or off, on
+karchy-vpn reconnect       # restart the tunnel, keeping the mode
+karchy-vpn portal-pause    # let a captive portal's sign-in page through
 ```
 
 `mode`, `reconnect` and `portal-pause` need no password for members of
@@ -102,7 +102,7 @@ nulifyer-vpn portal-pause    # let a captive portal's sign-in page through
 these commands.
 
 **Signing in to a café network.** While the VPN can't connect, the kill switch
-also blocks the network's sign-in page. `nulifyer-vpn portal-pause` opens web
+also blocks the network's sign-in page. `karchy-vpn portal-pause` opens web
 traffic (TCP 80 and 443) and the network's DNS on that network for at most five
 minutes, with the tunnel down. It ends by itself once NetworkManager reports
 full connectivity, or at the deadline; then the kill switch closes and the
@@ -110,7 +110,7 @@ tunnel connects. karchy's "Sign in to network" runs it for you.
 
 ## Status
 
-`/run/nulifyer-vpn/status` is JSON, replaced atomically whenever something
+`/run/karchy-vpn/status` is JSON, replaced atomically whenever something
 changes (never on a timer), so a bar or panel can watch it instead of polling:
 
 ```json
@@ -134,13 +134,13 @@ changes (never on a timer), so a bar or panel can watch it instead of polling:
 
 ## How it works
 
-- `nulifyer-vpn-guard.service` closes the kill switch at boot, before
+- `karchy-vpn-guard.service` closes the kill switch at boot, before
   NetworkManager starts, unless the mode is Off.
-- The kill switch is its own nftables table, `inet nulifyer_vpn_guard`. It
+- The kill switch is its own nftables table, `inet karchy_vpn_guard`. It
   filters outgoing traffic only and never touches ufw's chains. While it is
   closed, only DHCP, IPv6 neighbour discovery, NTP, the WireGuard endpoint,
   encrypted DNS, a ping to the router and the tunnel's health probe leave.
-- The policy (`/usr/lib/nulifyer-vpn/policy`) runs when something changes:
+- The policy (`/usr/lib/karchy-vpn/policy`) runs when something changes:
   NetworkManager's dispatcher, a command, or a trust change in karchy.
   WireGuard has no event for a handshake, so the policy also sets itself a
   one-shot timer: every 2 seconds while the tunnel connects, every 60 seconds
@@ -158,7 +158,7 @@ changes (never on a timer), so a bar or panel can watch it instead of polling:
 
 ## Remove
 
-Quick install › karchy › WireGuard VPN › Remove, or `sudo pacman -R nulifyer-vpn`.
+Quick install › karchy › WireGuard VPN › Remove, or `sudo pacman -R karchy-vpn`.
 
 Removing the package takes the tunnel down, removes the kill switch, restores
 the DNS settings it changed and keeps your WireGuard connection and keys.

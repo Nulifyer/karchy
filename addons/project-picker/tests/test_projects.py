@@ -108,7 +108,7 @@ class DiscoveryTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as path:
             result = subprocess.run(
                 [sys.executable, str(SOURCE), "launch", "--action", "editor", "--path", path,
-                 "--editor-json", '["nulifyer-picker-nonexistent-editor"]'],
+                 "--editor-json", '["karchy-picker-nonexistent-editor"]'],
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn("Command not found", result.stderr)
@@ -135,7 +135,7 @@ class CreateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as fixture:
             result = subprocess.run(
                 [sys.executable, str(SOURCE), "create", "--root=" + fixture, "--name=-dash",
-                 "--editor-json", '["nulifyer-picker-nonexistent-editor"]'],
+                 "--editor-json", '["karchy-picker-nonexistent-editor"]'],
                 capture_output=True, text=True)
             self.assertEqual(result.returncode, 1)
             self.assertIn("Command not found", result.stderr)

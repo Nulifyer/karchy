@@ -1,11 +1,11 @@
 #!/bin/bash
 # The VPN policy: decides from the mode, the network and the tunnel's health
 # what the tunnel and the guard do, and publishes the result in
-# /run/nulifyer-vpn/status. It is the status file's only writer.
+# /run/karchy-vpn/status. It is the status file's only writer.
 #
 # Nothing polls. It runs when something changes:
 #   - NetworkManager's dispatcher (a network or the tunnel goes up or down,
-#     DHCP or connectivity changes), through nulifyer-vpn-policy.path
+#     DHCP or connectivity changes), through karchy-vpn-policy.path
 #   - a command (mode, portal-pause, reconnect) or a trust change in karchy
 #   - a one-shot timer it sets itself, only where nothing else can tell it:
 #     WireGuard has no event for a handshake, so while the tunnel connects it
@@ -17,7 +17,7 @@
 #                                the last answer about trust)
 set -euo pipefail
 # shellcheck source=lib/common.sh
-source /usr/lib/nulifyer-vpn/common.sh
+source /usr/lib/karchy-vpn/common.sh
 nv_require_root
 nv_load_config
 
@@ -38,7 +38,7 @@ rm -f "$NV_PENDING"
 now=$(date +%s)
 mode=$(nv_read_mode)
 
-log() { logger -t nulifyer-vpn -- "$*" 2>/dev/null || true; }
+log() { logger -t karchy-vpn -- "$*" 2>/dev/null || true; }
 
 # ---- what is published ------------------------------------------------------
 
@@ -77,14 +77,14 @@ publish() {  # publish <state> <reason> [until]
 schedule() {  # schedule <seconds>: the next health check, replacing any other
   local seconds=$1
   (( seconds >= 1 )) || seconds=1
-  systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
-  systemd-run --quiet --unit=nulifyer-vpn-check --on-active="${seconds}s" \
+  systemctl stop karchy-vpn-check.timer >/dev/null 2>&1 || true
+  systemd-run --quiet --unit=karchy-vpn-check --on-active="${seconds}s" \
     --timer-property=AccuracySec=500ms --timer-property=RemainAfterElapse=no >/dev/null 2>&1 ||
     log "couldn't schedule the next check"
 }
 
 unschedule() {
-  systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
+  systemctl stop karchy-vpn-check.timer >/dev/null 2>&1 || true
 }
 
 # ---- the network ------------------------------------------------------------
@@ -241,7 +241,7 @@ read_network "$upstream"
 # may ping the router to learn it. A guard closed before the link came up
 # doesn't know the router yet; let that ping through first.
 if [[ $(sed -n '1p' "$NV_RUN/guard-mode" 2>/dev/null || true) == closed && -n $net_gateway ]] &&
-  ! nft list chain inet nulifyer_vpn_guard output 2>/dev/null | grep -q "ip daddr $net_gateway icmp"; then
+  ! nft list chain inet karchy_vpn_guard output 2>/dev/null | grep -q "ip daddr $net_gateway icmp"; then
   "$NV_LIB/guard" closed "upstream=$net_device" "gateway=$net_gateway"
 fi
 read_trust

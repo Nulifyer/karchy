@@ -1,5 +1,5 @@
 #!/bin/bash
-# Root side of the nulifyer-vpn command.
+# Root side of the karchy-vpn command.
 #
 # Through pkexec (the package's polkit rule lets local, active members of
 # wheel run these without a password):
@@ -16,9 +16,9 @@
 #                      and the policy does nothing more until start or boot
 set -euo pipefail
 # shellcheck source=lib/common.sh
-source /usr/lib/nulifyer-vpn/common.sh
+source /usr/lib/karchy-vpn/common.sh
 nv_require_root
-[[ -r $NV_CONFIG ]] || { printf 'nulifyer-vpn is not set up yet: run nulifyer-vpn setup.\n' >&2; exit 1; }
+[[ -r $NV_CONFIG ]] || { printf 'karchy-vpn is not set up yet: run karchy-vpn setup.\n' >&2; exit 1; }
 nv_load_config
 install -d -m 0755 "$NV_RUN" "$NV_STATE"
 
@@ -38,7 +38,7 @@ fi
 # Apply now and wait for the result, so the command can report it.
 apply() {
   nv_trigger
-  systemctl start nulifyer-vpn-policy.service 2>/dev/null || true
+  systemctl start karchy-vpn-policy.service 2>/dev/null || true
 }
 
 show() {
@@ -48,7 +48,7 @@ show() {
 case $command in
   mode)
     mode=${2:-}
-    [[ $mode =~ ^(off|auto|on)$ ]] || { printf 'Usage: nulifyer-vpn mode off|auto|on\n' >&2; exit 2; }
+    [[ $mode =~ ^(off|auto|on)$ ]] || { printf 'Usage: karchy-vpn mode off|auto|on\n' >&2; exit 2; }
     exec 8>"$NV_RUN/control.lock"
     flock -x 8
     nv_write_atomic "$NV_MODE_FILE" "$mode"
@@ -109,7 +109,7 @@ case $command in
     : >"$NV_RUN/stopped"
     exec 7>"$NV_RUN/policy.lock"
     flock -x 7
-    systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
+    systemctl stop karchy-vpn-check.timer >/dev/null 2>&1 || true
     if nv_vpn_active; then nmcli --wait 10 connection down "$VPN_CONNECTION" >/dev/null 2>&1 || true; fi
     "$NV_LIB/guard" off
     rm -f "$NV_STATUS" "$NV_PENDING"

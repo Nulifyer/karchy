@@ -1,5 +1,5 @@
 #!/bin/bash
-# The kill switch: nulifyer-vpn's own nftables table (inet nulifyer_vpn_guard).
+# The kill switch: karchy-vpn's own nftables table (inet karchy_vpn_guard).
 # It filters only outgoing traffic and never touches ufw's chains.
 #
 # Usage: guard off
@@ -23,11 +23,11 @@
 #            before connection tracking, so ufw sees them as replies
 set -euo pipefail
 # shellcheck source=lib/common.sh
-source /usr/lib/nulifyer-vpn/common.sh
+source /usr/lib/karchy-vpn/common.sh
 nv_require_root
 nv_load_config
 
-readonly TABLE=nulifyer_vpn_guard
+readonly TABLE=karchy_vpn_guard
 readonly BOOTSTRAP_PRIORITY=20054
 readonly BOOTSTRAP_PROTOCOL=242
 

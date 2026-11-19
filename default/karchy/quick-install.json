@@ -67,13 +67,13 @@
   ],
   "apps": [
     {
-      "id": "nulifyer-vpn",
+      "id": "karchy-vpn",
       "name": "WireGuard VPN",
       "category": "karchy",
       "icon": "network-vpn",
       "description": "Your own WireGuard VPN with a kill switch: on by itself on networks you don't trust, off at home, with a sign-in pause for café Wi-Fi. A shield in the bar shows whether you're protected.",
       "packages": [
-        "nulifyer-vpn"
+        "karchy-vpn"
       ],
       "source": "karchy",
       "keywords": [
@@ -83,19 +83,19 @@
       ],
       "setup": {
         "run": [
-          "karchy-plugin-enable nulifyer.vpn --after karchy.network"
+          "karchy-plugin-enable karchy.vpn --after karchy.network"
         ],
-        "note": "Next: import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/nulifyer-vpn/config.example to ~/.config/nulifyer-vpn/config, fill it in and run: nulifyer-vpn setup. Until then the shield says the VPN isn't set up."
+        "note": "Next: import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/karchy-vpn/config.example to ~/.config/karchy-vpn/config, fill it in and run: karchy-vpn setup. Until then the shield says the VPN isn't set up."
       }
     },
     {
-      "id": "nulifyer-project-picker",
+      "id": "karchy-project-picker",
       "name": "Project picker",
       "category": "karchy",
       "icon": "folder-projects",
       "description": "Ctrl+Alt+P finds your projects across your home folder and opens one in your editor or a terminal, or starts a new one.",
       "packages": [
-        "nulifyer-project-picker"
+        "karchy-project-picker"
       ],
       "source": "karchy",
       "keywords": [
@@ -106,7 +106,7 @@
       ],
       "setup": {
         "run": [
-          "karchy-plugin-enable nulifyer.project-picker"
+          "karchy-plugin-enable karchy.project-picker"
         ],
         "note": "Press Ctrl+Alt+P to open it."
       }

@@ -1,13 +1,13 @@
 #!/bin/bash
-# nulifyer-vpn: the WireGuard VPN's command.
+# karchy-vpn: the WireGuard VPN's command.
 #
-#   nulifyer-vpn status [--json]       the published state (anyone)
-#   nulifyer-vpn mode [off|auto|on]    show or set the mode
-#   nulifyer-vpn portal-pause          let a captive portal's sign-in through
+#   karchy-vpn status [--json]       the published state (anyone)
+#   karchy-vpn mode [off|auto|on]    show or set the mode
+#   karchy-vpn portal-pause          let a captive portal's sign-in through
 #                                      for at most 5 minutes; protection comes
 #                                      back by itself once the network is online
-#   nulifyer-vpn reconnect             restart the tunnel, keeping the mode
-#   nulifyer-vpn setup [config-file]   check and install the configuration
+#   karchy-vpn reconnect             restart the tunnel, keeping the mode
+#   karchy-vpn setup [config-file]   check and install the configuration
 #                                      (asks for an administrator's password)
 #
 # mode, portal-pause and reconnect run the root helper through pkexec; the
@@ -15,11 +15,11 @@
 # without a password. on, off and auto are short for mode on, off and auto.
 set -euo pipefail
 
-readonly LIB=/usr/lib/nulifyer-vpn
-readonly STATUS=/run/nulifyer-vpn/status
+readonly LIB=/usr/lib/karchy-vpn
+readonly STATUS=/run/karchy-vpn/status
 
 usage() {
-  sed -n 's/^#   \(nulifyer-vpn .*\)/  \1/p' "$0" | sed 's/  \{2,\}.*//' >&2
+  sed -n 's/^#   \(karchy-vpn .*\)/  \1/p' "$0" | sed 's/  \{2,\}.*//' >&2
   exit 2
 }
 
@@ -32,15 +32,15 @@ command=${1:-status}
 case $command in
   status)
     if [[ ${2:-} == --json ]]; then
-      cat "$STATUS" 2>/dev/null || { printf 'nulifyer-vpn is not running.\n' >&2; exit 1; }
+      cat "$STATUS" 2>/dev/null || { printf 'karchy-vpn is not running.\n' >&2; exit 1; }
     else
       jq -r '"\(.state)\(if .reason != "" then " (" + .reason + ")" else "" end), mode \(.mode)\(if .network then ", " + (.network.name // .network.device) else "" end)"' \
-        "$STATUS" 2>/dev/null || { printf 'nulifyer-vpn is not running.\n' >&2; exit 1; }
+        "$STATUS" 2>/dev/null || { printf 'karchy-vpn is not running.\n' >&2; exit 1; }
     fi
     ;;
   mode)
     if [[ -z ${2:-} ]]; then
-      jq -r '.mode' "$STATUS" 2>/dev/null || sed -n '1p' /var/lib/nulifyer-vpn/mode 2>/dev/null || printf 'auto\n'
+      jq -r '.mode' "$STATUS" 2>/dev/null || sed -n '1p' /var/lib/karchy-vpn/mode 2>/dev/null || printf 'auto\n'
       exit 0
     fi
     [[ $2 =~ ^(off|auto|on)$ ]] || usage
@@ -50,8 +50,8 @@ case $command in
   portal-pause|reconnect) root "$command" ;;
   setup)
     file=${2:-}
-    [[ -n $file ]] || file=${XDG_CONFIG_HOME:-$HOME/.config}/nulifyer-vpn/config
-    [[ -r $file ]] || { printf 'No configuration at %s. Start from /usr/share/nulifyer-vpn/config.example.\n' "$file" >&2; exit 1; }
+    [[ -n $file ]] || file=${XDG_CONFIG_HOME:-$HOME/.config}/karchy-vpn/config
+    [[ -r $file ]] || { printf 'No configuration at %s. Start from /usr/share/karchy-vpn/config.example.\n' "$file" >&2; exit 1; }
     # The file is read here, as you; root gets only its text and checks it.
     if (( EUID == 0 )); then exec "$LIB/configure" <"$file"; fi
     exec pkexec "$LIB/configure" <"$file"

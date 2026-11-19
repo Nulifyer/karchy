@@ -1,14 +1,14 @@
 #!/bin/bash
-# nulifyer-vpn: a network change asks the VPN policy to look again. Also
+# karchy-vpn: a network change asks the VPN policy to look again. Also
 # linked into pre-up.d, so the guard closes before a new link carries
 # anything. The policy itself runs outside the dispatcher (which runs one
-# script at a time), started by nulifyer-vpn-policy.path.
+# script at a time), started by karchy-vpn-policy.path.
 set -euo pipefail
-[[ -r /etc/nulifyer-vpn/config ]] || exit 0
+[[ -r /etc/karchy-vpn/config ]] || exit 0
 
 iface=${1:-}
 action=${2:-}
-lib=/usr/lib/nulifyer-vpn
+lib=/usr/lib/karchy-vpn
 
 physical() {
   case ${CONNECTION_UUID:+$(nmcli -g connection.type connection show "$CONNECTION_UUID" 2>/dev/null || true)} in

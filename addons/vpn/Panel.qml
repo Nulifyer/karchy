@@ -11,13 +11,13 @@ import qs.Ui
 
 Panel {
   id: root
-  moduleName: "nulifyer.vpn"
-  ipcTarget: "nulifyer.vpn"
+  moduleName: "karchy.vpn"
+  ipcTarget: "karchy.vpn"
 
   property var vpnInfo: emptyInfo("unknown")
   property string lastError: ""
   property bool statusPresent: false
-  // `nulifyer-vpn setup` writes /etc/nulifyer-vpn/config (world-readable);
+  // `karchy-vpn setup` writes /etc/karchy-vpn/config (world-readable);
   // until then the VPN is installed but not set up.
   property bool configured: false
   property bool cursorActive: false
@@ -79,8 +79,8 @@ Panel {
   // makes sense while the status file exists; until then just look again.
   function missingStatusText() {
     return configured
-      ? "The VPN is set up but not running. Run: nulifyer-vpn status"
-      : "Not set up yet. Import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/nulifyer-vpn/config.example to ~/.config/nulifyer-vpn/config, fill it in and run: nulifyer-vpn setup"
+      ? "The VPN is set up but not running. Run: karchy-vpn status"
+      : "Not set up yet. Import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/karchy-vpn/config.example to ~/.config/karchy-vpn/config, fill it in and run: karchy-vpn setup"
   }
 
   function refresh() {
@@ -114,7 +114,7 @@ Panel {
     if (modeProcess.running || ["on", "off", "auto"].indexOf(mode) < 0) return
     if (!statusPresent) return
     lastError = ""
-    modeProcess.command = ["/usr/bin/nulifyer-vpn", "mode", mode]
+    modeProcess.command = ["/usr/bin/karchy-vpn", "mode", mode]
     modeProcess.running = true
   }
 
@@ -247,7 +247,7 @@ Panel {
 
   Process {
     id: statusProcess
-    command: ["/usr/bin/nulifyer-vpn-status", "--json"]
+    command: ["/usr/bin/karchy-vpn-status", "--json"]
     onExited: function(exitCode) {
       if (exitCode !== 0) root.lastError = "The VPN package isn't installed or set up. See the README."
     }
@@ -263,7 +263,7 @@ Panel {
   // panel is open the live tunnel details (handshake age) are refreshed below.
   FileView {
     id: statusFile
-    path: "/run/nulifyer-vpn/status"
+    path: "/run/karchy-vpn/status"
     watchChanges: true
     printErrors: false
     onLoaded: { root.statusPresent = true; root.refresh() }
@@ -280,7 +280,7 @@ Panel {
 
   FileView {
     id: configFile
-    path: "/etc/nulifyer-vpn/config"
+    path: "/etc/karchy-vpn/config"
     printErrors: false
     onLoaded: { root.configured = true; if (!root.statusPresent) root.lastError = root.missingStatusText() }
     onLoadFailed: { root.configured = false; if (!root.statusPresent) root.lastError = root.missingStatusText() }
@@ -288,7 +288,7 @@ Panel {
 
   // A watch can't see a file appear while its folder doesn't exist yet, as
   // when the package is installed after the shell started (tmpfiles creates
-  // /run/nulifyer-vpn then). Until the file shows up, look for it now and
+  // /run/karchy-vpn then). Until the file shows up, look for it now and
   // then; one successful load arms the watch.
   Timer {
     interval: 30000

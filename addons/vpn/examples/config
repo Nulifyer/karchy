@@ -1,5 +1,5 @@
-# nulifyer-vpn configuration. Install it with: nulifyer-vpn setup <this file>
-# (root keeps its own copy in /etc/nulifyer-vpn/config).
+# karchy-vpn configuration. Install it with: karchy-vpn setup <this file>
+# (root keeps its own copy in /etc/karchy-vpn/config).
 
 # One existing NetworkManager WireGuard connection: one IPv4 full-tunnel peer
 # (allowed-ips 0.0.0.0/0), a fixed listen port, peer routes, its DNS for all

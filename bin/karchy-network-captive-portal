@@ -84,9 +84,9 @@ wait_until_online() {
 # yet). Ask the VPN for its sign-in pause: web traffic and the network's DNS
 # for at most five minutes; protection comes back by itself once online.
 pause_vpn() {
-  command -v nulifyer-vpn >/dev/null 2>&1 || return 0
-  [[ $(jq -r '.state // ""' /run/nulifyer-vpn/status 2>/dev/null) =~ ^(connecting|failed|paused)$ ]] || return 0
-  nulifyer-vpn portal-pause >/dev/null 2>&1 || true
+  command -v karchy-vpn >/dev/null 2>&1 || return 0
+  [[ $(jq -r '.state // ""' /run/karchy-vpn/status 2>/dev/null) =~ ^(connecting|failed|paused)$ ]] || return 0
+  karchy-vpn portal-pause >/dev/null 2>&1 || true
 }
 
 exec 9>"$lock"

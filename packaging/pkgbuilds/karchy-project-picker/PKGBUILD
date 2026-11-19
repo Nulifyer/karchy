@@ -1,11 +1,11 @@
-# nulifyer-project-picker: find projects in the home folder and open them in
+# karchy-project-picker: find projects in the home folder and open them in
 # an editor or a terminal, one of karchy's add-ons, built from
 # addons/project-picker in karchy's tree and released with karchy on every
 # channel. Nothing installs it but the user: Quick install › karchy ›
 # Project picker. It brings its Ctrl+Alt+P binding (docs/keybindings.md) as a
 # Hyprland drop-in, so the binding exists only while the package does.
 
-pkgname=nulifyer-project-picker
+pkgname=karchy-project-picker
 pkgver=0
 pkgrel=1
 pkgdesc="Project picker for the karchy shell: open a project in an editor or a terminal"
@@ -18,9 +18,9 @@ sha256sums=('SKIP')
 
 package() {
   cd "$srcdir/karchy/addons/project-picker"
-  install -Dm644 -t "$pkgdir/usr/share/karchy/plugins/nulifyer.project-picker" \
+  install -Dm644 -t "$pkgdir/usr/share/karchy/plugins/karchy.project-picker" \
     manifest.json ProjectPicker.qml Search.js
-  install -Dm755 -t "$pkgdir/usr/share/karchy/plugins/nulifyer.project-picker" projects.py
-  install -Dm644 hypr/project-picker.lua "$pkgdir/usr/share/karchy/hypr.d/50-nulifyer-project-picker.lua"
+  install -Dm755 -t "$pkgdir/usr/share/karchy/plugins/karchy.project-picker" projects.py
+  install -Dm644 hypr/project-picker.lua "$pkgdir/usr/share/karchy/hypr.d/50-karchy-project-picker.lua"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

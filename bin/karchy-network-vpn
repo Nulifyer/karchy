@@ -12,14 +12,14 @@
 #               itself (the VPN package, or the switch in Settings, starts it)
 #   switch      connects or disconnects a profile (without the VPN package)
 #   home-lan    the VPN package's "Allow local devices on trusted networks"
-#               (HOME_LAN): its configuration is handed to `nulifyer-vpn
+#               (HOME_LAN): its configuration is handed to `karchy-vpn
 #               setup`, which checks it as root and asks for a password
-# With the VPN package (nulifyer-vpn) installed, its mode and status live in
-# /run/nulifyer-vpn/status and `nulifyer-vpn mode`; Settings reads those itself.
+# With the VPN package (karchy-vpn) installed, its mode and status live in
+# /run/karchy-vpn/status and `karchy-vpn mode`; Settings reads those itself.
 
 set -euo pipefail
 
-CONFIG=/etc/nulifyer-vpn/config
+CONFIG=/etc/karchy-vpn/config
 UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
 
 refuse() { echo "$*" >&2; exit 2; }
@@ -41,7 +41,7 @@ status() {
       --arg auto "$autoconnect" \
       '{uuid: $uuid, name: $name, type: $type, active: ($device != ""), device: $device, autoconnect: ($auto == "yes")}')$'\n'
   done < <(nmcli -t -e no -f UUID,TYPE,AUTOCONNECT,NAME connection show 2>/dev/null)
-  jq -s --arg package "$([[ -x /usr/lib/nulifyer-vpn/control ]] && echo yes)" \
+  jq -s --arg package "$([[ -x /usr/lib/karchy-vpn/control ]] && echo yes)" \
     --arg configured "$([[ -r $CONFIG ]] && echo yes)" --arg homeLan "$(config_value HOME_LAN)" \
     --arg connection "$(config_value VPN_CONNECTION)" --arg timeout "$(config_value CONNECT_TIMEOUT)" '{
       package: ($package == "yes"), configured: ($configured == "yes"),
@@ -85,13 +85,13 @@ import_conf() {
 home_lan() {
   local value=${1:-} tmp
   [[ $value =~ ^(yes|no)$ ]] || refuse "Allow local devices is yes or no."
-  command -v nulifyer-vpn >/dev/null || refuse "The VPN package (nulifyer-vpn) isn't installed."
-  [[ -r $CONFIG ]] || refuse "The VPN isn't set up yet: run nulifyer-vpn setup."
+  command -v karchy-vpn >/dev/null || refuse "The VPN package (karchy-vpn) isn't installed."
+  [[ -r $CONFIG ]] || refuse "The VPN isn't set up yet: run karchy-vpn setup."
   tmp=$(mktemp)
   trap 'rm -f "$tmp"' EXIT
   grep -v '^HOME_LAN=' "$CONFIG" >"$tmp" || true
   printf 'HOME_LAN=%s\n' "$value" >>"$tmp"
-  nulifyer-vpn setup "$tmp" >/dev/null
+  karchy-vpn setup "$tmp" >/dev/null
 }
 
 case "${1:-}" in

@@ -7,7 +7,7 @@ import qs.Commons as Commons
 import qs.Ui
 import "../panels/network/Model.js" as NetModel
 
-// Settings › Network › VPN. With the VPN package (nulifyer-vpn): its mode,
+// Settings › Network › VPN. With the VPN package (karchy-vpn): its mode,
 // what it is doing and since when, and "Allow local devices on trusted
 // networks". Without it: NetworkManager's own VPN and WireGuard profiles,
 // each with a switch. Either way, a WireGuard file from a VPN provider can be
@@ -95,7 +95,7 @@ ColumnLayout {
 
   // The package's status: rewritten on every change, watched, never polled.
   FileView {
-    path: "/run/nulifyer-vpn/status"
+    path: "/run/karchy-vpn/status"
     watchChanges: true
     printErrors: false
     onLoaded: {
@@ -139,7 +139,7 @@ ColumnLayout {
         { value: "on", label: "On", tooltip: "Use the VPN on every network" }
       ]
       value: root.vpn.present ? root.vpn.mode : ""
-      onChanged: function(value) { modeAct.start(["nulifyer-vpn", "mode", value]) }
+      onChanged: function(value) { modeAct.start(["karchy-vpn", "mode", value]) }
     }
   }
 
@@ -154,7 +154,7 @@ ColumnLayout {
   InlineMessage {
     visible: root.packaged && !root.info.configured
     kind: "info"
-    text: "The VPN isn't set up yet. Import your WireGuard file below, then run nulifyer-vpn setup with its name."
+    text: "The VPN isn't set up yet. Import your WireGuard file below, then run karchy-vpn setup with its name."
   }
 
   Card {
@@ -238,7 +238,7 @@ ColumnLayout {
   InlineMessage {
     kind: "info"
     text: root.imported === "" ? ""
-      : root.packaged ? "Imported as " + root.imported + ". The VPN uses " + (root.info.connection || "its own profile") + "; to use this one, run nulifyer-vpn setup with it."
+      : root.packaged ? "Imported as " + root.imported + ". The VPN uses " + (root.info.connection || "its own profile") + "; to use this one, run karchy-vpn setup with it."
       : "Imported as " + root.imported + ". Switch it on above to connect."
     dismissible: true
     onDismissed: root.imported = ""

@@ -92,9 +92,9 @@ def closure(roots, meta):
 
 
 # karchy's packages a machine has only when chosen: the detected NVIDIA
-# metas, the VPN, and the optional features Quick install adds (D-67), whose
-# dependencies other entries may install and remove on their own.
-OPT_IN = {'nulifyer-vpn', 'karchy-containers', 'karchy-printing'}
+# metas, the add-ons (D-106), and the optional features Quick install adds
+# (D-67), whose dependencies other entries may install and remove on their own.
+OPT_IN = {'karchy-vpn', 'karchy-project-picker', 'karchy-containers', 'karchy-printing'}
 
 
 def karchy_base():

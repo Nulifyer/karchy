@@ -707,7 +707,7 @@ Panel {
     bar.shell.summon("karchy.settings", JSON.stringify(payload))
   }
 
-  // ---- The VPN (nulifyer-vpn, D-68) ----
+  // ---- The VPN (karchy-vpn, D-68) ----
   // Its status file is rewritten on every change and watched here; nothing
   // polls. Without the package the file doesn't exist and the VPN row hides.
   property var vpn: Model.parseVpnStatus("")
@@ -725,7 +725,7 @@ Panel {
 
   FileView {
     id: vpnStatusFile
-    path: "/run/nulifyer-vpn/status"
+    path: "/run/karchy-vpn/status"
     watchChanges: true
     printErrors: false
     onLoaded: { root.vpn = Model.parseVpnStatus(text()); vpnStatusRetry.stop() }
@@ -746,14 +746,14 @@ Panel {
   function setVpnMode(mode) {
     if (vpnModes.indexOf(mode) < 0 || vpnProc.running) return
     vpnError = ""
-    vpnProc.command = ["nulifyer-vpn", "mode", mode]
+    vpnProc.command = ["karchy-vpn", "mode", mode]
     vpnProc.running = true
   }
 
   function reconnectVpn() {
     if (vpnProc.running) return
     vpnError = ""
-    vpnProc.command = ["nulifyer-vpn", "reconnect"]
+    vpnProc.command = ["karchy-vpn", "reconnect"]
     vpnProc.running = true
   }
 

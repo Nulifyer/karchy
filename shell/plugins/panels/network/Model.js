@@ -85,8 +85,8 @@ function connectionIcon(kind, signalStrength, connectivity, vpnState, airplane) 
   return "net.wifi.off"
 }
 
-// ---- The VPN (nulifyer-vpn, D-68) -------------------------------------------
-// The VPN package publishes /run/nulifyer-vpn/status (JSON, rewritten
+// ---- The VPN (karchy-vpn, D-68) -------------------------------------------
+// The VPN package publishes /run/karchy-vpn/status (JSON, rewritten
 // atomically on every change): mode off|auto|on; state standing-by,
 // connecting, protecting, failed, paused or off; reason; network (the link
 // it applies to, with trust); until (a sign-in pause's end, epoch seconds).

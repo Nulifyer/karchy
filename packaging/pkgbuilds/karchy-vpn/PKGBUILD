@@ -1,4 +1,4 @@
-# nulifyer-vpn: WireGuard with a kill switch (D-68), one of karchy's add-ons:
+# karchy-vpn: WireGuard with a kill switch (D-68), one of karchy's add-ons:
 # the system half (policy service, kill switch, sign-in pause, polkit rule)
 # and the bar widget, built from addons/vpn in karchy's tree and released with
 # karchy on every channel. Nothing installs it but the user: Quick install ›
@@ -7,10 +7,10 @@
 # docs/architecture.md, "Networking ownership".
 #
 # The polkit rule lets a local, active wheel session run exactly
-# /usr/lib/nulifyer-vpn/control mode (off|auto|on), portal-pause or reconnect
+# /usr/lib/karchy-vpn/control mode (off|auto|on), portal-pause or reconnect
 # without a password; everything else asks for one.
 
-pkgname=nulifyer-vpn
+pkgname=karchy-vpn
 pkgver=0
 pkgrel=1
 pkgdesc="WireGuard VPN policy with a kill switch: Auto on untrusted networks, captive-portal sign-in pause"
@@ -19,7 +19,7 @@ url="https://github.com/Nulifyer/karchy"
 license=('MIT')
 depends=('karchy' 'bash' 'networkmanager' 'wireguard-tools' 'nftables' 'iproute2' 'jq' 'polkit' 'python' 'systemd' 'util-linux')
 makedepends=('make')
-install=nulifyer-vpn.install
+install=karchy-vpn.install
 source=("karchy-src.tar.gz")
 sha256sums=('SKIP')
 
@@ -27,5 +27,5 @@ package() {
   cd "$srcdir/karchy/addons/vpn"
   make DESTDIR="$pkgdir" install
   # The bar widget, loaded by the shell from the root-owned add-on folder.
-  install -Dm644 -t "$pkgdir/usr/share/karchy/plugins/nulifyer.vpn" manifest.json Panel.qml
+  install -Dm644 -t "$pkgdir/usr/share/karchy/plugins/karchy.vpn" manifest.json Panel.qml
 }

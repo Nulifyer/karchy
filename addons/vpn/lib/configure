@@ -1,7 +1,7 @@
 #!/usr/bin/python3 -I
-"""Check a nulifyer-vpn configuration and install it as /etc/nulifyer-vpn/config.
+"""Check a karchy-vpn configuration and install it as /etc/karchy-vpn/config.
 
-Run as root (nulifyer-vpn setup, through pkexec); the configuration arrives on
+Run as root (karchy-vpn setup, through pkexec); the configuration arrives on
 stdin, so root never opens a file the user could swap. Nothing is executed
 from it: each line must be KEY=value, and the file root later sources is
 written back canonically quoted. After writing it, the units are enabled and
@@ -18,15 +18,15 @@ import sys
 import tempfile
 import uuid
 
-CONFIG = "/etc/nulifyer-vpn/config"
-STATE = "/var/lib/nulifyer-vpn"
+CONFIG = "/etc/karchy-vpn/config"
+STATE = "/var/lib/karchy-vpn"
 REQUIRED = ["VPN_CONNECTION", "VPN_INTERFACE", "VPN_ENDPOINT_HOST", "VPN_ENDPOINT_PORT",
             "VPN_CLIENT_PORT", "VPN_DNS"]
 OPTIONAL = {
     "TRUSTED_INTERFACE": "", "TRUSTED_GATEWAY": "", "HOME_LAN": "yes", "HANDSHAKE_MAX_AGE": "150",
     "CONNECT_TIMEOUT": "30",
 }
-UNITS = ["nulifyer-vpn-guard.service", "nulifyer-vpn-policy.path"]
+UNITS = ["karchy-vpn-guard.service", "karchy-vpn-policy.path"]
 
 
 def fail(message):
@@ -121,7 +121,7 @@ def write(path, text, mode):
 
 def main():
     if os.geteuid() != 0:
-        fail("run it as root: nulifyer-vpn setup")
+        fail("run it as root: karchy-vpn setup")
     os.environ["PATH"] = "/usr/bin"
     config = parse(sys.stdin.read(65536))
     validate(config)
@@ -141,8 +141,8 @@ def main():
     subprocess.run(["nmcli", "connection", "modify", config["VPN_CONNECTION"], "connection.autoconnect", "no"], check=True)
     subprocess.run(["systemctl", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "enable", "--now", *UNITS], check=True)
-    subprocess.run(["/usr/lib/nulifyer-vpn/control", "start"], check=True)
-    print(f"nulifyer-vpn is set up. Mode: {open(f'{STATE}/mode').read().strip()}.")
+    subprocess.run(["/usr/lib/karchy-vpn/control", "start"], check=True)
+    print(f"karchy-vpn is set up. Mode: {open(f'{STATE}/mode').read().strip()}.")
 
 
 if __name__ == "__main__":

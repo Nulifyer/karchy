@@ -16,7 +16,7 @@ Item {
   property var shell: null
   property var manifest: null
   property bool opened: false
-  readonly property string pluginId: "nulifyer.project-picker"
+  readonly property string pluginId: "karchy.project-picker"
   readonly property string home: Quickshell.env("HOME")
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("projects.py").toString().replace(/^file:\/\//, ""))
   readonly property string settingsPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config")
@@ -258,7 +258,7 @@ Item {
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "nulifyer-project-picker"
+    WlrLayershell.namespace: "karchy-project-picker"
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
