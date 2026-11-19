@@ -327,6 +327,7 @@ Panel {
         }
 
         Toggle {
+          flat: true
           visible: root.view === "list"
           width: parent.width
           label: I18n.t("notifications.doNotDisturb")

@@ -26,6 +26,11 @@ BorderSurface {
   // network seen behind a different router); drawn in the warning color.
   property bool warning: false
 
+  // A plain row, for a switch that already sits inside a bordered surface (a
+  // bar panel): no box of its own, so no card inside a card. It shows its
+  // fill and border only under the pointer or the cursor, as list rows do.
+  property bool flat: false
+
   // Panel-cursor flag. Same role as Button.hasCursor:
   // panels with their own keyboard cursor bind this to drive the highlight
   // separately from activeFocus. Visuals use the same hover-cursor tokens.
@@ -57,7 +62,8 @@ BorderSurface {
   Accessible.onToggleAction: if (!root.busy) root.clicked()
   Accessible.onPressAction: if (!root.busy) root.clicked()
 
-  implicitHeight: Math.max(Style.space(54), content.implicitHeight + Style.spacing.huge)
+  implicitHeight: flat ? Math.max(Style.space(36), content.implicitHeight + Style.spacing.xxl)
+    : Math.max(Style.space(54), content.implicitHeight + Style.spacing.huge)
   implicitWidth: Style.space(240)
   radius: Style.radius.control
 
@@ -65,8 +71,8 @@ BorderSurface {
   readonly property bool _keyboard: activeFocus || hasCursor
   readonly property var _borderSpec: Border.controlSpec(_keyboard || _hot ? "hover-cursor" : "normal", foreground, accent)
 
-  color: Style.controlFill(activeFocus, _hot, foreground, accent)
-  borderSpec: _borderSpec
+  color: flat && !_hot && !_keyboard ? "transparent" : Style.controlFill(activeFocus, _hot, foreground, accent)
+  borderSpec: flat && !_hot && !_keyboard ? Border.none() : _borderSpec
 
   Behavior on color { ColorAnimation { duration: Style.duration(Style.motion.fast) } }
 
@@ -91,8 +97,8 @@ BorderSurface {
         text: root.label
         color: root.enabled ? root.foreground : Commons.Color.disabledText(root.foreground)
         font.family: root.fontFamily
-        font.pixelSize: root.titleSize
-        font.bold: true
+        font.pixelSize: root.flat ? Style.font.body : root.titleSize
+        font.bold: !root.flat
         elide: Text.ElideRight
         width: parent.width
       }

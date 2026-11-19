@@ -688,6 +688,7 @@ Panel {
 
           // ---------- Night light ----------
           Toggle {
+            flat: true
             id: nightLightRow
             visible: root.nightLightInstalled
             width: parent.width
@@ -878,6 +879,7 @@ Panel {
 
           // ---------- Stay Awake (computers without a battery) ----------
           Toggle {
+            flat: true
             id: stayAwakeRow
             visible: root.stayAwakeOffered
             width: parent.width

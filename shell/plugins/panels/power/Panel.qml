@@ -511,6 +511,7 @@ Panel {
 
         // ---------- Stay Awake ----------
         Toggle {
+          flat: true
           visible: root.idle !== null
           width: parent.width
           label: Commons.I18n.t("power.stayAwake")
