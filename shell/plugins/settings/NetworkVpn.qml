@@ -160,21 +160,20 @@ ColumnLayout {
   Card {
     visible: root.packaged && root.facts.length > 0
     title: "What it's doing"
-    subtitle: "While it connects, the internet is blocked: after " + root.info.connect_timeout + " seconds without a connection it reports a failure and keeps it blocked."
+    subtitle: "The internet is blocked while it connects, and stays blocked if it can't."
     KeyValueGrid {
       Layout.fillWidth: true
       rows: root.facts
     }
   }
 
-  Toggle {
+  SettingRow {
     visible: root.packaged && root.info.configured
-    Layout.fillWidth: true
-    label: "Allow local devices on trusted networks"
-    description: "In On mode at home, the NAS, the printer and names like nas.lan stay reachable beside the VPN. Asks for an administrator's password."
+    label: "Local devices on trusted networks"
+    info: "With the VPN on at home, the NAS, the printer and names like nas.lan stay reachable beside it."
     checked: root.info.home_lan
     busy: homeAct.running
-    onClicked: homeAct.start(["karchy-network-vpn", "home-lan", checked ? "no" : "yes"], function() { root.refresh() })
+    onToggled: homeAct.start(["karchy-network-vpn", "home-lan", checked ? "no" : "yes"], function() { root.refresh() })
   }
   InlineMessage {
     kind: "error"
@@ -238,7 +237,7 @@ ColumnLayout {
   InlineMessage {
     kind: "info"
     text: root.imported === "" ? ""
-      : root.packaged ? "Imported as " + root.imported + ". The VPN uses " + (root.info.connection || "its own profile") + "; to use this one, run karchy-vpn setup with it."
+      : root.packaged ? "Imported as " + root.imported + ". The VPN uses " + (root.info.connection || "its own profile") + "; to use this one, run: karchy-vpn setup \"" + root.imported + "\""
       : "Imported as " + root.imported + ". Switch it on above to connect."
     dismissible: true
     onDismissed: root.imported = ""

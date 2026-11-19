@@ -81,12 +81,11 @@ ColumnLayout {
   }
 
   // The login warning can be turned back on after "Don't show again".
-  Toggle {
-    Layout.fillWidth: true
+  SettingRow {
     visible: root.renderer.software === true || root.renderer.warn === false
     label: "Warn at login when drawing on the processor"
     checked: root.renderer.warn !== false
-    onClicked: {
+    onToggled: {
       warnProc.command = ["karchy-hw-renderer", checked ? "stop-warning" : "warn-again"]
       warnProc.running = true
     }

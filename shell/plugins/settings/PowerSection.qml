@@ -141,6 +141,20 @@ ColumnLayout {
     return text + (sleep === 0 ? ". Never goes to sleep on its own." : ".")
   }
 
+  // Whether the three times don't simply do what each says: one never comes
+  // (the computer is asleep first, or the lock has already turned the screen
+  // off), the screen goes off without locking, or nothing happens at all.
+  // Only then is the summary worth its line.
+  function idleNeedsSaying(source) {
+    var off = Number(root.values["screenOff." + source] || 0)
+    var lock = Number(root.values["lock." + source] || 0)
+    var sleep = Number(root.values["sleep." + source] || 0)
+    if (off === 0 && lock === 0 && sleep === 0) return true
+    if (sleep > 0 && ((off > 0 && off >= sleep) || (lock > 0 && lock >= sleep))) return true
+    if (lock > 0 && off > lock) return true
+    return off > 0 && lock === 0
+  }
+
   function capitalized(text) { return text.charAt(0).toUpperCase() + text.slice(1) }
 
   readonly property var lidChoices: {
@@ -265,7 +279,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Power"
-    explanation: "Only what you change here is saved; everything else follows karchy's defaults. Idle times and battery warnings are kept in ~/.config/karchy/shell.json, where a value you edit by hand is the one that counts. The power button is a Hyprland binding, and one in ~/.config/hypr wins. The lid and hibernation choices are system settings in /etc/systemd, changed without a password for the person at the computer."
+    explanation: "Idle times and battery warnings you edit by hand in ~/.config/karchy/shell.json take priority over these. Lid and hibernation are system settings, changed without a password at this computer."
   }
 
   GroupError { group: "" }
@@ -297,8 +311,9 @@ ColumnLayout {
 
   GroupError { group: "idle" }
 
+  // Said only when the times interact: one of them never comes.
   Outcome {
-    visible: root.ready
+    visible: root.ready && (root.idleNeedsSaying("ac") || (root.battery && root.idleNeedsSaying("battery")))
     text: root.battery
       ? "On battery: " + root.idleSummary("battery") + "\nPlugged in: " + root.idleSummary("ac")
       : root.capitalized(root.idleSummary("ac"))
@@ -337,12 +352,15 @@ ColumnLayout {
   InlineMessage {
     visible: root.lid && (root.values["lid.battery"] === "ignore" || root.values["lid.ac"] === "ignore")
     kind: "warning"
-    text: "With the lid closed the laptop locks but keeps running. In a bag it can overheat and run the battery down."
+    text: "A closed laptop that stays on can overheat in a bag and drain the battery."
   }
 
-  Outcome {
+  // Why a choice may do nothing; which file, for whoever goes looking.
+  InlineMessage {
     visible: root.lid && (root.isForeign("lid.battery") || root.isForeign("lid.ac") || root.isForeign("lid.docked"))
-    text: "A file in /etc/systemd/logind.conf.d that sorts after 60-karchy-settings.conf decides the lid, so a choice here may not change it."
+    kind: "warning"
+    text: "A system configuration file controls the lid, so these choices may have no effect."
+    details: "A file in /etc/systemd/logind.conf.d that sorts after 60-karchy-settings.conf."
   }
 
   SettingsHeader { text: "Power button" }
@@ -359,9 +377,11 @@ ColumnLayout {
 
   GroupError { group: "powerKey" }
 
-  Outcome {
+  InlineMessage {
     visible: root.error === "" && root.isForeign("powerKey") && root.values.powerKey === "custom"
-    text: "A binding for the power button in ~/.config/hypr decides this, so a choice here doesn't change it."
+    kind: "warning"
+    text: "Your own Hyprland binding for the power button overrides this setting."
+    details: "A binding for XF86PowerOff in ~/.config/hypr."
   }
 
   SettingsHeader { visible: root.hibernation; text: "Hibernation" }
@@ -387,15 +407,19 @@ ColumnLayout {
 
   GroupError { group: "hibernateAfter" }
 
+  InlineMessage {
+    visible: root.hibernation && root.ready && root.isForeign("hibernateAfter")
+    kind: "warning"
+    text: "A system configuration file controls hibernation, so this choice may have no effect."
+    details: "A file in /etc/systemd/sleep.conf.d that sorts after 60-karchy-settings.conf."
+  }
+
+  // What the choice costs, or what happens with none made.
   Outcome {
-    visible: root.hibernation && root.ready
-    text: root.isForeign("hibernateAfter")
-      ? "A file in /etc/systemd/sleep.conf.d that sorts after 60-karchy-settings.conf decides this, so a choice here may not change it."
-      : Number(root.values.hibernateAfter) === 0
-        ? "Stays asleep until you wake it. Sleep still uses a little power, so a battery runs down over days."
-        : Number(root.values.hibernateAfter) > 0
-          ? "After " + root.duration(Number(root.values.hibernateAfter) * 60) + " asleep it saves everything open to disk and switches off."
-          : "No time is set: asleep on battery, it hibernates when the battery is nearly empty."
+    visible: root.hibernation && root.ready && !root.isForeign("hibernateAfter") && Number(root.values.hibernateAfter) <= 0
+    text: Number(root.values.hibernateAfter) === 0
+      ? "Sleep still uses power: a battery runs down over days."
+      : "Hibernates when the battery is nearly empty."
   }
 
   SettingsHeader { visible: root.battery; text: "Battery" }
@@ -437,7 +461,7 @@ ColumnLayout {
   Outcome {
     visible: root.profile !== ""
     color: Commons.Color.foreground
-    text: root.profileName + " now. Change it from the battery in the bar; it is remembered separately for battery and plugged in."
+    text: root.profileName + ". Change it from the battery in the bar."
   }
 
   Button {

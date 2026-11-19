@@ -162,14 +162,10 @@ ColumnLayout {
 
         function focusChoice() { choice.forceActiveFocus() }
 
-        Text {
-          Layout.fillWidth: true
-          Layout.alignment: Qt.AlignVCenter
-          textFormat: Text.PlainText
+        // In the form's label column, so the choices line up with the
+        // controls above; a long site name keeps both of its ends.
+        SettingsLabel {
           text: appRow.modelData.name
-          color: Commons.Color.foreground
-          font.family: Style.font.family
-          font.pixelSize: Style.font.body
           elide: Text.ElideMiddle
         }
 
@@ -184,6 +180,8 @@ ColumnLayout {
           value: appRow.modelData.mode
           onChanged: function(value) { root.setMode(appRow.modelData, value) }
         }
+
+        Item { Layout.fillWidth: true; implicitHeight: 1 }
       }
     }
   }

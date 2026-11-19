@@ -37,8 +37,8 @@ ColumnLayout {
   // No Wi-Fi radio, no country to choose (an unknown answer shows it).
   readonly property bool hasWifi: country.wifi !== false
   readonly property string inForce: country.effective
-    ? "In force now: " + country.effective.name + " (" + country.effective.code + ")"
-    : "In force now: none, so Wi-Fi follows the strictest rules (no 6 GHz)"
+    ? "In use: " + country.effective.name + " (" + country.effective.code + ")"
+    : "None in use, so Wi-Fi follows the strictest rules (no 6 GHz)"
 
   Process {
     id: countryQuery
@@ -68,6 +68,8 @@ ColumnLayout {
   SettingsHeader { text: "Advanced" }
 
   GridLayout {
+    // Hidden whole with no Wi-Fi: an empty grid would still take a row.
+    visible: root.hasWifi
     Layout.fillWidth: true
     columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
@@ -99,10 +101,10 @@ ColumnLayout {
     Layout.fillWidth: true
     wrapMode: Text.Wrap
     textFormat: Text.PlainText
-    text: root.inForce + ". It decides which Wi-Fi channels and power the radio may use; changing it asks for your password."
+    text: root.inForce + "."
     color: Commons.Color.textSecondary
     font.family: Style.font.family
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Style.font.body
   }
 
   InlineMessage {
@@ -113,16 +115,16 @@ ColumnLayout {
     onDismissed: countryAct.error = ""
   }
 
-  // What it sends and to whom sits beside the switch.
-  Toggle {
-    Layout.fillWidth: true
+  // Where it connects stays beside the switch; how it works is behind (i).
+  SettingRow {
     label: "Connectivity check"
-    description: "When a network connects, and every few minutes, NetworkManager downloads a small file from "
-      + (root.checkHost || "Arch Linux's server") + ", which sees this network's public IP address. It is how sign-in pages are found; "
-      + "off, they aren't, and the panel can't tell a network without internet."
+    info: "Finds sign-in pages and networks without internet, by fetching a small file when a network connects and every few minutes."
+    note: root.checkEnabled
+      ? "Contacts " + (root.checkHost || "Arch Linux's server") + ", which sees your public IP address."
+      : "Sign-in pages and networks without internet aren't detected."
     checked: root.checkEnabled
     busy: checkAct.running
-    onClicked: checkAct.start(["busctl", "set-property", "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager",
+    onToggled: checkAct.start(["busctl", "set-property", "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager",
       "org.freedesktop.NetworkManager", "ConnectivityCheckEnabled", "b", checked ? "false" : "true"], function() { root.refresh() })
   }
   InlineMessage {

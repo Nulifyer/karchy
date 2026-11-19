@@ -60,7 +60,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Input"
-    explanation: "Only what you change here is saved; everything else follows karchy's defaults. ~/.config/hypr/input.lua wins over these."
+    explanation: "Settings in ~/.config/hypr/input.lua take priority over these."
   }
 
   InlineMessage {
@@ -107,13 +107,13 @@ ColumnLayout {
       value: String(root.values.repeatDelay)
       onChanged: function(value) { root.set("repeatDelay", value) }
     }
-  }
 
-  Toggle {
-    Layout.fillWidth: true
-    label: "Num Lock on at startup"
-    checked: root.values.numlock === true
-    onClicked: root.set("numlock", !checked)
+    SettingRow {
+      Layout.columnSpan: root.wide ? 2 : 1
+      label: "Num Lock at startup"
+      checked: root.values.numlock === true
+      onToggled: root.set("numlock", !checked)
+    }
   }
 
   SettingsHeader { text: "Mouse" }
@@ -130,22 +130,22 @@ ColumnLayout {
       value: String(Number(root.values.sensitivity || 0))
       onChanged: function(value) { root.set("sensitivity", value) }
     }
-  }
 
-  Toggle {
-    Layout.fillWidth: true
-    label: "Pointer acceleration"
-    description: "Faster movements travel further. Off moves the pointer exactly with the mouse."
-    checked: root.values.accelProfile !== "flat"
-    onClicked: root.set("accelProfile", checked ? "flat" : "adaptive")
-  }
+    SettingRow {
+      Layout.columnSpan: root.wide ? 2 : 1
+      label: "Pointer acceleration"
+      info: "Faster movements travel further. Off moves the pointer exactly with the mouse."
+      checked: root.values.accelProfile !== "flat"
+      onToggled: root.set("accelProfile", checked ? "flat" : "adaptive")
+    }
 
-  Toggle {
-    Layout.fillWidth: true
-    label: "Natural scrolling"
-    description: "Content follows the wheel, like a touchscreen."
-    checked: root.values.naturalScroll === true
-    onClicked: root.set("naturalScroll", !checked)
+    SettingRow {
+      Layout.columnSpan: root.wide ? 2 : 1
+      label: "Natural scrolling"
+      info: "Content follows the wheel, like a touchscreen."
+      checked: root.values.naturalScroll === true
+      onToggled: root.set("naturalScroll", !checked)
+    }
   }
 
   SettingsHeader { visible: root.touchpad; text: "Touchpad" }
@@ -155,30 +155,26 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: Style.spacing.md
 
-    Toggle {
-      Layout.fillWidth: true
+    SettingRow {
       label: "Tap to click"
       checked: root.values.tapToClick === true
-      onClicked: root.set("tapToClick", !checked)
+      onToggled: root.set("tapToClick", !checked)
     }
-    Toggle {
-      Layout.fillWidth: true
+    SettingRow {
       label: "Click with fingers"
-      description: "Two fingers right-click and three middle-click, anywhere on the pad."
+      info: "Two fingers right-click and three middle-click, anywhere on the pad."
       checked: root.values.clickfinger === true
-      onClicked: root.set("clickfinger", !checked)
+      onToggled: root.set("clickfinger", !checked)
     }
-    Toggle {
-      Layout.fillWidth: true
+    SettingRow {
       label: "Natural scrolling"
       checked: root.values.touchpadNaturalScroll === true
-      onClicked: root.set("touchpadNaturalScroll", !checked)
+      onToggled: root.set("touchpadNaturalScroll", !checked)
     }
-    Toggle {
-      Layout.fillWidth: true
-      label: "Ignore the touchpad while typing"
+    SettingRow {
+      label: "Off while typing"
       checked: root.values.disableWhileTyping === true
-      onClicked: root.set("disableWhileTyping", !checked)
+      onToggled: root.set("disableWhileTyping", !checked)
     }
   }
 

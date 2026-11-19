@@ -332,7 +332,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Storage"
-    explanation: "Sizes are in decimal units, as disks are sold: 1 GB is a thousand MB. \"Your files\" adds up what every file on a btrfs filesystem holds; \"Stored on disk\" is the room that takes after files that share data are counted once and compression has done its part. Both count everything that is not a snapshot, the system and the swap file included. Only root can count that, so it is measured every night (not on battery) and when you ask."
+    explanation: "\"Your files\" adds up what every file holds; \"Stored on disk\" is the room that takes once shared data is counted once and compression has done its part. Both leave out snapshots. Measured every night (not on battery) and when you ask. 1 GB is a thousand MB, as disks are sold."
   }
 
   InlineMessage {
@@ -355,7 +355,7 @@ ColumnLayout {
 
   Note {
     visible: root.sharesLoaded && root.shares.length === 0
-    text: "No network shares are kept mounted. A kept share appears at /mnt and connects when it is opened."
+    text: "No shares kept mounted."
   }
 
   Repeater {
@@ -435,18 +435,26 @@ ColumnLayout {
     }
   }
 
-  Button {
-    focusable: true
-    bordered: true
-    text: "Keep a share mounted…"
-    onClicked: root.inTerminal(["karchy-mount-keep"])
+  RowLayout {
+    spacing: Style.spacing.md
+
+    Button {
+      focusable: true
+      bordered: true
+      text: "Keep a share mounted…"
+      onClicked: root.inTerminal(["karchy-mount-keep"])
+    }
+    InfoTip {
+      subject: "kept shares"
+      text: "A kept share appears under /mnt and connects when it is opened."
+    }
   }
 
   SettingsHeader { text: "USB drives" }
 
   Note {
     visible: root.loaded && root.removableNames.length === 0
-    text: "No USB drives plugged in. They appear here, and in Files, when you plug one in."
+    text: "No USB drives plugged in."
   }
 
   Repeater {

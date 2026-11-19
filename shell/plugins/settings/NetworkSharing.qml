@@ -19,7 +19,7 @@ ColumnLayout {
   property bool loaded: false
 
   function refresh() { if (!query.running) query.running = true }
-  function focusFirst() { tip.forceActiveFocus() }
+  function focusFirst() { header.focusInfo() }
 
   function load(text) {
     try { root.fw = JSON.parse(text); root.loaded = true } catch (e) {}
@@ -49,15 +49,10 @@ ColumnLayout {
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.load(text) }
   }
 
-  RowLayout {
-    Layout.fillWidth: true
-    SettingsHeader { text: "Sharing and firewall" }
-    InfoTip {
-      id: tip
-      Layout.alignment: Qt.AlignBottom
-      subject: "Sharing and firewall"
-      text: "karchy's firewall turns away connections from other devices. It opens only LocalSend's port, and only on trusted networks. Rules you add with ufw yourself aren't listed here."
-    }
+  SettingsHeader {
+    id: header
+    text: "Sharing and firewall"
+    info: "The firewall turns away connections from other devices. It opens only LocalSend's port, and only on trusted networks. Rules you add with ufw yourself aren't listed here."
   }
 
   KeyValueGrid {

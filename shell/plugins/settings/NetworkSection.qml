@@ -167,7 +167,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Network"
-    explanation: "On a trusted network, such as home, LocalSend can receive files from nearby devices and the network's own DNS is used, so names like nas.lan work. On every other network LocalSend's port stays closed and DNS goes to karchy's DNS servers, encrypted. Trust follows the network's router: the same network name or cable somewhere else isn't trusted."
+    explanation: "On a trusted network, such as home, LocalSend can receive files and the network's own DNS is used, so names like nas.lan work. Everywhere else LocalSend's port stays closed and DNS goes to the servers chosen here. Trust follows the network's router, not its name. While a VPN is connected, its DNS is used."
   }
 
   NetworkStatus { id: statusPart; page: root }

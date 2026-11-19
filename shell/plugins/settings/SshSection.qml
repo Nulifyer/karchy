@@ -119,7 +119,7 @@ ColumnLayout {
 
   PageHeader {
     title: "SSH"
-    explanation: "The server lets other computers sign in here with a key. Your keys sign you in to servers and GitHub. The agent remembers their passphrases, so ssh and git don't ask every time."
+    explanation: "The server lets other computers sign in here with a key. Your keys sign you in to servers and GitHub; the agent remembers their passphrases."
   }
 
   InlineMessage {
@@ -132,20 +132,20 @@ ColumnLayout {
 
   SettingsHeader { text: "Server" }
 
-  Toggle {
-    Layout.fillWidth: true
+  SettingRow {
     label: "SSH server"
     checked: root.server.enabled === true
     warning: root.server.enabled === true && root.server.running !== true
-    description: {
+    // What switching it on does, why it isn't working, or how to reach it.
+    note: {
       if (root.server.enabled !== true)
-        return "Opens a terminal to authorize a key, if none can sign in yet, and turn the server on. Passwords stay off."
+        return "Turning it on opens a terminal to authorize a key. Passwords stay off."
       if (root.server.running !== true)
         return "Turned on but not running. Turn it off and on again, or check: systemctl status sshd"
-      return "Connect from another computer with: " + root.server.connect
-        + (root.server.keysOnly === true ? "\nOnly the keys below can sign in; passwords are off." : "\nPasswords can sign in too.")
+      return "Connect with: " + root.server.connect
+        + (root.server.keysOnly === true ? "" : "\nPasswords can sign in too.")
     }
-    onClicked: root.inTerminal(checked ? "karchy-remove-security-sshd" : "karchy-setup-security-sshd")
+    onToggled: root.inTerminal(checked ? "karchy-remove-security-sshd" : "karchy-setup-security-sshd")
   }
 
   SettingsHeader {
@@ -226,7 +226,7 @@ ColumnLayout {
     Layout.fillWidth: true
     wrapMode: Text.WordWrap
     textFormat: Text.PlainText
-    text: "You have no SSH key yet. Create one to sign in to servers and GitHub with it."
+    text: "No SSH key yet."
     color: Commons.Color.secondaryText(Commons.Color.foreground, Commons.Color.background)
     font.family: Style.font.family
     font.pixelSize: Style.font.body
@@ -262,21 +262,21 @@ ColumnLayout {
 
   SettingsHeader { text: "Agent" }
 
-  Toggle {
-    Layout.fillWidth: true
+  SettingRow {
     label: "SSH agent"
     checked: root.agent.enabled === true
     busy: changeProc.running && root.errorTitle === "Couldn't change the SSH agent."
     // The agent reaches apps through the session's environment, which is set
     // at sign-in.
     warning: root.agent.enabled !== root.agent.inSession
-    description: {
+    info: "Asks for a key's passphrase once, with the option to remember it in the keyring."
+    note: {
       if (root.agent.enabled === true && root.agent.inSession !== true)
         return "Sign out and back in so every app uses it."
       if (root.agent.enabled !== true && root.agent.inSession === true)
         return "Sign out and back in so apps stop looking for it."
-      return "Asks for a key's passphrase once, with the option to remember it in the keyring."
+      return ""
     }
-    onClicked: root.change(["agent", checked ? "off" : "on"], "Couldn't change the SSH agent.")
+    onToggled: root.change(["agent", checked ? "off" : "on"], "Couldn't change the SSH agent.")
   }
 }

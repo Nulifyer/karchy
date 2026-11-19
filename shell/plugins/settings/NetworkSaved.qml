@@ -49,7 +49,7 @@ ColumnLayout {
     Layout.fillWidth: true
     iconName: "net.network"
     title: "No saved networks yet"
-    body: "Networks you connect to appear here, so you can trust the ones at home and change how each connects."
+    body: "Networks you connect to appear here."
   }
 
   Repeater {
@@ -88,7 +88,7 @@ ColumnLayout {
     id: joinCard
     visible: root.joining
     title: "Join a hidden network"
-    subtitle: "Networks that don't show up in the list need their exact name."
+    subtitle: "Type its name exactly."
 
     property string security: "wpa"
 

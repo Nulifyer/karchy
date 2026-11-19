@@ -61,7 +61,7 @@ ColumnLayout {
   function toggleTrust() {
     connectFirst = ""
     if (!trusted && !profile.active) {
-      connectFirst = "Connect to " + profile.name + " to trust it. karchy records the network's router, so a look-alike network elsewhere isn't trusted."
+      connectFirst = "Connect to " + profile.name + " first: trust is tied to its router."
       return
     }
     trustAct.start(["karchy-trusted-networks", "set", profile.uuid, trusted ? "false" : "true"], function() {
@@ -210,17 +210,18 @@ ColumnLayout {
 
     // Trusting opens LocalSend's port and keeps the network's own DNS, so it
     // asks for a password; it records this network's router.
-    Toggle {
-      Layout.fillWidth: true
+    SettingRow {
       label: "Trusted network"
-      description: root.trustReason === "different router" ? "Trusted, but a different router: not trusted now. Turn on to trust this router too."
-        : root.trustReason === "router unknown" ? "Trusted, but the router couldn't be checked: not trusted now."
-        : root.trustReason === "needs re-trust" ? "Trusted before routers were recorded: turn off and on again while connected."
-        : "LocalSend can receive files here, local names like nas.lan work, and the VPN stands by. Asks for your password."
+      info: "LocalSend can receive files here, local names like nas.lan work, and the VPN stands by."
+      // Why a trusted network isn't treated as one right now.
+      note: root.trustReason === "different router" ? "Not trusted now: this is a different router. Turn on to trust it too."
+        : root.trustReason === "router unknown" ? "Not trusted now: the router couldn't be checked."
+        : root.trustReason === "needs re-trust" ? "Not trusted now: turn off and on again while connected."
+        : ""
       warning: root.trustWarning
       checked: root.trusted
       busy: trustAct.running
-      onClicked: root.toggleTrust()
+      onToggled: root.toggleTrust()
     }
     InlineMessage {
       kind: "info"
@@ -236,22 +237,19 @@ ColumnLayout {
       onDismissed: trustAct.error = ""
     }
 
-    Toggle {
-      Layout.fillWidth: true
+    SettingRow {
       label: "Connect automatically"
-      description: root.wifi ? "Joins this network whenever it's in range." : "Connects whenever the cable is plugged in."
       checked: !!root.profile.autoconnect
       busy: act.running && act.tag === "autoconnect"
-      onClicked: { act.tag = "autoconnect"; root.set(["autoconnect", checked ? "no" : "yes"]) }
+      onToggled: { act.tag = "autoconnect"; root.set(["autoconnect", checked ? "no" : "yes"]) }
     }
 
-    Toggle {
-      Layout.fillWidth: true
+    SettingRow {
       label: "Metered"
-      description: "For a phone's hotspot or a data plan: updates and apps are asked to hold back here."
+      info: "For a phone's hotspot or a data plan: updates and apps are asked to hold back here."
       checked: !!root.profile.metered
       busy: act.running && act.tag === "metered"
-      onClicked: { act.tag = "metered"; root.set(["metered", checked ? "no" : "yes"]) }
+      onToggled: { act.tag = "metered"; root.set(["metered", checked ? "no" : "yes"]) }
     }
 
     GridLayout {
@@ -277,8 +275,8 @@ ColumnLayout {
         showLabel: false
         value: root.profile.private_address || "off"
         options: [
-          { value: "off", label: "Off: the computer's own address" },
-          { value: "stable", label: "Per network: a made-up address that stays the same here" }
+          { value: "off", label: "Off: the hardware address" },
+          { value: "stable", label: "On: a random address kept for this network" }
         ].concat(root.profile.private_address && ["off", "stable"].indexOf(root.profile.private_address) < 0
           ? [{ value: root.profile.private_address, label: "Set elsewhere: " + root.profile.private_address }] : [])
         onChanged: function(value) {

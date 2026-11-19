@@ -223,11 +223,11 @@ ColumnLayout {
       wrapMode: Text.Wrap
       text: {
         if (!root.page) return ""
-        if (root.measuring) return "Measuring… It reads how files are stored, not what is in them."
+        if (root.measuring) return "Measuring…"
         if (root.figures) return "Measured " + Model.when(root.page.measurement.time, root.page.nowMs)
         if (root.volume.measured && root.volume.measured.error)
           return "The measurement " + Model.when(root.page.measurement.time, root.page.nowMs) + " failed here: this filesystem " + root.volume.measured.error + "."
-        return "Not measured yet. A measurement shows what sharing and compression save."
+        return "Not measured yet."
       }
     }
     Button {
@@ -260,7 +260,7 @@ ColumnLayout {
         }
         InfoTip {
           subject: "Background deduplication"
-          text: "bees looks for the same data in different files and stores it once. It works on the system disk, only while the computer has nothing else to do. Its own count starts again whenever it restarts; \"Saved by sharing\" is the measured total."
+          text: "Finds the same data in different files and stores it once (bees), while the computer is idle. Its own count restarts with it; \"Saved by sharing\" is the measured total."
         }
       }
       Quiet {

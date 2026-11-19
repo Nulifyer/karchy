@@ -130,10 +130,10 @@ ColumnLayout {
     Layout.fillWidth: true
     wrapMode: Text.Wrap
     textFormat: Text.PlainText
-    text: "On networks you haven't marked trusted. Trusted networks use their own DNS unless you choose otherwise. Changes ask for your password."
+    text: "Used on networks you haven't trusted."
     color: Commons.Color.textSecondary
     font.family: Style.font.family
-    font.pixelSize: Style.font.bodySmall
+    font.pixelSize: Style.font.body
   }
 
   InlineMessage {
@@ -217,55 +217,56 @@ ColumnLayout {
     }
   }
 
-  Toggle {
-    visible: root.provider !== "network"
-    enabled: root.canEncrypt
-    Layout.fillWidth: true
-    label: "Encrypted DNS"
-    description: root.canEncrypt
-      ? "DNS over TLS: the network can't see or change which sites you look up."
-      : "Needs the servers' certificate name."
-    checked: root.dns.encrypted && root.canEncrypt
-    busy: act.running
-    onClicked: root.apply({ encrypted: checked ? "no" : "yes" })
-  }
-
-  Toggle {
+  ColumnLayout {
     visible: root.provider !== "network"
     Layout.fillWidth: true
-    label: "Use on trusted networks too"
-    description: "Off: trusted networks keep their own DNS, so names like nas.lan work there."
-    checked: root.dns.trusted_too
-    busy: act.running
-    onClicked: root.apply({ trusted: checked ? "no" : "yes" })
-  }
+    spacing: Style.spacing.md
 
-  // The consequence sits beside the switch, never behind (i).
-  Toggle {
-    visible: root.provider !== "network" && root.dns.encrypted && root.canEncrypt
-    Layout.fillWidth: true
-    label: "Encrypted only"
-    description: "On networks that block encrypted DNS, and on sign-in pages, websites won't load."
-    warning: !root.dns.fallback_allowed
-    checked: !root.dns.fallback_allowed
-    busy: act.running
-    onClicked: root.apply({ fallback: checked ? "yes" : "no" })
-  }
+    SettingRow {
+      enabled: root.canEncrypt
+      label: "Encrypted DNS"
+      info: "DNS over TLS: the network can't see or change which sites you look up."
+      // Why it can't be switched on.
+      note: root.canEncrypt ? "" : "Needs the servers' certificate name."
+      checked: root.dns.encrypted && root.canEncrypt
+      busy: act.running
+      onToggled: root.apply({ encrypted: checked ? "no" : "yes" })
+    }
 
-  Text {
-    Layout.fillWidth: true
-    wrapMode: Text.Wrap
-    textFormat: Text.PlainText
-    text: "While the VPN is connected, it uses the VPN's DNS."
-    color: Commons.Color.textSecondary
-    font.family: Style.font.family
-    font.pixelSize: Style.font.bodySmall
+    // What each choice costs sits beside its switch, never behind (i).
+    SettingRow {
+      visible: root.dns.encrypted && root.canEncrypt
+      label: "Encrypted only"
+      note: "Websites won't load on networks that block encrypted DNS, or on sign-in pages."
+      warning: !root.dns.fallback_allowed
+      checked: !root.dns.fallback_allowed
+      busy: act.running
+      onToggled: root.apply({ fallback: checked ? "yes" : "no" })
+    }
+
+    SettingRow {
+      label: "On trusted networks too"
+      info: "Off, a trusted network keeps its own DNS."
+      note: root.dns.trusted_too ? "Local names such as nas.lan may stop working on trusted networks." : ""
+      checked: root.dns.trusted_too
+      busy: act.running
+      onToggled: root.apply({ trusted: checked ? "no" : "yes" })
+    }
   }
 
   // Each connection's DNS right now.
-  Card {
+  ColumnLayout {
     visible: root.linkRows.length > 0
-    title: "In use now"
+    Layout.fillWidth: true
+    spacing: Style.spacing.sm
+
+    Text {
+      textFormat: Text.PlainText
+      text: "In use now"
+      color: Commons.Color.foreground
+      font.family: Style.font.family
+      font.pixelSize: Style.font.body
+    }
     KeyValueGrid {
       Layout.fillWidth: true
       rows: root.linkRows

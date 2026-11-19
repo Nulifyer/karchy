@@ -65,7 +65,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Appearance"
-    explanation: "The monospace font is used by the terminal, the shell and code. Text size scales the shell and GTK apps together; monitor scale is under Displays. In VS Code, pick the color theme \"Karchy\" once; it follows every theme from then on."
+    explanation: "Text size scales the shell and GTK apps; monitor scale is under Displays. In VS Code, pick the color theme \"Karchy\" once and it follows every theme."
   }
 
   GridLayout {
