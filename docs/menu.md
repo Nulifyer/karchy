@@ -4,8 +4,7 @@ The Omarchy menu engine with a karchy tree (D-18). Super+Space opens it, and typ
 
 Layout revised 2026-11-15 from a menu audit (D-73): every row says what it does, so a search result reads on its own ("Restart Wi-Fi", not "Wi-Fi"); one card width at every level; the header shows where you are ("Update › Restart"), or "Search…" at the top; the current choice (font, layout) has a check mark on the right and the cursor starts on it.
 
-- **Apps:** search installed desktop apps [O]. App results carry no "Apps" subtitle.
-- **Virtual Machines**, **Containers** [New]: each shows once its feature is installed and opens its window (D-63, D-114); the bar icons show only while something runs.
+- **Apps:** search installed desktop apps [O]. App results carry no "Apps" subtitle. The Virtual Machines and Containers windows are apps here while their feature is installed (D-116), not menu rows.
 - **Packages**
   - Quick Install: the Quick install window, common apps and karchy's optional features by category, searched like fzf (D-70) [New]
   - Install Package: fzf over repo packages, `pacman -Sii` preview, multi-select [O]

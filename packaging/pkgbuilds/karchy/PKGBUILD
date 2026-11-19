@@ -50,6 +50,9 @@ package() {
   # Where add-on packages (addons/) put their shell UI and Hyprland drop-ins.
   install -d "$share/plugins" "$share/hypr.d"
   cp -a default "$share/"
+  # The Virtual machines window as an app; its TryExec hides it until QEMU is
+  # installed (karchy-feature-vms).
+  install -Dm644 -t "$pkgdir/usr/share/applications" default/applications/karchy-vms.desktop
   # Agent skills for AI coding agents, linked for each user by
   # karchy-agent-skills. Feature packages add theirs to the same folder.
   install -d "$share/agents/skills"

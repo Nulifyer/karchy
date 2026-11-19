@@ -14,11 +14,6 @@
   "settings": {"iconName":"settings","label":"Settings","aliases":["preferences","control panel"],"action":"karchy-settings"},
   "setup": {"iconName":"menu.setup","label":"Setup"},
   "update": {"iconName":"update","label":"Update","aliases":["upgrade","restart","refresh"]},
-  // The VMs and Containers windows, once the feature is installed (D-63):
-  // their bar icons show only while something runs, so this is the way in
-  // with nothing running.
-  "vms": {"iconName":"vms","label":"Virtual Machines","aliases":["vm","qemu","kvm","windows vm"],"when":"command -v qemu-system-x86_64 >/dev/null && command -v spicy >/dev/null","action":"karchy-vm manage"},
-  "containers": {"iconName":"containers","label":"Containers","aliases":["docker","podman","compose"],"when":"karchy-containers engine >/dev/null 2>&1","action":"karchy-containers open"},
   "about": {"iconName":"info","label":"System Info","aliases":["about","fastfetch"],"action":"karchy-launch-about"},
   "system": {"iconName":"system.power","label":"Power","aliases":["power-menu","system"]},
 

@@ -1037,6 +1037,7 @@ Item {
     // The shell may start before first-install packages have finished placing
     // their icons. Refresh here even when the desktop entry list did not change.
     if (root.appLibrary) root.appLibrary.refreshIcons()
+    if (root.appLibrary) root.appLibrary.refreshHidden()
 
     Qt.callLater(function() { filterInput.forceActiveFocus() })
   }

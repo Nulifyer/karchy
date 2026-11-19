@@ -21,8 +21,8 @@ license=('MIT')
 depends=('podman' 'crun' 'netavark' 'aardvark-dns' 'passt' 'podman-docker' 'docker-compose')
 optdepends=('nvidia-container-toolkit: GPU containers with the NVIDIA driver')
 backup=('etc/containers/nodocker')
-source=('containers.conf' 'environment.conf' 'karchy-src.tar.gz')
-sha256sums=('SKIP' 'SKIP' 'SKIP')
+source=('containers.conf' 'environment.conf' 'karchy-containers.desktop' 'karchy-src.tar.gz')
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
 
 package() {
   install -Dm644 containers.conf "$pkgdir/usr/share/containers/containers.conf.d/50-karchy.conf"
@@ -30,6 +30,8 @@ package() {
   install -d "$pkgdir/usr/lib/systemd/user/sockets.target.wants"
   ln -s ../podman.socket "$pkgdir/usr/lib/systemd/user/sockets.target.wants/podman.socket"
   install -Dm644 /dev/null "$pkgdir/etc/containers/nodocker"
+  # The Containers window in the app launcher while this package is installed.
+  install -Dm644 karchy-containers.desktop "$pkgdir/usr/share/applications/karchy-containers.desktop"
   # Its agent skill, linked for each user by karchy-agent-skills.
   install -d "$pkgdir/usr/share/karchy/agents/skills"
   cp -a "$srcdir/karchy/skills/karchy-containers" "$pkgdir/usr/share/karchy/agents/skills/"

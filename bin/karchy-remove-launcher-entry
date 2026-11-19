@@ -87,6 +87,15 @@ if is_user_desktop_file; then
   exit 0
 fi
 
+# One of karchy's own windows (Virtual Machines, Containers): the entry
+# belongs to a feature, so removing it removes the feature through its own
+# script, not the package that happens to own the file.
+feature="$(sed -n 's/^X-Karchy-Feature=//p' "$desktop_file" | head -1)"
+if [[ $feature =~ ^karchy-feature-[a-z0-9-]+$ ]] && command -v "$feature" >/dev/null; then
+  uninstall_in_terminal "$feature remove"
+  exit 0
+fi
+
 if package_name="$(pacman -Qqo "$desktop_file" 2>/dev/null | head -1)" && [[ -n $package_name ]]; then
   display_name="${entry_name:-$desktop_name}"
   quoted_package="$(printf '%q' "$package_name")"

@@ -79,6 +79,12 @@ Item {
     if (!iconIndexScan.running) iconIndexScan.running = true
   }
 
+  // An entry with TryExec shows or hides when its program is installed or
+  // removed, which changes no desktop file; consumers call this when they open.
+  function refreshHidden() {
+    if (!hiddenEntryScan.running) hiddenEntryScan.running = true
+  }
+
   function launch(desktopId, name) {
     var id = String(desktopId || "")
     if (!id) return
@@ -150,6 +156,9 @@ Item {
       var id = root.normalizeDesktopId(lines[i])
       if (id.length > 0) next[id] = true
     }
+    // The scan also runs each time the menu opens; an unchanged answer must
+    // not rebuild the list under the cursor.
+    if (Object.keys(next).sort().join("\n") === Object.keys(root.desktopHiddenEntryIds).sort().join("\n")) return
     root.desktopHiddenEntryIds = next
     root.appsChanged()
   }

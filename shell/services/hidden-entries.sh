@@ -30,6 +30,7 @@ is_hidden_desktop_file() {
   local hidden=false
   local only_show_in=
   local not_show_in=
+  local try_exec=
   local line key value
 
   while IFS= read -r line || [[ -n $line ]]; do
@@ -56,12 +57,18 @@ is_hidden_desktop_file() {
       NotShowIn)
         not_show_in=$value
         ;;
+      TryExec)
+        try_exec=$value
+        ;;
     esac
   done < "$file"
 
   [[ $hidden == "true" ]] && return 0
   [[ -n $only_show_in ]] && ! desktop_matches "$only_show_in" && return 0
   [[ -n $not_show_in ]] && desktop_matches "$not_show_in" && return 0
+  # The entry is for a program that isn't installed (the spec's TryExec):
+  # karchy's Virtual Machines entry appears once QEMU is there.
+  [[ -n $try_exec ]] && ! command -v "$try_exec" >/dev/null 2>&1 && return 0
 
   return 1
 }
