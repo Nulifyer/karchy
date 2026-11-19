@@ -69,5 +69,13 @@ chmod 700 "$table"
 
 export BEESHOME=$home BEESSTATUS=$RUNTIME_DIRECTORY/status
 cd "$mnt"
+# bees logs quietly here (--verbose 5 shows warnings and errors only), so it
+# never says how it runs. Say it once in the journal: the options, and the
+# scan mode they select. If the filesystem's checksums can't be used, bees
+# itself warns right after this line.
+case " $OPTIONS " in
+  *" --scan-csums "*) echo "bees options: $OPTIONS (looking data up by btrfs checksums)" ;;
+  *) echo "bees options: $OPTIONS (reading every new block)" ;;
+esac
 # shellcheck disable=SC2086  # OPTIONS is a list of options
 exec /usr/lib/bees/bees --no-timestamps $OPTIONS "$mnt"
