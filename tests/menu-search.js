@@ -39,7 +39,7 @@ assert.deepStrictEqual(order.filter(id => items[id].searchOnly).map(id => items[
 // Rows under a row that runs an action never list: Settings' pages, in the window's order.
 assert.strictEqual(items.settings.kind, "action")
 assert.strictEqual(items.update.kind, "action")
-assert.deepStrictEqual(listed("settings"), ["Network", "Displays", "Input", "Appearance", "Fonts", "Notifications", "Default Apps", "Power", "Storage", "Date & Time", "Security", "SSH & Git", "About"])
+assert.deepStrictEqual(listed("settings"), ["Network", "Bluetooth", "Displays", "Sound", "Input", "Appearance", "Fonts", "Notifications", "Default Apps", "Power", "Storage", "Date & Time", "Security", "SSH & Git", "About"])
 const sections = fs.readFileSync(root + "/bin/karchy-settings", "utf8").match(/^sections=\(([^)]*)\)/m)[1].split(" ")
 assert.deepStrictEqual(order.filter(id => items[id].parent === "settings").map(id => id.split(".")[1]), sections.filter(id => id !== "keybindings"), "the search rows follow karchy-settings' order")
 for (const id of order) assert.ok(!/^(appearance|setup|about|restart)(\.|$)|^packages\.aur$|^update\.(restart|password|time|timezone|system)/.test(id), id + " should be gone")
@@ -54,6 +54,9 @@ const finds = {
   "Settings › Power": ["battery", "sleep", "lid", "idle"],
   "Settings › About": ["about", "version", "system info", "fastfetch", "hyprland config"],
   "Settings › Displays": ["displays", "monitors", "resolution", "scale", "settings displays"],
+  // "sound" and "bluetooth" are the pages, with the Reload rows after them.
+  "Settings › Sound": ["sound", "volume", "speaker", "microphone", "headphones", "output", "input device", "settings sound"],
+  "Settings › Bluetooth": ["bluetooth", "pair", "headset", "bt"],
   "Settings › Network": ["network", "wifi", "vpn", "dns"],
   "Settings › Input": ["mouse", "touchpad", "input config", "input"],
   "Settings › Notifications": ["notifications", "do not disturb"],
@@ -94,10 +97,14 @@ assert.deepStrictEqual(top("update", 3), ["Update", "Settings › About", "Updat
 // An action keeps its own name, and the page that sets it up comes right after.
 for (const query of ["power", "suspend", "hibernate"])
   assert.ok(top(query, 2).indexOf("Settings › Power") >= 0, query + " offers Settings › Power")
+// "sound" and "bluetooth" offer the page, then the restart of that part; "audio" is Reload › Audio's own name.
+assert.deepStrictEqual(top("sound", 2), ["Settings › Sound", "Reload › Audio"])
+assert.deepStrictEqual(top("bluetooth", 2), ["Settings › Bluetooth", "Reload › Bluetooth"])
+assert.deepStrictEqual(top("audio", 2), ["Reload › Audio", "Settings › Sound"])
 // "restart" is the computer's first, then the parts of the desktop.
 assert.ok(top("restart", 8).indexOf("Reload › Shell") > 0 && search("restart").some(r => r.reads === "Reload"))
 // "settings" lists the window, then every page.
-assert.strictEqual(search("settings").length, 14)
+assert.strictEqual(search("settings").length, 16)
 // D-77's rule holds: a name match comes before a row matched only by an alias.
 assert.deepStrictEqual(top("install package", 1), ["Packages › Install Package"])
 
@@ -139,7 +146,7 @@ assert.deepStrictEqual(searchAll("sc"), ["Recording", "Settings › Displays", "
 assert.deepStrictEqual(searchAll("up").slice(0, 3), ["Update", "Update › Firmware", "Settings › About"])
 assert.deepStrictEqual(searchAll("the"), ["Theme"])
 // One letter finds names only: no Disks for "backup", no Settings › Power for "battery".
-assert.deepStrictEqual(searchAll("b"), ["Apps › btop++", "Background", "Reload › Bluetooth"])
+assert.deepStrictEqual(searchAll("b"), ["Apps › btop++", "Background", "Settings › Bluetooth", "Reload › Bluetooth"])
 assert.ok(found("ba", "Settings › Power") && found("ba", "Apps › Disks") && searchAll("ba")[0] === "Background")
 // An exact alias, then names, then other aliases; a word start before the inside of a word.
 assert.deepStrictEqual(searchAll("disk").slice(0, 3), ["Settings › Storage", "Apps › Disks", "Apps › disktree"])

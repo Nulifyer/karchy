@@ -1,0 +1,222 @@
+#!/usr/bin/env python3
+# karchy:summary=Read and set sound device profiles and ports, and play a test sound (Settings › Sound)
+# karchy:args=status | profile <card> <profile> | port <output|input> <port> | test
+# karchy:hidden=true
+"""What Settings › Sound shows beyond the devices and their levels.
+
+The devices, volumes and mutes are PipeWire's, which the shell reads live
+(shell/Commons/AudioControl.qml), and `karchy audio …` changes them from a
+terminal. This command adds what PipeWire's own interface leaves to its
+PulseAudio side: a sound card's profile (a headset's high-quality playback or
+its call mode with the microphone, analog or HDMI) and a device's port
+(speakers or headphones, the internal or the headset microphone).
+
+  status                JSON for the output and the input in use: its card,
+                        the card's profiles and the device's ports, with the
+                        ones in effect. A part with one choice or none is an
+                        empty list. profileDropsOther says the profile in use
+                        is why the card's other direction is missing.
+  profile <card> <profile>
+                        Switch a card (its name from status) to a profile.
+  port <output|input> <port>
+                        Switch the output or input in use to a port.
+  test                  Say "front left" and "front right" from each speaker
+                        of the output in use.
+
+Nothing is saved here: WirePlumber remembers a card's profile and a device's
+port by itself.
+"""
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+
+
+def fail(message, code=1):
+    print(f"karchy-settings-sound: {message}", file=sys.stderr)
+    sys.exit(code)
+
+
+def usage():
+    print("Usage: karchy-settings-sound status | profile <card> <profile> | port <output|input> <port> | test",
+          file=sys.stderr)
+    sys.exit(2)
+
+
+def pactl(*args, check=True):
+    try:
+        done = subprocess.run(["pactl", *args], capture_output=True, text=True, timeout=10,
+                              env={**os.environ, "LC_ALL": "C"})
+    except FileNotFoundError:
+        fail("pactl is missing (the libpulse package).")
+    except subprocess.TimeoutExpired:
+        fail("the sound server did not answer.")
+    if check and done.returncode != 0:
+        fail(done.stderr.strip() or "the sound server refused that.")
+    return done
+
+
+def listing(kind):
+    """pactl's JSON list of cards, sinks or sources; [] when the server is down."""
+    done = pactl("-f", "json", "list", kind, check=False)
+    if done.returncode != 0:
+        return []
+    try:
+        data = json.loads(done.stdout or "[]")
+    except ValueError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def default_name(kind):
+    done = pactl(f"get-default-{kind}", check=False)
+    return done.stdout.strip() if done.returncode == 0 else ""
+
+
+def availability(text):
+    """pactl says "available", "not available" or "availability unknown"."""
+    return "no" if str(text or "").strip() == "not available" else "yes"
+
+
+def ports_of(device):
+    """A device's ports, when there is a choice to make."""
+    ports = [{"name": p.get("name", ""), "label": p.get("description") or p.get("name", ""),
+              "available": availability(p.get("availability")) == "yes"}
+             for p in device.get("ports") or [] if p.get("name")]
+    return ports if len(ports) > 1 else []
+
+
+def card_of(device, cards):
+    """The card a sink or source belongs to: PipeWire's device id is the card's index."""
+    device_id = str((device.get("properties") or {}).get("device.id", ""))
+    for card in cards:
+        if device_id != "" and str(card.get("index")) == device_id:
+            return card
+    return None
+
+
+def profiles_of(card, direction):
+    """The card's profiles a person can switch between for this direction.
+
+    Off is left out: it takes the device away, and with it the row that would
+    bring it back. A profile that is not available (nothing plugged into that
+    connector) stays out too, unless it is the one in use.
+    """
+    active = card.get("active_profile", "")
+    count = "sinks" if direction == "output" else "sources"
+    out = []
+    for name, profile in (card.get("profiles") or {}).items():
+        if name == "off":
+            continue
+        if not profile.get("available", True) and name != active:
+            continue
+        # A profile without this direction would take this device away too.
+        if not profile.get(count, 0) and name != active:
+            continue
+        out.append({"name": name, "label": profile.get("description") or name})
+    return out if len(out) > 1 else []
+
+
+def part(direction, device, cards):
+    if device is None:
+        return None
+    card = card_of(device, cards)
+    out = {
+        "device": device.get("name", ""),
+        "port": device.get("active_port") or "",
+        "ports": ports_of(device),
+        "card": "",
+        "cardLabel": "",
+        "profile": "",
+        "profiles": [],
+        "profileDropsOther": False,
+        "profileLabel": "",
+    }
+    if card is not None:
+        props = card.get("properties") or {}
+        out["card"] = card.get("name", "")
+        out["cardLabel"] = props.get("device.description") or props.get("device.nick") or card.get("name", "")
+        out["profile"] = card.get("active_profile", "")
+        out["profiles"] = profiles_of(card, direction)
+        # The profile in use leaves the other direction out while another
+        # profile of the card has it: why an input or an output is missing.
+        other = "sources" if direction == "output" else "sinks"
+        profiles = card.get("profiles") or {}
+        active = profiles.get(out["profile"]) or {}
+        out["profileDropsOther"] = (not active.get(other, 0)
+                                    and any(p.get(other, 0) and p.get("available", True) for p in profiles.values()))
+        out["profileLabel"] = active.get("description") or out["profile"]
+    return out
+
+
+def named(devices, name):
+    for device in devices:
+        if device.get("name") == name:
+            return device
+    return None
+
+
+def status():
+    cards = listing("cards")
+    output = part("output", named(listing("sinks"), default_name("sink")), cards)
+    # A monitor of an output is a source too, and nobody's microphone.
+    sources = [s for s in listing("sources") if not s.get("monitor_source")]
+    source = part("input", named(sources, default_name("source")), cards)
+    json.dump({"output": output, "input": source, "canTest": shutil.which("speaker-test") is not None},
+              sys.stdout)
+    print()
+
+
+def set_profile(card_name, profile):
+    for card in listing("cards"):
+        if card.get("name") == card_name:
+            if profile not in (card.get("profiles") or {}):
+                fail(f"{card_name} has no profile named {profile}.")
+            pactl("set-card-profile", card_name, profile)
+            return
+    fail(f"there is no sound card named {card_name}.")
+
+
+def set_port(direction, port):
+    kind = {"output": "sink", "input": "source"}.get(direction)
+    if kind is None:
+        usage()
+    name = default_name(kind)
+    device = named(listing(kind + "s"), name)
+    if device is None:
+        fail(f"there is no {direction} in use.")
+    if port not in [p.get("name") for p in device.get("ports") or []]:
+        fail(f"the {direction} in use has no port named {port}.")
+    pactl(f"set-{kind}-port", name, port)
+
+
+def test():
+    if shutil.which("speaker-test") is None:
+        fail("speaker-test is missing (the alsa-utils package).")
+    # One pass over two channels: a voice says which speaker it comes from.
+    done = subprocess.run(["speaker-test", "-c", "2", "-t", "wav", "-l", "1"],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if done.returncode != 0:
+        fail((done.stderr.strip().splitlines() or ["the test sound could not be played."])[-1])
+
+
+def main(argv):
+    if not argv:
+        usage()
+    command, args = argv[0], argv[1:]
+    if command == "status" and not args:
+        status()
+    elif command == "profile" and len(args) == 2:
+        set_profile(*args)
+    elif command == "port" and len(args) == 2:
+        set_port(*args)
+    elif command == "test" and not args:
+        test()
+    else:
+        usage()
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

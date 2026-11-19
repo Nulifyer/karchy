@@ -42,7 +42,10 @@ Item {
   // docs.
   readonly property var allSections: [
     { id: "network", label: "Network", iconName: "net.network", group: 1 },
+    // Only with a Bluetooth adapter, as the bar's panel and Reload › Bluetooth.
+    { id: "bluetooth", label: "Bluetooth", iconName: "bluetooth", group: 1, visible: BluetoothControl.available },
     { id: "displays", label: "Displays", iconName: "display", group: 1 },
+    { id: "sound", label: "Sound", iconName: "audio.speaker", group: 1 },
     { id: "input", label: "Input", iconName: "input.keyboard", group: 1 },
     { id: "keybindings", label: "Keybindings", iconName: "config.keybindings", group: 1 },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance", group: 2 },
@@ -359,6 +362,8 @@ Item {
               case "apps": return "DefaultAppsSection.qml"
               case "about": return "AboutSection.qml"
               case "displays": return "DisplaysSection.qml"
+              case "bluetooth": return "BluetoothSection.qml"
+              case "sound": return "SoundSection.qml"
               default: return "NetworkSection.qml"
             }
           }

@@ -35,8 +35,14 @@
   "settings.network": {
     "label": "Network"
   },
+  "settings.bluetooth": {
+    "label": "Bluetooth"
+  },
   "settings.displays": {
     "label": "Displays"
+  },
+  "settings.sound": {
+    "label": "Sound"
   },
   "settings.input": {
     "label": "Input"

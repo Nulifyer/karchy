@@ -30,7 +30,9 @@
   // menu (password, timezone, git, shares). In the window's own order; the
   // Keybindings page is the Keybinds row above.
   "settings.network": {"iconName":"net.network","label":"Network","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
+  "settings.bluetooth": {"iconName":"bluetooth","label":"Bluetooth","aliases":["bluetooth","pair","pairing","headset","bt"],"when":"compgen -G '/sys/class/bluetooth/hci*'","action":"karchy-settings bluetooth"},
   "settings.displays": {"iconName":"display","label":"Displays","aliases":["displays","monitors","screen","resolution","scale","night light"],"action":"karchy-settings displays"},
+  "settings.sound": {"iconName":"audio.speaker","label":"Sound","aliases":["sound","audio","volume","speaker","speakers","microphone","mic","output","input device","headphones"],"action":"karchy-settings sound"},
   "settings.input": {"iconName":"input.keyboard","label":"Input","aliases":["keyboard","mouse","touchpad","trackpad","input","input config","edit input config"],"action":"karchy-settings input"},
   "settings.appearance": {"iconName":"menu.appearance","label":"Appearance","aliases":["appearance","style","bar style","lock screen clock","workspace layout","tiling","floating","looknfeel"],"action":"karchy-settings appearance"},
   "settings.fonts": {"iconName":"look.font","label":"Fonts","aliases":["font","fonts","text size","monospace font","app font","terminal font"],"action":"karchy-settings fonts"},

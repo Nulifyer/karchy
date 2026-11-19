@@ -50,6 +50,15 @@ Singleton {
     Quickshell.execDetached(["karchy-bluetooth-power", adapter.enabled ? "off" : "on"])
   }
 
+  // The name other devices see this computer under (BlueZ's alias, which it
+  // keeps). The adapter's name is read-only in Quickshell, so bluetoothctl
+  // sets it, on the default controller as `adapter` is.
+  function rename(name) {
+    var value = String(name || "").trim()
+    if (!adapter || value === "" || value === adapter.name) return
+    Quickshell.execDetached(["bluetoothctl", "system-alias", value])
+  }
+
   // ---------------------------------------------------------------- scanning
 
   property var scanners: ({})

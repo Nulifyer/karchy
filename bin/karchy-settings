@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # karchy:summary=Open the karchy Settings window
-# karchy:args=[network|displays|input|keybindings|appearance|fonts|notifications|apps|power|storage|datetime|security|ssh|about] [item]
-# karchy:examples=karchy settings | karchy settings displays | karchy settings power | karchy settings network Home-5G
+# karchy:args=[network|bluetooth|displays|sound|input|keybindings|appearance|fonts|notifications|apps|power|storage|datetime|security|ssh|about] [item]
+# karchy:examples=karchy settings | karchy settings displays | karchy settings sound | karchy settings network Home-5G
 
 # `karchy settings <section>` runs this for every section, also where a
 # karchy-settings-<section> command exists (see bin/karchy). Those commands
@@ -17,7 +17,7 @@
 
 # The window's sections, in the order shell/plugins/settings/Settings.qml
 # lists them.
-sections=(network displays input keybindings appearance fonts notifications apps power storage datetime security ssh about)
+sections=(network bluetooth displays sound input keybindings appearance fonts notifications apps power storage datetime security ssh about)
 
 if [[ ${1:-} == --sections ]]; then
   printf '%s\n' "${sections[@]}"

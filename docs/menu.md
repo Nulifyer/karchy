@@ -42,7 +42,9 @@ One card width at every level; the header shows where you are ("Reload"), or "Se
 | Result | Opens | Found by |
 | --- | --- | --- |
 | Settings › Network | `karchy settings network` | network, wifi, wi-fi, ethernet, vpn, dns |
+| Settings › Bluetooth (with an adapter) | `karchy settings bluetooth` | bluetooth, pair, pairing, headset, bt |
 | Settings › Displays | `karchy settings displays` | displays, monitors, screen, resolution, scale, night light |
+| Settings › Sound | `karchy settings sound` | sound, audio, volume, speaker, speakers, microphone, mic, output, input device, headphones |
 | Settings › Input | `karchy settings input` | keyboard, mouse, touchpad, trackpad, input, input config |
 | Keybinds (the root row) | `karchy settings keybindings` | keybinds, keybindings, shortcuts, keys, hotkeys |
 | Settings › Appearance | `karchy settings appearance` | appearance, style, bar style, lock screen clock, workspace layout, tiling, floating, looknfeel |
@@ -61,7 +63,7 @@ The Settings rows are in the window's own order (`karchy-settings --sections`).
 
 Matching (D-136): a word typed is found at the start of a word, never loosely inside one. It matches a row at the start of a word of its name or its path; from two letters on, at the start of a word of an alias (an app's generic name and keywords are its aliases); from three letters on, inside a word of the row's own name ("fox" finds Firefox) or as a whole word of its description. So "b" lists what is named b…, "sc" gives Recording and Settings › Displays (screen, scale) and not Disks for its keyword "disc", "up" gives Update and not Disks for "backup", and "the" gives Theme and not Settings › Network for "ethernet". Several words match in any order, each on its own.
 
-Ranking: a root row named exactly what was typed comes first ("power" is the Power menu, then Settings › Power); then a row that names the query as an alias ("restart" is Power › Reboot, then the Reload rows); then names that start with it, names with a later word that starts with it, paths, aliases that start with it, and last names that only contain it. A row whose own name matches comes before one matched only by an alias, so "suspend" puts Power › Suspend first and Settings › Power second, and "install package" puts Packages › Install Package above the Packages submenu (D-77). "update" gives Update, then Settings › About (which shows the version and the channel, and has the button to the Updates window), then Update › Firmware. `tests/menu-search.js` checks the tree, every alias above and these orders against the shipped menu.
+Ranking: a root row named exactly what was typed comes first ("power" is the Power menu, then Settings › Power); then a row that names the query as an alias ("restart" is Power › Reboot, then the Reload rows); then names that start with it, names with a later word that starts with it, paths, aliases that start with it, and last names that only contain it. A row whose own name matches comes before one matched only by an alias, so "suspend" puts Power › Suspend first and Settings › Power second, and "install package" puts Packages › Install Package above the Packages submenu (D-77). "sound" and "bluetooth" give the Settings page, then the Reload row that restarts that part; "audio" is Reload › Audio's own name, with Settings › Sound after it. "update" gives Update, then Settings › About (which shows the version and the channel, and has the button to the Updates window), then Update › Firmware. `tests/menu-search.js` checks the tree, every alias above and these orders against the shipped menu.
 
 ## Where the rows that left went (D-133, D-135)
 

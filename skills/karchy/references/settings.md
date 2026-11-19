@@ -1,6 +1,6 @@
 # The Settings window and its commands
 
-`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names in the window's order: network, displays, input, keybindings, appearance, fonts, notifications, apps, power, storage, datetime, security, ssh, about. `karchy settings` with no section opens the first.
+`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names in the window's order: network, bluetooth, displays, sound, input, keybindings, appearance, fonts, notifications, apps, power, storage, datetime, security, ssh, about. `karchy settings` with no section opens the first.
 
 Settings is where everything that is set and left lives. The menu (Super+Space) holds actions and launches only (Apps, Packages, Recording, Keybinds, Update, Settings, Reload, Power): there is no Setup or Appearance submenu, and Update opens the Updates window. Searching the menu for a word such as `fingerprint`, `timezone` or `git` offers the Settings page ("Settings › Security"). To send the user to a setting, name the page.
 
@@ -15,6 +15,8 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | Network | no single command | NetworkManager, `/etc` | see [network.md](network.md) |
 | Displays | `karchy-settings-displays status \| set <monitor> <setting> <value> \| forget <monitor>` | `~/.config/karchy/displays.json`, one entry for each physical monitor | `~/.local/state/karchy/hypr/displays.lua` |
 | Night light (on the Displays page) | `karchy-settings-nightlight status \| on \| off \| toggle \| set <key> <value>` | `~/.config/karchy/nightlight.json` | user unit `karchy-nightlight.service` (hyprsunset) |
+| Bluetooth (listed only with an adapter) | no single command | BlueZ (`/var/lib/bluetooth`), the rfkill block | `karchy bluetooth power on\|off\|toggle\|is-on`, `karchy bluetooth device connect\|disconnect\|forget <address>`, `bluetoothctl` |
+| Sound | `karchy-settings-sound status \| profile <card> <profile> \| port <output\|input> <port> \| test` | nothing in the home folder: WirePlumber remembers the device, its profile and its port | `pactl`; volumes and the device in use: `karchy audio …`, `wpctl` |
 | Input | `karchy-settings-input status \| set <setting> <value> \| reset <setting>\|all` | `~/.config/karchy/input.json` | `~/.local/state/karchy/hypr/input.lua` |
 | Keybindings | `karchy-settings-keybindings list [--json] \| conflicts <keys> \| set \| add \| remove \| reset` | `~/.config/karchy/keybindings.json` | `~/.local/state/karchy/hypr/keybindings.lua`; see [keybindings.md](keybindings.md) |
 | Appearance | no single command | see [themes.md](themes.md) and the bar section of [hyprland.md](hyprland.md) | `karchy theme`, `karchy bar`, `karchy-hyprland-workspace-layout-default [dwindle\|floating\|scrolling]` (the layout of new and empty workspaces) |
