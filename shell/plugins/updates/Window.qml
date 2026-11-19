@@ -11,7 +11,7 @@ import "Model.js" as Model
 
 // The Updates window: what `karchy update` would install, read before it
 // runs, and the release channel. Opened by the bar's updates indicator, the
-// menu (Update System), Settings › About and `karchy updates`.
+// menu (Update), Settings › About and `karchy updates`.
 //
 // It checks with `karchy-update --plan` (no root, nothing installed) when it
 // opens and on Check now (F5). Install runs `karchy update` in the floating

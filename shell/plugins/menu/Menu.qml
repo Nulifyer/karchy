@@ -602,7 +602,7 @@ Item {
   // list around it is the point. Search is a list of what you can do, so it
   // leaves them out.
   function matchesQuery(entry, query) {
-    return MenuModel.matchesQuery(entry, query, root.isVisible(entry) && !root.isDisabled(entry))
+    return MenuModel.matchesQuery(entry, query, root.isVisible(entry) && !root.isDisabled(entry), root.parentPathFor(entry.id))
   }
 
   function searchScore(entry, query) {
@@ -776,11 +776,10 @@ Item {
         if (!root.isDescendantOf(entry.id, active)) continue
         if (!root.matchesQuery(entry, query)) continue
 
-        // Apps need no "Apps" subtitle; every other row shows where it lives,
-        // unless its label already says so ("Settings › Network").
-        var detail = entry.kind === "app" ? "" : root.parentPathFor(entry.id)
-        if (detail && entry.label.indexOf(detail + " › ") === 0) detail = ""
-        var row = root.displayRow(entry, detail, root.searchScore(entry, query))
+        // A result from a submenu reads as its path, "Power › Reboot": the
+        // row draws the parent, dimmed, before the label (from `path`), so
+        // labels stay short and no second line is needed.
+        var row = root.displayRow(entry, "", root.searchScore(entry, query))
         if (entry.parent === active) currentRows.push(row)
         else drilldownRows.push(row)
       }
@@ -809,7 +808,7 @@ Item {
       for (var j = 0; j < root.itemOrder.length; j++) {
         var child = root.item(root.itemOrder[j])
         if (!child || child.parent !== active) continue
-        if (!root.isVisible(child)) continue
+        if (child.searchOnly || !root.isVisible(child)) continue
         rows.push(root.displayRow(child, child.description, child.order))
       }
 
@@ -1648,16 +1647,36 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: Style.space(3)
 
-                Text {
-                  id: labelText
-                  textFormat: Text.PlainText
+                Row {
                   width: parent.width
-                  text: row.label
-                  color: row.hasCursor ? root.selectedText : root.foreground
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.heading
-                  font.weight: Font.Medium
-                  elide: Text.ElideRight
+
+                  // In search, where the row lives: "Power › " before
+                  // "Reboot", dimmed so the item itself leads.
+                  Text {
+                    id: prefixText
+                    readonly property string parentPath: root.filterText && !row.isApp && row.kind !== "dmenu" && row.path.length > row.label.length
+                      ? row.path.slice(0, row.path.length - row.label.length) : ""
+                    visible: parentPath !== ""
+                    textFormat: Text.PlainText
+                    text: Commons.I18n.rightToLeft ? parentPath.replace(/ › /g, " ‹ ") : parentPath
+                    color: row.hasCursor ? root.selectedText : root.foreground
+                    opacity: 0.55
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.heading
+                    font.weight: Font.Medium
+                  }
+
+                  Text {
+                    id: labelText
+                    textFormat: Text.PlainText
+                    width: parent.width - (prefixText.visible ? prefixText.width : 0)
+                    text: row.label
+                    color: row.hasCursor ? root.selectedText : root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.heading
+                    font.weight: Font.Medium
+                    elide: Text.ElideRight
+                  }
                 }
 
                 Text {

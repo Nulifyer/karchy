@@ -12,4 +12,4 @@ The full guide, including installing from the Arch ISO instead: [docs/installing
 
 ## Update
 
-On karchy's {{CHANNEL}} channel already: open Updates from the bar's updates indicator (or Update System in the menu) and press Install, or run `karchy update`. Only karchy's changed packages download.
+On karchy's {{CHANNEL}} channel already: open Updates from the bar's updates indicator (or Update in the menu) and press Install, or run `karchy update`. Only karchy's changed packages download.

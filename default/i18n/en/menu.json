@@ -9,7 +9,22 @@
     "label": "Packages"
   },
   "record": {
-    "label": "Record Screen"
+    "label": "Recording"
+  },
+  "keybindings": {
+    "label": "Keybinds"
+  },
+  "update": {
+    "label": "Update"
+  },
+  "settings": {
+    "label": "Settings"
+  },
+  "reload": {
+    "label": "Reload"
+  },
+  "system": {
+    "label": "Power"
   },
   "theme": {
     "label": "Theme"
@@ -17,62 +32,47 @@
   "background": {
     "label": "Background"
   },
-  "settings": {
-    "label": "Settings"
-  },
-  "update": {
-    "label": "Update System"
-  },
-  "keybindings": {
-    "label": "Keybindings"
-  },
-  "restart": {
-    "label": "Restart"
-  },
-  "system": {
-    "label": "Power"
+  "settings.network": {
+    "label": "Network"
   },
   "settings.displays": {
-    "label": "Settings › Displays"
+    "label": "Displays"
   },
   "settings.input": {
-    "label": "Settings › Input"
-  },
-  "settings.power": {
-    "label": "Settings › Power"
-  },
-  "settings.network": {
-    "label": "Settings › Network"
-  },
-  "settings.notifications": {
-    "label": "Settings › Notifications"
-  },
-  "settings.storage": {
-    "label": "Settings › Storage"
-  },
-  "settings.security": {
-    "label": "Settings › Security"
-  },
-  "settings.ssh": {
-    "label": "Settings › SSH & Git"
-  },
-  "settings.datetime": {
-    "label": "Settings › Date & Time"
+    "label": "Input"
   },
   "settings.appearance": {
-    "label": "Settings › Appearance"
+    "label": "Appearance"
   },
   "settings.fonts": {
-    "label": "Settings › Fonts"
+    "label": "Fonts"
+  },
+  "settings.notifications": {
+    "label": "Notifications"
   },
   "settings.apps": {
-    "label": "Settings › Default Apps"
+    "label": "Default Apps"
+  },
+  "settings.power": {
+    "label": "Power"
+  },
+  "settings.storage": {
+    "label": "Storage"
+  },
+  "settings.datetime": {
+    "label": "Date & Time"
+  },
+  "settings.security": {
+    "label": "Security"
+  },
+  "settings.ssh": {
+    "label": "SSH & Git"
   },
   "settings.about": {
-    "label": "Settings › About"
+    "label": "About"
   },
   "update.firmware": {
-    "label": "Update System › Firmware"
+    "label": "Firmware"
   },
   "system.lock": {
     "label": "Lock"
@@ -93,7 +93,7 @@
     "label": "Shutdown"
   },
   "record.stop": {
-    "label": "Stop Recording"
+    "label": "Stop"
   },
   "record.silent": {
     "label": "No Audio"
@@ -113,9 +113,6 @@
   "packages.install": {
     "label": "Install Package"
   },
-  "packages.aur": {
-    "label": "Install AUR Package"
-  },
   "packages.remove": {
     "label": "Remove Package"
   },
@@ -125,22 +122,22 @@
   "packages.webapp-remove": {
     "label": "Remove Web App"
   },
-  "restart.shell": {
-    "label": "Restart Shell"
+  "reload.shell": {
+    "label": "Shell"
   },
-  "restart.hyprland": {
-    "label": "Reload Hyprland"
+  "reload.hyprland": {
+    "label": "Hyprland"
   },
-  "restart.audio": {
-    "label": "Restart Audio"
+  "reload.audio": {
+    "label": "Audio"
   },
-  "restart.wifi": {
-    "label": "Restart Wi-Fi"
+  "reload.wifi": {
+    "label": "Wi-Fi"
   },
-  "restart.bluetooth": {
-    "label": "Restart Bluetooth"
+  "reload.bluetooth": {
+    "label": "Bluetooth"
   },
-  "restart.trackpad": {
-    "label": "Restart Trackpad"
+  "reload.trackpad": {
+    "label": "Trackpad"
   }
 }

@@ -185,7 +185,7 @@ Outside Setup Mode the command changes nothing and says how to get there. The ke
 
 `karchy update` updates everything in one pass: karchy's own packages from `[karchy]`, and Arch, CachyOS and AUR packages through paru, with snapper snapshots before and after. It then reloads the desktop and shows the karchy release change with a link to its release notes.
 
-The Updates window (the bar's updates indicator, Update System in the menu, Settings › About, or `karchy updates`) shows what an update would install before it runs, with Arch's news since the last update first, and holds the release channel. Its Install button runs `karchy update` in a terminal.
+The Updates window (the bar's updates indicator, Update in the menu, Settings › About, or `karchy updates`) shows what an update would install before it runs, with Arch's news since the last update first, and holds the release channel. Its Install button runs `karchy update` in a terminal.
 
 karchy's packages come from one release channel (D-61):
 

@@ -42,7 +42,11 @@ function normalizeItem(id, raw) {
     searchTerms: normalizeAliases(value.searchTerms),
     when: value.when || "",
     checked: value.checked || "",
-    disabled: value.disabled || ""
+    disabled: value.disabled || "",
+    // Found by search, never listed: a quick-open row kept out of the tree
+    // (Theme, Background). The children of a row that runs an action are
+    // search-only without it, as nothing ever lists them.
+    searchOnly: value.searchOnly === true
   }
 }
 
@@ -294,7 +298,7 @@ function isVisible(items, itemOrder, whenResults, entry, depth) {
   var order = Array.isArray(itemOrder) ? itemOrder : []
   for (var i = 0; i < order.length; i++) {
     var child = item(items, order[i])
-    if (child && child.parent === target && isVisible(items, itemOrder, whenResults, child, guard + 1)) return true
+    if (child && child.parent === target && !child.searchOnly && isVisible(items, itemOrder, whenResults, child, guard + 1)) return true
   }
 
   return false
@@ -354,17 +358,22 @@ function descriptionTextMatches(query, text) {
   return true
 }
 
-function matchesQuery(entry, query, visible) {
+// `parentPath` is where the row lives ("Power", "Settings"), which a search
+// result shows before its label, so its words find the row too: "power
+// restart", "reload hyprland", "settings displays".
+function matchesQuery(entry, query, visible, parentPath) {
   if (!entry || entry.id === "root") return false
   if (!visible) return false
 
   var nameText = nameSearchText(entry)
+  var pathText = String(parentPath || "").toLowerCase()
   var descriptionText = String(entry.description || "").toLowerCase()
   var terms = String(query || "").toLowerCase().trim().split(/\s+/)
 
   for (var i = 0; i < terms.length; i++) {
     if (!terms[i]) continue
     if (nameText.indexOf(terms[i]) >= 0) continue
+    if (pathText.indexOf(terms[i]) >= 0) continue
     if (termInSearchWords(terms[i], descriptionText)) continue
     return false
   }
@@ -377,9 +386,15 @@ function searchScore(items, entry, query) {
   var label = entry.label.toLowerCase()
   var nameText = nameSearchText(entry)
   var descriptionText = String(entry.description || "").toLowerCase()
+  // The row as a search result reads it: "power › reboot" as "power reboot".
+  var parentPath = parentPathFor(items, entry.id).toLowerCase().replace(/ › /g, " ")
+  var pathLabel = parentPath ? parentPath + " " + label : label
   var score = 80
 
-  if (label === needle) score = entry.parent === "root" ? 2 : 0
+  // A root row named exactly what was typed is what was meant ("power" is the
+  // Power menu, with Settings › Power after it).
+  if (label === needle) score = entry.parent === "root" ? 0 : 2
+  else if (pathLabel === needle) score = 3
   // An installed app whose name contains the query as a whole word ("zen"
   // for Zen Browser) beats exact-labeled menu entries like Install > Zen.
   else if (entry.kind === "app" && label.split(/\s+/).indexOf(needle) >= 0) score = 0
@@ -387,7 +402,9 @@ function searchScore(items, entry, query) {
   // Settings) beats rows whose label merely starts with it (Network Shares).
   else if (entry.kind !== "app" && (entry.aliases || []).some(function(a) { return String(a).toLowerCase() === needle })) score = 5
   else if (label.indexOf(needle) === 0) score = 10
+  else if (pathLabel.indexOf(needle) === 0) score = 12
   else if (label.indexOf(needle) >= 0) score = 30
+  else if (pathLabel.indexOf(needle) >= 0) score = 32
   else if (nameText.indexOf(needle) >= 0) score = 40
   else if (descriptionTextMatches(needle, descriptionText)) score = 60
 

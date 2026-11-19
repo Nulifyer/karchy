@@ -4,42 +4,47 @@
   // v4.5.0's default/karchy/karchy-menu.jsonc; the format is described there
   // and in docs/menu.md of the Omarchy repository.
 
-  // Root (D-133, user 2026-11-19): the menu is for what you do now: launch
-  // an app, run an action, restart something, open a window. What you set and
-  // leave is in Settings, and every Settings page is found by searching here.
-  // Theme and Background are the two pickers kept for quick access.
+  // Root (D-133, D-135; user 2026-11-19). The menu is for what you do now:
+  // launch an app, run an action, open a window. What you set and leave is in
+  // Settings, and every Settings page is found by searching here. A row in a
+  // submenu has a short label; a search result shows where it lives before it
+  // ("Power › Reboot"), drawn by the menu from this tree.
   "apps": {"iconName":"menu.apps","label":"Apps","aliases":["app","applications"],"provider":"apps"},
   "packages": {"iconName":"menu.packages","label":"Packages","aliases":["install","remove"]},
-  "record": {"iconName":"record","label":"Record Screen","aliases":["screenrecord","screen-record","recording","capture"]},
-  "theme": {"iconName":"look.theme","label":"Theme","aliases":["themes"],"action":"karchy-shell shell summon karchy.image-picker '{\"source\":\"themes\"}'"},
-  "background": {"iconName":"look.background","label":"Background","aliases":["wallpaper"],"action":"background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\""},
+  "record": {"iconName":"record","label":"Recording","aliases":["record screen","screenrecord","screen-record","capture"]},
+  "keybindings": {"iconName":"input.keyboard","label":"Keybinds","aliases":["keybindings","shortcuts","keys"],"searchTerms":["keyboard shortcuts","hotkeys"],"action":"karchy-settings keybindings"},
+  "update": {"iconName":"update.system","label":"Update","aliases":["upgrade","updates","update system","karchy update","channel"],"action":"karchy-updates"},
   "settings": {"iconName":"settings","label":"Settings","aliases":["preferences","control panel"],"action":"karchy-settings"},
-  "update": {"iconName":"update.system","label":"Update System","aliases":["upgrade","updates","karchy update","channel"],"action":"karchy-updates"},
-  "keybindings": {"iconName":"input.keyboard","label":"Keybindings","aliases":["shortcuts","keys"],"searchTerms":["keyboard shortcuts"],"action":"karchy-settings keybindings"},
-  "restart": {"iconName":"restart","label":"Restart","aliases":["reload"]},
+  "reload": {"iconName":"restart","label":"Reload","searchTerms":["restart"]},
   "system": {"iconName":"system.power","label":"Power","aliases":["power-menu","system"]},
+
+  // The two pickers, found by search only: quick to open, out of the tree.
+  // Settings › Appearance has both.
+  "theme": {"iconName":"look.theme","label":"Theme","aliases":["themes"],"searchOnly":true,"action":"karchy-shell shell summon karchy.image-picker '{\"source\":\"themes\"}'"},
+  "background": {"iconName":"look.background","label":"Background","aliases":["wallpaper","wallpapers"],"searchOnly":true,"action":"background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\""},
 
   // Settings' pages, found by search only: Settings is a row that opens the
   // window, so its children never list, but searching "wifi" or "fingerprint"
-  // offers the page itself. Each reads as where it goes ("Settings › Network");
-  // the aliases are the words people type for what the page holds, including
-  // the rows that used to be in the menu (password, timezone, git, shares).
-  "settings.displays": {"iconName":"display","label":"Settings › Displays","aliases":["displays","monitors","screen","resolution","scale","night light"],"action":"karchy-settings displays"},
-  "settings.input": {"iconName":"input.keyboard","label":"Settings › Input","aliases":["keyboard","mouse","touchpad","trackpad","input","input config","edit input config","edit keybindings"],"action":"karchy-settings input"},
-  "settings.power": {"iconName":"system.power","label":"Settings › Power","aliases":["power","battery","sleep","lid","idle","suspend","hibernate"],"action":"karchy-settings power"},
-  "settings.network": {"iconName":"net.network","label":"Settings › Network","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
-  "settings.notifications": {"iconName":"notify.bell","label":"Settings › Notifications","aliases":["notifications","do not disturb","dnd","silent"],"action":"karchy-settings notifications"},
-  "settings.storage": {"iconName":"disk","label":"Settings › Storage","aliases":["disk","storage","space","bees","smart","nas","smb","samba","share","network shares","mount"],"action":"karchy-settings storage"},
-  "settings.security": {"iconName":"security","label":"Settings › Security","aliases":["security","fingerprint","fido2","yubikey","security key","password","passwd","change password","drive password","luks","encryption"],"action":"karchy-settings security"},
-  "settings.ssh": {"iconName":"security.ssh","label":"Settings › SSH & Git","aliases":["ssh","sshd","ssh server","ssh agent","git","github"],"action":"karchy-settings ssh"},
-  "settings.datetime": {"iconName":"time","label":"Settings › Date & Time","aliases":["timezone","time","clock","date","ntp"],"action":"karchy-settings datetime"},
-  "settings.appearance": {"iconName":"menu.appearance","label":"Settings › Appearance","aliases":["appearance","style","bar style","lock screen clock","workspace layout","tiling","floating","looknfeel"],"action":"karchy-settings appearance"},
-  "settings.fonts": {"iconName":"look.font","label":"Settings › Fonts","aliases":["font","fonts","text size","monospace font","app font","terminal font"],"action":"karchy-settings fonts"},
-  "settings.apps": {"iconName":"menu.apps","label":"Settings › Default Apps","aliases":["default apps","default browser","file associations"],"action":"karchy-settings apps"},
-  "settings.about": {"iconName":"info","label":"Settings › About","aliases":["about","version","system info","fastfetch","hyprland config","edit hyprland config"],"action":"karchy-settings about"},
+  // offers the page ("Settings › Network"). The aliases are the words people
+  // type for what the page holds, including the rows that used to be in the
+  // menu (password, timezone, git, shares). In the window's own order; the
+  // Keybindings page is the Keybinds row above.
+  "settings.network": {"iconName":"net.network","label":"Network","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
+  "settings.displays": {"iconName":"display","label":"Displays","aliases":["displays","monitors","screen","resolution","scale","night light"],"action":"karchy-settings displays"},
+  "settings.input": {"iconName":"input.keyboard","label":"Input","aliases":["keyboard","mouse","touchpad","trackpad","input","input config","edit input config"],"action":"karchy-settings input"},
+  "settings.appearance": {"iconName":"menu.appearance","label":"Appearance","aliases":["appearance","style","bar style","lock screen clock","workspace layout","tiling","floating","looknfeel"],"action":"karchy-settings appearance"},
+  "settings.fonts": {"iconName":"look.font","label":"Fonts","aliases":["font","fonts","text size","monospace font","app font","terminal font"],"action":"karchy-settings fonts"},
+  "settings.notifications": {"iconName":"notify.bell","label":"Notifications","aliases":["notifications","do not disturb","dnd","silent"],"action":"karchy-settings notifications"},
+  "settings.apps": {"iconName":"menu.apps","label":"Default Apps","aliases":["default apps","default browser","file associations"],"action":"karchy-settings apps"},
+  "settings.power": {"iconName":"system.power","label":"Power","aliases":["power","battery","sleep","lid","idle","suspend","hibernate"],"action":"karchy-settings power"},
+  "settings.storage": {"iconName":"disk","label":"Storage","aliases":["disk","storage","space","bees","smart","nas","smb","samba","share","network shares","mount"],"action":"karchy-settings storage"},
+  "settings.datetime": {"iconName":"time","label":"Date & Time","aliases":["timezone","time","clock","date","ntp"],"action":"karchy-settings datetime"},
+  "settings.security": {"iconName":"security","label":"Security","aliases":["security","fingerprint","fido2","yubikey","security key","password","passwd","change password","drive password","luks","encryption"],"action":"karchy-settings security"},
+  "settings.ssh": {"iconName":"security.ssh","label":"SSH & Git","aliases":["ssh","sshd","ssh server","ssh agent","git","github"],"action":"karchy-settings ssh"},
+  "settings.about": {"iconName":"info","label":"About","aliases":["about","version","system info","fastfetch","hyprland config","edit hyprland config","update","updates","channel"],"action":"karchy-settings about"},
 
   // The Updates window's firmware part, found by search only, as above.
-  "update.firmware": {"iconName":"firmware","label":"Update System › Firmware","aliases":["firmware","fwupd","bios"],"when":"[[ -d /sys/firmware/efi ]] || command -v fwupdmgr","action":"karchy-updates firmware"},
+  "update.firmware": {"iconName":"firmware","label":"Firmware","aliases":["firmware","update firmware","fwupd","bios"],"when":"[[ -d /sys/firmware/efi ]] || command -v fwupdmgr","action":"karchy-updates firmware"},
 
   // Power (the id stays "system": Super+Escape and the power key open it)
   "system.lock": {"iconName":"system.lock","label":"Lock","action":"karchy-system-lock"},
@@ -49,28 +54,29 @@
   "system.reboot": {"iconName":"system.reboot","label":"Reboot","aliases":["restart"],"action":"karchy-system reboot"},
   "system.shutdown": {"iconName":"system.power","label":"Shutdown","aliases":["power off"],"action":"karchy-system shutdown"},
 
-  // Record Screen (user 2026-11-14): pick the audio, then a region, window or
+  // Recording (user 2026-11-14): pick the audio, then a region, window or
   // monitor. Alt+Print records without audio; the bar's record icon stops it.
-  "record.stop": {"iconName":"media.stop","label":"Stop Recording","when":"karchy-capture-screenrecording --status","action":"karchy-capture-screenrecording --stop-recording"},
+  "record.stop": {"iconName":"media.stop","label":"Stop","aliases":["stop recording"],"when":"karchy-capture-screenrecording --status","action":"karchy-capture-screenrecording --stop-recording"},
   "record.silent": {"iconName":"record.silent","label":"No Audio","aliases":["without audio"],"action":"karchy-capture-screenrecording"},
   "record.desktop": {"iconName":"audio.speaker","label":"Desktop Audio","action":"karchy-capture-screenrecording --with-desktop-audio"},
   "record.microphone": {"iconName":"audio.mic","label":"Desktop + Microphone","aliases":["mic"],"action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio"},
   "record.webcam": {"iconName":"audio.camera","label":"Desktop + Microphone + Webcam","aliases":["camera"],"when":"command -v mpv >/dev/null && [[ -n $(karchy-capture-webcam-list) ]]","action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio --with-webcam"},
 
-  // Packages (D-18: install, AUR, remove, web apps; Quick Install, D-70)
+  // Packages (D-18: install, remove, web apps; Quick Install, D-70)
   "packages.quick-install": {"iconName":"quick-install","label":"Quick Install","aliases":["quick-install","features","store"],"action":"karchy-quick-install"},
-  "packages.install": {"iconName":"package.install","label":"Install Package","action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-install"},
-  "packages.aur": {"iconName":"brand.arch","label":"Install AUR Package","action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-aur-install"},
+  // One list over the repositories and the AUR, repository packages first (D-135).
+  "packages.install": {"iconName":"package.install","label":"Install Package","aliases":["aur","pacman","paru","install aur package"],"action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-install"},
   "packages.remove": {"iconName":"package.remove","label":"Remove Package","action":"xdg-terminal-exec --app-id=org.karchy.terminal karchy-pkg-remove"},
   "packages.webapp": {"iconName":"webapp","label":"Install Web App","action":"karchy-launch-floating-terminal-with-presentation karchy-webapp-install"},
   "packages.webapp-remove": {"iconName":"webapp.remove","label":"Remove Web App","when":"grep -qE '^Exec=.*(karchy-launch-webapp|karchy-webapp-handler)' $HOME/.local/share/applications/*.desktop","action":"karchy-webapp-remove"},
 
-  // Restart
-  "restart.shell": {"iconName":"restart.shell","label":"Restart Shell","aliases":["bar","quickshell"],"action":"karchy-restart-shell"},
-  "restart.hyprland": {"iconName":"brand.hyprland","label":"Reload Hyprland","action":"hyprctl reload"},
-  "restart.audio": {"iconName":"audio.speaker","label":"Restart Audio","aliases":["sound","pipewire"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-audio"},
-  "restart.wifi": {"iconName":"net.wifi.restart","label":"Restart Wi-Fi","aliases":["wifi"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-wifi"},
-  "restart.bluetooth": {"iconName":"bluetooth","label":"Restart Bluetooth","when":"compgen -G '/sys/class/bluetooth/hci*'","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-bluetooth"},
-  "restart.trackpad": {"iconName":"input.trackpad","label":"Restart Trackpad","aliases":["touchpad"],"when":"grep -qi touchpad /proc/bus/input/devices","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-trackpad"}
+  // Reload: restart or reload one part of the desktop. The label names the
+  // part; the path says what happens to it ("Reload › Hyprland").
+  "reload.shell": {"iconName":"restart.shell","label":"Shell","aliases":["restart shell","bar","quickshell"],"action":"karchy-restart-shell"},
+  "reload.hyprland": {"iconName":"brand.hyprland","label":"Hyprland","aliases":["reload hyprland","restart hyprland","window manager"],"action":"hyprctl reload"},
+  "reload.audio": {"iconName":"audio.speaker","label":"Audio","aliases":["restart audio","sound","pipewire"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-audio"},
+  "reload.wifi": {"iconName":"net.wifi.restart","label":"Wi-Fi","aliases":["restart wifi","wifi"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-wifi"},
+  "reload.bluetooth": {"iconName":"bluetooth","label":"Bluetooth","aliases":["restart bluetooth"],"when":"compgen -G '/sys/class/bluetooth/hci*'","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-bluetooth"},
+  "reload.trackpad": {"iconName":"input.trackpad","label":"Trackpad","aliases":["restart trackpad","touchpad"],"when":"grep -qi touchpad /proc/bus/input/devices","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-trackpad"}
 
 }

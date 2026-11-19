@@ -1,8 +1,8 @@
 # The Settings window and its commands
 
-`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names: displays, input, keybindings, power, network, notifications, storage, security, ssh, datetime, appearance, fonts, apps, about.
+`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names in the window's order: network, displays, input, keybindings, appearance, fonts, notifications, apps, power, storage, datetime, security, ssh, about. `karchy settings` with no section opens the first.
 
-Settings is where everything that is set and left lives. The menu (Super+Space) holds actions and launches only: there is no Setup, Update or Appearance submenu. Searching the menu for a word such as `fingerprint`, `timezone` or `git` offers the Settings page ("Settings › Security"). To send the user to a setting, name the page.
+Settings is where everything that is set and left lives. The menu (Super+Space) holds actions and launches only (Apps, Packages, Recording, Keybinds, Update, Settings, Reload, Power): there is no Setup or Appearance submenu, and Update opens the Updates window. Searching the menu for a word such as `fingerprint`, `timezone` or `git` offers the Settings page ("Settings › Security"). To send the user to a setting, name the page.
 
 Most sections have a command that reads and saves the same values the page does. Use that command, not the JSON file. The command validates the value, writes the file, and applies the change to the running session. The commands are hidden from `karchy commands`. Call them by their file name: `karchy-settings-input status`.
 
@@ -12,20 +12,20 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 
 | Section | Command | Saved in | Applied through |
 | --- | --- | --- | --- |
+| Network | no single command | NetworkManager, `/etc` | see [network.md](network.md) |
 | Displays | `karchy-settings-displays status \| set <monitor> <setting> <value> \| forget <monitor>` | `~/.config/karchy/displays.json`, one entry for each physical monitor | `~/.local/state/karchy/hypr/displays.lua` |
 | Night light (on the Displays page) | `karchy-settings-nightlight status \| on \| off \| toggle \| set <key> <value>` | `~/.config/karchy/nightlight.json` | user unit `karchy-nightlight.service` (hyprsunset) |
 | Input | `karchy-settings-input status \| set <setting> <value> \| reset <setting>\|all` | `~/.config/karchy/input.json` | `~/.local/state/karchy/hypr/input.lua` |
 | Keybindings | `karchy-settings-keybindings list [--json] \| conflicts <keys> \| set \| add \| remove \| reset` | `~/.config/karchy/keybindings.json` | `~/.local/state/karchy/hypr/keybindings.lua`; see [keybindings.md](keybindings.md) |
-| Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |
-| Notifications | `karchy-settings-notifications status \| set <app> <allow\|silent\|off> [name] \| dnd <on\|off>` | `~/.config/karchy/notifications.json` | the notification service watches the file |
-| Storage | `karchy-settings-storage ...` | nothing in the home folder | see [storage.md](storage.md) |
-| Security | `karchy-settings-security status` (read only) | `/etc/pam.d`, `/etc/fido2`, the LUKS header | see below |
-| SSH & Git (section `ssh`) | `karchy-settings-ssh status \| authorized add\|remove ... \| key copy\|new \| agent on\|off` | `~/.ssh`, `~/.gitconfig` | see below |
-| Date & Time (section `datetime`) | `karchy-settings-datetime status \| timezones \| timezone <Area/City> \| ntp on\|off \| sync \| clock <format>` | systemd (timezone, automatic time); the clock's format in `~/.config/karchy/shell.json` | timedated over D-Bus; `karchy bar set karchy.clock format` |
-| Default apps | `karchy-settings-default-apps status \| set <role> <app.desktop>` | `~/.config/mimeapps.list`, `~/.config/xdg-terminals.list` | xdg-mime |
-| Network | no single command | NetworkManager, `/etc` | see [network.md](network.md) |
 | Appearance | no single command | see [themes.md](themes.md) and the bar section of [hyprland.md](hyprland.md) | `karchy theme`, `karchy bar`, `karchy-hyprland-workspace-layout-default [dwindle\|floating\|scrolling]` (the layout of new and empty workspaces) |
 | Fonts | no single command | see [themes.md](themes.md) | `karchy font` (monospace), `karchy font app` (GTK and Qt apps), `karchy display text size` |
+| Notifications | `karchy-settings-notifications status \| set <app> <allow\|silent\|off> [name] \| dnd <on\|off>` | `~/.config/karchy/notifications.json` | the notification service watches the file |
+| Default apps | `karchy-settings-default-apps status \| set <role> <app.desktop>` | `~/.config/mimeapps.list`, `~/.config/xdg-terminals.list` | xdg-mime |
+| Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |
+| Storage | `karchy-settings-storage ...` | nothing in the home folder | see [storage.md](storage.md) |
+| Date & Time (section `datetime`) | `karchy-settings-datetime status \| timezones \| timezone <Area/City> \| ntp on\|off \| sync \| clock <format>` | systemd (timezone, automatic time); the clock's format in `~/.config/karchy/shell.json` | timedated over D-Bus; `karchy bar set karchy.clock format` |
+| Security | `karchy-settings-security status` (read only) | `/etc/pam.d`, `/etc/fido2`, the LUKS header | see below |
+| SSH & Git (section `ssh`) | `karchy-settings-ssh status \| authorized add\|remove ... \| key copy\|new \| agent on\|off` | `~/.ssh`, `~/.gitconfig` | see below |
 | About | none | read only | `karchy version`, `karchy channel` |
 
 The valid settings and values for each command are in its header comment. Read it with `sed -n 1,60p /usr/share/karchy/bin/karchy-settings-<area>`.
