@@ -5,5 +5,5 @@
 # karchy:examples=karchy updates
 
 # The window (shell plugin karchy.updates) checks with `karchy-update --plan`
-# and runs the update itself in a terminal.
-exec karchy-shell shell summon karchy.updates
+# and runs the update itself in a terminal. The shell's "ok" is not news here.
+exec karchy-shell shell summon karchy.updates >/dev/null

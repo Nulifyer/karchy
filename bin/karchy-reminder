@@ -40,7 +40,7 @@ refresh_indicator() {
 }
 
 open_interactive() {
-  karchy-shell shell summon karchy.reminders "{}"
+  karchy-shell shell summon karchy.reminders "{}" >/dev/null
 }
 
 show_reminders() {

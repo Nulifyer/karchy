@@ -18,10 +18,10 @@ menu_payload() {
 
 case "$verb" in
   toggle)
-    exec karchy-shell shell toggle karchy.menu "$(menu_payload "$route")"
+    exec karchy-shell shell toggle karchy.menu "$(menu_payload "$route")" >/dev/null
     ;;
   summon)
-    exec karchy-shell shell summon karchy.menu "$(menu_payload "$route")"
+    exec karchy-shell shell summon karchy.menu "$(menu_payload "$route")" >/dev/null
     ;;
   close)
     exec karchy-shell shell hide karchy.menu

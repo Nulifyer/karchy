@@ -229,7 +229,7 @@ follow() {
 
 case "${1:-}" in
   # The window, at one container's page when a name is given.
-  open) exec karchy-shell shell summon karchy.containers "$(jq -cn --arg c "${2:-}" 'if $c == "" then {} else {container: $c} end')" ;;
+  open) exec karchy-shell shell summon karchy.containers "$(jq -cn --arg c "${2:-}" 'if $c == "" then {} else {container: $c} end')" >/dev/null ;;
   engine) engine; exit ;;
 esac
 
