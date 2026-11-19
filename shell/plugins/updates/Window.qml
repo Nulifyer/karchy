@@ -144,8 +144,9 @@ Item {
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       elide: Text.ElideRight
-      // Long names (a news title) give way before the version column does.
-      Layout.maximumWidth: Math.round(parent.width * 0.65)
+      // Long names (a news title) give way before the version column does;
+      // beside a pair of versions the name keeps what they leave.
+      Layout.maximumWidth: Math.round(parent.width * (parent.detail !== "" ? 0.65 : 0.36))
     }
     Text {
       visible: parent.secondary !== ""
@@ -164,15 +165,50 @@ Item {
       font.pixelSize: Style.font.caption
       font.bold: true
     }
+    // A news post's date, or anything else that isn't a pair of versions.
     Text {
-      text: parent.detail !== "" ? parent.detail
-        : (parent.oldVersion !== "" ? parent.oldVersion : "new") + "  →  " + parent.newVersion
+      visible: parent.detail !== ""
+      text: parent.detail
       color: Commons.Color.textSecondary
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       font.features: { "tnum": 1 }
-      Layout.maximumWidth: Style.space(320)
-      elide: Text.ElideMiddle
+    }
+    // Old and new are two texts, each cut at its own end: one text elided in
+    // the middle ran a long version's tail into the next one's head, and the
+    // arrow between them was the part that went.
+    RowLayout {
+      id: versions
+      visible: parent.detail === ""
+      spacing: Style.spacing.md
+      readonly property var pair: Model.versionPair(parent.oldVersion, parent.newVersion)
+      // Room for a nightly version (0.1.0rc5.r149.g8e001de-1) in each column.
+      readonly property real column: Math.max(Style.space(96), Math.round((parent.width * 0.6 - arrow.implicitWidth) / 2 - spacing))
+      Text {
+        text: versions.pair.old !== "" ? versions.pair.old : "new"
+        color: Commons.Color.textSecondary
+        font.family: Style.font.family
+        font.pixelSize: Style.font.body
+        font.features: { "tnum": 1 }
+        Layout.maximumWidth: versions.column
+        elide: versions.pair.tails ? Text.ElideLeft : Text.ElideRight
+      }
+      Text {
+        id: arrow
+        text: "→"
+        color: Commons.Color.textSecondary
+        font.family: Style.font.family
+        font.pixelSize: Style.font.body
+      }
+      Text {
+        text: versions.pair.next
+        color: Commons.Color.foreground
+        font.family: Style.font.family
+        font.pixelSize: Style.font.body
+        font.features: { "tnum": 1 }
+        Layout.maximumWidth: versions.column
+        elide: versions.pair.tails ? Text.ElideLeft : Text.ElideRight
+      }
     }
   }
 

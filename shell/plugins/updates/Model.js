@@ -95,3 +95,15 @@ function switchMessage(from, to) {
     + (from === "nightly" ? ", replacing newer nightly ones with older releases." : ".")
     + " The desktop reloads when it's done."
 }
+
+// A pair of versions as shown: a dev build's stamp (".l<unix time>", added by
+// packaging/build so a rebuild of the same commit counts as newer) says
+// nothing a reader needs and makes the version too long for its column. It
+// stays when it is the only difference, so old and new never read the same;
+// `tails` then says the difference is at the end, which is the end to keep.
+function versionPair(oldVersion, newVersion) {
+  var strip = function(v) { return String(v || "").replace(/\.l\d{9,}(?=-|$)/, "") }
+  var a = strip(oldVersion), b = strip(newVersion)
+  if (a === b) return { old: String(oldVersion || ""), next: String(newVersion || ""), tails: true }
+  return { old: a, next: b, tails: false }
+}
