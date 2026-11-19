@@ -66,11 +66,22 @@ ColumnLayout {
 
   function resolution(mode) { return String(mode).split("@")[0] }
 
+  // The modes the monitor offers, and the one it runs when that is a custom
+  // one (set in monitors.lua, or by a virtual machine's window): the
+  // dropdowns then show it instead of standing empty.
+  function modesOf(monitor) {
+    var res = monitor.width + "x" + monitor.height
+    for (var i = 0; i < monitor.modes.length; i++)
+      if (resolution(monitor.modes[i]) === res) return monitor.modes
+    return monitor.modes.concat([res + "@" + Number(monitor.refreshRate).toFixed(2)])
+  }
+
   function resolutions(monitor) {
     var seen = {}
     var out = []
-    for (var i = 0; i < monitor.modes.length; i++) {
-      var res = resolution(monitor.modes[i])
+    var modes = modesOf(monitor)
+    for (var i = 0; i < modes.length; i++) {
+      var res = resolution(modes[i])
       if (!seen[res]) { seen[res] = true; out.push(res) }
     }
     out.sort(function(a, b) {
@@ -81,7 +92,7 @@ ColumnLayout {
   }
 
   function rates(monitor, res) {
-    return monitor.modes
+    return modesOf(monitor)
       .filter(function(m) { return resolution(m) === res })
       .map(function(m) { return { value: m, label: Number(m.split("@")[1]).toFixed(2) + " Hz" } })
   }
@@ -90,10 +101,11 @@ ColumnLayout {
   function currentMode(monitor) {
     var res = monitor.width + "x" + monitor.height
     var best = "", bestDistance = 1e9
-    for (var i = 0; i < monitor.modes.length; i++) {
-      if (resolution(monitor.modes[i]) !== res) continue
-      var d = Math.abs(Number(monitor.modes[i].split("@")[1]) - monitor.refreshRate)
-      if (d < bestDistance) { bestDistance = d; best = monitor.modes[i] }
+    var modes = modesOf(monitor)
+    for (var i = 0; i < modes.length; i++) {
+      if (resolution(modes[i]) !== res) continue
+      var d = Math.abs(Number(modes[i].split("@")[1]) - monitor.refreshRate)
+      if (d < bestDistance) { bestDistance = d; best = modes[i] }
     }
     return best
   }
@@ -177,8 +189,8 @@ ColumnLayout {
 
   // With hours set, the card also says when the night light next changes.
   function nightSummary() {
-    if (root.night.until === "") return "Warmer colors on every monitor, easier on the eyes at night."
-    return "Warmer colors on every monitor. " + (root.night.on ? "On until " : "Off until ") + root.night.until + "."
+    if (root.night.until === "") return ""
+    return (root.night.on ? "On until " : "Off until ") + root.night.until
   }
 
   // Milliseconds until the schedule next changes the night light, a moment
@@ -263,7 +275,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Displays"
-    explanation: "Changes apply right away and are remembered for each monitor, so a laptop finds its desk monitor's settings again after docking. A rule for the same monitor in ~/.config/hypr/monitors.lua wins over these."
+    explanation: "Settings are remembered for each monitor. A rule for the same monitor in ~/.config/hypr/monitors.lua takes priority over these."
   }
 
   InlineMessage {
@@ -346,7 +358,7 @@ ColumnLayout {
       Layout.fillWidth: true
       kind: "info"
       text: root.night.installed && root.night.userConfig
-        ? "Your own ~/.config/hypr/hyprsunset.conf decides the hours and the warmth, from the next login after you write it. The settings below apply once that file is gone; the switch still turns the tint on or off."
+        ? "Your ~/.config/hypr/hyprsunset.conf sets the hours and warmth, so those below have no effect. The switch still works."
         : ""
     }
 
