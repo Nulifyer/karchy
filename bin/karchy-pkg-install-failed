@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# karchy:summary=After a failed pacman install, say whether the system needs updating first
+# karchy:hidden=true
+
+# Called by the feature scripts and Quick install when `pacman -S <packages>`
+# fails. The usual cause on a rolling system is that it is behind its own
+# package lists: the new package needs newer versions of what is installed,
+# and pacman refuses to upgrade only part of the system ("installing X breaks
+# dependency Y"), or the lists name files the mirrors no longer hold (404).
+# pacman's message alone doesn't say what to do, so this does. It never runs
+# the update itself: a full system update inside "add virtual machines" is
+# more than was asked for.
+
+# Updates pending against the package lists already on disk: no root, no
+# network, and exactly what the failed install was working from.
+pending=$(pacman -Qu 2>/dev/null | grep -vc '\[ignored\]$' || true)
+
+echo
+if ((pending > 0)); then
+  echo "This system is behind: $pending packages have updates waiting, and new packages"
+  echo "can't be added until they are installed."
+  echo "Update the system first (karchy update), then try again."
+else
+  echo "If the message above is about a dependency or a file that couldn't be"
+  echo "downloaded, update the system first (karchy update), then try again."
+fi
+exit 0

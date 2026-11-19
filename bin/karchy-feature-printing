@@ -47,7 +47,12 @@ removable() {
 install_feature() {
   echo "Adding printers & scanners ($PACKAGE)."
   remove_legacy
-  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE"
+  if ! sudo pacman --color auto -S --needed --noconfirm "$PACKAGE"; then
+    # pacman said why; say what to do about the usual cause (the system is behind).
+    karchy-pkg-install-failed
+    echo "Printers & scanners weren't added."
+    exit 1
+  fi
   sudo systemctl enable --now cups.socket cups-browsed.service
   karchy-notification-send -g printer "Printers & scanners added" "Add a printer with Print Settings; scan with Document Scanner." || true
   echo "Done."

@@ -23,12 +23,19 @@ status() {
   fi
 }
 
+# pacman said why; say what to do about the usual cause (the system is behind).
+install_failed() {
+  karchy-pkg-install-failed
+  echo "Virtual machines weren't added."
+  exit 1
+}
+
 install_feature() {
   echo "Adding virtual machines: ${PACKAGES[*]}"
-  sudo pacman --color auto -S --needed --noconfirm "${PACKAGES[@]}"
+  sudo pacman --color auto -S --needed --noconfirm "${PACKAGES[@]}" || install_failed
   # The ISO chooser asks the desktop portal through Python's GLib bindings.
   # A dependency, so removing VMs leaves it to whatever else uses it.
-  pacman -Q python-gobject >/dev/null 2>&1 || sudo pacman --color auto -S --needed --noconfirm --asdeps python-gobject
+  pacman -Q python-gobject >/dev/null 2>&1 || sudo pacman --color auto -S --needed --noconfirm --asdeps python-gobject || install_failed
 
   if [[ ! -e /dev/kvm ]]; then
     echo "Note: /dev/kvm is missing. Turn on virtualization (Intel VT-x or AMD-V) in the firmware settings."

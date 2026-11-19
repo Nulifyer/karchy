@@ -73,11 +73,18 @@ remove_legacy() {
   sudo rmdir /etc/containers/containers.conf.d /etc/systemd/user/sockets.target.wants 2>/dev/null || true
 }
 
+# pacman said why; say what to do about the usual cause (the system is behind).
+install_failed() {
+  karchy-pkg-install-failed
+  echo "$1"
+  exit 1
+}
+
 install_gpu() {
   echo
   echo "This machine has the NVIDIA driver (karchy-nvidia): adding GPU containers."
   mapfile -t GPU_ADDED < <(pacman -T "${GPU_PACKAGES[@]}" || true)
-  sudo pacman --color auto -S --needed --noconfirm "${GPU_PACKAGES[@]}"
+  sudo pacman --color auto -S --needed --noconfirm "${GPU_PACKAGES[@]}" || install_failed "GPU containers weren't added; containers themselves are."
   # The toolkit's nvidia-cdi-refresh units write /var/run/cdi/nvidia.yaml at
   # boot, when the driver module loads and after driver updates.
   sudo systemctl start nvidia-cdi-refresh.service || echo "The GPU spec is written once the NVIDIA driver is loaded (after a reboot)."
@@ -93,7 +100,7 @@ install_feature() {
   fi
   echo "Adding containers ($PACKAGE)."
   remove_legacy
-  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE"
+  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE" || install_failed "Containers weren't added."
 
   local subids
   subids=$(add_subids)

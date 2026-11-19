@@ -244,7 +244,10 @@ install_app() {
   else
     # The window's Install is the confirmation; pacman still lists what it
     # installs (user 2026-11-15). paru keeps its own prompts for the AUR.
-    sudo pacman --color auto "$sync" --needed --noconfirm -- "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
+    sudo pacman --color auto "$sync" --needed --noconfirm -- "${pkgs[@]}" "${extra[@]}" || {
+      [[ $sync != -S ]] || karchy-pkg-install-failed
+      die "$name wasn't installed."
+    }
   fi
 
   while read -r unit; do
