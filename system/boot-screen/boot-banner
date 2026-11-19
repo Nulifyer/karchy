@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# karchy: draws the boot screen behind the disk-password prompt. Installed as
+# /usr/lib/karchy/boot-banner and copied into the initramfs by the
+# sd-karchy-banner hook; karchy-boot-banner.service runs it once, before
+# systemd asks for the password.
+#
+# It only writes to the console: the theme's 16 colours, then the logo in the
+# middle of the screen and a rule above the last lines, where it leaves the
+# cursor. systemd's console agent starts its prompt at the first column and
+# clears everything below the cursor (it does both itself, whatever is on
+# screen), so the prompt sits at the bottom left, under the rule, and a wrong
+# password asks again on the line below; the lines left free there are for
+# that.
+#
+# What can go wrong, and what happens then:
+#   - This script is missing, fails or hangs. The unit runs it with the "-"
+#     prefix and a 5 second limit, and nothing requires the unit: it is only
+#     ordered before the prompt. The prompt appears as it does without it.
+#   - The console has no size or is too small for the logo (a serial console,
+#     a tiny screen). It draws nothing, or only the rule.
+#   - The graphics driver replaces the firmware's framebuffer after this ran
+#     (the unit waits for udev first, so normally it already has). The kernel
+#     keeps the colours and the lines around the cursor, so the prompt stays;
+#     the logo can be lost or moved if the screen's size changes with it.
+# It reads no input, asks nothing, and never touches the password: that stays
+# with systemd-cryptsetup and systemd-ask-password.
+
+# Bytes, not characters, whatever locale the initramfs has: the logo's width
+# is counted below without its UTF-8 continuation bytes.
+LC_ALL=C
+
+console=${KARCHY_BANNER_CONSOLE:-/dev/console}
+logo=${KARCHY_BANNER_LOGO:-/usr/lib/karchy/logo.txt}
+
+[[ -c $console && -w $console ]] || exit 0
+
+# With "quiet" on the kernel line the framebuffer console stays switched off
+# until something is printed: until then the console is a placeholder with no
+# font, and what is drawn on it is lost or misplaced when the real one takes
+# over. So print one character first, in the background's colour (the kernel
+# switches over on a visible character; escape sequences and spaces don't
+# count) and wait until the framebuffer console is bound (there is no event to
+# wait for; at most one second). udev then has systemd load the font from
+# vconsole.conf, which it could not do on the placeholder. That must finish
+# before anything is drawn: the font changes the screen's size in characters,
+# and while it loads the console has no block characters, so the kernel would
+# draw the logo with "#". Restarting the unit here waits for it.
+printf '\033[30m.\r\033[0m' >"$console"
+for ((i = 0; i < 20; i++)); do
+  grep -qsx 1 /sys/class/vtconsole/vtcon[1-9]*/bind && break
+  sleep 0.05
+done
+udevadm settle --timeout=2 2>/dev/null
+systemctl restart systemd-vconsole-setup.service 2>/dev/null
+
+size=$(stty size <"$console" 2>/dev/null) || exit 0
+rows=${size% *}
+cols=${size#* }
+[[ $rows =~ ^[0-9]+$ && $cols =~ ^[0-9]+$ ]] || exit 0
+((rows >= 8 && cols >= 20)) || exit 0
+
+# The default theme (themes/nulifyer/colors.toml) as the console's palette:
+# colour 0 is the screen's background, 7 the text, 3 the accent, 8 muted.
+palette=(202020 ea6962 a9b665 d8a657 7daea3 d3869b 89b482 ddc7a1
+  7c6f64 ea6962 a9b665 d8a657 7daea3 d3869b 89b482 ebdbb2)
+
+out=""
+for i in "${!palette[@]}"; do
+  out+=$(printf '\033]P%x%s' "$i" "${palette[i]}")
+done
+out+=$'\033[0m\033[H\033[2J'
+
+# The logo, centred a little above the middle, when the screen has room.
+lines=()
+[[ -r $logo ]] && mapfile -t lines <"$logo"
+width=0
+for line in "${lines[@]}"; do
+  chars=${line//[$'\x80'-$'\xbf']/}
+  ((${#chars} > width)) && width=${#chars}
+done
+if ((${#lines[@]} > 0 && rows >= ${#lines[@]} + 9 && cols >= width + 2)); then
+  top=$(((rows - 6 - ${#lines[@]}) * 2 / 5 + 1))
+  left=$(((cols - width) / 2 + 1))
+  out+=$'\033[33m'
+  for i in "${!lines[@]}"; do
+    out+=$(printf '\033[%d;%dH%s' "$((top + i))" "$left" "${lines[i]}")
+  done
+fi
+
+# The rule, then the cursor on the line the prompt takes.
+rule=""
+for ((i = 0; i < cols; i++)); do
+  rule+="─"
+done
+out+=$(printf '\033[%d;1H\033[90m%s\033[0m\033[%d;1H' "$((rows - 5))" "$rule" "$((rows - 4))")
+
+printf '%s' "$out" >"$console"
+exit 0

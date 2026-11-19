@@ -1,0 +1,29 @@
+#!/bin/bash
+# karchy: mkinitcpio hook for the boot screen behind the disk-password prompt
+# (/usr/lib/karchy/boot-banner explains what it does and how it fails).
+# Goes after sd-vconsole in HOOKS, which puts the console font and
+# systemd-vconsole-setup in the image.
+
+build() {
+  local unit=karchy-boot-banner.service
+  # The screen is decoration: when a piece is missing the image is built
+  # without it and boots as it did before, rather than failing the build.
+  if [[ ! -x /usr/lib/karchy/boot-banner || ! -f /usr/lib/systemd/system/$unit ]]; then
+    warning 'sd-karchy-banner: karchy-settings files are missing; the image has no boot screen'
+    return 0
+  fi
+  add_binary bash
+  add_binary stty
+  add_file /usr/lib/karchy/boot-banner
+  add_file /usr/lib/karchy/logo.txt
+  add_systemd_unit "$unit"
+  add_symlink "/usr/lib/systemd/system/sysinit.target.wants/$unit" "../$unit"
+}
+
+help() {
+  cat <<HELPEOF
+This hook draws karchy's boot screen (the logo in the default theme's colours)
+on the console before systemd asks for the disk password. It needs the systemd
+hook and belongs after sd-vconsole.
+HELPEOF
+}

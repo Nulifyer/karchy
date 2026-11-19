@@ -1,0 +1,23 @@
+# karchy: the boot screen behind the disk-password prompt, in the initramfs
+# (the sd-karchy-banner mkinitcpio hook puts this unit and its script there).
+# Ordered before the console prompt and required by nothing: if it fails or
+# runs out of time, the prompt appears without it.
+#
+# It waits, for at most four seconds, until udev has handled the devices found
+# at boot, so the graphics driver has replaced the firmware's framebuffer and
+# the screen has its final size before anything is drawn.
+[Unit]
+Description=karchy boot screen
+DefaultDependencies=no
+ConditionPathExists=/etc/initrd-release
+After=systemd-udev-trigger.service
+Before=systemd-ask-password-console.service cryptsetup-pre.target
+
+[Service]
+Type=oneshot
+ExecStartPre=-/usr/bin/udevadm settle --timeout=4
+ExecStart=-/usr/lib/karchy/boot-banner
+TimeoutStartSec=10
+StandardInput=null
+StandardOutput=null
+StandardError=null
