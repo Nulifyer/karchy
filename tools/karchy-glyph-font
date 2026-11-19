@@ -23,13 +23,14 @@ Codepoint: Nerd Fonts 3 fill most of U+E000-F8FF and U+F0001-F1AF0
 which they leave empty; --check reads the cmap of every Nerd Font installed
 here to confirm it.
 
-Size and place: the glyph is one terminal cell wide, so it needs no scaling
-and never overlaps its neighbour: foot and Alacritty draw a fallback glyph at
-its own size, kitty and Ghostty shrink one that is wider than a cell. The em,
-ascent and descent are those of Symbols Nerd Font Mono (2048, 1638, -410). The
-advance is JetBrains Mono's, 0.6 em. The mark is a square the size of JetBrains
-Mono's x-height (0.55 em) standing on the baseline, so it lines up with the
-lowercase text beside it. The x-height and cap height in the OS/2 table are
+Size and place: the advance is one terminal cell, JetBrains Mono's 0.6 em, so
+the text after it stays on the grid. The mark itself is a square of JetBrains
+Mono's cap height (0.73 em) on the baseline, starting at the cell's left edge:
+the size of the Arch logo it replaced in the prompt (the user: at x-height it
+looked small beside the text). It reaches 0.13 em into the next cell, which
+in the prompt is a space. foot and Alacritty draw a fallback glyph at its own
+size; kitty and Ghostty shrink one wider than a cell to fit it. The em,
+ascent and descent are those of Symbols Nerd Font Mono (2048, 1638, -410). The x-height and cap height in the OS/2 table are
 JetBrains Mono's, for terminals that match a fallback font to the text font by
 them (Ghostty).
 """
@@ -90,9 +91,9 @@ def mark_contours():
 
 
 def glyph_contours():
-    """The mark in font units: on the baseline, centred in the advance."""
-    scale = X_HEIGHT / DESIGN_SIZE
-    left = (ADVANCE - X_HEIGHT) / 2
+    """The mark in font units: cap height, on the baseline, from the cell's left edge."""
+    scale = CAP_HEIGHT / DESIGN_SIZE
+    left = 0
     out = []
     for contour in mark_contours():
         # SVG's y runs down, a font's up.
