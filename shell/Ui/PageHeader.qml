@@ -4,8 +4,8 @@ import qs.Commons
 import qs.Commons as Commons
 
 // The top of a window page (Settings sections, the Containers and VMs
-// windows): the page title, an optional caps status line under it, an
-// optional icon before it and trailing controls after it.
+// windows): the page title, an optional caps status under it (two lines at
+// most), an optional icon before it and trailing controls after it.
 //
 //   PageHeader {
 //     title: "Displays"
@@ -106,6 +106,8 @@ Item {
           Item { Layout.fillWidth: true; implicitHeight: 1 }
         }
 
+        // A status too long for the room beside the trailing controls takes
+        // a second line before it is cut.
         Text {
           visible: root.status !== ""
           Layout.fillWidth: true
@@ -116,6 +118,8 @@ Item {
           font.pixelSize: Style.font.caption
           font.bold: true
           font.letterSpacing: Style.font.labelSpacing
+          wrapMode: Text.Wrap
+          maximumLineCount: 2
           elide: Text.ElideRight
         }
       }

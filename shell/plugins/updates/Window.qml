@@ -162,6 +162,10 @@ Item {
     property string newVersion: ""
     property string detail: ""
     property bool restart: false
+    // The page's width (`page` below), from the window: the columns are
+    // sized from it and not from the row's own width, which the layout sets
+    // from those very sizes ("recursive rearrange" in the log).
+    readonly property real room: Math.max(0, Window.width - Style.spacing.panelPadding * 4)
     Layout.fillWidth: true
     spacing: Style.spacing.lg
     Text {
@@ -173,7 +177,7 @@ Item {
       elide: Text.ElideRight
       // Long names (a news title) give way before the version column does;
       // beside a pair of versions the name keeps what they leave.
-      Layout.maximumWidth: Math.round(parent.width * (parent.detail !== "" ? 0.65 : 0.36))
+      Layout.maximumWidth: Math.round(parent.room * (parent.detail !== "" ? 0.65 : 0.36))
     }
     Text {
       visible: parent.secondary !== ""
@@ -210,7 +214,7 @@ Item {
       spacing: Style.spacing.md
       readonly property var pair: Model.versionPair(parent.oldVersion, parent.newVersion)
       // Room for a nightly version (0.1.0rc5.r149.g8e001de-1) in each column.
-      readonly property real column: Math.max(Style.space(96), Math.round((parent.width * 0.6 - arrow.implicitWidth) / 2 - spacing))
+      readonly property real column: Math.max(Style.space(96), Math.round((parent.room * 0.6 - arrow.implicitWidth) / 2 - spacing))
       Text {
         text: versions.pair.old !== "" ? versions.pair.old : "new"
         color: Commons.Color.textSecondary
@@ -279,11 +283,11 @@ Item {
         title: "Updates"
         status: {
           var parts = []
-          if (root.plan && root.plan.release.installed) parts.push("karchy " + root.plan.release.installed)
+          if (root.plan && root.plan.release.installed) parts.push("karchy " + Model.shortVersion(root.plan.release.installed))
           if (root.channel !== "") parts.push(root.channel + " channel")
           if (root.checking) parts.push("checking…")
           else if (root.plan && root.plan.checked) parts.push("checked " + Model.ago(root.plan.checked, root.now))
-          return parts.join(" · ")
+          return Model.statusLine(parts)
         }
         explanation: "Install runs karchy update in a terminal: it asks for your password once, takes a snapshot before and after (both appear in the boot menu), lets you review AUR build files, and offers a restart when the kernel or drivers changed."
 

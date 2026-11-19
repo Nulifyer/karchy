@@ -72,6 +72,13 @@ function installLabel(plan) {
   return "Install " + plural(count(plan), "update", "updates")
 }
 
+// The header's line under the title: its parts with a dot between them. A
+// part never breaks inside (no-break spaces), so where the line is too long
+// for the header it wraps between parts.
+function statusLine(parts) {
+  return parts.map(function(part) { return String(part).replace(/ /g, "\u00a0") }).join("\u00a0· ")
+}
+
 // "just now", "5 min ago", "3 h ago", or the date.
 function ago(iso, now) {
   var t = Date.parse(iso || "")
@@ -96,14 +103,18 @@ function switchMessage(from, to) {
     + " The desktop reloads when it's done."
 }
 
-// A pair of versions as shown: a dev build's stamp (".l<unix time>", added by
+// A version as shown: a dev build's stamp (".l<unix time>", added by
 // packaging/build so a rebuild of the same commit counts as newer) says
-// nothing a reader needs and makes the version too long for its column. It
-// stays when it is the only difference, so old and new never read the same;
-// `tails` then says the difference is at the end, which is the end to keep.
+// nothing a reader needs and makes the version too long for its place.
+function shortVersion(version) {
+  return String(version || "").replace(/\.l\d{9,}(?=-|$)/, "")
+}
+
+// A pair of versions as shown, without the stamp. It stays when it is the
+// only difference, so old and new never read the same; `tails` then says the
+// difference is at the end, which is the end to keep.
 function versionPair(oldVersion, newVersion) {
-  var strip = function(v) { return String(v || "").replace(/\.l\d{9,}(?=-|$)/, "") }
-  var a = strip(oldVersion), b = strip(newVersion)
+  var a = shortVersion(oldVersion), b = shortVersion(newVersion)
   if (a === b) return { old: String(oldVersion || ""), next: String(newVersion || ""), tails: true }
   return { old: a, next: b, tails: false }
 }
