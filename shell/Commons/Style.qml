@@ -573,7 +573,7 @@ QtObject {
   }
 
   // Resolve the fontconfig alias to a concrete family name. `karchy font
-  // set <name>` writes ~/.config/fontconfig/conf.d/60-karchy-font.conf and
+  // set <name>` writes ~/.local/state/karchy/fontconfig/font.conf and
   // restarts the shell; both that file and a hand-written fonts.conf are
   // watched so manual edits propagate too.
   function resolveFontFamily() {
@@ -602,7 +602,7 @@ QtObject {
   }
 
   property FileView karchyFontFile: FileView {
-    path: Quickshell.env("HOME") + "/.config/fontconfig/conf.d/60-karchy-font.conf"
+    path: Quickshell.env("HOME") + "/.local/state/karchy/fontconfig/font.conf"
     watchChanges: true
     printErrors: false
     onFileChanged: root.resolveFontFamily()

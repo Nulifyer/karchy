@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# karchy:summary=Set the font of GTK and Qt apps
+# karchy:args=<font-name> | monospace | reset
+# karchy:examples=karchy font app set "Noto Sans" | karchy font app set monospace | karchy font app set reset
+
+# The interface font of GTK apps (Files, Disks, file choosers), which Qt apps
+# follow through the GTK platform theme. It is GNOME's font-name setting, in
+# the same store as the text size (dconf); no file of the user's is edited
+# (D-23). GTK apps change at once, Qt apps when they next start. The shell
+# keeps the monospace font (D-120).
+#
+#   <font-name>  an installed family, as `karchy font app list` prints it
+#   monospace    the monospace font, whichever is chosen (`karchy font set`)
+#   reset        GNOME's default, Adwaita Sans
+
+SCHEMA=org.gnome.desktop.interface
+# GNOME's own sizes; the text size scales them (karchy display text size).
+INTERFACE_PT=11
+DOCUMENT_PT=12
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-font-app-set /p' "$0"
+}
+
+font_name="${1:-}"
+case "$font_name" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  "" | -*)
+    usage >&2
+    exit 1
+    ;;
+  reset)
+    gsettings reset "$SCHEMA" font-name
+    gsettings reset "$SCHEMA" document-font-name
+    exit
+    ;;
+  monospace) family=monospace ;;
+  *)
+    family=$(fc-list : family | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -ixF -m1 -- "$font_name")
+    if [[ -z $family ]]; then
+      echo "'$font_name' is not an installed font. karchy font app list shows the ones that are." >&2
+      exit 1
+    fi
+    ;;
+esac
+
+gsettings set "$SCHEMA" font-name "$family $INTERFACE_PT" || exit 1
+gsettings set "$SCHEMA" document-font-name "$family $DOCUMENT_PT"

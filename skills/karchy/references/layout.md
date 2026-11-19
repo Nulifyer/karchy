@@ -46,7 +46,6 @@ Read these to learn how a feature works.
 | `~/.config/karchy/themed/` | the user's own theme templates, used beside the packaged ones |
 | `~/.config/karchy/extensions/karchy-menu.jsonc` | the user's additions to the menu. The shell watches it, so no restart is needed |
 | `~/.config/karchy/hooks/` | the user's hook scripts |
-| `~/.config/fontconfig/conf.d/60-karchy-font.conf` | the font chosen with `karchy font set` |
 | `~/.config/mimeapps.list`, `~/.config/xdg-terminals.list` | default apps |
 
 Terminal, GTK, btop and editor starter configs are also in `~/.config`. They are the user's. karchy's theming does not rewrite them.
@@ -58,6 +57,7 @@ Do not edit these files. Find the command that writes them.
 | Path | Written by |
 | --- | --- |
 | `~/.local/state/karchy/current/theme`, `theme.name`, `background` | `karchy theme set`, `karchy theme bg set` |
+| `~/.local/state/karchy/fontconfig/font.conf` | `karchy font set`: the monospace font, included by `/etc/fonts/conf.d/50-karchy.conf`; the user's own rules go in `~/.config/fontconfig/fonts.conf` |
 | `~/.local/state/karchy/terminal/{foot.ini,kitty.conf,ghostty.conf,alacritty.toml}` | `karchy display text size`: the terminals' font size, included by their starter configs |
 | `~/.local/state/karchy/hypr/{displays,input,power}.lua` | `karchy-settings-displays`, `-input`, `-power` |
 | `~/.local/state/karchy/toggles/` | `karchy toggle`, `karchy hyprland toggle` |

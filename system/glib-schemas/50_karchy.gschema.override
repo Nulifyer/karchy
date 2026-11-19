@@ -1,0 +1,8 @@
+# karchy's GNOME setting defaults (a default, not a lock: gsettings and dconf
+# still change them per user).
+
+[org.gnome.desktop.interface]
+# Monospace text in GTK apps follows fontconfig's "monospace", so the font
+# chosen in Settings › Fonts (karchy font set) reaches it too. GNOME's own
+# default names Adwaita Mono, which ignores that choice (D-120).
+monospace-font-name='monospace 11'

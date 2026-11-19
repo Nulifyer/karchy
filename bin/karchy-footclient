@@ -3,15 +3,18 @@
 # karchy:summary=Open a foot window in the current theme's colors
 # karchy:hidden=true
 
-# foot's server reads its config once, when it starts, so after a theme
-# switch or a text size change it would keep opening windows the old way.
-# When one of karchy's included files (the theme's colors, the text size) is
-# newer than the running server: a server with no windows is stopped, so its
-# socket starts a fresh one for this window; with windows open, the newer
-# file's values go to the new window as overrides.
+# foot's server reads its config and fontconfig once, when it starts, so
+# after a theme switch, a text size change or a font change it would keep
+# opening windows the old way. When one of karchy's files (the theme's colors,
+# the text size, the chosen monospace font) is newer than the running server:
+# a server with no windows is stopped, so its socket starts a fresh one for
+# this window; with windows open, the newer values go to the new window as
+# overrides.
 
 foot_ini=$HOME/.local/state/karchy/current/theme/foot.ini
 size_ini=${XDG_STATE_HOME:-$HOME/.local/state}/karchy/terminal/foot.ini
+# karchy-font-set writes or removes a file here, which changes the folder's time.
+font_state=$HOME/.local/state/karchy/fontconfig
 overrides=()
 
 # The starter foot.ini includes the text-size file, and foot refuses a config
@@ -35,12 +38,17 @@ overrides_from() {
 }
 
 newer_than_server() {
-  [[ -f $1 ]] && (($(stat -L -c %Y "$1") > started))
+  [[ -e $1 ]] && (($(stat -L -c %Y "$1") > started))
+}
+
+# The user's foot.ini sets a font of its own, which wins over karchy's.
+own_font() {
+  grep -qE '^[[:space:]]*font[[:space:]]*=' "$HOME/.config/foot/foot.ini" 2>/dev/null
 }
 
 started=$(systemctl --user show foot-server.service -p ExecMainStartTimestamp --value 2>/dev/null)
 started=$(date -d "$started" +%s 2>/dev/null || echo 0)
-if ((started > 0)) && { newer_than_server "$foot_ini" || newer_than_server "$size_ini"; }; then
+if ((started > 0)) && { newer_than_server "$foot_ini" || newer_than_server "$size_ini" || newer_than_server "$font_state"; }; then
   server_pid=$(systemctl --user show foot-server.service -p MainPID --value 2>/dev/null)
   if [[ ${server_pid:-0} != 0 && -z $(pgrep -P "$server_pid") ]]; then
     systemctl --user stop foot-server.service 2>/dev/null || true
@@ -48,8 +56,14 @@ if ((started > 0)) && { newer_than_server "$foot_ini" || newer_than_server "$siz
     if newer_than_server "$foot_ini"; then overrides_from "$foot_ini"; fi
     # The size, unless the user's foot.ini sets a font of its own, which wins
     # over karchy's include and must win over this too.
-    if newer_than_server "$size_ini" && ! grep -qE '^[[:space:]]*font[[:space:]]*=' "$HOME/.config/foot/foot.ini" 2>/dev/null; then
+    if newer_than_server "$size_ini" && ! own_font; then
       overrides_from "$size_ini"
+    fi
+    # The font by its name, at karchy's size: the server still resolves
+    # "monospace" as it did when it started.
+    if newer_than_server "$font_state" && ! own_font; then
+      size=$(sed -n 's/^font=.*:size=\([0-9.]*\).*/\1/p' "$size_ini" 2>/dev/null | head -n1)
+      overrides+=(-o "main.font=$(fc-match monospace -f '%{family[0]}'):size=${size:-10}")
     fi
   fi
 fi

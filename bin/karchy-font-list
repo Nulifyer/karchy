@@ -1,6 +1,96 @@
 #!/bin/bash
 
-# karchy:summary=List available monospace fonts
-# karchy:examples=karchy font list | karchy font set "CaskaydiaMono Nerd Font"
+# karchy:summary=List the monospace fonts that can be chosen
+# karchy:args=[--json]
+# karchy:examples=karchy font list | karchy font set "FiraCode Nerd Font"
 
-fc-list :spacing=100 -f "%{family[0]}\n" | grep -v -i -E 'emoji|signwriting|karchy|omarchy|^symbols nerd font' | sort -u
+# One line per installed fixed-width family, as `karchy font set` takes it.
+# A Nerd Font ships each family three times; where "X Nerd Font" is installed,
+# "X Nerd Font Mono" (the same letters, with every icon squeezed into one
+# cell) is left out.
+#
+#   --json   For Settings › Fonts: {"current", "chosen", "default", "fonts"}.
+#            `fonts` holds the installed families, then the fonts from the
+#            Quick install list (its Fonts category) that aren't installed:
+#            {"family", "name", "installed", "icons", "id", "package",
+#             "size", "specimen"}
+#            icons     the family has the Nerd Font icons itself (otherwise
+#                      they come from the symbols font, 50-karchy.conf)
+#            id        the Quick install id, for fonts on that list
+#            size      what the package takes on disk, for fonts not installed
+#            specimen  a picture of the font (tools/font-specimens), so a font
+#                      that isn't installed can be shown
+
+DEFAULT_FAMILY="JetBrainsMono Nerd Font"
+KARCHY=${KARCHY_PATH:-/usr/share/karchy}
+CATALOG=$KARCHY/default/karchy/quick-install.json
+SPECIMENS=$KARCHY/default/karchy/font-specimens
+STATE="$HOME/.local/state/karchy/fontconfig/font.conf"
+
+# Every fixed-width family, under each of its names.
+fixed_width() {
+  fc-list :spacing=100 family | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep . | sort -u
+}
+
+installed() {
+  local all
+  all=$(fc-list :spacing=100 -f '%{family[0]}\n' |
+    grep -v -i -E 'emoji|signwriting|karchy|omarchy|^symbols nerd font| CJK ' | sort -u)
+  awk 'NR == FNR { have[$0]; next }
+       { base = $0 }
+       sub(/ Nerd Font Mono$/, " Nerd Font", base) && (base in have) { next }
+       { print }' <(printf '%s\n' "$all") <(printf '%s\n' "$all")
+}
+
+if [[ ${1:-} != --json ]]; then
+  case ${1:-} in
+    "") installed ;;
+    -h | --help) sed -n 's/^# karchy:args=/Usage: karchy-font-list /p' "$0" ;;
+    *) sed -n 's/^# karchy:args=/Usage: karchy-font-list /p' "$0" >&2; exit 1 ;;
+  esac
+  exit
+fi
+
+# The family karchy-font-set wrote, or nothing.
+chosen=$(sed -n 's:.*<string>\(.*\)</string>.*:\1:p' "$STATE" 2>/dev/null | grep -v '^monospace$' | head -n1 |
+  sed 's/&lt;/</g; s/&gt;/>/g; s/&amp;/\&/g')
+current=$(fc-match monospace -f '%{family[0]}')
+
+# The families that carry the Material Design icons the shell and prompts use.
+with_icons=$(fc-list ':charset=f033e' family | tr ',' '\n' | sed 's/^ *//; s/ *$//' | sort -u)
+
+catalog='[]'
+[[ -r $CATALOG ]] && catalog=$(jq -c '[.apps[] | select(.category == "fonts" and .font)
+  | {id, name, family: .font, package: .packages[0]}]' "$CATALOG")
+
+# Sizes of the listed fonts that aren't installed, from one pacman call.
+have=$(installed)
+mapfile -t missing < <(jq -r --arg have "$have" '($have | split("\n")) as $h
+  | .[] | select(.family as $f | $h | index($f) | not) | .package' <<<"$catalog")
+sizes='{}'
+if ((${#missing[@]})); then
+  sizes=$(LC_ALL=C pacman -Si "${missing[@]}" 2>/dev/null |
+    awk -F' *: ' '$1 == "Name" { name = $2 } $1 == "Installed Size" { print name "\t" $2 }' |
+    jq -Rsc 'split("\n") | map(select(length > 0) | split("\t") | {(.[0]): .[1]}) | add // {}')
+fi
+
+jq -cn --arg have "$have" --arg icons "$with_icons" --arg current "$current" --arg chosen "$chosen" \
+  --arg default "$DEFAULT_FAMILY" --arg specimens "$SPECIMENS" --argjson catalog "$catalog" --argjson sizes "$sizes" '
+  ($have | split("\n") | map(select(length > 0))) as $h
+  | ($icons | split("\n")) as $i
+  | def listed($f): first($catalog[] | select(.family == $f)) // null;
+    def shown($f): if $f == $default then "JetBrains Mono" else ($f | sub(" Nerd Font( Mono)?$"; "")) end;
+    def specimen($e): if $e then "\($specimens)/\($e.id).png" else "" end;
+  {
+    current: $current, chosen: $chosen, default: $default,
+    fonts: (
+      [$h[] | . as $f | listed($f) as $e
+        | {family: $f, name: ($e.name // shown($f)), installed: true, icons: ($i | index($f) != null),
+           id: ($e.id // ""), package: ($e.package // ""), size: "", specimen: specimen($e)}]
+      | sort_by(.name | ascii_downcase)
+    ) + [
+      $catalog[] | select(.family as $f | $h | index($f) | not)
+        | {family, name, installed: false, icons: true, id, package,
+           size: ($sizes[.package] // ""), specimen: specimen(.)}
+    ]
+  }'

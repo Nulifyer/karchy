@@ -131,11 +131,14 @@ package() {
   # Thunar's Send To › LocalSend; hidden while LocalSend isn't installed.
   install -Dm644 thunar/sendto/karchy-localsend.desktop "$pkgdir/usr/share/Thunar/sendto/karchy-localsend.desktop"
   install -Dm644 pam.d/karchy-lock-password "$pkgdir/etc/pam.d/karchy-lock-password"
-  # Font defaults: monospace is JetBrainsMono Nerd Font; karchy-font-set's user
-  # file loads later and wins.
+  # Font defaults: monospace is JetBrainsMono Nerd Font, unless karchy-font-set
+  # chose another (the state file it includes) or the user's fontconfig does.
   install -Dm644 fontconfig/50-karchy.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-karchy.conf"
   install -d "$pkgdir/etc/fonts/conf.d"
   ln -s ../../../usr/share/fontconfig/conf.avail/50-karchy.conf "$pkgdir/etc/fonts/conf.d/50-karchy.conf"
+  # GNOME setting defaults: GTK's monospace text follows that font (D-120).
+  # glib2's pacman hook compiles the schemas.
+  install -Dm644 glib-schemas/50_karchy.gschema.override "$pkgdir/usr/share/glib-2.0/schemas/50_karchy.gschema.override"
   # karchy's XKB option (Shift + Caps Lock is Compose), read before the system rules.
   install -Dm644 xkb/rules/evdev "$pkgdir/etc/xkb/rules/evdev"
   install -Dm644 xkb/symbols/karchy "$pkgdir/etc/xkb/symbols/karchy"

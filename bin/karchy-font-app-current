@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# karchy:summary=Show the font GTK and Qt apps use
+# karchy:examples=karchy font app current
+
+# The family of GNOME's interface font, which GTK apps read and Qt apps get
+# through the GTK platform theme. "monospace" means the monospace font
+# (`karchy font current`).
+name=$(gsettings get org.gnome.desktop.interface font-name 2>/dev/null)
+name=${name#\'}
+name=${name%\'}
+# "Adwaita Sans 11", "Noto Sans Bold 10": the size, when there is one, is last.
+if [[ $name =~ ^(.*[^[:space:]])[[:space:]]+[0-9]+([.][0-9]+)?$ ]]; then name=${BASH_REMATCH[1]}; fi
+echo "${name:-Adwaita Sans}"

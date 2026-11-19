@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# karchy:summary=List the fonts GTK and Qt apps can use
+# karchy:args=[--json]
+# karchy:examples=karchy font app list | karchy font app set "Noto Sans"
+
+# The installed proportional families that read as an interface font: no
+# monospace, symbol or emoji fonts, and of Noto only Noto Sans and Noto Serif
+# (its other families are one per script). `monospace` is the choice that
+# follows the monospace font (`karchy font set`).
+#
+#   --json   For Settings › Fonts: {"current", "default", "fonts": [...]}
+
+DEFAULT_FAMILY="Adwaita Sans"
+
+families() {
+  comm -23 \
+    <(fc-list :scalable=true:lang=en -f '%{family[0]}\n' | sort -u) \
+    <(fc-list :spacing=100 -f '%{family[0]}\n' | sort -u) |
+    grep -v -i -E 'emoji|symbols|nerd font|signwriting| mono( |$)|math|music| CJK |karchy|omarchy' |
+    grep -v -E '^Noto (Sans|Serif|Naskh|Nastaliq|Kufi|Rashi|Traditional|Znamenny|Fangsong) .|^Noto (Music|Sans Mono)'
+}
+
+case ${1:-} in
+  "")
+    echo monospace
+    families
+    ;;
+  --json)
+    jq -cn --arg fonts "$(families)" --arg current "$(karchy-font-app-current)" --arg default "$DEFAULT_FAMILY" \
+      '{current: $current, default: $default, fonts: ($fonts | split("\n") | map(select(length > 0)))}'
+    ;;
+  -h | --help) sed -n 's/^# karchy:args=/Usage: karchy-font-app-list /p' "$0" ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-font-app-list /p' "$0" >&2; exit 1 ;;
+esac
