@@ -31,6 +31,13 @@ jobs:
       - name: Agent skills are linked safely and each one is packaged once (D-115)
         run: tests/agent-skills.sh
 
+  fonts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Font rules, commands and the listed fonts' pictures (D-120)
+        run: tests/fonts.sh
+
   quick-install:
     runs-on: ubuntu-latest
     steps:
