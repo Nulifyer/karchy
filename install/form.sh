@@ -205,6 +205,7 @@ form_screen() {
 }
 
 form_run() {
+  local reason
   form_require_gum
   # An unattended config's variables don't belong in a form's first screen.
   unset KARCHY_KEYMAP KARCHY_DISK KARCHY_USER KARCHY_PASSWORD KARCHY_HOSTNAME KARCHY_TIMEZONE KARCHY_CHANNEL
@@ -224,13 +225,9 @@ form_run() {
 
   while true; do
     KARCHY_USER=$(gum input --header "Username" --placeholder "lowercase letters, digits, - or _") || form_cancel
-    if ! [[ $KARCHY_USER =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
-      form_retry "Use lowercase letters, digits, - or _, starting with a letter."
-    elif form_reserved_user "$KARCHY_USER"; then
-      form_retry "$KARCHY_USER is a name the system uses itself. Pick another."
-    else
-      break
-    fi
+    reason=$(form_user_refusal "$KARCHY_USER")
+    [[ -n $reason ]] || break
+    form_retry "$reason"
   done
   form_screen
 
@@ -289,18 +286,14 @@ form_run() {
   fi
 }
 
-# Names the installed system creates for itself (root, service users, groups),
-# which useradd would refuse only after the disk is erased. The live system
-# has most of them; the rest come from karchy's packages.
-form_reserved_user() {
-  local name="$1"
-  getent passwd "$name" >/dev/null || getent group "$name" >/dev/null && return 0
-  case "$name" in
-    root | bin | daemon | mail | ftp | http | nobody | dbus | git | avahi | polkitd | greeter | rtkit | \
-      colord | geoclue | usbmux | uuidd | tss | alpm | cups | wheel | adm | sys | users | input | video | \
-      audio | storage | optical | lp | kvm | render | docker | libvirt | systemd-* | nm-openvpn | flatpak) return 0 ;;
-  esac
-  return 1
+# Why a name can't be the new account's, or nothing. The rule is the one
+# Settings › Users applies to accounts added later (system/users): its
+# shape, and the names the installed system makes for itself (root, service
+# users, groups), which useradd would refuse only after the disk is erased.
+form_user_refusal() {
+  local reason
+  reason=$("$KARCHY_SRC/system/users/users-settings" check add "$1" admin 2>&1 >/dev/null) || true
+  printf '%s' "${reason#users-settings: }"
 }
 
 # The last question, after the summary: nothing is written before it.
@@ -327,6 +320,9 @@ form_load() {
   for var in KARCHY_DISK KARCHY_USER KARCHY_PASSWORD KARCHY_HOSTNAME KARCHY_TIMEZONE; do
     [[ -n ${!var:-} ]] || die "$file does not set $var"
   done
+  local refusal
+  refusal=$(form_user_refusal "$KARCHY_USER")
+  [[ -z $refusal ]] || die "$file names \"$KARCHY_USER\" as the user. $refusal Nothing was changed."
   [[ -b $KARCHY_DISK ]] || die "$file names $KARCHY_DISK as the disk, which is not a disk on this computer (lsblk lists them); nothing was changed."
   KARCHY_KEYMAP=${KARCHY_KEYMAP:-us}
   KARCHY_BEES=${KARCHY_BEES:-yes}

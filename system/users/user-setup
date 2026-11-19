@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# karchy: what a new account's home gets that /etc/skel can't carry, because
+# it is made rather than copied. Installed as /usr/lib/karchy/user-setup and
+# run as the account itself, never as root, before its first login:
+#   - by the installer for the first account (install/setup.sh), in the new
+#     system;
+#   - by /usr/lib/karchy/users-settings for an account added in
+#     Settings › Users.
+# One owner, so an account made later starts as the first one did.
+#
+# Usage: user-setup [theme]   (default: karchy's default theme)
+#
+# Everything here is safe to run again.
+
+set -euo pipefail
+
+((EUID != 0)) || { echo "user-setup: run it as the account, not as root" >&2; exit 1; }
+[[ -n ${HOME:-} && -d $HOME && -w $HOME ]] || { echo "user-setup: no home folder to set up" >&2; exit 1; }
+
+export KARCHY_PATH=/usr/share/karchy
+theme=${1:-nulifyer}
+
+# No session exists yet, so there is no runtime folder. The commands below
+# would fall back to /tmp, where a lock file left by another account can't
+# be opened; a folder of this run's own stands in.
+if [[ -z ${XDG_RUNTIME_DIR:-} || ! -w ${XDG_RUNTIME_DIR:-} ]]; then
+  XDG_RUNTIME_DIR=$(mktemp -d)
+  export XDG_RUNTIME_DIR
+  trap 'rm -rf -- "$XDG_RUNTIME_DIR"' EXIT
+fi
+unset DBUS_SESSION_BUS_ADDRESS
+
+# This account's files are made by the karchy installed now, so the
+# migrations it ships, written for older installs, are already done.
+karchy-migrate baseline
+# The agent skills of the installed packages, in ~/.agents/skills and for
+# Claude Code. (The session does this at each login too.)
+karchy-agent-skills >/dev/null
+# The default theme, applied without a running session, as Omarchy does at
+# install.
+KARCHY_SETUP_CONTEXT=install KARCHY_THEME_HEADLESS=1 karchy-theme-set "$theme"
+mkdir -p "$HOME/.config/btop/themes"
+ln -snf "$HOME/.local/state/karchy/current/theme/btop.theme" "$HOME/.config/btop/themes/current.theme"

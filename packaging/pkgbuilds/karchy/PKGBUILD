@@ -84,6 +84,10 @@ package() {
   install -Dm755 -t "$pkgdir/usr/lib/karchy" system/greetd/greeter system/greetd/greeter-session system/greetd/session
   install -Dm644 system/greetd/hyprland.lua "$share/greeter/hyprland.lua"
   install -Dm644 system/greetd/tmpfiles.conf "$pkgdir/usr/lib/tmpfiles.d/karchy-greeter.conf"
+  # What a new account's home gets that /etc/skel can't carry (the default
+  # theme applied, the agent skills), run as the account by the installer and
+  # by Settings › Users (/usr/lib/karchy/users-settings, in karchy-settings).
+  install -Dm755 system/users/user-setup "$pkgdir/usr/lib/karchy/user-setup"
   # Pause Hyprland's config auto-reload while karchy's files are replaced.
   install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" system/pacman/hooks/*.hook
   # The password prompt's words for the root helpers above.

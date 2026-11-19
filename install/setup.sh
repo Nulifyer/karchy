@@ -143,19 +143,12 @@ setup_services() {
 }
 
 # The user's starting configs came from /etc/skel (karchy-settings) when the
-# account was created. Apply the default theme without a running session, as
-# Omarchy does at install.
+# account was created. What is made rather than copied (the migration marks,
+# the agent skills, the default theme applied without a running session)
+# comes from the installed karchy's own program, which Settings › Users
+# runs for accounts added later.
 setup_user() {
-  # This user's files are made by the karchy just installed, so the migrations
-  # it ships, written for older installs, are already done (karchy-migrate).
-  as_user env KARCHY_PATH=/usr/share/karchy karchy-migrate baseline
-  # The agent skills of the packages just installed, in ~/.agents/skills and
-  # for Claude Code, before the first login.
-  as_user karchy-agent-skills >/dev/null
-  as_user env KARCHY_PATH=/usr/share/karchy KARCHY_SETUP_CONTEXT=install KARCHY_THEME_HEADLESS=1 \
-    karchy-theme-set "${KARCHY_THEME:-nulifyer}"
-  # shellcheck disable=SC2016  # expanded by the user's shell in the target
-  as_user bash -c 'mkdir -p "$HOME/.config/btop/themes" && ln -snf "$HOME/.local/state/karchy/current/theme/btop.theme" "$HOME/.config/btop/themes/current.theme"'
+  as_user /usr/lib/karchy/user-setup ${KARCHY_THEME:+"$KARCHY_THEME"}
 }
 
 # bees (D-86), on unless declined in the form: deduplicates the system's btrfs

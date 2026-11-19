@@ -285,34 +285,37 @@ base_locale() {
 }
 
 base_user() {
-  in_target useradd --create-home --groups wheel --shell /usr/bin/fish "$KARCHY_USER"
-  printf '%s:%s\n' "$KARCHY_USER" "$KARCHY_PASSWORD" | in_target chpasswd
-  in_target passwd --lock root
-  # The sudo policy comes from karchy-settings, pacstrapped with the base.
-  in_target visudo -cf /etc/sudoers.d/karchy
   # The login keyring (D-57, D-131). Without disk encryption it opens with
   # the login password (PAM, system/pam.d/karchy-login), and no key is made: a
   # key on a plain disk would open the keyring for anyone who has the disk.
-  # This file says so to the unit that would make one
-  # (karchy-keyring-key@.service) and to karchy-keyring-key.
+  # This file says so to whatever would make one (users-settings below,
+  # karchy-keyring-key@.service) and to karchy-keyring-key. It comes before
+  # the account, which gets its key as it is made.
   if ! install_encrypted; then
     install -d -m 0755 "$KARCHY_MNT/etc/karchy"
     echo "# karchy: the login keyring opens with the login password (D-131); no key is kept in /etc/credstore." \
       >"$KARCHY_MNT/etc/karchy/keyring-login-password"
-    return 0
   fi
-  # On an encrypted disk its key, before any snapshot is taken. A key saved
-  # with karchy-keyring-key export (KARCHY_KEYRING_KEY_FILE in an unattended
-  # config) is used instead of a new one, so a restored home's keyring opens.
-  local uid key=""
-  uid=$(in_target id -u "$KARCHY_USER")
-  if [[ -n ${KARCHY_KEYRING_KEY_FILE:-} ]]; then
+  # The account, by the owner of what an account is (system/users, from
+  # karchy-settings, pacstrapped with the base): an administrator with fish
+  # as the shell, a home nobody else opens and, on an encrypted disk, the
+  # keyring's key, before any snapshot is taken. Settings › Users makes
+  # later accounts the same way. The password goes in on stdin.
+  printf '%s\n' "$KARCHY_PASSWORD" | in_target /usr/lib/karchy/users-settings add "$KARCHY_USER" admin
+  in_target passwd --lock root
+  # The sudo policy comes from karchy-settings too.
+  in_target visudo -cf /etc/sudoers.d/karchy
+  # A key saved with karchy-keyring-key export (KARCHY_KEYRING_KEY_FILE in an
+  # unattended config) takes the new key's place, so a restored home's
+  # keyring opens.
+  if install_encrypted && [[ -n ${KARCHY_KEYRING_KEY_FILE:-} ]]; then
+    local uid key
+    uid=$(in_target id -u "$KARCHY_USER")
     key=$(head -n 1 "$KARCHY_KEYRING_KEY_FILE" | tr -d '[:space:]')
     [[ $key =~ ^[A-Za-z0-9+/]{43}=$ ]] || die "$KARCHY_KEYRING_KEY_FILE doesn't hold a keyring key (karchy-keyring-key export writes one)"
     install -d -m 0700 "$KARCHY_MNT/etc/credstore"
     printf '%s' "$key" | install -m 0600 /dev/stdin "$KARCHY_MNT/etc/credstore/karchy.keyring.$uid"
   fi
-  in_target /usr/lib/karchy/keyring-key "$uid"
 }
 
 # Internal data disks already in the machine get mounts at /mnt/<label> (D-24),
