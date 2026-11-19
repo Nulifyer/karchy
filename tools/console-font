@@ -38,6 +38,10 @@ LOW = "\u0000☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨
 CP437 = [LOW[i] if i < 32 else "⌂" if i == 127 else bytes([i]).decode("cp437") for i in range(256)]
 
 # More characters the console can show with glyphs the font already has.
+# Characters the console needs more than code page 437's own at that
+# position: drawn in its place in the console fonts (Limine keeps the page).
+CONSOLE_GLYPHS = {"√": "✓"}
+
 ALIASES = {
     "√": "✓✔",
     "•": "●∙",
@@ -51,6 +55,8 @@ ALIASES = {
     "'": "’‘",
     '"': "“”",
     "-": "‐‑",
+    "x": "✗✘×",
+    ".": "…",
     " ": " ",
 }
 
@@ -184,7 +190,7 @@ def render(char, font, w, h, baseline):
     return [[1 if cell.getpixel((x, y)) else 0 for x in range(w)] for y in range(h)]
 
 
-def glyphs(ttf, w, h):
+def glyphs(ttf, w, h, replace=None):
     # The font's advance is 0.6 em; the size that makes it exactly w.
     font = ImageFont.truetype(str(ttf), w / 0.6)
     baseline = round(h * 0.77)
@@ -201,7 +207,7 @@ def glyphs(ttf, w, h):
         if px is None:
             px = draw_block(char, w, h)
         if px is None:
-            px = render(char, font, w, h, baseline)
+            px = render((replace or {}).get(char, char), font, w, h, baseline)
             if px == missing:  # the font's "no such character" box
                 px = [[0] * w for _ in range(h)]
         out.append(px)
@@ -249,8 +255,9 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
 
     for w, h in [LIMINE_SIZE, *CONSOLE_SIZES]:
-        all_px = glyphs(args.fonts / TTF_NAME.format(WEIGHTS[w]), w, h)
-        if (w, h) == LIMINE_SIZE:
+        limine = (w, h) == LIMINE_SIZE
+        all_px = glyphs(args.fonts / TTF_NAME.format(WEIGHTS[w]), w, h, None if limine else CONSOLE_GLYPHS)
+        if limine:
             target = args.out / f"karchy-{w}x{h}.bin"
             target.write_bytes(b"".join(pack(px, w) for px in all_px))
         else:
