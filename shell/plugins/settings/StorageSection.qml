@@ -11,13 +11,15 @@ import "StorageModel.js" as Model
 // network shares kept mounted, and the drives plugged in, through
 // karchy-settings-storage.
 //
-//   a card per disk      its health (SMART), then each volume: where it is
-//                        mounted, how full it is, and what can be done with
-//                        it (StorageVolume)
-//   btrfs filesystems    what the files hold against what they take on the
-//                        disk, which only root can count: the nightly
-//                        measurement, or "Measure now". Nothing is shown that
-//                        was not measured.
+//   a card per disk      its health (SMART, read when the page opens),
+//                        then each volume: where it is mounted, how full it
+//                        is right now, and what can be done with it
+//                        (StorageVolume)
+//   btrfs filesystems    also what the files hold against what they take on
+//                        the disk, which has to be counted file by file:
+//                        only "Measure now" does that, and the result
+//                        carries its date. Nothing is shown that was not
+//                        counted.
 //   the system disk      the switch for background deduplication (bees) and
 //                        how far it is
 //   Network shares       the shares kept at /mnt; a share whose server is
@@ -25,9 +27,11 @@ import "StorageModel.js" as Model
 //   USB drives           mount, unmount, eject
 //
 // The page reads again when a disk, a mount, /etc/fstab, the measurement or
-// a disk warning changes (karchy-settings-storage watch). Only what has no
-// event is asked for again every half minute, and only while the page is in
-// view: bees' progress, and whether a connected share still answers.
+// a disk warning changes (karchy-settings-storage watch). What has no event
+// is asked for again, only while the page is in view: how full each volume
+// is every two seconds (the filesystem's own totals, nothing is walked),
+// bees' progress every ten, and whether a connected share still answers
+// every half minute.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -35,6 +39,14 @@ ColumnLayout {
   // The Settings window, for its confirm dialog (set by its Loader).
   property var settings: null
 
+  // karchy-settings-storage usage: the newest space figures, by filesystem
+  // UUID. Empty until the first reading; `status` carries the same figures
+  // as of its own reading.
+  property var usage: ({})
+  // karchy-settings-storage health: each disk's SMART health, and whether
+  // it was read at all.
+  property var healthList: []
+  property bool healthLoaded: false
   // karchy-settings-storage status.
   property var measurement: ({ time: null, running: false, available: false })
   // The disks by name; the two lists of names are replaced only when the set
@@ -61,6 +73,7 @@ ColumnLayout {
 
   function refresh() {
     statusQuery.request()
+    healthQuery.request()
     sharesQuery.request()
     beesQuery.request()
   }
@@ -75,9 +88,22 @@ ColumnLayout {
     root.nowMs = Date.now()
     root.measurement = status.measurement || { time: null, running: false, available: false }
     root.diskMap = map
+    // The figures of this reading are the newest now.
+    root.usage = ({})
+    // A disk came or went: its health is read with the others'.
+    var changed = names(parts.internal).concat(names(parts.removable)).join(" ") !== root.internalNames.concat(root.removableNames).join(" ")
     if (names(parts.internal).join(" ") !== root.internalNames.join(" ")) root.internalNames = names(parts.internal)
     if (names(parts.removable).join(" ") !== root.removableNames.join(" ")) root.removableNames = names(parts.removable)
+    if (changed && root.loaded) healthQuery.request()
     root.loaded = true
+  }
+
+  function loadUsage(text) {
+    try { root.usage = JSON.parse(text) } catch (e) {}
+  }
+
+  function loadHealth(text) {
+    try { root.healthList = JSON.parse(text); root.healthLoaded = true } catch (e) {}
   }
 
   function loadShares(text) {
@@ -160,6 +186,10 @@ ColumnLayout {
   }
 
   Query { id: statusQuery; command: ["karchy-settings-storage", "status"]; onResult: function(text) { root.loadStatus(text) } }
+  Query { id: usageQuery; command: ["karchy-settings-storage", "usage"]; onResult: function(text) { root.loadUsage(text) } }
+  // Apart from the disks too: it asks each disk, and one that is slow to
+  // answer doesn't hold the rest up.
+  Query { id: healthQuery; command: ["karchy-settings-storage", "health"]; onResult: function(text) { root.loadHealth(text) } }
   // Apart from the disks: a share that doesn't answer takes two seconds to
   // say so, and the rest of the page doesn't wait for it.
   Query { id: sharesQuery; command: ["karchy-settings-storage", "shares"]; onResult: function(text) { root.loadShares(text) } }
@@ -209,12 +239,19 @@ ColumnLayout {
     onTriggered: { statusQuery.request(); sharesQuery.request() }
   }
 
-  // bees' progress is root's to read and has no event to wait on, so it is
-  // asked for now and then, only while it runs and the page is in view. The
-  // same goes for a connected share, whose server can go away without a
-  // word, and for a measurement that ends without a new result.
+  // How full a volume is has no event to wait on, and neither has bees'
+  // progress (root's to read), so both are asked for again and again, only
+  // while the page is in view. The same goes for a connected share, whose
+  // server can go away without a word, and for a measurement that ends
+  // without a new result.
   Timer {
-    interval: 30000
+    interval: 2000
+    repeat: true
+    running: root.visible && root.loaded
+    onTriggered: usageQuery.request()
+  }
+  Timer {
+    interval: 10000
     repeat: true
     running: root.visible && root.bees.active === true
     onTriggered: beesQuery.request()
@@ -237,7 +274,7 @@ ColumnLayout {
     id: card
     property string diskName: ""
     readonly property var disk: root.diskMap[diskName] || ({ name: diskName, volumes: [], warnings: [] })
-    readonly property var health: Model.health(disk)
+    readonly property var health: Model.health({ health: Model.healthFor(disk, root.healthList) })
     // Replaced only when the volumes change, as the lists of disks are.
     property var volumePaths: []
     function syncVolumes() {
@@ -254,7 +291,7 @@ ColumnLayout {
 
     Layout.fillWidth: true
     title: Model.diskTitle(disk)
-    subtitle: Model.diskKind(disk) + (health.state === "" ? (root.measurement.time ? "" : " · Health not checked yet")
+    subtitle: Model.diskKind(disk) + (health.state === "" ? ""
       : health.state === "unknown" ? " · This disk reports no health data"
       : health.state === "asleep" ? " · Asleep, so its health was not checked" + (health.facts !== "" ? " (" + health.facts + ")" : "")
       : " · Health " + health.text + (health.facts !== "" ? ", " + health.facts : ""))
@@ -332,7 +369,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Storage"
-    explanation: "\"Your files\" adds up what every file holds; \"Stored on disk\" is the room that takes once shared data is counted once and compression has done its part. Both leave out snapshots. Measured every night (not on battery) and when you ask. 1 GB is a thousand MB, as disks are sold."
+    explanation: "How full each volume is comes from the filesystem itself and follows what you do. \"Measure now\" under a btrfs volume counts more: what your files add up to, and what sharing, compression and snapshots account for. It reads every file's layout, which can take minutes, so it runs only when you ask. 1 GB is a thousand MB, as disks are sold."
   }
 
   InlineMessage {

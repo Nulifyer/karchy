@@ -27,9 +27,49 @@ function diskSize(value) {
   return text + " " + units[unit]
 }
 
-// The measured figures of one btrfs filesystem's live data, from root's
-// measurement (`measured` on a volume; /usr/lib/karchy/storage-measure says
-// how each is counted). null when it was not measured or the count failed.
+// A mounted volume's space as it is now, from the filesystem itself: `space`
+// is the newest reading (`karchy-settings-storage usage`, by UUID), and the
+// volume's own figures from `status` stand in until one arrives. null when
+// it is not mounted.
+//   size      the filesystem's size
+//   used      bytes taken on the disk. On btrfs that is its own total of
+//             data and metadata as written (compressed, shared data once,
+//             a second metadata copy counted), snapshots included; elsewhere
+//             what the filesystem reports as used.
+//   data, metadata   the two parts on btrfs, else null
+//   free      room left for files; on btrfs an estimate, because how much
+//             fits depends on how well it compresses and on metadata
+//   share     used / size, 0 to 1
+function live(volume, space) {
+  var v = space && typeof space === "object" ? space : volume
+  if (!v) return null
+  var size = Number(v.fsSize)
+  if (!isFinite(size) || size <= 0) return null
+  var d = v.onDisk
+  var data = d ? Number(d.data) : NaN, metadata = d ? Number(d.metadata) : NaN
+  var parts = isFinite(data) && isFinite(metadata) && data >= 0 && metadata >= 0
+  var used = parts ? data + metadata : Number(v.fsUsed)
+  if (!isFinite(used) || used < 0) used = 0
+  var free = Number(v.fsAvail)
+  return {
+    size: size, used: used, data: parts ? data : null, metadata: parts ? metadata : null,
+    free: isFinite(free) && free >= 0 ? free : null,
+    share: Math.min(1, Math.max(0, used / size))
+  }
+}
+
+// "7.83 GB on disk of 39.6 GB · data 7.21 GB, metadata 620 MB" for btrfs,
+// "1.62 GB used of 4.29 GB" elsewhere.
+function liveLine(figures) {
+  if (!figures) return ""
+  if (figures.data === null) return bytes(figures.used) + " used of " + bytes(figures.size)
+  return bytes(figures.used) + " on disk of " + bytes(figures.size)
+    + " · data " + bytes(figures.data) + ", metadata " + bytes(figures.metadata)
+}
+
+// The breakdown of one btrfs filesystem's live data, from the count that
+// "Measure now" starts (`measured` on a volume; /usr/lib/karchy/storage-measure
+// says how each is counted). null when it was not counted or the count failed.
 //   files        what the files hold: every file's data added up ("Your files")
 //   stored       what that data takes on the disk ("Stored on disk")
 //   sharing      files - uncompressed: saved because files share data
@@ -70,13 +110,6 @@ function bars(volume) {
   var full = Math.max(f.files, f.stored, size)
   if (full <= 0) return { files: 0, stored: 0, size: 0 }
   return { files: f.files / full, stored: f.stored / full, size: size / full }
-}
-
-// The share of a filesystem that is in use, 0 to 1.
-function usedShare(volume) {
-  var size = Number(volume && volume.fsSize) || 0
-  var used = Number(volume && volume.fsUsed) || 0
-  return size > 0 ? Math.min(1, Math.max(0, used / size)) : 0
 }
 
 function fsName(fstype) {
@@ -151,9 +184,21 @@ var problems = {
   "worn": "it is near the end of its rated life"
 }
 
-// A disk's health from the measurement's entry for it ({health, problems,
-// wear, temperature}): `state` is "good", "warning", "asleep", "unknown" (no
-// SMART data) or "" (not measured yet); `text` is what follows "Health";
+// The entry of `karchy-settings-storage health` that is this disk's: the same
+// kernel name, and the same serial when both give one (a USB stick can take
+// over a name another disk had).
+function healthFor(disk, list) {
+  var found = null
+  ;(list || []).forEach(function(h) {
+    if (found || !h || !disk || h.name !== disk.name) return
+    if (!h.serial || !disk.serial || h.serial === disk.serial) found = h
+  })
+  return found
+}
+
+// A disk's health from its entry ({health, problems, wear, temperature}; on
+// the disk as `health`): `state` is "good", "warning", "asleep", "unknown"
+// (no SMART data) or "" (not read yet); `text` is what follows "Health";
 // `details` is what makes it a warning, as a sentence.
 function health(disk) {
   var h = disk && disk.health
@@ -221,10 +266,13 @@ function beesLine(bees) {
   return "Running"
 }
 
-// What bees itself counts, which starts again each time bees does.
+// What bees itself counts: the data it has pointed at an existing copy since
+// it started. An estimate of its work, not of what is saved now: the count
+// starts again with bees and never goes down when those files are deleted
+// or rewritten.
 function beesTotal(bees, nowMs) {
   if (!bees || !bees.active || !(bees.dedupBytes > 0)) return ""
-  return bytes(bees.dedupBytes) + " deduplicated since it started" + (bees.since > 0 ? " " + when(bees.since, nowMs) : "")
+  return "About " + bytes(bees.dedupBytes) + " shared by it since it started" + (bees.since > 0 ? " " + when(bees.since, nowMs) : "")
 }
 
 // "media" and "truenas" from "//truenas/media".
@@ -286,9 +334,9 @@ function split(disks) {
 
 if (typeof module !== "undefined") {
   module.exports = {
-    bytes: bytes, diskSize: diskSize, figures: figures, bars: bars, usedShare: usedShare, fsName: fsName,
+    bytes: bytes, diskSize: diskSize, live: live, liveLine: liveLine, figures: figures, bars: bars, fsName: fsName,
     mountsText: mountsText, mainMount: mainMount, volumeName: volumeName, volumeDetail: volumeDetail,
-    diskTitle: diskTitle, diskKind: diskKind, health: health, roughly: roughly, when: when,
+    diskTitle: diskTitle, diskKind: diskKind, healthFor: healthFor, health: health, roughly: roughly, when: when,
     beesLine: beesLine, beesTotal: beesTotal, shareName: shareName, shareState: shareState,
     volumeActions: volumeActions, split: split
   }

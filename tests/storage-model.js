@@ -42,7 +42,21 @@ eq(M.bars({ fsSize: 40 * GB, measured: { referenced: 10 * GB, uncompressed: 10 *
   { files: 0.25, stored: 0.2, size: 1 })
 eq(M.bars({ fsSize: 40 * GB, measured: null }), null)
 eq(M.bars({ fsSize: 0, measured: { referenced: 0, uncompressed: 0, disk: 0 } }), { files: 0, stored: 0, size: 0 })
-eq(M.usedShare({ fsSize: 4 * GB, fsUsed: 1 * GB }), 0.25); eq(M.usedShare({ fsSize: 0, fsUsed: 5 }), 0); eq(M.usedShare({ fsSize: 1, fsUsed: 5 }), 1)
+// The live figures: the filesystem's own, the newest reading first.
+eq(M.live({ fsSize: 4 * GB, fsUsed: 1 * GB, fsAvail: 3 * GB }),
+  { size: 4 * GB, used: 1 * GB, data: null, metadata: null, free: 3 * GB, share: 0.25 })
+eq(M.live({ fsSize: 0, fsUsed: 5 }), null); eq(M.live({ fsSize: 1, fsUsed: 5, fsAvail: 0 }).share, 1); eq(M.live(null), null)
+// btrfs: what is on the disk is its data and metadata, not statfs's figure.
+const btrfs = { fsSize: 40 * GB, fsUsed: 8.1 * GB, fsAvail: 31 * GB, onDisk: { data: 7 * GB, metadata: 1 * GB } }
+eq(M.live(btrfs), { size: 40 * GB, used: 8 * GB, data: 7 * GB, metadata: 1 * GB, free: 31 * GB, share: 0.2 })
+eq(M.liveLine(M.live(btrfs)), "8 GB on disk of 40 GB · data 7 GB, metadata 1 GB")
+eq(M.liveLine(M.live({ fsSize: 4.29 * GB, fsUsed: 1.62 * GB, fsAvail: 2.6 * GB })), "1.62 GB used of 4.29 GB"); eq(M.liveLine(null), "")
+// A newer reading replaces the volume's own figures, whole.
+eq(M.live(btrfs, { fsSize: 40 * GB, fsUsed: 9 * GB, fsAvail: 30 * GB, onDisk: { data: 8 * GB, metadata: 1 * GB } }).used, 9 * GB)
+eq(M.live(btrfs, { fsSize: 40 * GB, fsUsed: 9 * GB, fsAvail: 30 * GB, onDisk: null }).used, 9 * GB)
+eq(M.live(btrfs, undefined).used, 8 * GB)
+// Figures of the wrong kind are not shown as parts.
+eq(M.live({ fsSize: 10, fsUsed: 4, fsAvail: "x", onDisk: { data: "x", metadata: 1 } }), { size: 10, used: 4, data: null, metadata: null, free: null, share: 0.4 })
 
 // Names and where things are.
 eq(M.mountsText(["/var/tmp", "/var/cache", "/var/log", "/srv", "/swap", "/home", "/root", "/"]), "/, /home and 6 more")
@@ -64,6 +78,11 @@ eq(M.diskKind({ transport: "nvme", size: 1000204886016 }), "NVMe, 1 TB"); eq(M.d
 
 // Health: only what was measured, and in words. The entry is the measurement's.
 eq(M.health({ health: null }), { state: "", text: "", facts: "", details: "" })
+// A disk's entry among the ones read: by name, and by serial when both have one.
+const read = [{ name: "sda", serial: "A1", health: "good" }, { name: "nvme0n1", serial: "", health: "warning" }]
+eq(M.healthFor({ name: "sda", serial: "A1" }, read).health, "good"); eq(M.healthFor({ name: "sda", serial: "B2" }, read), null)
+eq(M.healthFor({ name: "sda", serial: "" }, read).health, "good"); eq(M.healthFor({ name: "nvme0n1", serial: "S4" }, read).health, "warning")
+eq(M.healthFor({ name: "sdb", serial: "A1" }, read), null); eq(M.healthFor({ name: "sda" }, null), null)
 eq(M.health({ health: { name: "nvme0n1", serial: "S4EW", health: "good", problems: [], wear: 3, temperature: 41 } }),
   { state: "good", text: "good", facts: "3% worn, 41 °C", details: "" })
 eq(M.health({ health: { health: "good", problems: [], wear: null, temperature: null } }).facts, "")
@@ -97,7 +116,7 @@ eq(M.beesLine(bees({ active: false, waitsForPower: true, state: "stopped" })), "
 eq(M.beesLine(bees({ active: false, state: "stopped" })), "Not running")
 eq(M.beesLine(bees({ lockedOff: true, on: false, active: false })), "Switched off by karchy for now; an update turns it back on")
 eq(M.beesLine({ available: false }), ""); eq(M.beesLine(null), "")
-eq(M.beesTotal(bees({ dedupBytes: 12.3 * GB, since: at(2026, 10, 18, 8, 57) / 1000 }), now), "12.3 GB deduplicated since it started today at 08:57")
+eq(M.beesTotal(bees({ dedupBytes: 12.3 * GB, since: at(2026, 10, 18, 8, 57) / 1000 }), now), "About 12.3 GB shared by it since it started today at 08:57")
 eq(M.beesTotal(bees({ dedupBytes: 0 }), now), ""); eq(M.beesTotal(bees({ active: false, dedupBytes: 5 }), now), "")
 
 // Shares.

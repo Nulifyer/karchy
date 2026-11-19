@@ -6,7 +6,9 @@ Read this before you mount or unmount storage, change `/etc/fstab`, switch backg
 
 `karchy-settings-storage` is the Settings › Storage page's command. Nothing in it runs as root.
 
-- `karchy-settings-storage status` prints JSON: every disk with its volumes, space and mount points, what karchy keeps mounted, each disk's health, the measured btrfs figures, and current disk-health warnings.
+- `karchy-settings-storage status` prints JSON: every disk with its volumes, space and mount points, what karchy keeps mounted, the counted btrfs breakdown when there is one, and current disk-health warnings.
+- `karchy-settings-storage usage` prints only the space figures, by filesystem UUID: `fsSize`, `fsUsed`, `fsAvail`, and for btrfs `onDisk` with `data` and `metadata` in bytes. It is instant and needs no root.
+- `karchy-settings-storage health` prints each disk's SMART health, wear and temperature, asked of the disks now. No password for the person at the computer.
 - `karchy-settings-storage shares` prints the network shares kept at `/mnt`, each `connected`, `idle` or `unreachable`. It never waits on a server that is away. Prefer it to `df` or `ls /mnt/<share>`, which can block for about 30 seconds on an unreachable share.
 - `karchy-settings-storage bees` prints whether deduplication is on, running, and how far it is.
 - `karchy settings storage` opens the page.
@@ -20,15 +22,18 @@ Read this before you mount or unmount storage, change `/etc/fstab`, switch backg
 
 ## Space figures
 
-btrfs shares and compresses data, so `du` and `df` disagree. Use the measured figures in `status`.
+btrfs shares and compresses data, so `du` and `df` disagree.
 
-- A root job measures every night at 04:00 and writes `/var/lib/karchy/storage/measurement.json`. `karchy-settings-storage measure` starts a measurement now.
-- "Your files" is what files reference. "Stored on disk" is what those extents take. "Saved by sharing" covers reflink copies and all deduplication, not only bees. "Held only by snapshots" is space that returns when snapper deletes old snapshots.
+- For how full a disk is, use `karchy-settings-storage usage`. `onDisk.data + onDisk.metadata` is what btrfs has written to the disk (the "Used" of `btrfs filesystem usage`), snapshots included, and `fsAvail` is the room left, an estimate. These are btrfs's own running totals, so they are always current.
+- The breakdown of where the space goes is not kept by btrfs and has to be counted from every file's metadata. Nothing counts it in the background. `karchy-settings-storage measure` starts the count (the page's "Measure now"); it takes from half a minute to many minutes and writes `/var/lib/karchy/storage/measurement.json`, which `status` then shows as `measured` with `measurement.time`. Ask the user before starting it on a large disk, and say how old the figures are when you quote them.
+- "Your files" is what files reference. "Files on disk" is what those extents take. "Saved by sharing" covers reflink copies and all deduplication, not only bees. "Held only by snapshots" is space that returns when snapper deletes old snapshots.
 - When the disk is full, check "Held only by snapshots" before you delete user files. Read `snapshots.md` to remove snapshots.
 
 ## bees (background deduplication)
 
 bees deduplicates the system disk as `karchy-bees.service`, with limits set by the package: one thread, idle CPU and I/O. On a laptop it runs on AC power only.
+
+- `dedupBytes` in `karchy-settings-storage bees` is bees' own count of data it has shared since it started (`since`). It restarts with the service and never goes down, so call it an estimate of bees' work, not the space saved now. "Saved by sharing" in the counted breakdown is the exact figure.
 
 - Switch it with `karchy-settings-storage bees on|off`. No password for the person at the computer. `off` writes `ENABLED=no` to `/etc/karchy/bees.conf` and stops the service. Space already shared stays shared.
 - Do not run `systemctl enable|disable karchy-bees.service` yourself. The switch above keeps the config and the service in step.

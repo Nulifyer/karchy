@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy: Settings › Storage's three requests that need root.
+# karchy: Settings › Storage's four requests that need root.
 # Installed as /usr/lib/karchy/storage-settings and run only through
 #   pkexec /usr/lib/karchy/storage-settings <key>=<value>
 # by karchy-settings-storage (polkit action org.karchy.storage-settings).
@@ -14,23 +14,30 @@
 #                        enables and starts the service. on is refused while
 #                        the packaged default itself is "no" (karchy ships
 #                        that when a kernel release is unsafe with bees).
-#   measure=now          Start karchy-storage-measure.service, the same
-#                        measurement the daily timer runs. Returns at once;
+#   measure=now          Start karchy-storage-measure.service, the count
+#                        of what files hold against what they take on a
+#                        btrfs disk. Only this starts it. Returns at once;
 #                        the result lands in /var/lib/karchy/storage.
 #   show=bees            Print bees' progress and its deduplicated total as
 #                        the name=number lines of /usr/lib/karchy/bees-summary
 #                        (or state=stopped when bees has no status file).
+#   show=health          Print each disk's SMART health as the JSON array of
+#                        /usr/lib/karchy/storage-health: asked of the disks
+#                        now, without waking one that sleeps.
 #
 # Threat reasoning. polkit lets an active, local member of wheel run this
 # without a password (50-karchy-storage-settings.rules); everyone else must
 # authenticate as an administrator. So assume the caller is any program in
 # that user's session, hostile ones included.
-# - What it can reach: whether bees runs, when a measurement starts, and six
-#   numbers about bees. Stopping bees loses nothing (space that is already
+# - What it can reach: whether bees runs, when a measurement starts, six
+#   numbers about bees, and each disk's health summary (its serial, which
+#   lsblk shows everyone, a verdict, wear and temperature). Stopping bees loses nothing (space that is already
 #   shared stays shared, and its state is kept for the next start); starting
 #   it costs idle CPU and disk time under the service's own limits.
 #   A measurement reads file metadata at idle priority and one runs at a
 #   time, so asking again and again costs no more than one that never ends.
+#   Asking for health is one short SMART query per disk, which changes
+#   nothing on it and leaves a sleeping disk asleep.
 #   None of it changes a file's contents, and each choice is undone from the
 #   same page.
 # - What it cannot reach: bees' status file itself, which can name the files
@@ -70,15 +77,15 @@ fail() {
 }
 
 usage() {
-  fail "usage: storage-settings bees=on|off | measure=now | show=bees" 64
+  fail "usage: storage-settings bees=on|off | measure=now | show=bees|health" 64
 }
 
 # The request is checked before anything else, also before who is asking: a
-# call that is not one of the four is turned away the same for everyone.
+# call that is not one of the five is turned away the same for everyone.
 (( $# == 1 )) || usage
 
 case $1 in
-  bees=on | bees=off | measure=now | show=bees) request=$1 ;;
+  bees=on | bees=off | measure=now | show=bees | show=health) request=$1 ;;
   *) usage ;;
 esac
 (( EUID == 0 )) || fail "must run as root, through pkexec" 77
@@ -148,5 +155,8 @@ case $request in
     else
       echo "state=stopped"
     fi
+    ;;
+  show=health)
+    /usr/lib/karchy/storage-health
     ;;
 esac

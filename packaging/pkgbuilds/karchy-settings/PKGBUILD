@@ -180,22 +180,19 @@ package() {
   install -Dm644 polkit/rules.d/50-karchy-power-settings.rules \
     "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-power-settings.rules"
 
-  # Settings › Storage: the nightly measurement of what files hold against
-  # what they take on the disk, and of each disk's health (root, idle
-  # priority; the timer is on for every install); the root helper behind
-  # "Measure now" and the background-deduplication switch, with its polkit
-  # action and the rule that spares the person at the computer the password;
-  # and the one reader of bees' status file.
-  install -Dm755 -t "$pkgdir/usr/lib/karchy" storage/storage-measure storage/storage-settings storage/bees-summary
+  # Settings › Storage: the root helper behind the page (disk health, bees'
+  # progress and switch, "Measure now"), with its polkit action and the rule
+  # that spares the person at the computer the password; the count "Measure
+  # now" starts (no timer runs it, D-123); the SMART reader; and the one
+  # reader of bees' status file.
+  install -Dm755 -t "$pkgdir/usr/lib/karchy" storage/storage-measure storage/storage-settings storage/storage-health \
+    storage/bees-summary
   # Quick install's root side (D-109): installs and removes catalog apps by
   # id, always with an administrator's password.
   install -Dm755 packages/app-packages "$pkgdir/usr/lib/karchy/app-packages"
   install -Dm644 polkit/actions/org.karchy.app-packages.policy \
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.app-packages.policy"
-  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" storage/karchy-storage-measure.service \
-    storage/karchy-storage-measure.timer
-  install -d "$pkgdir/usr/lib/systemd/system/timers.target.wants"
-  ln -s ../karchy-storage-measure.timer "$pkgdir/usr/lib/systemd/system/timers.target.wants/karchy-storage-measure.timer"
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" storage/karchy-storage-measure.service
   install -Dm644 polkit/actions/org.karchy.storage-settings.policy \
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.storage-settings.policy"
   install -Dm644 polkit/rules.d/50-karchy-storage-settings.rules \

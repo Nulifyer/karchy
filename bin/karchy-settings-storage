@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# karchy:summary=Show disks, mounted storage and what sharing and compression save (Settings › Storage)
-# karchy:args=[status | shares | bees [on|off] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
+# karchy:summary=Show disks, mounted storage and how full it is (Settings › Storage)
+# karchy:args=[status | usage | health | shares | bees [on|off] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
 # karchy:examples=karchy settings storage | karchy-settings-storage status | karchy-settings-storage bees off
 # karchy:hidden=true
 
@@ -12,12 +12,20 @@
 #
 #   (nothing)          Open the Settings window at Storage
 #   status             JSON: every disk with its volumes, their space and
-#                      mount points (lsblk), what karchy keeps mounted
-#                      (/etc/fstab), each disk's health and each btrfs
-#                      filesystem's measured figures (root's nightly
-#                      measurement, /var/lib/karchy/storage/measurement.json),
-#                      and the disk-health warnings that apply
+#                      mount points (lsblk), what a btrfs filesystem has on
+#                      the disk as data and as metadata (its own running
+#                      totals in /sys/fs/btrfs, which every user can read),
+#                      what karchy keeps mounted (/etc/fstab), each btrfs
+#                      filesystem's breakdown when "Measure now" counted one
+#                      (/var/lib/karchy/storage/measurement.json), and the
+#                      disk-health warnings that apply
 #                      (/var/lib/karchy/disk-health)
+#   usage              JSON: only the space figures of status, by filesystem
+#                      UUID. Cheap enough to ask for every few seconds while
+#                      the page is open: no file is walked, the kernel keeps
+#                      these totals.
+#   health             JSON: each disk's SMART health, asked of the disks now
+#                      (the root helper; a sleeping disk is left asleep)
 #   shares             JSON: the network shares kept mounted at /mnt, each
 #                      "connected" (with its space), "idle" (it connects when
 #                      opened) or "unreachable". A share is only asked for its
@@ -27,7 +35,9 @@
 #   bees               JSON: background deduplication (bees) on the system
 #                      disk: whether it is on, running, and how far it is
 #   bees on|off        Switch it, then the same JSON
-#   measure            Start a measurement now
+#   measure            Count, now, what the files on each btrfs filesystem
+#                      hold against what they take (minutes on a full disk;
+#                      nothing else ever starts this)
 #   mount, unmount     One volume, through udisks
 #   eject <disk>       Unmount every volume of a removable disk and power it off
 #   unlock <device>    In a terminal: ask for an encrypted volume's password
@@ -46,6 +56,7 @@ set -euo pipefail
 ROOT_HELPER=/usr/lib/karchy/storage-settings
 MEASUREMENT=${KARCHY_STORAGE_MEASUREMENT:-/var/lib/karchy/storage/measurement.json}
 MEASURE_UNIT=karchy-storage-measure.service
+BTRFS_SYSFS=${KARCHY_BTRFS_SYSFS:-/sys/fs/btrfs}
 HEALTH_DIR=${KARCHY_DISK_HEALTH_DIR:-/var/lib/karchy/disk-health}
 FSTAB=${KARCHY_FSTAB:-/etc/fstab}
 BEES_UNIT=karchy-bees.service
@@ -84,6 +95,26 @@ udisks() {
 fstab_unescape() {
   local value=${1//\\040/ }
   printf '%s' "${value//\\011/$'\t'}"
+}
+
+# What each mounted btrfs filesystem has on the disk, by UUID: the bytes its
+# data and its metadata take there, copies included (a second metadata copy
+# counts). These are the totals btrfs keeps as it writes, the ones
+# `btrfs filesystem usage` prints as "Used"; reading them needs no root and
+# walks nothing.
+btrfs_on_disk() {
+  local dir uuid data metadata system
+  for dir in "$BTRFS_SYSFS"/*/allocation; do
+    uuid=${dir%/allocation}
+    uuid=${uuid##*/}
+    [[ $uuid =~ ^[0-9a-fA-F-]{36}$ ]] || continue
+    data=$(<"$dir/data/disk_used") || continue
+    metadata=$(<"$dir/metadata/disk_used") || continue
+    system=$(<"$dir/system/disk_used") || continue
+    [[ $data =~ ^[0-9]+$ && $metadata =~ ^[0-9]+$ && $system =~ ^[0-9]+$ ]] || continue
+    printf '%s %s %s\n' "$uuid" "$data" "$((metadata + system))"
+  done 2>/dev/null | jq -R -s -c 'split("\n") | map(select(. != "") | split(" ")
+    | {key: .[0], value: {data: (.[1] | tonumber), metadata: (.[2] | tonumber)}}) | from_entries'
 }
 
 # Root's measurement, or null: only a regular file of root's counts.
@@ -135,7 +166,7 @@ STATUS_FILTER='
       {path, name, label, fstype, size, uuid, encrypted: $encrypted, locked: false, mounts: mounts,
        fsSize: .fssize, fsUsed: .fsused, fsAvail: .fsavail, parttype}
     end;
-  ($measurement | if . == null then {filesystems: [], disks: []} else . end) as $m
+  ($measurement | if . == null then {filesystems: []} else . end) as $m
   | {
       measurement: {time: ($measurement.time // null), seconds: ($measurement.seconds // null), running: $running, available: $available},
       disks: [
@@ -146,7 +177,6 @@ STATUS_FILTER='
             name, path, model: ((.model // "") | gsub("^\\s+|\\s+$"; "")), serial: (.serial // ""), size,
             transport: (.tran // ""), rotational: (.rota == true),
             removable: (.rm == true or .hotplug == true or .tran == "usb"),
-            health: ($m.disks | map(select(.name == $disk.name and (.serial == "" or ($disk.serial // "") == "" or .serial == $disk.serial))) | first // null),
             warnings: ($warnings | map(select(.kind == "smart" and ((.device | sub("^/dev/"; "")) as $d
               | $d == $disk.name or ($d != "" and ($disk.name | startswith($d + "n"))))))),
             volumes: [
@@ -160,6 +190,7 @@ STATUS_FILTER='
                   kept: ($kept | map(select(.uuid == $volume.uuid)) | first | .mount // ""),
                   keepable: (($keepable | index($volume.path)) != null),
                   writable: (.mounts | map(select(. as $p | $writable | index($p) != null)) | first // ""),
+                  onDisk: (if .fstype == "btrfs" and .uuid != null then ($btrfs[.uuid] // null) else null end),
                   measured: (if .fstype == "btrfs" then ($m.filesystems | map(select(.uuid == $volume.uuid)) | first // null) else null end),
                   warnings: ($warnings | map(select(.kind == "scrub" and (.mount as $w | $volume.mounts | index($w) != null))))
                 }
@@ -189,7 +220,25 @@ status() {
 
   jq -c --argjson measurement "$(measurement)" --argjson warnings "$(warnings)" --argjson kept "$kept" \
     --argjson keepable "$keepable" --argjson writable "$writable" --argjson running "$running" \
-    --argjson available "$available" "$STATUS_FILTER" <<<"$devices"
+    --argjson available "$available" --argjson btrfs "$(btrfs_on_disk)" "$STATUS_FILTER" <<<"$devices"
+}
+
+# The space figures alone, by filesystem UUID, for the page's live numbers.
+usage_now() {
+  local devices
+  devices=$(timeout 10 lsblk -J -b -o UUID,FSTYPE,FSSIZE,FSUSED,FSAVAIL) || fail "The disks could not be read (lsblk)."
+  jq -c --argjson btrfs "$(btrfs_on_disk)" '
+    [.. | objects | select(.uuid != null and .fssize != null)
+     | {key: .uuid, value: {fsSize: .fssize, fsUsed: .fsused, fsAvail: .fsavail,
+         onDisk: (if .fstype == "btrfs" then ($btrfs[.uuid] // null) else null end)}}] | from_entries' <<<"$devices"
+}
+
+# Each disk's SMART health, from the root helper: a JSON array, empty when
+# the helper is missing, refused or said something else.
+health() {
+  local out=""
+  [[ ! -x $ROOT_HELPER ]] || out=$(pkexec "$ROOT_HELPER" show=health 2>/dev/null || true)
+  jq -c 'if type == "array" then . else [] end' <<<"$out" 2>/dev/null | head -n 1 | grep . || echo '[]'
 }
 
 # The file system mounted at a folder ("cifs", "autofs" under it, …), one per
@@ -441,6 +490,8 @@ watch() {
 case "${1:-}" in
   "") exec karchy-settings storage ;;
   status) (( $# == 1 )) || usage; status ;;
+  usage) (( $# == 1 )) || usage; usage_now ;;
+  health) (( $# == 1 )) || usage; health ;;
   shares) (( $# == 1 )) || usage; shares ;;
   bees) (( $# <= 2 )) || usage; bees "${2:-}" ;;
   measure) (( $# == 1 )) || usage; as_root measure=now ;;

@@ -1,11 +1,11 @@
-# Settings › Storage's measurement (see /usr/lib/karchy/storage-measure): how
-# much the files on each btrfs filesystem hold against what they take on the
-# disk, and each disk's SMART health. karchy-storage-measure.timer starts it
-# every night; "Measure now" on the page starts it through
-# /usr/lib/karchy/storage-settings. It reads file metadata only, at idle
-# priority, and writes /var/lib/karchy/storage/measurement.json.
+# Settings › Storage's count of what the files on each btrfs filesystem hold
+# against what they take on the disk (see /usr/lib/karchy/storage-measure).
+# Only "Measure now" on the page starts it, through
+# /usr/lib/karchy/storage-settings: no timer does (D-123), because it reads
+# every file's extent list. It reads file metadata only, at idle priority,
+# and writes /var/lib/karchy/storage/measurement.json.
 [Unit]
-Description=Measure disk space and disk health for Settings (karchy)
+Description=Count what files hold and take on disk, for Settings (karchy)
 After=local-fs.target
 
 [Service]
@@ -28,8 +28,7 @@ MemoryHigh=1536M
 
 # It mounts each btrfs filesystem's top level for itself, out of everyone
 # else's sight, and needs nothing from /home, the network or /tmp. Root keeps
-# its capabilities: reading every file's extent list and asking the disks for
-# their SMART data need them.
+# its capabilities: reading every file's extent list needs them.
 PrivateMounts=true
 ProtectSystem=strict
 ProtectHome=true

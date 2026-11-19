@@ -1,7 +1,7 @@
 #!/bin/bash
 # Settings › Storage's root side: what the helpers turn away, and how bees'
 # status file is read.
-# Usage: tests/storage-helpers.sh [folder holding the three helpers]
+# Usage: tests/storage-helpers.sh [folder holding the four helpers]
 #   from a checkout:   tests/storage-helpers.sh system/storage
 #   on an install:     tests/storage-helpers.sh            (/usr/lib/karchy)
 # As a user it checks that a bad request is refused as bad (exit 64) and a
@@ -10,7 +10,7 @@
 # requests left bees' config, its service and the measurement as they were.
 # It never sends a good request as root.
 dir=${1:-/usr/lib/karchy}
-settings=$dir/storage-settings measure=$dir/storage-measure summary=$dir/bees-summary
+settings=$dir/storage-settings measure=$dir/storage-measure health=$dir/storage-health summary=$dir/bees-summary
 fails=0
 scratch=$(mktemp)
 trap 'rm -f "$scratch"' EXIT
@@ -59,12 +59,29 @@ refused "a unit name" "$settings" measure=karchy-bees.service
 refused "show with another target" "$settings" show=status
 refused "the measurement with an argument" "$measure" /home
 refused "the measurement with an option" "$measure" --now
+refused "health for one disk" "$settings" show=health=sda
+refused "the health reader with an argument" "$health" /dev/sda
+refused "the health reader with an option" "$health" --all
+
+# Nothing counts files in the background (D-123): no timer for the
+# measurement ships, and only "Measure now" starts it.
+if [[ $dir == /usr/lib/karchy ]]; then
+  if [[ ! -e /usr/lib/systemd/system/karchy-storage-measure.timer && ! -e /usr/lib/systemd/system/timers.target.wants/karchy-storage-measure.timer ]]; then
+    ok "no timer for the measurement"
+  else
+    bad "karchy-storage-measure.timer is installed"
+  fi
+elif compgen -G "$dir/*.timer" >/dev/null; then
+  bad "a timer ships beside the helpers"
+else
+  ok "no timer for the measurement"
+fi
 
 if ((EUID == 0)); then
   if [[ $(state) == "$before" ]]; then ok "refused requests changed nothing"; else bad "a refused request changed bees' config, its service or the measurement"; fi
 else
   # A good request gets as far as "are you root", and no further.
-  for request in bees=on bees=off measure=now show=bees; do
+  for request in bees=on bees=off measure=now show=bees show=health; do
     code=0
     out=$("$settings" "$request" 2>/dev/null) || code=$?
     if ((code == 77)) && [[ -z $out ]]; then ok "needs root: $request"; else bad "$request as a user: exit $code, stdout [$out]"; fi
@@ -72,6 +89,9 @@ else
   code=0
   "$measure" >/dev/null 2>&1 || code=$?
   if ((code == 77)); then ok "needs root: the measurement"; else bad "the measurement as a user: exit $code"; fi
+  code=0
+  "$health" >/dev/null 2>&1 || code=$?
+  if ((code == 77)); then ok "needs root: the health reader"; else bad "the health reader as a user: exit $code"; fi
 fi
 
 # bees-summary: status files as bees writes them (karchy's fork 0.11, taken
@@ -201,10 +221,10 @@ summary_is "odd lines are skipped" "state=scanning first_pass=1 percent=50 secon
 got=$(printf '%s\n' "$hostile" | "$summary" 2>&1)
 if grep -Evq '^[a-z_]+=[a-z0-9-]+$' <<<"$got" || grep -q 'secret' <<<"$got"; then bad "summary printed something other than name=number lines: [$got]"; else ok "summary: only name=number lines come out"; fi
 
-# The measurement's reading of smartctl's JSON report: the jq filter, taken
+# The health reader's reading of smartctl's JSON report: the jq filter, taken
 # from the helper as it is and run on reports of the shapes smartctl 7 prints.
 # health_is <name> <expected JSON> <report>
-eval "$(sed -n "/^SMART_FILTER='\$/,/^    }'\$/p" "$measure")"
+eval "$(sed -n "/^SMART_FILTER='\$/,/^    }'\$/p" "$health")"
 health_is() {
   local name=$1 want=$2 got
   got=$(jq -c --arg name sdx "$SMART_FILTER" <<<"$3" 2>&1)

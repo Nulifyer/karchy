@@ -1,0 +1,95 @@
+#!/bin/bash
+
+# karchy: reads each disk's SMART health for Settings › Storage, as root.
+# Installed as /usr/lib/karchy/storage-health and run only by the root helper
+# /usr/lib/karchy/storage-settings for its request show=health, when the page
+# opens or a disk appears. It takes no arguments, reads no file a user can
+# write, changes nothing, and prints one JSON array:
+#
+#   [{"name": "nvme0n1", "serial": "...", "health": "good", "problems": [],
+#     "wear": 3, "temperature": 41}, ...]
+#
+# One entry per whole disk, by kernel name and serial, from
+# `smartctl -j -i -H -A -n standby` (a sleeping hard disk is not woken):
+#   health       good | warning | asleep | unknown
+#   problems     which of a fixed list of findings make it a warning
+#   wear         percent of an SSD's rated life used, or null
+#   temperature  degrees Celsius, or null
+# Only those values are taken from smartctl's report. None of it is secret:
+# lsblk shows every user the model and serial. Asking costs one short
+# question per disk (30 seconds at most for one that doesn't answer).
+#
+# Warnings between two looks at the page come from smartd, which watches the
+# disks all the time (/usr/lib/karchy/disk-health).
+
+set -euo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+
+fail() {
+  echo "storage-health: $1" >&2
+  exit "${2:-1}"
+}
+
+(( $# == 0 )) || fail "usage: storage-health (it takes no arguments)" 64
+(( EUID == 0 )) || fail "must run as root (through storage-settings)" 77
+
+# One disk's entry, from smartctl's JSON report. smartctl's exit code is a
+# set of flags about the disk, not a failure to run.
+# shellcheck disable=SC2016 # jq variables, not shell ones
+SMART_FILTER='
+  def attribute($id): (.ata_smart_attributes.table // []) | map(select(.id == $id)) | first;
+  def raw($id): attribute($id) | if . == null then 0 else (.raw.value // 0) end;
+  def number: if type == "number" then . else null end;
+  . as $report
+  | (.nvme_smart_health_information_log // null) as $nvme
+  | ((.smartctl.messages // []) | map(.string // "") | join(" ")) as $messages
+  | (if $nvme != null then ($nvme.percentage_used | number)
+     elif (.rotation_rate // null) == 0 then
+       # The life left, as the drive normalizes it (100 new, 0 worn out),
+       # under whichever of the usual attributes it has.
+       ([231, 233, 177, 202, 169] | map(. as $id | $report | attribute($id)) | map(select(. != null and (.value | type) == "number")) | first) as $life
+       | if $life == null then null else (100 - $life.value) end
+     else null end) as $wear
+  | ($wear | if . == null then null elif . < 0 then 0 elif . > 100 then 100 else . end) as $wear
+  | ([ (if .smart_status.passed == false then "failing" else empty end),
+       (if $nvme != null and ($nvme.critical_warning // 0) != 0 then "critical" else empty end),
+       (if $nvme != null and ($nvme.media_errors // 0) > 0 then "media-errors" else empty end),
+       (if $nvme != null and ($nvme.available_spare | number) != null and ($nvme.available_spare_threshold | number) != null
+           and $nvme.available_spare < $nvme.available_spare_threshold then "spare-low" else empty end),
+       (if raw(5) > 0 then "reallocated" else empty end),
+       (if raw(197) > 0 then "pending" else empty end),
+       (if raw(198) > 0 then "unreadable" else empty end),
+       (if $wear != null and $wear >= 90 then "worn" else empty end)
+     ]) as $problems
+  | {
+      name: $name,
+      serial: ((.serial_number // "") | tostring | .[0:80]),
+      health: (if ($messages | test("STANDBY|SLEEP"; "i")) and .smart_status == null then "asleep"
+               elif ($problems | length) > 0 then "warning"
+               elif .smart_status.passed == true then "good"
+               else "unknown" end),
+      problems: $problems,
+      wear: $wear,
+      temperature: (.temperature.current | number)
+    }'
+
+measure_disk() {
+  local name=$1 report
+  report=$(timeout 30 smartctl -j -i -H -A -n standby -- "/dev/$name" 2>/dev/null) || true
+  jq -c --arg name "$name" "$SMART_FILTER" <<<"$report" 2>/dev/null ||
+    jq -n -c --arg name "$name" '{name: $name, serial: "", health: "unknown", problems: [], wear: null, temperature: null}'
+}
+
+disks=()
+if command -v smartctl >/dev/null; then
+  for sys in /sys/block/*; do
+    name=${sys##*/}
+    [[ $name =~ ^(sd[a-z]+|nvme[0-9]+n[0-9]+)$ ]] || continue
+    disks+=("$(measure_disk "$name")")
+  done
+fi
+
+if ((${#disks[@]})); then printf '%s\n' "${disks[@]}" | jq -s -c .; else echo '[]'; fi

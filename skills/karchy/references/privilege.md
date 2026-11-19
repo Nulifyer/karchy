@@ -29,7 +29,7 @@ Each helper is run through `pkexec` by the command in the second column. Call th
 | Wi-Fi country | `karchy network country set <XX\|auto>` | administrator's password |
 | Install or remove Quick install apps (`/usr/lib/karchy/app-packages`) | `karchy quick-install apply install\|remove <id>...` | administrator's password, every time |
 | Lid actions, hibernate delay (`/usr/lib/karchy/power-settings`) | `karchy-settings-power set ...` | none |
-| Storage measurement, bees on or off (`/usr/lib/karchy/storage-settings`) | `karchy-settings-storage bees on\|off`, `measure` | none |
+| Storage: the count of the breakdown, disk health, bees' progress, bees on or off (`/usr/lib/karchy/storage-settings`) | `karchy-settings-storage measure`, `health`, `bees`, `bees on\|off` | none |
 | Browser theme color policy | `karchy theme set` | none (one fixed sudo rule that accepts a color) |
 
 "None" applies to an active, local session of a member of `wheel`. A remote session, such as SSH, gets a password prompt for the same action. If a helper fails over SSH with an authentication error, that is the cause. Ask the user to run the command at the computer.

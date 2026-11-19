@@ -6,14 +6,16 @@ import qs.Ui
 import "StorageModel.js" as Model
 
 // One volume of a disk on Settings › Storage: its name, where it is mounted
-// and how full it is, then what can be done with it. A btrfs filesystem also
-// shows what its files hold against what they take on the disk, from root's
-// measurement, and never a figure that was not measured. The system disk
-// carries the switch for background deduplication.
+// and how full it is right now (the filesystem's own totals, read again
+// every two seconds while the page is open), then what can be done with it.
+// A btrfs filesystem can also show the breakdown that "Measure now" counts:
+// what its files hold against what they take on the disk. That part carries
+// its date and never a figure that was not counted. The system disk carries
+// the switch for background deduplication.
 ColumnLayout {
   id: root
 
-  // The Storage page: `measurement`, `bees`, `nowMs`, `acting`, `error`,
+  // The Storage page: `usage`, `measurement`, `bees`, `nowMs`, `acting`, `error`,
   // `errorKey` and the functions that carry out each action.
   property var page: null
   property var disk: ({})
@@ -21,6 +23,9 @@ ColumnLayout {
 
   readonly property bool mounted: (volume.mounts || []).length > 0
   readonly property bool btrfs: volume.fstype === "btrfs" && mounted
+  // Now: size, bytes on the disk, room left. null when not mounted.
+  readonly property var live: mounted ? Model.live(volume, page && volume.uuid ? page.usage[volume.uuid] : null) : null
+  // As of the last "Measure now".
   readonly property var figures: Model.figures(volume.measured)
   readonly property var bars: Model.bars(volume)
   readonly property bool measuring: !!page && page.measurement.running === true
@@ -141,8 +146,8 @@ ColumnLayout {
     }
     Text {
       textFormat: Text.PlainText
-      text: root.volume.fsAvail !== null && root.volume.fsAvail !== undefined
-        ? Model.bytes(root.volume.fsAvail) + " free" : Model.bytes(root.volume.size)
+      text: root.live && root.live.free !== null
+        ? Model.bytes(root.live.free) + " free" : Model.bytes(root.volume.size)
       color: Commons.Color.foreground
       font.family: Style.font.family
       font.pixelSize: Style.font.body
@@ -150,7 +155,50 @@ ColumnLayout {
     }
   }
 
-  // Measured: what the files hold, what that takes, and where the disk ends,
+  // Now: how much of it is taken, from the filesystem itself.
+  StorageMeter {
+    visible: root.live !== null
+    value: root.live ? root.live.share : 0
+  }
+  Quiet {
+    visible: root.live !== null
+    Layout.fillWidth: true
+    Layout.topMargin: -Style.spacing.sm
+    wrapMode: Text.Wrap
+    font.features: { "tnum": 1 }
+    text: Model.liveLine(root.live)
+  }
+
+  // The breakdown, which has to be counted: when it was, and counting again.
+  RowLayout {
+    visible: root.btrfs && !!root.page
+    Layout.fillWidth: true
+    spacing: Style.spacing.lg
+
+    Quiet {
+      Layout.fillWidth: true
+      wrapMode: Text.Wrap
+      text: {
+        if (!root.page) return ""
+        if (root.measuring) return "Counting what the files hold…"
+        if (root.figures) return "Breakdown as counted " + Model.when(root.page.measurement.time, root.page.nowMs)
+        if (root.volume.measured && root.volume.measured.error)
+          return "The count " + Model.when(root.page.measurement.time, root.page.nowMs) + " failed here: this filesystem " + root.volume.measured.error + "."
+        return "What sharing, compression and snapshots account for is counted only when you ask."
+      }
+    }
+    Button {
+      visible: !!root.page && root.page.measurement.available === true
+      focusable: true
+      bordered: true
+      busy: root.measuring
+      text: root.measuring ? "Measuring" : "Measure now"
+      accessibleName: "Measure now, " + root.name
+      onClicked: root.page.measure(root.volume.path)
+    }
+  }
+
+  // Counted: what the files hold, what that takes, and where the disk ends,
   // on one scale.
   GridLayout {
     visible: root.figures !== null
@@ -163,7 +211,7 @@ ColumnLayout {
     StorageMeter { value: root.bars ? root.bars.files : 0; track: false; fillColor: Commons.Color.textSecondary }
     Figure { text: root.figures ? Model.bytes(root.figures.files) : "" }
 
-    RowLabel { text: "Stored on disk" }
+    RowLabel { text: "Files on disk" }
     StorageMeter { value: root.bars ? root.bars.stored : 0 }
     Figure { text: root.figures ? Model.bytes(root.figures.stored) : "" }
 
@@ -197,46 +245,7 @@ ColumnLayout {
     Amount {
       label: "Held only by snapshots"
       explanation: "On the disk only because a read-only snapshot still points at it, such as the snapshots taken before updates. Deleting snapshots frees it."
-      value: !root.figures ? "" : root.figures.snapshots === null ? "not measured" : Model.bytes(root.figures.snapshots)
-    }
-  }
-
-  // Not measured (or not btrfs): how full it is, which every user can read.
-  StorageMeter {
-    visible: root.figures === null && root.mounted && root.volume.fsSize > 0
-    value: Model.usedShare(root.volume)
-  }
-  Quiet {
-    visible: root.figures === null && root.mounted && root.volume.fsSize > 0
-    Layout.topMargin: -Style.spacing.sm
-    text: Model.bytes(root.volume.fsUsed) + " used of " + Model.bytes(root.volume.fsSize)
-  }
-
-  // When it was measured, and measuring again.
-  RowLayout {
-    visible: root.btrfs && !!root.page
-    Layout.fillWidth: true
-    spacing: Style.spacing.lg
-
-    Quiet {
-      Layout.fillWidth: true
-      wrapMode: Text.Wrap
-      text: {
-        if (!root.page) return ""
-        if (root.measuring) return "Measuring…"
-        if (root.figures) return "Measured " + Model.when(root.page.measurement.time, root.page.nowMs)
-        if (root.volume.measured && root.volume.measured.error)
-          return "The measurement " + Model.when(root.page.measurement.time, root.page.nowMs) + " failed here: this filesystem " + root.volume.measured.error + "."
-        return "Not measured yet."
-      }
-    }
-    Button {
-      visible: !!root.page && root.page.measurement.available === true
-      focusable: true
-      bordered: true
-      busy: root.measuring
-      text: root.measuring ? "Measuring" : "Measure now"
-      onClicked: root.page.measure(root.volume.path)
+      value: !root.figures ? "" : root.figures.snapshots === null ? "not counted" : Model.bytes(root.figures.snapshots)
     }
   }
 
@@ -260,7 +269,7 @@ ColumnLayout {
         }
         InfoTip {
           subject: "Background deduplication"
-          text: "Finds the same data in different files and stores it once (bees), while the computer is idle. Its own count restarts with it; \"Saved by sharing\" is the measured total."
+          text: "Finds the same data in different files and stores it once (bees), while the computer is idle. The amount under it is bees' own running count since it started: an estimate of its work, not of what is saved now, because it starts again with bees and doesn't go down when those files are deleted. \"Measure now\" counts what sharing saves exactly."
         }
       }
       Quiet {

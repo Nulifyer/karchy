@@ -3,7 +3,8 @@
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <!--
   Settings › Storage's requests that need root: switching background
-  deduplication on or off, starting a measurement, and reading bees' progress.
+  deduplication on or off, starting a measurement, and reading bees' progress
+  and each disk's health.
   karchy-settings-storage runs /usr/lib/karchy/storage-settings through
   pkexec, which picks this action by the exec.path below. The defaults ask for
   an administrator's password; 50-karchy-storage-settings.rules lets the
