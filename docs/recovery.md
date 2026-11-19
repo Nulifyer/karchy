@@ -86,12 +86,22 @@ If the LTS kernel shows the same fault, the cause is not the kernel alone. Boot 
 
 ## The screen stays dark or stops during boot
 
-karchy boots quietly, so that kernel messages do not write over the disk password prompt. The prompt is at the bottom left of a screen with karchy's logo; a wrong password asks again on the next line, and Tab hides the dots. The logo is decoration: if it is missing, or the prompt is a single line on a black screen, the prompt works the same. A failed unit still prints its error. A step that waits longer than 25 seconds prints what it waits for.
+karchy asks for the disk password on a splash screen (Plymouth): karchy's mark and a password box. A wrong password turns the box red and asks again. Escape switches between the splash and the boot messages; the password can be typed in either. The splash stays until the desktop appears, and returns at shutdown.
+
+If the splash does not appear, the screen stays black where the password box should be, or keys do nothing there, boot once without it:
+
+1. In the boot menu, select `linux-cachyos` and press `e`.
+2. Go to the end of the `cmdline:` line (it wraps over several rows) and add ` plymouth.enable=0`.
+3. Press F10 to boot.
+
+The password is then asked as text, at the bottom left of a screen with karchy's name; a wrong password asks again on the next line, and Tab hides the dots. Deleting the word `splash` from the line does the same. If Plymouth stops by itself while it waits for the password, this text prompt takes over without a restart. To turn the splash off for good, delete `splash` from `KERNEL_CMDLINE[default]` in `/etc/default/limine` and run `sudo limine-mkinitcpio`.
+
+The text screen is decoration too: if its logo is missing, or the prompt is a single line on a black screen, the prompt works the same. A failed unit still prints its error. A step that waits longer than 25 seconds prints what it waits for.
 
 To see every message for one boot:
 
 1. In the boot menu, select `linux-cachyos` and press `e`.
-2. On the `cmdline:` line, delete `quiet loglevel=3 systemd.show_status=auto`.
+2. On the `cmdline:` line, delete `quiet splash loglevel=3 systemd.show_status=auto`.
 3. Press F10 to boot.
 
 The editor is turned off when Secure Boot is on. In that case, use the install media.

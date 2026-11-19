@@ -329,15 +329,20 @@ base_bootloader() {
   # file's offset inside it, read by the systemd initramfs (D-32).
   resume_uuid=$(findmnt -no UUID "$KARCHY_MNT")
   resume_offset=$(btrfs inspect-internal map-swapfile -r "$KARCHY_MNT/swap/swapfile")
-  # A quiet console (D-12: no Plymouth, the disk password is asked in text):
-  # without these, kernel and unit messages scroll over the password prompt.
+  # A quiet boot behind the splash (D-122): without these, kernel and unit
+  # messages scroll over the text password prompt of a boot without Plymouth.
   # quiet hides unit status, loglevel=3 kernel messages below "critical"
   # (quiet alone still prints kernel errors, which firmware and drivers
   # produce on a healthy boot), and systemd.show_status=auto brings status
   # back when a unit fails or a job has waited 25 s (a missing disk), so a
-  # boot that hangs says what it waits for. Every entry gets this line: the
-  # LTS kernel and the snapshots (limine-snapper-sync copies it).
-  cmdline="quiet loglevel=3 systemd.show_status=auto"
+  # boot that hangs says what it waits for. splash has Plymouth show karchy's
+  # theme and ask for the disk password in it. systemd.tty.term.console=dumb
+  # keeps systemd from asking the console for its size when it starts: with
+  # Plymouth holding the screen the answer sometimes never comes and the boot
+  # waits for a key press (Omarchy saw about 1 boot in 10). Every entry gets
+  # this line: the LTS kernel and the snapshots (limine-snapper-sync copies
+  # it).
+  cmdline="quiet splash loglevel=3 systemd.show_status=auto systemd.tty.term.console=dumb"
   cmdline+=" rw rootflags=subvol=/@ rd.luks.uuid=$KARCHY_LUKS_UUID rd.luks.options=discard"
   cmdline+=" root=/dev/mapper/$KARCHY_ROOT_MAPPER zswap.enabled=1 zswap.compressor=zstd"
   cmdline+=" resume=UUID=$resume_uuid resume_offset=$resume_offset"
@@ -355,6 +360,9 @@ EOF
   # (karchy-secureboot setup, at the end of the install or later) takes the
   # line out again: karchy's own hook then keeps that copy identical to the
   # signed binary.
+  # karchy's Plymouth theme, before limine-update builds the first images
+  # (the plymouth hook copies the default theme into them).
+  in_target plymouth-set-default-theme karchy
   in_target limine-install --fallback
   in_target limine-update
   # karchy's name, colours and font for the menu, above the entries that

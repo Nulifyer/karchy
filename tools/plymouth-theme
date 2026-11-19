@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""Draw the pictures of karchy's Plymouth theme (the disk-password screen).
+
+  tools/plymouth-theme [--fonts /usr/share/fonts/TTF] [--out system/plymouth/karchy]
+                       [--preview DIR]
+
+Every picture is an SVG written here and rendered by rsvg-convert, once for
+ordinary screens and once at twice the size ("@2x") for high-resolution ones:
+Plymouth's script themes get no scale from the daemon, so karchy.script picks
+the set by the screen's height. The results are committed, so building
+karchy's packages needs neither this script nor the font. Needs librsvg and
+the TTFs of ttf-jetbrains-mono-nerd (--fonts names their folder when the
+package isn't installed); the captions are text drawn here, so the initramfs
+needs no font for them. --preview also composes each state of the screen at
+1280x800 and 2256x1504 with ImageMagick, to look at without booting.
+
+The colours are the default theme's (themes/nulifyer/colors.toml), the one a
+machine shows before any user's theme exists (D-121). The mark is
+docs/logo.svg's three tiles.
+"""
+
+import argparse
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+BACKGROUND = "#202020"
+FIELD = "#1b1b1b"
+ACCENT = "#d8a657"
+TEXT = "#ddc7a1"
+SOFT = "#bdae93"
+MUTED = "#746a62"
+RED = "#ea6962"
+
+FONT = "JetBrainsMono Nerd Font"
+SCALES = {"": 1, "@2x": 2}
+
+# Sizes in pixels at scale 1. karchy.script holds the same numbers.
+MARK = 96
+ENTRY_W, ENTRY_H, ENTRY_R, ENTRY_BORDER = 320, 48, 6, 2
+BULLET, BULLET_X, BULLET_STEP = 8, 44, 14
+CAPTION_H, CAPTION_SIZE = 24, 15
+MARK_TO_ENTRY, ENTRY_TO_CAPTION = 56, 12
+
+CAPTIONS = {
+    "caption-enter": ("Enter the disk password", SOFT),
+    "caption-caps": ("Caps Lock is on", ACCENT),
+    "caption-wrong": ("Wrong password. Try again.", RED),
+    "caption-wrong-caps": ("Wrong password. Caps Lock is on.", RED),
+    "caption-unlocking": ("Unlocking…", SOFT),
+}
+
+
+def svg(width, height, body):
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}">{body}</svg>'
+    )
+
+
+def mark():
+    # docs/logo.svg's paths, which span 2..22 of a 24-unit square.
+    unit = MARK / 20
+    paths = (
+        f'<path fill="{ACCENT}" d="M2 2 L8.4 2 L8.4 22 L2 22 Z"/>'
+        f'<path fill="{TEXT}" d="M15.3 2 L22 2 L17.5 10.8 L10.8 10.8 Z"/>'
+        f'<path fill="{TEXT}" d="M10.8 13.2 L17.5 13.2 L22 22 L15.3 22 Z"/>'
+    )
+    return svg(MARK, MARK, f'<g transform="scale({unit}) translate(-2 -2)">{paths}</g>')
+
+
+def lock(colour):
+    # A padlock, 14 wide and 16 tall, at the left of the entry box.
+    x, y = 17, (ENTRY_H - 16) / 2
+    return (
+        f'<g transform="translate({x} {y})">'
+        f'<path d="M3.5 7 V4.5 a3.5 3.5 0 0 1 7 0 V7" fill="none" stroke="{colour}" stroke-width="1.6"/>'
+        f'<rect x="1" y="7" width="12" height="9" rx="1.5" fill="{colour}"/>'
+        "</g>"
+    )
+
+
+def entry(border, icon):
+    half = ENTRY_BORDER / 2
+    return svg(
+        ENTRY_W,
+        ENTRY_H,
+        f'<rect x="{half}" y="{half}" width="{ENTRY_W - ENTRY_BORDER}" height="{ENTRY_H - ENTRY_BORDER}" '
+        f'rx="{ENTRY_R}" fill="{FIELD}" stroke="{border}" stroke-width="{ENTRY_BORDER}"/>' + lock(icon),
+    )
+
+
+def bullet(colour):
+    return svg(BULLET, BULLET, f'<circle cx="{BULLET / 2}" cy="{BULLET / 2}" r="{BULLET / 2}" fill="{colour}"/>')
+
+
+def caption(text, colour, width):
+    return svg(
+        width,
+        CAPTION_H,
+        f'<text x="{width / 2}" y="{CAPTION_H - 7}" text-anchor="middle" font-family="{FONT}" '
+        f'font-size="{CAPTION_SIZE}" fill="{colour}">{text}</text>',
+    )
+
+
+def pictures():
+    result = {
+        "mark": mark(),
+        "entry": entry(ACCENT, SOFT),
+        "entry-wrong": entry(RED, SOFT),
+        "entry-busy": entry(MUTED, MUTED),
+        "bullet": bullet(TEXT),
+        "bullet-busy": bullet(MUTED),
+    }
+    for name, (text, colour) in CAPTIONS.items():
+        # A monospace font: 0.6 em a character, plus room at both ends.
+        width = int(len(text) * CAPTION_SIZE * 0.6) + 16
+        result[name] = caption(text, colour, width + width % 2)
+    return result
+
+
+def font_environment(fonts, tmp):
+    """The environment in which rsvg-convert finds karchy's font."""
+    env = dict(os.environ)
+    if fonts:
+        config = Path(tmp) / "fonts.conf"
+        config.write_text(
+            '<?xml version="1.0"?><!DOCTYPE fontconfig SYSTEM "fonts.dtd"><fontconfig>'
+            f"<dir>{fonts.resolve()}</dir><cachedir>{tmp}/cache</cachedir></fontconfig>"
+        )
+        env["FONTCONFIG_FILE"] = str(config)
+    found = subprocess.run(["fc-list", FONT], capture_output=True, text=True, env=env).stdout
+    if not found.strip():
+        sys.exit(f"plymouth-theme: {FONT} not found; install ttf-jetbrains-mono-nerd or pass --fonts")
+    return env
+
+
+def preview(out, directory):
+    """The states of the screen as karchy.script lays them out."""
+    states = {
+        "prompt": ("entry", "bullet", 0, "caption-enter"),
+        "typing": ("entry", "bullet", 9, "caption-enter"),
+        "caps": ("entry", "bullet", 4, "caption-caps"),
+        "wrong": ("entry-wrong", "bullet", 0, "caption-wrong"),
+        "unlocking": ("entry-busy", "bullet-busy", 9, "caption-unlocking"),
+        "boot": (None, None, 0, None),
+    }
+    directory.mkdir(parents=True, exist_ok=True)
+    for width, height in ((1280, 800), (2256, 1504)):
+        suffix, s = ("@2x", 2) if height >= 1400 else ("", 1)
+        mark_y = round(height * 0.42) - MARK * s
+        entry_x, entry_y = (width - ENTRY_W * s) // 2, mark_y + (MARK + MARK_TO_ENTRY) * s
+        for state, (box, dot, dots, text) in states.items():
+            command = ["magick", "-size", f"{width}x{height}", f"xc:{BACKGROUND}"]
+
+            def put(name, x, y):
+                command.extend([str(out / f"{name}{suffix}.png"), "-geometry", f"+{x}+{y}", "-composite"])
+
+            put("mark", (width - MARK * s) // 2, mark_y)
+            if box:
+                put(box, entry_x, entry_y)
+                for i in range(dots):
+                    put(dot, entry_x + (BULLET_X + i * BULLET_STEP) * s, entry_y + (ENTRY_H - BULLET) // 2 * s)
+                size = subprocess.run(
+                    ["magick", "identify", "-format", "%w", str(out / f"{text}{suffix}.png")],
+                    check=True, capture_output=True, text=True,
+                ).stdout
+                put(text, (width - int(size)) // 2, entry_y + (ENTRY_H + ENTRY_TO_CAPTION) * s)
+            command.append(str(directory / f"design-{state}-{width}.png"))
+            subprocess.run(command, check=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--fonts", type=Path, help="folder with JetBrainsMonoNerdFont-*.ttf")
+    parser.add_argument("--out", type=Path, default=ROOT / "system/plymouth/karchy")
+    parser.add_argument("--preview", type=Path, help="also compose each state into this folder")
+    args = parser.parse_args()
+
+    args.out.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        env = font_environment(args.fonts, tmp)
+        for name, source in pictures().items():
+            file = Path(tmp) / f"{name}.svg"
+            file.write_text(source)
+            for suffix, scale in SCALES.items():
+                subprocess.run(
+                    ["rsvg-convert", "--zoom", str(scale), "-o", str(args.out / f"{name}{suffix}.png"), str(file)],
+                    check=True, env=env,
+                )
+    if args.preview:
+        preview(args.out, args.preview)
+
+
+if __name__ == "__main__":
+    main()

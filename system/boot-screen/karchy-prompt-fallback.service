@@ -1,0 +1,15 @@
+# karchy: the text password prompt when Plymouth died in the initramfs
+# (/usr/lib/karchy/prompt-fallback explains). Started only as
+# plymouth-start.service's OnFailure, by the drop-in beside this unit.
+[Unit]
+Description=karchy text password prompt after Plymouth failed
+DefaultDependencies=no
+ConditionPathExists=/etc/initrd-release
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/karchy/prompt-fallback
+TimeoutStartSec=20
+StandardInput=null
+StandardOutput=null
+StandardError=null

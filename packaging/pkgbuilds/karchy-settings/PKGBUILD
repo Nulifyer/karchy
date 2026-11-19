@@ -10,9 +10,12 @@ arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
 depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza' 'karchy-bees'
-  # Settings › Storage's measurement: compsize counts what files hold against
-  # what they take on a btrfs disk; jq writes the result.
-  'compsize' 'jq')
+  # Settings › Storage's "Measure now": compsize counts what files hold
+  # against what they take on a btrfs disk; jq writes the result.
+  'compsize' 'jq'
+  # The disk-password screen (D-122): the mkinitcpio drop-in below names
+  # Plymouth's hook, so the package must be there when an image is built.
+  'plymouth')
 backup=(
   'etc/sudoers.d/karchy'
   'etc/sudoers.d/karchy-theme-browser'
@@ -34,6 +37,7 @@ source=("karchy-src.tar.gz")
 sha256sums=('SKIP')
 
 package() {
+  local unit
   cd "$srcdir/karchy/system"
   install -dm750 "$pkgdir/etc/sudoers.d"
   install -m440 sudoers.d/karchy sudoers.d/karchy-theme-browser "$pkgdir/etc/sudoers.d/"
@@ -50,9 +54,24 @@ package() {
   # The boot screen behind the disk-password prompt (D-121), with the
   # mkinitcpio hook that puts it in the initramfs.
   install -Dm755 boot-screen/boot-banner "$pkgdir/usr/lib/karchy/boot-banner"
-  install -Dm644 ../logo.txt "$pkgdir/usr/lib/karchy/logo.txt"
+  install -Dm644 -t "$pkgdir/usr/lib/karchy" ../logo.txt ../logo-mark.txt
   install -Dm644 boot-screen/karchy-boot-banner.service "$pkgdir/usr/lib/systemd/system/karchy-boot-banner.service"
   install -Dm644 boot-screen/sd-karchy-banner "$pkgdir/usr/lib/initcpio/install/sd-karchy-banner"
+  # ...and the way back to it when Plymouth dies in the initramfs.
+  install -Dm755 boot-screen/prompt-fallback "$pkgdir/usr/lib/karchy/prompt-fallback"
+  install -Dm644 boot-screen/plymouth-start-fallback.conf "$pkgdir/usr/lib/karchy/plymouth-start-fallback.conf"
+  install -Dm644 boot-screen/karchy-prompt-fallback.service \
+    "$pkgdir/usr/lib/systemd/system/karchy-prompt-fallback.service"
+  # The disk-password screen (D-122): karchy's Plymouth theme. The pictures
+  # are drawn by tools/plymouth-theme and committed. The installer and a
+  # migration make it the default theme (/etc/plymouth/plymouthd.conf).
+  install -Dm644 -t "$pkgdir/usr/share/plymouth/themes/karchy" plymouth/karchy/*
+  # ...and Plymouth only with "splash" on the kernel line, so a boot without
+  # it is karchy's text screen.
+  for unit in start poweroff reboot halt kexec; do
+    install -Dm644 plymouth/10-karchy-splash.conf \
+      "$pkgdir/usr/lib/systemd/system/plymouth-$unit.service.d/10-karchy-splash.conf"
+  done
   # Hooks that must be in place before the desktop packages arrive (karchy-settings
   # is pacstrapped with the base system), such as limiting nethogs.
   install -Dm644 -t "$pkgdir/usr/share/libalpm/hooks" pacman/settings-hooks/*.hook
@@ -210,7 +229,6 @@ package() {
   install -Dm644 -t "$pkgdir/usr/lib/systemd/user" system/systemd/user/karchy-disk-health.service \
     system/systemd/user/karchy-sleep-shares.service
   install -d "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants"
-  local unit
   for unit in karchy-disk-health.service karchy-sleep-shares.service; do
     ln -s "../$unit" "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants/$unit"
   done

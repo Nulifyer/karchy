@@ -43,7 +43,7 @@ Guiding rule from the user: minimal software (small, fast, few dependencies), bu
 - Omarchy's optional-installer catalog (about 80 installers), the Agent/Learn menus, AI integrations and the agent usage panel, and dictation.
 - The dock and app grid, emoji picker, intro animations and video wallpaper (owe), weather, world clock and the Tailscale panel.
 - Omarchy's pacman config, Omarchy's Arch snapshot mirror, the update guard, migrations content, channels, `omarchy update`, `reinstall-configs`, factory reset, the ISO provisioning flow, the Omarchy kernel and Omarchy's NVIDIA script.
-- Plymouth and SDDM.
+- SDDM. (Plymouth came in on 2026-11-19 for the disk-password screen, D-122.)
 - Preinstalled dev runtimes, containers, AI CLIs, Steam and Flatpak. The user installs these with pacman or paru after setup.
 - Laptop and vendor hardware quirks beyond what the Framework 13 AMD needs.
 

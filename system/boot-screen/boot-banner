@@ -1,9 +1,15 @@
 #!/bin/bash
 
-# karchy: draws the boot screen behind the disk-password prompt. Installed as
-# /usr/lib/karchy/boot-banner and copied into the initramfs by the
-# sd-karchy-banner hook; karchy-boot-banner.service runs it once, before
+# karchy: draws the text boot screen behind the disk-password prompt.
+# Installed as /usr/lib/karchy/boot-banner and copied into the initramfs by
+# the sd-karchy-banner hook; karchy-boot-banner.service runs it once, before
 # systemd asks for the password.
+#
+# This is the screen for a boot without the splash (D-122): Plymouth normally
+# asks for the password in its own picture, and then this draws nothing, so
+# the two never share the screen. It draws when Plymouth is not running:
+# plymouth.enable=0 on the kernel line, an image built without Plymouth, or a
+# Plymouth that failed to start.
 #
 # It only writes to the console: the theme's 16 colours, then the logo in the
 # middle of the screen and a rule above the last lines, where it leaves the
@@ -32,8 +38,13 @@ LC_ALL=C
 
 console=${KARCHY_BANNER_CONSOLE:-/dev/console}
 logo=${KARCHY_BANNER_LOGO:-/usr/lib/karchy/logo.txt}
+mark=${KARCHY_BANNER_MARK:-/usr/lib/karchy/logo-mark.txt}
 
 [[ -c $console && -w $console ]] || exit 0
+
+# Plymouth has the screen (its unit is ordered before this one, and the file
+# exists from the moment its daemon runs): the password is asked there.
+[[ -e ${KARCHY_BANNER_PLYMOUTH:-/run/plymouth/pid} ]] && exit 0
 
 # With "quiet" on the kernel line the framebuffer console stays switched off
 # until something is printed: until then the console is a placeholder with no
@@ -71,15 +82,22 @@ for i in "${!palette[@]}"; do
 done
 out+=$'\033[0m\033[H\033[2J'
 
-# The logo, centred a little above the middle, when the screen has room.
-lines=()
-[[ -r $logo ]] && mapfile -t lines <"$logo"
-width=0
-for line in "${lines[@]}"; do
-  chars=${line//[$'\x80'-$'\xbf']/}
-  ((${#chars} > width)) && width=${#chars}
-done
-if ((${#lines[@]} > 0 && rows >= ${#lines[@]} + 9 && cols >= width + 2)); then
+# The logo, centred a little above the middle, when the screen has room: the
+# wordmark, or the mark alone on a screen too narrow for it.
+logo_read() {
+  local line chars
+  lines=()
+  width=0
+  [[ -r $1 ]] || return 1
+  mapfile -t lines <"$1"
+  for line in "${lines[@]}"; do
+    chars=${line//[$'\x80'-$'\xbf']/}
+    ((${#chars} > width)) && width=${#chars}
+  done
+  ((${#lines[@]} > 0 && rows >= ${#lines[@]} + 9 && cols >= width + 2))
+}
+logo_read "$logo" || logo_read "$mark" || lines=()
+if ((${#lines[@]} > 0)); then
   top=$(((rows - 6 - ${#lines[@]}) * 2 / 5 + 1))
   left=$(((cols - width) / 2 + 1))
   out+=$'\033[33m'

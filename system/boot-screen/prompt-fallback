@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# karchy: brings back the text password prompt when Plymouth dies in the
+# initramfs. Installed as /usr/lib/karchy/prompt-fallback and copied into the
+# initramfs by the sd-karchy-banner hook; karchy-prompt-fallback.service runs
+# it when plymouth-start.service fails there (a drop-in for that unit, in the
+# initramfs only, names it as OnFailure and lets the unit fail when the
+# daemon is gone).
+#
+# Why it exists: while /run/plymouth/pid exists, systemd sends the disk
+# password question to Plymouth only, and its console prompt stays switched
+# off. A Plymouth that crashed leaves that file, a black screen and no prompt
+# at all. This removes the file, gives the screen back to the text console,
+# draws karchy's text boot screen and starts systemd's console prompt, which
+# picks up the waiting question.
+#
+# What it does not cover: a Plymouth that still runs but shows nothing or
+# takes no keys. For that, plymouth.enable=0 on the kernel line (the Limine
+# menu's editor) boots without it.
+#
+# It never reads the password. Each step may fail without stopping the next:
+# the last one, starting the console prompt, is what matters.
+
+had_plymouth=0
+[[ -e /run/plymouth/pid ]] && had_plymouth=1
+rm -f /run/plymouth/pid
+
+systemctl --no-block stop systemd-ask-password-plymouth.path systemd-ask-password-plymouth.service 2>/dev/null
+
+if ((had_plymouth)); then
+  # Plymouth left its console in graphics mode with the keyboard off, and
+  # nothing in the image can undo either. A console it never touched is in
+  # text mode and takes keys: move to the second one. The console prompt asks
+  # on whichever console is in front, and the login later returns to the first.
+  chvt 2 2>/dev/null
+  # The screen stays blanked from Plymouth's graphics mode until a key is
+  # pressed, and a blanked console draws nothing: unblank it (the console's
+  # own escape sequence for that; tty0 is the console in front).
+  printf '\033[13]' >/dev/tty0 2>/dev/null
+fi
+
+/usr/lib/karchy/boot-banner 2>/dev/null
+
+systemctl --no-block start systemd-ask-password-console.path

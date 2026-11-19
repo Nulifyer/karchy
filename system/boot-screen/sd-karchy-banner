@@ -1,8 +1,8 @@
 #!/bin/bash
-# karchy: mkinitcpio hook for the boot screen behind the disk-password prompt
-# (/usr/lib/karchy/boot-banner explains what it does and how it fails).
-# Goes after sd-vconsole in HOOKS, which puts the console font and
-# systemd-vconsole-setup in the image.
+# karchy: mkinitcpio hook for the text boot screen behind the disk-password
+# prompt, shown when Plymouth isn't running (/usr/lib/karchy/boot-banner
+# explains what it does and how it fails). Goes after sd-vconsole in HOOKS,
+# which puts the console font and systemd-vconsole-setup in the image.
 
 build() {
   local unit=karchy-boot-banner.service
@@ -16,14 +16,32 @@ build() {
   add_binary stty
   add_file /usr/lib/karchy/boot-banner
   add_file /usr/lib/karchy/logo.txt
+  [[ -f /usr/lib/karchy/logo-mark.txt ]] && add_file /usr/lib/karchy/logo-mark.txt
   add_systemd_unit "$unit"
+  # Plymouth only with "splash" on the kernel line (the drop-in says why).
+  local splash=/usr/lib/systemd/system/plymouth-start.service.d/10-karchy-splash.conf
+  [[ -f $splash ]] && add_file "$splash"
+  # The text prompt comes back by itself when Plymouth dies before the disk
+  # is unlocked. Left out when a piece is missing: the image then boots as
+  # Plymouth alone does.
+  local fallback=karchy-prompt-fallback.service
+  if [[ -x /usr/lib/karchy/prompt-fallback && -f /usr/lib/systemd/system/$fallback &&
+    -f /usr/lib/karchy/plymouth-start-fallback.conf ]] && command -v chvt >/dev/null; then
+    add_binary chvt
+    add_binary systemctl
+    add_file /usr/lib/karchy/prompt-fallback
+    add_systemd_unit "$fallback"
+    add_file /usr/lib/karchy/plymouth-start-fallback.conf \
+      /usr/lib/systemd/system/plymouth-start.service.d/20-karchy-fallback.conf
+  fi
   add_symlink "/usr/lib/systemd/system/sysinit.target.wants/$unit" "../$unit"
 }
 
 help() {
   cat <<HELPEOF
-This hook draws karchy's boot screen (the logo in the default theme's colours)
-on the console before systemd asks for the disk password. It needs the systemd
-hook and belongs after sd-vconsole.
+This hook draws karchy's text boot screen (the logo in the default theme's
+colours) on the console before systemd asks for the disk password, when
+Plymouth is not running. It needs the systemd hook and belongs after
+sd-vconsole.
 HELPEOF
 }

@@ -8,6 +8,7 @@ karchy installs from the karchy ISO or from the stock Arch Linux ISO; both run t
 - a swap file sized to RAM, with zswap
 - `linux-cachyos` plus `linux-cachyos-lts`
 - Limine, with snapshot boot entries (snapper + snap-pac + limine-snapper-sync)
+- a splash screen that asks for the disk password (Plymouth, karchy's theme), with a text prompt behind it for a boot without the splash
 - NetworkManager and systemd-resolved
 - your user, with fish as the login shell
 - the karchy desktop from the `[karchy]` package repository: `karchy-desktop`, plus `karchy-laptop` on a machine with a battery and the NVIDIA driver with an NVIDIA GPU: `karchy-nvidia` for Turing (RTX 20 / GTX 16) and newer, `karchy-nvidia-580xx` for Maxwell, Pascal and Volta (GTX 900 and 10 series, Quadro M and P, Titan V; this also enables `[multilib]`). Kepler and older cards are not supported by NVIDIA's current drivers, so they keep nouveau; the installer prints a message when it finds one

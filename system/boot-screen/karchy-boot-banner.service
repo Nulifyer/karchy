@@ -1,7 +1,11 @@
-# karchy: the boot screen behind the disk-password prompt, in the initramfs
-# (the sd-karchy-banner mkinitcpio hook puts this unit and its script there).
-# Ordered before the console prompt and required by nothing: if it fails or
-# runs out of time, the prompt appears without it.
+# karchy: the text boot screen behind the disk-password prompt, in the
+# initramfs (the sd-karchy-banner mkinitcpio hook puts this unit and its
+# script there). Ordered before the console prompt and required by nothing:
+# if it fails or runs out of time, the prompt appears without it.
+#
+# Ordered after Plymouth's unit, so the script can tell whether Plymouth has
+# the screen (it then draws nothing). The ordering holds nothing up when
+# Plymouth is off or not in the image.
 #
 # It waits, for at most four seconds, until udev has handled the devices found
 # at boot, so the graphics driver has replaced the firmware's framebuffer and
@@ -10,7 +14,7 @@
 Description=karchy boot screen
 DefaultDependencies=no
 ConditionPathExists=/etc/initrd-release
-After=systemd-udev-trigger.service
+After=systemd-udev-trigger.service plymouth-start.service
 Before=systemd-ask-password-console.service cryptsetup-pre.target
 
 [Service]

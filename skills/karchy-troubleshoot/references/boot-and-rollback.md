@@ -7,6 +7,7 @@ The full procedures are in karchy's `docs/recovery.md` (github.com/Nulifyer/karc
 - Partition 1 is the 4 GiB EFI partition, mounted at `/boot`. Partition 2 is LUKS2. One password unlocks it.
 - Inside is one btrfs filesystem with the subvolumes `@ @home @root @srv @cache @log @tmp @swap`.
 - The boot loader is Limine. Its menu shows for 3 seconds. An arrow key stops the countdown.
+- The disk password is asked on a splash screen (Plymouth, theme `karchy`: the mark and a password box). The kernel line carries `splash` for it. Without `splash`, or with `plymouth.enable=0`, the password is asked as text on a screen with karchy's name. Escape on the splash shows the boot messages.
 - snapper's config is `root`. snap-pac takes a snapshot before and after every pacman transaction, and limine-snapper-sync lists them in the boot menu under `Snapshots`.
 - `/home` is not in a snapshot. A rollback keeps the user's files and the user's `~/.config` as they are now.
 
@@ -16,7 +17,8 @@ The full procedures are in karchy's `docs/recovery.md` (github.com/Nulifyer/karc
 | --- | --- |
 | An update broke the desktop or the system, and the boot menu still works | Boot a snapshot from before the update, then restore it. |
 | Only the new kernel misbehaves | Boot `linux-cachyos-lts` from the menu. Same system, other kernel. |
-| Dark screen or a stall during boot | For one boot, press `e` on the entry and delete `quiet loglevel=3 systemd.show_status=auto` from the `cmdline:` line, then F10. The editor is off under Secure Boot. |
+| No password box, a black screen where it should be, or keys do nothing there | Boot once without the splash: press `e` on the entry, add ` plymouth.enable=0` at the end of the `cmdline:` line, then F10. The text prompt asks instead. For good: delete `splash` from `KERNEL_CMDLINE[default]` in `/etc/default/limine`, then `sudo limine-mkinitcpio`. |
+| Dark screen or a stall during boot | For one boot, press `e` on the entry and delete `quiet splash loglevel=3 systemd.show_status=auto` from the `cmdline:` line, then F10. The editor is off under Secure Boot. Escape on the splash also shows the messages. |
 | "You are in emergency mode" | Press Enter for a root shell. `journalctl -xb` shows what failed. A wrong `/etc/fstab` line is the usual cause. |
 | No menu entry works | Boot the karchy or Arch ISO, unlock, mount and chroot. Follow `docs/recovery.md`, "Get into the system from the install media", exactly. |
 | The firmware lost the boot entry | The machine still boots from the fallback path. `sudo limine-install` puts the named entry back. |

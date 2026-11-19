@@ -1,0 +1,10 @@
+[Plymouth Theme]
+Name=karchy
+Description=karchy's disk-password screen: the mark and a password box in the default theme's colours.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/karchy
+ScriptFile=/usr/share/plymouth/themes/karchy/karchy.script
+ConsoleLogBackgroundColor=0x202020
+ConsoleLogTextColor=0xddc7a1

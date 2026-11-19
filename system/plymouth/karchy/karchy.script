@@ -1,0 +1,275 @@
+# karchy's Plymouth theme: the screen that asks for the disk password, and the
+# plain mark for the rest of the boot and for shutdown.
+#
+# The mark sits a little above the middle. Under it, while a password is
+# asked: a box with one bullet per typed character, and one line that says
+# what is going on ("Enter the disk password", "Caps Lock is on", "Wrong
+# password. Try again.", "Unlocking..."). Nothing moves. The pictures come
+# from tools/plymouth-theme, which holds the same sizes; the colours are the
+# default theme's (themes/nulifyer), as on the other screens before the
+# desktop (D-121).
+#
+# Plymouth gives a script theme no scale for high-resolution screens, so
+# there are two sets of pictures and the screen's height picks one, at the
+# height where the console font doubles too (install/lib.sh's console_font).
+#
+# Plymouth and systemd never say that a password was wrong: systemd asks
+# again with the same words. So the theme remembers the question it last
+# sent an answer for; the same question coming back is a wrong password.
+
+Window.SetBackgroundTopColor(0.1255, 0.1255, 0.1255);
+Window.SetBackgroundBottomColor(0.1255, 0.1255, 0.1255);
+
+# Sizes at scale 1 (tools/plymouth-theme).
+global.mark_size = 96;
+global.entry_width = 320;
+global.entry_height = 48;
+global.bullet_size = 8;
+global.bullet_x = 44;
+global.bullet_step = 14;
+global.bullet_max = 19;
+global.mark_to_entry = 56;
+global.entry_to_caption = 12;
+
+# What is on screen: "plain" (the mark alone), "prompt" or "busy" (an answer
+# was sent and nothing has come back yet).
+global.state = "plain";
+global.bullets = 0;
+global.wrong = 0;
+global.caps = 0;
+global.busy_frames = 0;
+global.answered_prompt = "";
+global.have_answered = 0;
+global.current_prompt = "";
+
+global.layout_width = 0;
+global.layout_height = 0;
+global.scale = 0;
+
+mark.sprite = Sprite();
+entry.sprite = Sprite();
+caption.sprite = Sprite();
+bullet.sprites = [];
+message.sprite = Sprite();
+question.sprite = Sprite();
+
+fun contains(text, part) {
+  text = String(text);
+  part = String(part);
+  length = text.Length();
+  part_length = part.Length();
+  for (i = 0; i + part_length <= length; i++) {
+    if (text.SubString(i, i + part_length) == part) return 1;
+  }
+  return 0;
+}
+
+fun load_images() {
+  suffix = "";
+  global.scale = 1;
+  if (Window.GetHeight() >= 1400) {
+    suffix = "@2x";
+    global.scale = 2;
+  }
+  mark.image = Image("mark" + suffix + ".png");
+  entry.image = Image("entry" + suffix + ".png");
+  entry.wrong_image = Image("entry-wrong" + suffix + ".png");
+  entry.busy_image = Image("entry-busy" + suffix + ".png");
+  bullet.image = Image("bullet" + suffix + ".png");
+  bullet.busy_image = Image("bullet-busy" + suffix + ".png");
+  caption.enter = Image("caption-enter" + suffix + ".png");
+  caption.caps = Image("caption-caps" + suffix + ".png");
+  caption.wrong = Image("caption-wrong" + suffix + ".png");
+  caption.wrong_caps = Image("caption-wrong-caps" + suffix + ".png");
+  caption.unlocking = Image("caption-unlocking" + suffix + ".png");
+  mark.sprite.SetImage(mark.image);
+}
+
+# Place everything for the window's size. A display can appear after the
+# script started (a dock's monitor), and the window then grows.
+fun layout() {
+  global.layout_width = Window.GetWidth();
+  global.layout_height = Window.GetHeight();
+  load_images();
+
+  s = global.scale;
+  mark.x = Math.Int(global.layout_width / 2 - global.mark_size * s / 2);
+  mark.y = Math.Int(global.layout_height * 0.42 - global.mark_size * s);
+  mark.sprite.SetPosition(mark.x, mark.y, 10);
+
+  entry.x = Math.Int(global.layout_width / 2 - global.entry_width * s / 2);
+  entry.y = mark.y + (global.mark_size + global.mark_to_entry) * s;
+  entry.sprite.SetPosition(entry.x, entry.y, 20);
+
+  for (index = 0; bullet.sprites[index]; index++) {
+    place_bullet(index);
+  }
+  draw();
+}
+
+fun place_bullet(index) {
+  s = global.scale;
+  bullet.sprites[index].SetPosition(
+    entry.x + (global.bullet_x + index * global.bullet_step) * s,
+    entry.y + (global.entry_height - global.bullet_size) / 2 * s, 30);
+}
+
+fun set_caption(image) {
+  caption.sprite.SetImage(image);
+  caption.sprite.SetPosition(
+    Math.Int(global.layout_width / 2 - image.GetWidth() / 2),
+    entry.y + (global.entry_height + global.entry_to_caption) * global.scale, 20);
+  caption.sprite.SetOpacity(1);
+}
+
+# Show the current state.
+fun draw() {
+  if (global.state == "plain") {
+    entry.sprite.SetOpacity(0);
+    caption.sprite.SetOpacity(0);
+    for (index = 0; bullet.sprites[index]; index++) {
+      bullet.sprites[index].SetOpacity(0);
+    }
+    return;
+  }
+
+  busy = (global.state == "busy");
+  if (busy) {
+    entry.sprite.SetImage(entry.busy_image);
+    set_caption(caption.unlocking);
+  } else if (global.wrong) {
+    entry.sprite.SetImage(entry.wrong_image);
+    if (global.caps) set_caption(caption.wrong_caps);
+    else set_caption(caption.wrong);
+  } else {
+    entry.sprite.SetImage(entry.image);
+    if (global.caps) set_caption(caption.caps);
+    else set_caption(caption.enter);
+  }
+  entry.sprite.SetOpacity(1);
+
+  shown = global.bullets;
+  if (shown > global.bullet_max) shown = global.bullet_max;
+  for (index = 0; index < shown; index++) {
+    if (!bullet.sprites[index]) {
+      bullet.sprites[index] = Sprite();
+      place_bullet(index);
+    }
+    if (busy) bullet.sprites[index].SetImage(bullet.busy_image);
+    else bullet.sprites[index].SetImage(bullet.image);
+    bullet.sprites[index].SetOpacity(1);
+  }
+  for (index = shown; bullet.sprites[index]; index++) {
+    bullet.sprites[index].SetOpacity(0);
+  }
+}
+
+fun display_password_callback(prompt, bullets) {
+  if (global.state != "prompt") {
+    # A new question. The one just answered, again: that answer was wrong.
+    global.wrong = (global.have_answered && prompt == global.answered_prompt);
+  } else if (bullets > 0) {
+    # Typing again takes the complaint away.
+    global.wrong = 0;
+  }
+  global.state = "prompt";
+  global.current_prompt = prompt;
+  global.bullets = bullets;
+  question.sprite.SetOpacity(0);
+  draw();
+}
+
+fun display_normal_callback() {
+  question.sprite.SetOpacity(0);
+  if (global.state == "prompt") {
+    # The password went to whoever asked. Until the boot moves on or the
+    # question returns, show that it is being tried.
+    global.state = "busy";
+    global.busy_frames = 0;
+    global.answered_prompt = global.current_prompt;
+    global.have_answered = 1;
+  } else if (global.state != "busy") {
+    global.state = "plain";
+  }
+  draw();
+}
+
+fun unlocked() {
+  global.have_answered = 0;
+  if (global.state == "busy") {
+    global.state = "plain";
+    draw();
+  }
+}
+
+# systemd names each unit it starts. These come only after the disk opened.
+fun update_status_callback(status) {
+  if (global.state != "busy") return;
+  if (contains(status, "sysroot") || contains(status, "initrd-root-") ||
+      contains(status, "initrd-switch-root") || contains(status, "initrd-parse-etc")) {
+    unlocked();
+  }
+}
+
+fun root_mounted_callback() {
+  unlocked();
+}
+
+# Any other question (none in a karchy boot): its words and the answer so
+# far, as plain text under the mark.
+fun display_question_callback(prompt, answer) {
+  global.state = "plain";
+  draw();
+  image = Image.Text(prompt + " " + answer, 0.867, 0.78, 0.631);
+  question.sprite.SetImage(image);
+  question.sprite.SetPosition(Math.Int(global.layout_width / 2 - image.GetWidth() / 2), entry.y, 20);
+  question.sprite.SetOpacity(1);
+}
+
+fun display_message_callback(text) {
+  image = Image.Text(text, 0.741, 0.682, 0.576);
+  message.sprite.SetImage(image);
+  message.sprite.SetPosition(
+    Math.Int(global.layout_width / 2 - image.GetWidth() / 2),
+    Math.Int(global.layout_height * 0.9), 20);
+  message.sprite.SetOpacity(1);
+}
+
+fun hide_message_callback(text) {
+  message.sprite.SetOpacity(0);
+}
+
+fun refresh_callback() {
+  if (Window.GetWidth() != global.layout_width || Window.GetHeight() != global.layout_height) {
+    layout();
+  }
+  if (global.state == "plain") return;
+
+  caps = 0;
+  if (Plymouth.GetCapslockState()) caps = 1;
+  if (caps != global.caps) {
+    global.caps = caps;
+    draw();
+  }
+  # No word that the disk opened (the unit names above are systemd's and can
+  # change): stop saying "Unlocking" after 20 seconds. A wrong password is
+  # still recognised after that.
+  if (global.state == "busy") {
+    global.busy_frames++;
+    if (global.busy_frames > 1000) {
+      global.state = "plain";
+      draw();
+    }
+  }
+}
+
+layout();
+
+Plymouth.SetDisplayNormalFunction(display_normal_callback);
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
+Plymouth.SetDisplayQuestionFunction(display_question_callback);
+Plymouth.SetUpdateStatusFunction(update_status_callback);
+Plymouth.SetRootMountedFunction(root_mounted_callback);
+Plymouth.SetDisplayMessageFunction(display_message_callback);
+Plymouth.SetHideMessageFunction(hide_message_callback);
+Plymouth.SetRefreshFunction(refresh_callback);
