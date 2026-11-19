@@ -9,7 +9,7 @@ pkgdesc="karchy system defaults, starter configs, lock-screen PAM and session un
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
-depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza' 'karchy-bees'
+depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-regdb' 'eza' 'karchy-bees>=0.11_karchy4'
   # Settings › Storage's "Measure now": compsize counts what files hold
   # against what they take on a btrfs disk; jq writes the result.
   'compsize' 'jq'
