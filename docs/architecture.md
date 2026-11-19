@@ -113,7 +113,8 @@ Every component owns its look; a caller places it and never overrides its height
 | `PageHeader` | The top of a window page: title, optional caps status in a status color, optional icon, trailing controls (moved under the title when the page is narrow), and `explanation` behind an (i) button. |
 | `InfoTip` | An (i) for one control or label, opening on click, Enter or Space. Not for errors, warnings or what an action does. |
 | `InlineMessage` | A condition that persists: `info`, `warning`, `error`. `text` says what failed in plain words; known failures in `details` (a closed password prompt, no network, a missing program; `Ui/Failure.js`) add a sentence; the raw output stays behind Details. Without `text`, the command's last line stands in. |
-| `Card` | A bordered group on a window page, with an optional title, subtitle and trailing controls. |
+| `Section` | A part of a window page: a rule, a small-caps heading with an optional (i) and trailing control, an optional status line, then its content, with no box. What every page of Settings and of the Updates, VMs and Containers windows is built from (D-114). |
+| `Card` | A bordered box for one item among like items (a disk, a key, a connection, an image), with an optional title, subtitle and trailing controls. Not for a part of a page: that is a `Section`. |
 | `EmptyState` | Why a list is empty and the next step: inline in panels, `centered` in windows. |
 | `KeyValueGrid` | Facts as label and value pairs with tabular figures; `columns`, `justify` for the panels' narrow form, copyable values. |
 | `PanelHero` | The top of every bar panel: icon (no empty slot without one), title, caps status, trailing control. |
