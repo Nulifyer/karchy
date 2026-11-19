@@ -234,8 +234,10 @@ ColumnLayout {
   Section {
     title: "Accounts"
     contentSpacing: Style.spacing.md
+    // Kept in place while the form is open, so the list doesn't move.
     trailing: Button {
-      visible: root.admin && !root.adding
+      visible: root.admin
+      enabled: !root.adding
       focusable: true
       bordered: true
       iconText: Icons.glyph("ui.add")

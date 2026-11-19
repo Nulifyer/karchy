@@ -75,8 +75,8 @@ ColumnLayout {
   function remove() {
     var deleting = homeChoice === "delete-home"
     page.settings.ask(
-      deleting ? "Remove " + user.name + " and delete everything in " + home + "? This can't be undone."
-        : "Remove " + user.name + "? They can no longer sign in. " + home + " stays on the disk.",
+      deleting ? "Remove " + user.name + " and delete their home folder with everything in it? This can't be undone."
+        : "Remove " + user.name + "? They can no longer sign in. Their home folder is kept.",
       deleting ? "Remove and delete" : "Remove user",
       function() { page.change("remove:" + user.name, ["remove", user.name, root.homeChoice]) })
   }
@@ -157,7 +157,8 @@ ColumnLayout {
       enabled: root.canOpen
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
-      onClicked: root.toggleRequested()
+      // The keyboard follows the pointer to the row it opened.
+      onClicked: { header.forceActiveFocus(); root.toggleRequested() }
     }
   }
 
@@ -301,7 +302,7 @@ ColumnLayout {
           Layout.fillWidth: true
           Layout.maximumWidth: Style.space(460)
           textFormat: Text.PlainText
-          text: "Their saved passwords (the keyring) stay locked with the old password."
+          text: "Their saved passwords (the keyring) stay locked with the old password, and apps can't save new ones until the keyring is re-keyed or set aside."
           color: Commons.Color.status.warning
           font.family: Style.font.family
           font.pixelSize: Style.font.body
