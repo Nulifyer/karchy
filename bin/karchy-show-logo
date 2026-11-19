@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# karchy:summary=Display the Karchy logo in the terminal using green color.
+# karchy:summary=Show the karchy logo in the terminal.
 
 clear
-echo -e "\033[32m"
+echo -e "\033[33m"
 cat <$KARCHY_PATH/logo.txt
 echo -e "\033[0m"
 echo

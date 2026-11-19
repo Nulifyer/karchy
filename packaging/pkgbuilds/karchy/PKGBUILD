@@ -46,7 +46,7 @@ package() {
   done
   # Omarchy's command names, for the [omarchy] apps (D-72).
   install -Dm755 -t "$pkgdir/usr/bin" system/omarchy-compat/*
-  cp -a shell karchy logo.txt "$share/"
+  cp -a shell karchy logo.txt logo-mark.txt "$share/"
   # Where add-on packages (addons/) put their shell UI and Hyprland drop-ins.
   install -d "$share/plugins" "$share/hypr.d"
   cp -a default "$share/"

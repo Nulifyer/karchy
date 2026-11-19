@@ -5,6 +5,6 @@
 # karchy simplification (D-48): Karchy's version sized the window to its logo
 # and animated a sheen across it. This shows the same facts in the floating
 # About window and waits for a key.
-logo="$KARCHY_PATH/logo.txt"
+logo="$KARCHY_PATH/logo-mark.txt"
 exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.karchy.about --title=About -e bash -c \
   "fastfetch --logo '$logo' --logo-type file --logo-color-1 yellow; read -rsn1"
