@@ -1726,7 +1726,7 @@ Item {
                 onPositionChanged: function(mouse) {
                   root.selectFromPointer(row.index, row, mouse)
                 }
-                onClicked: {
+                onClicked: function(mouse) {
                   if (row.disabled) return
                   root.cursorActive = true
                   root.selectedIndex = row.index

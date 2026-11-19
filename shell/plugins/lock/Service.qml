@@ -561,15 +561,15 @@ Item {
 
     WlSessionLockSurface {
       id: lockSurface
-      // Right-to-left languages read this window mirrored.
-      Binding { target: lockSurface.contentItem; property: "LayoutMirroring.enabled"; value: Commons.I18n.rightToLeft }
-      Binding { target: lockSurface.contentItem; property: "LayoutMirroring.childrenInherit"; value: true }
-
       color: Commons.Color.background
 
       LockView {
         id: lockView
         anchors.fill: parent
+        // Right-to-left languages read this window mirrored. Set here, on the
+        // surface's only child: the surface's contentItem can't be bound to.
+        LayoutMirroring.enabled: Commons.I18n.rightToLeft
+        LayoutMirroring.childrenInherit: true
         backgroundPath: root.backgroundPath
         videoPosterPath: root.videoPosterPath
         backgroundVersion: root.backgroundVersion
