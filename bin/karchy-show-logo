@@ -2,8 +2,15 @@
 
 # karchy:summary=Show the karchy logo in the terminal.
 
+# The wordmark, or the mark alone in a terminal too narrow for it.
+logo=$KARCHY_PATH/logo.txt
+cols=$(tput cols 2>/dev/null) || cols=80
+# Characters, not bytes: UTF-8 continuation bytes don't count.
+width=$(LC_ALL=C awk '{ gsub(/[\200-\277]/, ""); if (length($0) > w) w = length($0) } END { print w + 0 }' "$logo")
+((width <= cols)) || logo=$KARCHY_PATH/logo-mark.txt
+
 clear
 echo -e "\033[33m"
-cat <$KARCHY_PATH/logo.txt
+cat <"$logo"
 echo -e "\033[0m"
 echo

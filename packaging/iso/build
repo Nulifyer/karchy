@@ -29,7 +29,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 PROFILE_SRC="$ROOT/packaging/iso"
 RELENG=/usr/share/archiso/configs/releng
 # The installer reads these through $KARCHY_SRC (install/karchy-install).
-INSTALLER_PATHS=(install bin system packaging/keyring logo.txt LICENSE)
+INSTALLER_PATHS=(install bin system packaging/keyring logo.txt logo-mark.txt LICENSE)
 
 out="$ROOT/out/iso"
 work=/var/tmp/karchy-iso

@@ -38,7 +38,14 @@ wait_for_terminal_resize
 
 # Your own art in ~/.config/karchy/branding/screensaver.txt, or karchy's logo.
 art=~/.config/karchy/branding/screensaver.txt
-[[ -f $art ]] || art="$KARCHY_PATH/logo.txt"
+if [[ ! -f $art ]]; then
+  # The wordmark, or the mark alone on a screen too narrow for it.
+  art="$KARCHY_PATH/logo.txt"
+  cols=$(stty size 2>/dev/null | cut -d' ' -f2)
+  # Characters, not bytes: UTF-8 continuation bytes don't count.
+  width=$(LC_ALL=C awk '{ gsub(/[\200-\277]/, ""); if (length($0) > w) w = length($0) } END { print w + 0 }' "$art")
+  ((width <= ${cols:-80})) || art="$KARCHY_PATH/logo-mark.txt"
+fi
 
 failures=0
 while true; do

@@ -87,21 +87,52 @@ ui_fit() {
 }
 
 UI_HEADER_ROWS=0
+UI_LOGO=()
+UI_LOGO_COLS=0
+
+# Read a logo file into UI_LOGO and its width in characters into UI_LOGO_COLS.
+ui_logo_read() {
+  local line LC_ALL=C
+  UI_LOGO=()
+  UI_LOGO_COLS=0
+  [[ -r $1 ]] || return 1
+  mapfile -t UI_LOGO <"$1"
+  for line in "${UI_LOGO[@]}"; do
+    # Characters, whatever the locale: bytes without UTF-8 continuation bytes.
+    line=${line//[$'\x80'-$'\xbf']/}
+    ((${#line} > UI_LOGO_COLS)) && UI_LOGO_COLS=${#line}
+  done
+  ((${#UI_LOGO[@]} > 0))
+}
+
+# The logo that fits the screen with `need` more lines under it: the wordmark
+# (logo.txt), on a narrower screen the mark alone (logo-mark.txt), else none.
+# The sizes are the files' own, so a new logo needs no change here. Around the
+# logo: a blank line above, one below, the title and its blank line, and two
+# lines to spare.
+ui_logo_pick() {
+  local need="$1" file
+  for file in "$KARCHY_SRC/logo.txt" "$KARCHY_SRC/logo-mark.txt"; do
+    ui_logo_read "$file" || continue
+    ((UI_COLS >= UI_LOGO_COLS + 2 && UI_ROWS >= need + ${#UI_LOGO[@]} + 6)) && return 0
+  done
+  UI_LOGO=()
+  return 1
+}
 
 # Clear the screen and draw the header: the logo when the screen has room for
 # it and `need` more lines, else the name alone; then the screen's title.
 ui_header() {
   local title="$1" need="${2:-10}" line
-  local logo="$KARCHY_SRC/logo.txt"
   [[ $KARCHY_UI == tui ]] || return 0
   ui_size
   ui_out $'\033[0m\033[H\033[2J\n'
   UI_HEADER_ROWS=1
-  if [[ -r $logo ]] && ((UI_ROWS >= need + 13 && UI_COLS >= 56)); then
-    while IFS= read -r line; do
+  if ui_logo_pick "$need"; then
+    for line in "${UI_LOGO[@]}"; do
       ui_out "  $UI_ACCENT$line$UI_RESET"$'\n'
       UI_HEADER_ROWS=$((UI_HEADER_ROWS + 1))
-    done <"$logo"
+    done
     ui_out $'\n'
     UI_HEADER_ROWS=$((UI_HEADER_ROWS + 1))
     ui_out "  $UI_BOLD$title$UI_RESET"$'\n\n'
