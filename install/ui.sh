@@ -172,7 +172,10 @@ ui_duration() {
   printf '%d:%02d' $(($1 / 60)) $(($1 % 60))
 }
 
+# The install's own time starts here, not when the form opened: the finish
+# screen reports how long the steps took.
 ui_steps_begin() {
+  UI_STARTED=$SECONDS
   [[ $KARCHY_UI == tui ]] || return 0
   ui_header "Installing karchy on $KARCHY_DISK" "$((${#UI_STEP_NAMES[@]} + 5))"
   UI_LIST_ROW=$((UI_HEADER_ROWS + 1))
