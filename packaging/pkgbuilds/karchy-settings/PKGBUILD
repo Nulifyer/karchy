@@ -203,4 +203,7 @@ package() {
   # what differs (D-92), so default changes keep reaching every user.
   install -d "$pkgdir/etc/skel/.config/karchy/themes"
   cp -a config/. "$pkgdir/etc/skel/.config/"
+  # The terminals' text-size files those configs include (D-117), written by
+  # the command that owns them so the two can't drift.
+  HOME="$pkgdir/etc/skel" XDG_STATE_HOME="$pkgdir/etc/skel/.local/state" bash bin/karchy-display-text-size sync
 }

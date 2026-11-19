@@ -58,6 +58,7 @@ Do not edit these files. Find the command that writes them.
 | Path | Written by |
 | --- | --- |
 | `~/.local/state/karchy/current/theme`, `theme.name`, `background` | `karchy theme set`, `karchy theme bg set` |
+| `~/.local/state/karchy/terminal/{foot.ini,kitty.conf,ghostty.conf,alacritty.toml}` | `karchy display text size`: the terminals' font size, included by their starter configs |
 | `~/.local/state/karchy/hypr/{displays,input,power}.lua` | `karchy-settings-displays`, `-input`, `-power` |
 | `~/.local/state/karchy/toggles/` | `karchy toggle`, `karchy hyprland toggle` |
 | `~/.local/state/karchy/migrations/` | `karchy-migrate`: one mark for each migration done, and a `.log` for each run |

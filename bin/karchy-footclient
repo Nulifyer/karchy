@@ -12,6 +12,11 @@
 foot_ini=$HOME/.local/state/karchy/current/theme/foot.ini
 overrides=()
 
+# The starter foot.ini also includes karchy's text-size file, and foot refuses
+# a config whose include is missing: put the file back if it has gone.
+[[ -f ${XDG_STATE_HOME:-$HOME/.local/state}/karchy/terminal/foot.ini ]] ||
+  karchy-display-text-size sync >/dev/null 2>&1 || true
+
 if [[ -f $foot_ini ]]; then
   started=$(systemctl --user show foot-server.service -p ExecMainStartTimestamp --value 2>/dev/null)
   started=$(date -d "$started" +%s 2>/dev/null || echo 0)

@@ -3,8 +3,11 @@
 config-file = ?"~/.local/state/karchy/current/theme/ghostty.conf"
 
 # The font follows fontconfig's "monospace", which Settings › Appearance sets.
+# The size follows Settings › Appearance › Text size, through the file below.
+# Ghostty reads included files after this one, so to set your own font-size,
+# remove that line.
 font-family = "monospace"
-font-size = 10
+config-file = ?"~/.local/state/karchy/terminal/ghostty.conf"
 
 # karchy's universal clipboard keys (Super+C/V) send Ctrl+Insert and
 # Shift+Insert, so these use the clipboard, not the primary selection.

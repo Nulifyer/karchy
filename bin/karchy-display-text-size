@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Scale text everywhere — karchy shell, GTK apps, and terminals
-# karchy:args=[size|reset]
+# karchy:args=[size|reset|sync]
 # karchy:examples=karchy display text size | karchy display text size 16 | karchy display text size reset
 
 # One knob for apparent text size across the desktop. It drives three settings
@@ -9,7 +9,10 @@
 #   • the karchy shell's font base-size (~/.config/karchy/shell.toml [font])
 #   • GNOME/GTK's text-scaling-factor    (12px -> 1.0, quantized so the GTK
 #     interface font lands on a whole point size, so 16 -> 15pt/11pt = 1.3636)
-#   • the terminal font point size       (12px -> 9pt, so terminal_pt = px * 9/12)
+#   • the terminal font point size       (12px -> 10pt, so terminal_pt = px * 10/12),
+#     in karchy's own files under ~/.local/state/karchy/terminal/, which the
+#     terminals' starter configs include; the user's terminal configs are never
+#     edited (D-23, D-117)
 # The shell override layers on top of the active theme (so the size survives
 # theme switches) and the shell watches the file, so shell text re-flows live.
 # Accepts an integer from 9 to 20 (px).
@@ -19,17 +22,19 @@ MAX=20
 GKEY_SCHEMA="org.gnome.desktop.interface"
 GKEY_NAME="text-scaling-factor"
 
-# Anchors: 12px shell base == factor 1.0 == 9pt terminal font.
-TERM_DEFAULT_PT=9
+# Anchors: 12px shell base == factor 1.0 == 10pt terminal font.
+TERM_DEFAULT_PT=10
 SHELL_DEFAULT_PX=12
 
 shell_config="$HOME/.config/karchy/shell.toml"
+terminal_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/terminal"
 
 usage() {
   echo "Usage: karchy-display-text-size [size|reset]"
   echo "  (no args)   print the current text size, GTK factor, and terminal size"
   echo "  <size>      set text size in px ($MIN–$MAX); shell + GTK + terminals together"
-  echo "  reset       return all three to their defaults (12px / 1.0 / 9pt)"
+  echo "  reset       return all three to their defaults (12px / 1.0 / 10pt)"
+  echo "  sync        write the terminals' size files again from the current size"
 }
 
 # ---- shell base-size: the rem root every shell type size derives from ----
@@ -129,68 +134,66 @@ term_pt_for() {
     'BEGIN { printf "%d", int(s * p / b + 0.5) }'
 }
 
-# Set the font point size in terminal configs, creating Kitty overrides when
-# it inherits its size from the system config. Family is left
-# untouched — that is karchy-font-set's job. Live-reload signals mirror
-# karchy-font-set; foot has no reload signal, so running instances are nudged.
+# The terminals' size lives in karchy's own files, one per terminal, which
+# the starter configs include (D-117): the user's foot.ini, kitty.conf,
+# alacritty.toml and Ghostty config are never edited (D-23). All four are
+# written whether or not the terminal is installed, so one added later already
+# has its size. The family is "monospace", which karchy-font-set points at the
+# chosen font through fontconfig.
+write_terminal_files() {
+  local pt="$1" note="Written by karchy-display-text-size (Settings › Appearance › Text size). Don't edit: set your own size in the terminal's config instead."
+  mkdir -p "$terminal_dir"
+  write_file foot.ini "# $note" "[main]" "font=monospace:size=$pt"
+  write_file kitty.conf "# $note" "font_size $pt.0"
+  write_file ghostty.conf "# $note" "font-size = $pt"
+  write_file alacritty.toml "# $note" "[font]" "size = $pt"
+}
+
+# Replace a file in one step, and only when it changes, so terminals that
+# watch their config don't reload for nothing.
+write_file() {
+  local file="$terminal_dir/$1" tmp
+  shift
+  [[ -f $file && $(<"$file") == "$(printf '%s\n' "$@")" ]] && return 0
+  tmp="$(mktemp "$file.XXXXXX")"
+  printf '%s\n' "$@" >"$tmp"
+  mv "$tmp" "$file"
+}
+
+# Write the files and bring running terminals along. kitty and Ghostty re-read
+# their config on a signal and Alacritty watches its imports. foot reads its
+# config once, when its server starts: a server with no windows is stopped, so
+# the next window starts a fresh one; with windows open, the user is told.
 set_terminal_size() {
   local pt="$1"
+  write_terminal_files "$pt"
 
-  if [[ -f ~/.config/alacritty/alacritty.toml ]]; then
-    sed -i -E "s/^size[[:space:]]*=.*/size = $pt/" ~/.config/alacritty/alacritty.toml
-  fi
+  pkill -USR1 -x kitty 2>/dev/null || true
+  pkill -USR2 -x ghostty 2>/dev/null || true
 
-  if [[ -f ~/.config/kitty/kitty.conf ]] || karchy-cmd-present kitty; then
-    mkdir -p ~/.config/kitty
-    if grep -qE '^[[:space:]]*font_size[[:space:]]+' ~/.config/kitty/kitty.conf 2>/dev/null; then
-      sed --follow-symlinks -i -E "s/^[[:space:]]*font_size[[:space:]]+.*/font_size $pt.0/" ~/.config/kitty/kitty.conf
-    else
-      printf '\nfont_size %s.0\n' "$pt" >>~/.config/kitty/kitty.conf
-    fi
-    pkill -USR1 kitty 2>/dev/null || true
-  fi
-
-  if [[ -f ~/.config/ghostty/config ]]; then
-    sed -i -E "s/^font-size = .*/font-size = $pt/" ~/.config/ghostty/config
-    pkill -SIGUSR2 ghostty 2>/dev/null || true
-  fi
-
-  if [[ -f ~/.config/foot/foot.ini ]]; then
-    sed -i -E "s/(:size=)[0-9.]+/\1$pt/" ~/.config/foot/foot.ini
-    # Foot has no config-reload signal, so a running instance keeps its startup
-    # size until relaunched (new windows pick up the change). Nudge the user —
-    # but reuse the same notification id (freedesktop replaces_id) so dragging
+  local server_pid
+  server_pid=$(systemctl --user show foot-server.service -p MainPID --value 2>/dev/null)
+  if [[ ${server_pid:-0} != 0 && -z $(pgrep -P "$server_pid") ]]; then
+    systemctl --user stop foot-server.service 2>/dev/null || true
+  elif pgrep -x foot >/dev/null 2>&1; then
+    # Reuse the same notification id (freedesktop replaces_id) so dragging
     # through several sizes refreshes one toast instead of stacking a pile.
-    if pgrep -x foot >/dev/null 2>&1; then
-      local id_file="${XDG_RUNTIME_DIR:-/tmp}/karchy-display-text-size.foot-notif-id"
-      local prev_id=""
-      [[ -f $id_file ]] && read -r prev_id <"$id_file" 2>/dev/null
-      local replace=()
-      [[ $prev_id =~ ^[0-9]+$ ]] && replace=(-r "$prev_id")
-      local new_id
-      new_id="$(karchy-notification-send -g look.font \
-        "$(karchy-i18n display.restartFootForFontSize)" \
-        "${replace[@]}" -p 2>/dev/null)" || true
-      [[ $new_id =~ ^[0-9]+$ ]] && printf '%s\n' "$new_id" >"$id_file"
-    fi
+    local id_file="${XDG_RUNTIME_DIR:-/tmp}/karchy-display-text-size.foot-notif-id"
+    local prev_id=""
+    [[ -f $id_file ]] && read -r prev_id <"$id_file" 2>/dev/null
+    local replace=()
+    [[ $prev_id =~ ^[0-9]+$ ]] && replace=(-r "$prev_id")
+    local new_id
+    new_id="$(karchy-notification-send -g look.font \
+      "$(karchy-i18n display.restartFootForFontSize)" \
+      "${replace[@]}" -p 2>/dev/null)" || true
+    [[ $new_id =~ ^[0-9]+$ ]] && printf '%s\n' "$new_id" >"$id_file"
   fi
 }
 
-# Report the current terminal point size from whichever config we find first.
+# The terminal point size karchy last wrote.
 term_current_pt() {
-  if [[ -f ~/.config/ghostty/config ]]; then
-    grep -oP '^font-size = \K[0-9.]+' ~/.config/ghostty/config | head -1
-  elif [[ -f ~/.config/alacritty/alacritty.toml ]]; then
-    grep -oP '^size[[:space:]]*=[[:space:]]*\K[0-9.]+' ~/.config/alacritty/alacritty.toml | head -1
-  elif [[ -f ~/.config/kitty/kitty.conf ]]; then
-    local pt
-    pt=$(grep -oP '^[[:space:]]*font_size[[:space:]]+\K[0-9.]+' ~/.config/kitty/kitty.conf | tail -1)
-    echo "${pt:-$TERM_DEFAULT_PT}"
-  elif [[ -f ~/.config/foot/foot.ini ]]; then
-    grep -oP ':size=\K[0-9.]+' ~/.config/foot/foot.ini | head -1
-  elif karchy-cmd-present kitty; then
-    echo "$TERM_DEFAULT_PT"
-  fi
+  grep -oP '^font_size \K[0-9]+' "$terminal_dir/kitty.conf" 2>/dev/null | head -1
 }
 
 case "${1:-}" in
@@ -205,6 +208,12 @@ case "${1:-}" in
     term="$(term_current_pt)"
     printf 'text size: %s px\ngtk text-scaling-factor: %s\nterminal font: %s pt\n' \
       "$size" "$factor" "${term:-n/a}"
+    exit 0
+    ;;
+  sync)
+    # Only the files: packaging runs this to make new users' starting files,
+    # and karchy-footclient to put back a missing one.
+    write_terminal_files "$(term_pt_for "$(current_base_size | grep -E '^[0-9]+$' || echo "$SHELL_DEFAULT_PX")")"
     exit 0
     ;;
   reset | default)

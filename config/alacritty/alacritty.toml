@@ -1,12 +1,16 @@
 # Alacritty. Colors follow the theme through the import below; karchy reloads
 # open windows on a theme switch.
 [general]
-import = ["~/.local/state/karchy/current/theme/alacritty.toml"]
+# The second import holds the font size, which follows Settings › Appearance ›
+# Text size. A size of your own under [font] below wins.
+import = [
+  "~/.local/state/karchy/current/theme/alacritty.toml",
+  "~/.local/state/karchy/terminal/alacritty.toml",
+]
 
 [font]
 # The font follows fontconfig's "monospace", which Settings › Appearance sets.
 normal = { family = "monospace" }
-size = 10
 
 # karchy's universal clipboard keys (Super+C/V) send Ctrl+Insert and
 # Shift+Insert, so these use the clipboard, not the primary selection.
