@@ -80,25 +80,32 @@ fi
 # The file karchy wrote there itself; it would outrank the new one.
 if grep -qs 'Written by karchy-font-set' "$legacy_file"; then
   rm -f "$legacy_file"
-  rmdir "${legacy_file%/*}" 2>/dev/null || true
+  rmdir "${legacy_file%/*}" "${legacy_file%/*/*}" 2>/dev/null || true
 fi
 
 ((restart)) || exit 0
 
 karchy-restart-shell
 
-# kitty re-reads its config and fonts on SIGUSR1; the others pick the font up
-# in new windows.
-pkill -USR1 -x kitty 2>/dev/null || true
+# A running terminal keeps the font it resolved "monospace" to when it
+# started, also after reloading its config (kitty's SIGUSR1 and Ghostty's
+# SIGUSR2 change nothing here): its open windows stay as they are, and a
+# terminal started from now on uses the new font. foot's server is such a
+# running terminal too; karchy-footclient gives its next window the font.
 waiting=()
-for terminal in foot alacritty ghostty; do
-  # foot's server (footclient windows) also keeps the font it started with.
+# A foot window is a footclient, or a foot that isn't the server.
+if pgrep -x footclient >/dev/null || pgrep -a -x foot | grep -qv -- '--server'; then waiting+=(foot); fi
+for terminal in kitty alacritty ghostty; do
   if pgrep -x "$terminal" >/dev/null; then waiting+=("${terminal^}"); fi
 done
 now=$(fc-match monospace -f '%{family[0]}')
 if ((${#waiting[@]})); then
-  list=$(printf '%s, ' "${waiting[@]}")
-  karchy-notification-send -g look.font "$(karchy-i18n font.changed "$now")" "$(karchy-i18n font.openWindowsKeep "${list%, }")"
+  # "foot", "foot and Kitty", "foot, Kitty and Ghostty".
+  list=${waiting[0]}
+  for ((i = 1; i < ${#waiting[@]}; i++)); do
+    if ((i == ${#waiting[@]} - 1)); then list+=" and ${waiting[i]}"; else list+=", ${waiting[i]}"; fi
+  done
+  karchy-notification-send -g look.font "$(karchy-i18n font.changed "$now")" "$(karchy-i18n font.openWindowsKeep "$list")"
 else
   karchy-notification-send -g look.font "$(karchy-i18n font.changed "$now")"
 fi
