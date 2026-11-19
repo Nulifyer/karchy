@@ -246,7 +246,9 @@ BorderSurface {
       font.bold: root.selected || root._primary
       width: Math.max(0, Math.min(implicitWidth, root._labelRoom))
       fontSizeMode: Text.HorizontalFit
-      minimumPixelSize: Math.round(root.fontSize * 0.75)
+      // A tight label gives up a little size, never below the smallest text
+      // role, then elides: nine-pixel labels were the result at three quarters.
+      minimumPixelSize: Math.min(root.fontSize, Math.max(Style.font.caption, Math.round(root.fontSize * 0.9)))
       elide: Text.ElideRight
       anchors.verticalCenter: parent.verticalCenter
     }
