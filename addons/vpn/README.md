@@ -53,6 +53,11 @@ nmcli connection modify wgclient wireguard.peer-routes yes \
 
 ### 3. Configure and start it
 
+In karchy, Settings › Network › VPN does steps 2 and 3: import the provider's
+WireGuard file and choose **Set up VPN** (`karchy-network-vpn setup <uuid>`
+prepares the profile, writes this configuration from it and hands it to
+`karchy-vpn setup`). By hand:
+
 ```bash
 mkdir -p ~/.config/karchy-vpn
 cp /usr/share/karchy-vpn/config.example ~/.config/karchy-vpn/config

@@ -24,11 +24,48 @@ ColumnLayout {
   property var info: ({ package: false, configured: false, home_lan: true, connection: "", connect_timeout: 30, profiles: [] })
   property var vpn: NetModel.parseVpnStatus("")
   property string imported: ""
+  // Setting the package up with a profile ("Set up VPN"): the profile chosen,
+  // and what the last try came to.
+  property string setupUuid: ""
+  property string setupDone: ""
+  property string setupError: ""
+  readonly property var wireguardProfiles: (info.profiles || []).filter(function(p) { return p.type === "wireguard" })
+  readonly property var setupProfile: {
+    for (var i = 0; i < wireguardProfiles.length; i++)
+      if (wireguardProfiles[i].uuid === setupUuid) return wireguardProfiles[i]
+    return wireguardProfiles.length > 0 ? wireguardProfiles[0] : null
+  }
+  // A profile that names no DNS server needs one typed in.
+  readonly property bool setupNeedsDns: !!setupProfile && setupProfile.has_dns !== true
+
+  // karchy-network-vpn prepares the profile and hands the configuration to
+  // the package's root helper, which checks it and asks for an
+  // administrator's password. Its last line says why when it refuses.
+  function setUp(profile) {
+    if (!profile || setupAct.running) return
+    root.setupDone = ""
+    root.setupError = ""
+    var command = ["karchy-network-vpn", "setup", profile.uuid]
+    if (root.setupNeedsDns && dnsField.text.trim() !== "") command.push(dnsField.text.trim())
+    setupAct.start(command, function(ok, out, cancelled) {
+      if (ok) {
+        root.setupDone = "The VPN is set up with " + profile.name + "."
+        root.imported = ""
+      } else if (!cancelled) {
+        var lines = setupAct.error.trim().split("\n")
+        root.setupError = lines[lines.length - 1].replace(/^Setup failed: /, "")
+      }
+      root.refresh()
+      if (root.page) root.page.refreshConnections()
+    })
+  }
   readonly property bool packaged: info.package === true
   readonly property string home: Quickshell.env("HOME")
 
   function refresh() { if (!infoQuery.running) infoQuery.running = true }
-  function focusFirst() { (packaged ? modeGroup : importButton).forceActiveFocus() }
+  function focusFirst() {
+    (packaged && info.configured ? modeGroup : setupButton.visible ? setupButton : importButton).forceActiveFocus()
+  }
 
   // Profile rows keyed by UUID, rebuilt only when the set changes, so a
   // switch keeps the keyboard after it is flipped.
@@ -81,7 +118,11 @@ ColumnLayout {
         if (!ok || path === "") return
         importAct.start(["karchy-network-vpn", "import", path], function(done, result) {
           if (!done) return
-          try { root.imported = JSON.parse(result).name } catch (e) { root.imported = "the file" }
+          try {
+            var made = JSON.parse(result)
+            root.imported = made.name
+            root.setupUuid = made.uuid
+          } catch (e) { root.imported = "the file" }
           root.refresh()
         })
       })
@@ -119,12 +160,14 @@ ColumnLayout {
   NetworkAction { id: switchAct }
   NetworkAction { id: chooser }
   NetworkAction { id: importAct }
+  NetworkAction { id: setupAct; polkit: true }
 
   SettingsHeader { text: "VPN" }
 
   // ---- with the VPN package ----
   GridLayout {
-    visible: root.packaged
+    // A mode means nothing until the VPN has a profile to use.
+    visible: root.packaged && root.info.configured
     Layout.fillWidth: true
     columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
@@ -151,10 +194,84 @@ ColumnLayout {
     onDismissed: modeAct.error = ""
   }
 
+  // Not set up yet: with a profile to use, one action sets it up; with none,
+  // the next step is the import below.
+  Text {
+    visible: root.packaged && !root.info.configured && root.wireguardProfiles.length === 0
+    Layout.fillWidth: true
+    wrapMode: Text.Wrap
+    textFormat: Text.PlainText
+    text: "Not set up yet. Import the WireGuard file from your VPN provider."
+    color: Commons.Color.textSecondary
+    font.family: Style.font.family
+    font.pixelSize: Style.font.body
+  }
+
+  GridLayout {
+    visible: root.packaged && !root.info.configured && root.wireguardProfiles.length > 0
+    Layout.fillWidth: true
+    columns: root.wide ? 2 : 1
+    columnSpacing: Style.spacing.xxl
+    rowSpacing: Style.spacing.md
+
+    SettingsLabel { text: "Profile" }
+    Dropdown {
+      Layout.fillWidth: true
+      showLabel: false
+      enabled: !setupAct.running
+      value: root.setupProfile ? root.setupProfile.uuid : ""
+      options: root.wireguardProfiles.map(function(p) { return { value: p.uuid, label: p.name } })
+      onChanged: function(value) { root.setupUuid = value }
+    }
+
+    SettingsLabel { visible: root.setupNeedsDns; text: "DNS server" }
+    TextField {
+      id: dnsField
+      visible: root.setupNeedsDns
+      Layout.fillWidth: true
+      enabled: !setupAct.running
+      placeholderText: "One inside the VPN, like 10.0.0.1"
+      Accessible.name: "DNS server inside the VPN"
+      onAccepted: root.setUp(root.setupProfile)
+    }
+  }
+
+  Button {
+    id: setupButton
+    visible: root.packaged && !root.info.configured && root.wireguardProfiles.length > 0
+    focusable: true
+    variant: "primary"
+    text: setupAct.running ? "Setting up…" : "Set up VPN"
+    busy: setupAct.running
+    enabled: !root.setupNeedsDns || dnsField.text.trim() !== ""
+    onClicked: root.setUp(root.setupProfile)
+  }
+
+  // What setting it up does to this network, before it is done.
+  Text {
+    visible: setupButton.visible
+    Layout.fillWidth: true
+    Layout.maximumWidth: Style.space(620)
+    wrapMode: Text.Wrap
+    textFormat: Text.PlainText
+    text: "Starts on Auto: on networks you haven't trusted, the internet is blocked until the VPN connects."
+    color: Commons.Color.textSecondary
+    font.family: Style.font.family
+    font.pixelSize: Style.font.body
+  }
+
   InlineMessage {
-    visible: root.packaged && !root.info.configured
+    kind: "error"
+    text: root.setupError !== "" ? "Couldn't set up the VPN: " + root.setupError : ""
+    details: setupAct.error.trim().indexOf("\n") >= 0 ? setupAct.error : ""
+    dismissible: true
+    onDismissed: root.setupError = ""
+  }
+  InlineMessage {
     kind: "info"
-    text: "The VPN isn't set up yet. Import your WireGuard file below, then run karchy-vpn setup with its name."
+    text: root.setupDone
+    dismissible: true
+    onDismissed: root.setupDone = ""
   }
 
   Card {
@@ -234,11 +351,16 @@ ColumnLayout {
     dismissible: true
     onDismissed: importAct.error = ""
   }
+  // A profile imported while the VPN uses another: one action switches it.
   InlineMessage {
+    readonly property bool other: root.packaged && root.info.configured
     kind: "info"
     text: root.imported === "" ? ""
-      : root.packaged ? "Imported as " + root.imported + ". The VPN uses " + (root.info.connection || "its own profile") + "; to use this one, run: karchy-vpn setup \"" + root.imported + "\""
+      : other ? "Imported as " + root.imported + ". The VPN uses " + (root.info.connection || "another profile") + "."
+      : root.packaged ? ""
       : "Imported as " + root.imported + ". Switch it on above to connect."
+    actionText: other && root.setupProfile ? "Use " + root.imported + " instead" : ""
+    onAction: root.setUp(root.setupProfile)
     dismissible: true
     onDismissed: root.imported = ""
   }

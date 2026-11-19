@@ -2,7 +2,7 @@
 
 # karchy:summary=VPN profiles and the VPN package's options for Settings › Network
 # karchy:group=network
-# karchy:args=status [--json] | import <file.conf> | switch <uuid> on|off | home-lan yes|no
+# karchy:args=status [--json] | import <file.conf> | setup <uuid> [dns] | switch <uuid> on|off | home-lan yes|no
 # karchy:examples=karchy network vpn import ~/Downloads/wg0.conf
 # karchy:hidden=true
 
@@ -10,6 +10,13 @@
 # OpenVPN); nmcli changes them without a password for local members of wheel.
 #   import      adds a WireGuard .conf as a profile that doesn't start by
 #               itself (the VPN package, or the switch in Settings, starts it)
+#   setup       makes the VPN package use a WireGuard profile: prepares the
+#               profile the way the package needs it (a fixed listen port,
+#               its DNS for every name), writes the package's configuration
+#               from the profile and hands it to `karchy-vpn setup`, which
+#               checks it as root and asks for an administrator's password.
+#               The optional dns is a DNS server inside the VPN, for a
+#               profile that names none. Exit 3: that address is needed
 #   switch      connects or disconnects a profile (without the VPN package)
 #   home-lan    the VPN package's "Allow local devices on trusted networks"
 #               (HOME_LAN): its configuration is handed to `karchy-vpn
@@ -39,7 +46,9 @@ status() {
     [[ $type == "wireguard" || $type == "vpn" ]] || continue
     rows+=$(jq -cn --arg uuid "$uuid" --arg type "$type" --arg name "$name" --arg device "${active[$uuid]:-}" \
       --arg auto "$autoconnect" \
-      '{uuid: $uuid, name: $name, type: $type, active: ($device != ""), device: $device, autoconnect: ($auto == "yes")}')$'\n'
+      --arg dns "$([[ $type == wireguard ]] && nmcli -g ipv4.dns connection show uuid "$uuid" 2>/dev/null)" \
+      '{uuid: $uuid, name: $name, type: $type, active: ($device != ""), device: $device, autoconnect: ($auto == "yes"),
+        has_dns: ($dns != "")}')$'\n'
   done < <(nmcli -t -e no -f UUID,TYPE,AUTOCONNECT,NAME connection show 2>/dev/null)
   jq -s --arg package "$([[ -x /usr/lib/karchy-vpn/control ]] && echo yes)" \
     --arg configured "$([[ -r $CONFIG ]] && echo yes)" --arg homeLan "$(config_value HOME_LAN)" \
@@ -68,7 +77,8 @@ import_conf() {
   base=${base:0:15}
   [[ -n $base && $base != "." && $base != ".." ]] || base=wg0
   dir=$(mktemp -d)
-  trap 'rm -rf "$dir"' EXIT
+  # Expanded now: $dir is local, and gone by the time the trap runs.
+  trap "rm -rf '$dir'" EXIT
   install -m 600 "$file" "$dir/$base.conf"
   if ! out=$(nmcli connection import type wireguard file "$dir/$base.conf" 2>&1); then
     refuse "NetworkManager couldn't import it: ${out#Error: }"
@@ -88,14 +98,76 @@ home_lan() {
   command -v karchy-vpn >/dev/null || refuse "The VPN package (karchy-vpn) isn't installed."
   [[ -r $CONFIG ]] || refuse "The VPN isn't set up yet: run karchy-vpn setup."
   tmp=$(mktemp)
-  trap 'rm -f "$tmp"' EXIT
+  trap "rm -f '$tmp'" EXIT
   grep -v '^HOME_LAN=' "$CONFIG" >"$tmp" || true
   printf 'HOME_LAN=%s\n' "$value" >>"$tmp"
   karchy-vpn setup "$tmp" >/dev/null
 }
 
+# One field of a profile, as NetworkManager has it.
+profile_field() { nmcli --escape no -g "$2" connection show uuid "$1" 2>/dev/null; }
+
+# The VPN package's configuration, written from a WireGuard profile. The
+# package wants one IPv4 full-tunnel peer, a fixed listen port and the VPN's
+# DNS for every name; what a provider's file leaves open is set on the
+# profile here (no password: it is the user's own profile), and what can't be
+# set is refused in plain words before anyone is asked for a password.
+setup() {
+  local uuid=${1:-} dns=${2:-} name interface port peers endpoint host endpoint_port tmp key value
+  [[ $uuid =~ $UUID_RE ]] || refuse "Not a connection UUID: $uuid"
+  command -v karchy-vpn >/dev/null || refuse "The VPN package (karchy-vpn) isn't installed."
+  [[ $(profile_field "$uuid" connection.type) == wireguard ]] || refuse "Choose a WireGuard profile."
+  name=$(profile_field "$uuid" connection.id)
+  interface=$(profile_field "$uuid" connection.interface-name)
+  peers=$(profile_field "$uuid" wireguard.peers)
+  [[ -n $interface ]] || refuse "This profile has no interface name."
+  [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9\ _.-]*$ ]] || name=$uuid
+
+  (( $(grep -o 'allowed-ips=' <<<"$peers" | wc -l) == 1 )) ||
+    refuse "The VPN needs a profile with exactly one server (peer); this one has $(grep -o 'allowed-ips=' <<<"$peers" | wc -l)."
+  grep -qE 'allowed-ips=([^ ]*,)?0\.0\.0\.0/0(,| |$)' <<<"$peers" ||
+    refuse "This profile sends only some traffic through the VPN. The VPN needs one that sends everything (AllowedIPs = 0.0.0.0/0)."
+  endpoint=$(grep -oE 'endpoint=[^ ,]+' <<<"$peers" | head -n 1 || true)
+  endpoint=${endpoint#endpoint=}
+  host=${endpoint%:*}
+  endpoint_port=${endpoint##*:}
+  [[ -n $endpoint && $host != *:* && $host != \[* && $endpoint_port =~ ^[0-9]+$ ]] ||
+    refuse "This profile's server address isn't an IPv4 address or a host name with a port."
+
+  if [[ -n $dns ]]; then
+    [[ $dns =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || refuse "The DNS server is an IPv4 address, like 10.0.0.1."
+  else
+    dns=$(profile_field "$uuid" ipv4.dns | tr ',' ' ' | awk '{print $1}')
+    if [[ -z $dns ]]; then
+      echo "This profile names no DNS server. Enter the address of one inside the VPN." >&2
+      exit 3
+    fi
+  fi
+
+  port=$(profile_field "$uuid" wireguard.listen-port)
+  [[ $port =~ ^[1-9][0-9]*$ ]] || port=51820
+  nmcli connection modify uuid "$uuid" wireguard.listen-port "$port" wireguard.peer-routes yes \
+    ipv4.dns "$dns" ipv4.dns-search "~." ipv4.dns-priority -100 connection.autoconnect no >/dev/null ||
+    refuse "NetworkManager couldn't prepare the profile."
+
+  tmp=$(mktemp)
+  trap "rm -f '$tmp'" EXIT
+  # What was chosen before (local devices, timeouts) stays; the profile's
+  # facts replace the rest.
+  if [[ -r $CONFIG ]]; then
+    grep -vE '^(VPN_CONNECTION|VPN_INTERFACE|VPN_ENDPOINT_HOST|VPN_ENDPOINT_PORT|VPN_CLIENT_PORT|VPN_DNS)=' "$CONFIG" >"$tmp" || true
+  fi
+  for key in VPN_CONNECTION:"$name" VPN_INTERFACE:"$interface" VPN_ENDPOINT_HOST:"$host" \
+    VPN_ENDPOINT_PORT:"$endpoint_port" VPN_CLIENT_PORT:"$port" VPN_DNS:"$dns"; do
+    value=${key#*:}
+    printf '%s=%q\n' "${key%%:*}" "$value" >>"$tmp"
+  done
+  karchy-vpn setup "$tmp"
+}
+
 case "${1:-}" in
   status) status ;;
+  setup) setup "${2:-}" "${3:-}" ;;
   import) import_conf "${2:-}" ;;
   switch)
     [[ ${2:-} =~ $UUID_RE ]] || refuse "Not a connection UUID: ${2:-}"

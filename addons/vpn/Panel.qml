@@ -84,7 +84,7 @@ Panel {
   function missingStatusText() {
     return configured
       ? "The VPN is set up but not running. Run: karchy-vpn status"
-      : "Not set up yet. Import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/karchy-vpn/config.example to ~/.config/karchy-vpn/config, fill it in and run: karchy-vpn setup"
+      : "Not set up yet. In Settings › Network › VPN, import your provider's WireGuard file and choose Set up VPN."
   }
 
   function refresh() {

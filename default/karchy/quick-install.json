@@ -85,7 +85,7 @@
         "run": [
           "karchy-plugin-enable karchy.vpn --after karchy.network"
         ],
-        "note": "Next: import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/karchy-vpn/config.example to ~/.config/karchy-vpn/config, fill it in and run: karchy-vpn setup. Until then the shield says the VPN isn't set up."
+        "note": "Next: in Settings › Network › VPN, import your provider's WireGuard file and choose Set up VPN."
       }
     },
     {

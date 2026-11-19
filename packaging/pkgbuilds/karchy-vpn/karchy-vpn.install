@@ -3,9 +3,9 @@
 
 post_install() {
   if [[ ! -e /etc/karchy-vpn/config ]]; then
-    echo ">>> karchy-vpn: import your WireGuard connection (Settings > Network > VPN),"
-    echo ">>> copy /usr/share/karchy-vpn/config.example to ~/.config/karchy-vpn/config,"
-    echo ">>> edit it, then run: karchy-vpn setup"
+    echo ">>> karchy-vpn: in Settings > Network > VPN, import your provider's WireGuard"
+    echo ">>> file and choose Set up VPN. By hand: copy /usr/share/karchy-vpn/config.example"
+    echo ">>> to ~/.config/karchy-vpn/config, edit it, then run: karchy-vpn setup"
   fi
 }
 
