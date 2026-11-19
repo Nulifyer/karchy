@@ -1,0 +1,371 @@
+#!/bin/bash
+# The VPN policy: decides from the mode, the network and the tunnel's health
+# what the tunnel and the guard do, and publishes the result in
+# /run/nulifyer-vpn/status. It is the status file's only writer.
+#
+# Nothing polls. It runs when something changes:
+#   - NetworkManager's dispatcher (a network or the tunnel goes up or down,
+#     DHCP or connectivity changes), through nulifyer-vpn-policy.path
+#   - a command (mode, portal-pause, reconnect) or a trust change in karchy
+#   - a one-shot timer it sets itself, only where nothing else can tell it:
+#     WireGuard has no event for a handshake, so while the tunnel connects it
+#     looks again every 2 s, while it protects every 60 s (a dead server
+#     sends no event either), after a failure every 10 s with a fresh attempt
+#     each minute, and a sign-in pause ends at its deadline
+#
+# Usage: policy [event|check]   (check: a timer's health check, which reuses
+#                                the last answer about trust)
+set -euo pipefail
+# shellcheck source=lib/common.sh
+source /usr/lib/nulifyer-vpn/common.sh
+nv_require_root
+nv_load_config
+
+readonly CHECK_CONNECTING=2
+readonly CHECK_PROTECTING=60
+readonly CHECK_FAILED=10
+readonly RETRY_INTERVAL=60
+
+install -d -m 0755 "$NV_RUN" "$NV_STATE"
+exec 9>"$NV_RUN/policy.lock"
+flock -x 9
+
+kind=${1:-event}
+[[ -e $NV_PENDING ]] && kind=event
+rm -f "$NV_PENDING"
+# Stopped for package removal: leave everything as the shutdown left it.
+[[ ! -e $NV_RUN/stopped ]] || exit 0
+now=$(date +%s)
+mode=$(nv_read_mode)
+
+log() { logger -t nulifyer-vpn -- "$*" 2>/dev/null || true; }
+
+# ---- what is published ------------------------------------------------------
+
+net_device='' net_name='' net_uuid='' net_type='' net_path='' net_gateway=''
+net_trusted=false net_trust='' net_lan='' net_dns=''
+
+publish() {  # publish <state> <reason> [until]
+  local state=$1 reason=$2 until=${3:-} previous new since=$now
+  previous=$(cat "$NV_STATUS" 2>/dev/null || true)
+  new=$(jq -cn \
+    --arg mode "$mode" --arg state "$state" --arg reason "$reason" \
+    --arg device "$net_device" --arg name "$net_name" --arg uuid "$net_uuid" --arg type "$net_type" \
+    --argjson trusted "$net_trusted" --arg trust "$net_trust" \
+    --arg tunnel "$VPN_CONNECTION" --arg interface "$VPN_INTERFACE" \
+    --arg until "$until" --arg integration "$NV_INTEGRATION" '
+    {version: 1, mode: $mode, state: $state, reason: $reason,
+     network: (if $device == "" then null else
+       {device: $device, name: $name, uuid: $uuid, type: $type, trusted: $trusted, trust: $trust} end),
+     tunnel: {name: $tunnel, interface: $interface},
+     until: (if $until == "" then null else ($until | tonumber) end),
+     integration: $integration}')
+  # Rewritten only when something changed, so watchers wake only for news.
+  # "since" is when the state last changed.
+  if [[ -n $previous ]] && [[ $(jq -c 'del(.since)' <<<"$previous" 2>/dev/null) == "$new" ]]; then
+    return 0
+  fi
+  if [[ $(jq -r '.state' <<<"$previous" 2>/dev/null) == "$state" ]]; then
+    since=$(jq -r '.since // empty' <<<"$previous" 2>/dev/null || true)
+    [[ $since =~ ^[0-9]+$ ]] || since=$now
+  fi
+  nv_write_atomic "$NV_STATUS" "$(jq -c --argjson since "$since" '. + {since: $since}' <<<"$new")"
+  [[ $(jq -r '.state' <<<"$previous" 2>/dev/null) == "$state" ]] || log "$state${reason:+ ($reason)}${net_name:+ on $net_name}"
+}
+
+# ---- timers -----------------------------------------------------------------
+
+schedule() {  # schedule <seconds>: the next health check, replacing any other
+  local seconds=$1
+  (( seconds >= 1 )) || seconds=1
+  systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
+  systemd-run --quiet --unit=nulifyer-vpn-check --on-active="${seconds}s" \
+    --timer-property=AccuracySec=500ms --timer-property=RemainAfterElapse=no >/dev/null 2>&1 ||
+    log "couldn't schedule the next check"
+}
+
+unschedule() {
+  systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
+}
+
+# ---- the network ------------------------------------------------------------
+
+read_network() {
+  local dev=$1 line key value
+  net_device=$dev
+  while IFS= read -r line; do
+    key=${line%%:*} value=${line#*:}
+    case $key in
+      GENERAL.CONNECTION) net_name=$value ;;
+      GENERAL.CON-UUID) net_uuid=$value ;;
+      GENERAL.TYPE) net_type=$value ;;
+      GENERAL.CON-PATH) net_path=$value ;;
+      IP4.GATEWAY) net_gateway=$value ;;
+    esac
+  done < <(nmcli -t --escape no -f GENERAL,IP4 device show "$dev" 2>/dev/null || true)
+  nv_valid_ipv4 "$net_gateway" || net_gateway=''
+  # The local network: the kernel's own routes for the link's addresses.
+  net_lan=$(ip -4 route show dev "$dev" scope link proto kernel 2>/dev/null | awk '$1 ~ /\// { print $1 }' | paste -sd, - || true)
+  # The network's own DNS servers, as DHCP (or the profile) gives them, even
+  # where karchy has put its encrypted DNS on the link.
+  net_dns=$( {
+      nmcli --escape no -g DHCP4.OPTION device show "$dev" 2>/dev/null | tr '|' '\n' |
+        sed -n 's/^ *domain_name_servers = //p' | tr ' ' '\n' || true
+      if [[ -n $net_uuid ]]; then
+        nmcli --escape no -g ipv4.dns connection show "$net_uuid" 2>/dev/null | tr ',' '\n' || true
+      fi
+    } | while read -r value; do
+      if nv_valid_ipv4 "$value"; then printf '%s\n' "$value"; fi
+    done | sort -u | paste -sd, -)
+}
+
+# Trust: karchy's answer for this connection, or TRUSTED_UUIDS on stock
+# Omarchy. A health check reuses the last answer for the same activation:
+# trust only changes with an event (karchy also asks after a trust change).
+read_trust() {
+  local cached json line fields
+  cached=$(cat "$NV_RUN/trust" 2>/dev/null || true)
+  if [[ $kind == check && -n $cached ]]; then
+    IFS=$'\t' read -r -a fields <<<"$cached"
+    if [[ ${fields[0]:-} == "$net_device" && ${fields[1]:-} == "$net_path" ]]; then
+      net_trusted=${fields[2]} net_trust=${fields[3]:-}
+      return
+    fi
+  fi
+  net_trusted=false net_trust="not trusted"
+  if [[ $NV_INTEGRATION == karchy ]]; then
+    json=$(/usr/bin/karchy-trusted-networks status --json 2>/dev/null || true)
+    line=$(jq -r --arg d "$net_device" \
+      '.active[]? | select(.device == $d) | [(.trusted | tostring), .reason] | @tsv' <<<"$json" 2>/dev/null | head -n 1)
+    if [[ -n $line ]]; then
+      net_trusted=${line%%$'\t'*} net_trust=${line#*$'\t'}
+    fi
+  else
+    local trusted
+    for trusted in $TRUSTED_UUIDS; do
+      if [[ -n $net_uuid && $net_uuid == "$trusted" ]]; then
+        net_trusted=true net_trust=trusted
+      fi
+    done
+  fi
+  [[ $net_trusted == true ]] || net_trusted=false
+  printf '%s\t%s\t%s\t%s\n' "$net_device" "$net_path" "$net_trusted" "$net_trust" >"$NV_RUN/trust"
+}
+
+# The upstream's connectivity as NetworkManager last checked it (4 is full).
+connectivity() {
+  local v
+  v=$(nmcli --escape no -g GENERAL.IP4-CONNECTIVITY device show "$net_device" 2>/dev/null | cut -d' ' -f1)
+  [[ $v =~ ^[0-9]+$ ]] && printf '%s\n' "$v" || printf '0\n'
+}
+
+# ---- the tunnel -------------------------------------------------------------
+
+tunnel_down() {
+  if nv_vpn_active; then
+    nmcli --wait 10 connection down "$VPN_CONNECTION" >/dev/null 2>&1 || true
+  fi
+  rm -f "$NV_RUN/home-dns"
+}
+
+# The policy starts the tunnel itself; NetworkManager must not race it.
+no_autoconnect() {
+  if [[ $(nmcli --escape no -g connection.autoconnect connection show "$VPN_CONNECTION" 2>/dev/null || true) == yes ]]; then
+    nmcli connection modify "$VPN_CONNECTION" connection.autoconnect no || true
+  fi
+}
+
+# NetworkManager can't resolve a host name endpoint while the guard blocks
+# DNS; the address cached from the last working tunnel stands in.
+seed_endpoint() {
+  local endpoint cached peer
+  endpoint=$(wg show "$VPN_INTERFACE" endpoints 2>/dev/null | awk 'NR == 1 { print $2 }' || true)
+  [[ -z $endpoint || $endpoint == '(none)' ]] || return 0
+  cached=$(sed -n '1p' "$NV_STATE/endpoint-ip" 2>/dev/null || true)
+  nv_valid_ipv4 "$cached" || return 0
+  peer=$(wg show "$VPN_INTERFACE" peers 2>/dev/null | sed -n '1p' || true)
+  [[ -n $peer ]] || return 0
+  wg set "$VPN_INTERFACE" peer "$peer" endpoint "$cached:$VPN_ENDPOINT_PORT"
+  log "used the cached endpoint address $cached"
+}
+
+healthy() {
+  local latest
+  ping -4 -q -n -c 1 -W 2 -I "$VPN_INTERFACE" -m "$NV_PROBE_MARK" "$VPN_DNS" >/dev/null 2>&1 || return 1
+  latest=$(wg show "$VPN_INTERFACE" latest-handshakes 2>/dev/null |
+    awk 'BEGIN { newest = 0 } $2 > newest { newest = $2 } END { print newest }' || true)
+  [[ ${latest:-0} =~ ^[0-9]+$ ]] || return 1
+  (( latest > 0 && now - latest <= HANDSHAKE_MAX_AGE ))
+}
+
+# On a trusted network in On mode the router's own names (nas.lan, the DHCP
+# search domain) must still resolve. The tunnel's negative DNS priority hides
+# every other link's domains, so on its live connection only (never the saved
+# profile) it gets the VPN default priority instead: it still answers every
+# name except the router's own domains. Undone by the next activation.
+home_dns() {
+  local want=$1 applied
+  applied=$(cat "$NV_RUN/home-dns" 2>/dev/null || true)
+  if [[ $want == yes && $applied != yes ]] && nv_vpn_active; then
+    nmcli device modify "$VPN_INTERFACE" ipv4.dns-priority 50 >/dev/null 2>&1 &&
+      printf 'yes\n' >"$NV_RUN/home-dns"
+  elif [[ $want != yes && $applied == yes ]]; then
+    nmcli device reapply "$VPN_INTERFACE" >/dev/null 2>&1 || true
+    rm -f "$NV_RUN/home-dns"
+  fi
+}
+
+clear_attempt() {
+  rm -f "$NV_RUN/connecting-since" "$NV_RUN/last-retry" "$NV_RUN/check-failures"
+}
+
+# ---- the decision -----------------------------------------------------------
+
+[[ $kind == event ]] && no_autoconnect
+
+if [[ $mode == off ]]; then
+  tunnel_down
+  "$NV_LIB/guard" off
+  clear_attempt
+  rm -f "$NV_RUN/pause"
+  upstream=$(nv_upstream)
+  [[ -n $upstream ]] && read_network "$upstream"
+  publish off mode
+  unschedule
+  exit 0
+fi
+
+upstream=$(nv_upstream)
+if [[ -z $upstream ]]; then
+  # Nothing to protect yet; the guard stays closed for whichever network
+  # comes next.
+  tunnel_down
+  "$NV_LIB/guard" closed
+  clear_attempt
+  publish standing-by no-network
+  unschedule
+  exit 0
+fi
+
+read_network "$upstream"
+# karchy recognises a trusted network by its router's hardware address, and
+# may ping the router to learn it. A guard closed before the link came up
+# doesn't know the router yet; let that ping through first.
+if [[ $(sed -n '1p' "$NV_RUN/guard-mode" 2>/dev/null || true) == closed && -n $net_gateway ]] &&
+  ! nft list chain inet nulifyer_vpn_guard output 2>/dev/null | grep -q "ip daddr $net_gateway icmp"; then
+  "$NV_LIB/guard" closed "upstream=$net_device" "gateway=$net_gateway"
+fi
+read_trust
+
+# A sign-in pause holds for its network until the deadline or until the
+# network is online.
+if [[ -r $NV_RUN/pause ]]; then
+  read -r pause_until pause_device <"$NV_RUN/pause" || true
+  if [[ ${pause_until:-} =~ ^[0-9]+$ ]] && (( now < pause_until )) && [[ ${pause_device:-} == "$net_device" ]] &&
+    (( $(connectivity) != 4 )); then
+    tunnel_down
+    "$NV_LIB/guard" portal "upstream=$net_device" ${net_gateway:+"gateway=$net_gateway"} ${net_dns:+"dns=$net_dns"}
+    publish paused sign-in "$pause_until"
+    if [[ ! -e $NV_RUN/pause-checked ]]; then
+      : >"$NV_RUN/pause-checked"
+      # NetworkManager finds the portal now instead of at its next check.
+      systemd-run --quiet --collect --no-block nmcli networking connectivity check >/dev/null 2>&1 || true
+    fi
+    schedule $(( pause_until - now ))
+    exit 0
+  fi
+  if (( $(connectivity) == 4 )); then log "signed in to ${net_name:-the network}"; else log "sign-in pause ended"; fi
+  rm -f "$NV_RUN/pause" "$NV_RUN/pause-checked"
+  clear_attempt
+fi
+
+if [[ $mode == auto && $net_trusted == true ]]; then
+  tunnel_down
+  "$NV_LIB/guard" off
+  clear_attempt
+  publish standing-by trusted
+  unschedule
+  exit 0
+fi
+
+# The tunnel is needed. On a trusted network (On mode) local devices stay
+# reachable: the local network and the router's DNS, beside the tunnel.
+guard_args=("upstream=$net_device")
+[[ -n $net_gateway ]] && guard_args+=("gateway=$net_gateway")
+home=no
+if [[ $net_trusted == true && $HOME_LAN == yes ]]; then
+  home=yes
+  [[ -n $net_lan ]] && guard_args+=("lan=$net_lan")
+  [[ -n $net_dns ]] && guard_args+=("dns=$net_dns")
+  if [[ -n $TRUSTED_GATEWAY && $TRUSTED_GATEWAY == "$net_gateway" &&
+    ( -z $TRUSTED_INTERFACE || $TRUSTED_INTERFACE == "$net_device" ) ]]; then
+    guard_args+=("hairpin=$TRUSTED_GATEWAY")
+  fi
+fi
+
+if [[ -e $NV_RUN/restart ]]; then
+  rm -f "$NV_RUN/restart"
+  tunnel_down
+fi
+
+[[ -r $NV_RUN/connecting-since ]] || printf '%s\n' "$now" >"$NV_RUN/connecting-since"
+since=$(<"$NV_RUN/connecting-since")
+[[ $since =~ ^[0-9]+$ ]] || since=$now
+
+if ! nv_vpn_active; then
+  "$NV_LIB/guard" closed "${guard_args[@]}"
+  if (( now - since < CONNECT_TIMEOUT )); then publish connecting starting; fi
+  if ! nmcli --wait 15 connection up "$VPN_CONNECTION" >/dev/null 2>&1; then
+    now=$(date +%s)
+    if (( now - since >= CONNECT_TIMEOUT )); then
+      publish failed activation-failed
+      schedule "$CHECK_FAILED"
+    else
+      publish connecting starting
+      schedule "$CHECK_CONNECTING"
+    fi
+    exit 0
+  fi
+fi
+
+seed_endpoint
+home_dns "$home"
+now=$(date +%s)
+
+if healthy; then
+  "$NV_LIB/guard" ready "${guard_args[@]}"
+  clear_attempt
+  publish protecting tunnel-up
+  schedule "$CHECK_PROTECTING"
+  exit 0
+fi
+
+# A protecting tunnel gets one quick second look before it counts as down:
+# a single lost probe isn't an outage.
+previous=$(jq -r '.state // empty' "$NV_STATUS" 2>/dev/null || true)
+if [[ $previous == protecting && ! -e $NV_RUN/check-failures ]]; then
+  : >"$NV_RUN/check-failures"
+  rm -f "$NV_RUN/connecting-since"
+  schedule 3
+  exit 0
+fi
+[[ $previous == protecting ]] && { printf '%s\n' "$now" >"$NV_RUN/connecting-since"; since=$now; }
+
+"$NV_LIB/guard" closed "${guard_args[@]}"
+if (( now - since < CONNECT_TIMEOUT )); then
+  publish connecting no-handshake
+  schedule "$CHECK_CONNECTING"
+  exit 0
+fi
+
+publish failed no-handshake
+# Activation doesn't mean a handshake. A stuck tunnel is restarted now and
+# then with the guard closed, without changing the mode.
+last_retry=$(cat "$NV_RUN/last-retry" 2>/dev/null || printf 0)
+[[ $last_retry =~ ^[0-9]+$ ]] || last_retry=0
+if (( now - last_retry >= RETRY_INTERVAL )); then
+  printf '%s\n' "$now" >"$NV_RUN/last-retry"
+  log "restarting the tunnel with the guard closed"
+  tunnel_down
+fi
+schedule "$CHECK_FAILED"

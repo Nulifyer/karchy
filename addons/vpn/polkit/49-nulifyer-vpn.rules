@@ -1,0 +1,13 @@
+// nulifyer-vpn: local, active members of wheel may change the VPN mode,
+// pause it for a captive portal's sign-in and reconnect it without a
+// password. Only these exact commands of the control helper; its other
+// commands and the setup helper still ask for an administrator.
+polkit.addRule(function (action, subject) {
+  if (action.id !== "org.nulifyer.vpn.control") return polkit.Result.NOT_HANDLED;
+  if (!subject.local || !subject.active || !subject.isInGroup("wheel")) return polkit.Result.NOT_HANDLED;
+  var command = action.lookup("command_line") || "";
+  if (/^\/usr\/lib\/nulifyer-vpn\/control (mode (off|auto|on)|portal-pause|reconnect)$/.test(command)) {
+    return polkit.Result.YES;
+  }
+  return polkit.Result.NOT_HANDLED;
+});

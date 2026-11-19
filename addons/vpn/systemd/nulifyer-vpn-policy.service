@@ -1,0 +1,12 @@
+[Unit]
+Description=Apply the VPN policy after a network or mode change
+Documentation=https://github.com/Nulifyer/omarchy-vpn-plugin
+After=NetworkManager.service nulifyer-vpn-guard.service
+ConditionPathExists=/etc/nulifyer-vpn/config
+# Bursts of network events are normal; each run coalesces what came before it.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/nulifyer-vpn/policy event
+TimeoutStartSec=60

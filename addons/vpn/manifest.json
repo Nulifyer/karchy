@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "nulifyer.vpn",
+  "name": "WireGuard VPN",
+  "version": "2.0.0",
+  "author": "Nulifyer",
+  "description": "Bar widget for the nulifyer-vpn package: WireGuard with a kill switch, Auto on untrusted networks",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "WireGuard VPN",
+    "description": "Opens a detailed WireGuard connection, handshake, DNS, route, and guard panel",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Nulifyer/omarchy-vpn-plugin"
+}

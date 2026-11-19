@@ -1,0 +1,35 @@
+# nulifyer-vpn configuration. Install it with: nulifyer-vpn setup <this file>
+# (root keeps its own copy in /etc/nulifyer-vpn/config).
+
+# One existing NetworkManager WireGuard connection: one IPv4 full-tunnel peer
+# (allowed-ips 0.0.0.0/0), a fixed listen port, peer routes, its DNS for all
+# domains with a negative priority (ipv4.dns-search '~.', ipv4.dns-priority -100).
+VPN_CONNECTION='wgclient'
+VPN_INTERFACE='wgclient'
+VPN_ENDPOINT_HOST='vpn.example.com'
+VPN_ENDPOINT_PORT='51820'
+VPN_CLIENT_PORT='51820'
+# A DNS server inside the VPN. It must answer ping: that is the health probe.
+VPN_DNS='10.66.0.1'
+
+# Where trust and upstream DNS come from. auto: karchy's trusted networks and
+# DNS when karchy is installed, otherwise the two settings below.
+INTEGRATION='auto'
+# Without karchy: trusted NetworkManager connection UUIDs, space-separated
+# (empty: trust none), and the DNS-over-HTTPS servers DNSCrypt-proxy uses on
+# the other networks.
+TRUSTED_UUIDS=''
+DOH_IPV4='9.9.9.9, 149.112.112.9'
+
+# On a trusted network in On mode, keep the local network and the router's
+# own names (nas.lan) reachable beside the tunnel.
+HOME_LAN='yes'
+# If the VPN server sits behind your home router and the router's hairpin NAT
+# answers from its own address: the router's address (and interface, optional).
+TRUSTED_GATEWAY=''
+TRUSTED_INTERFACE=''
+
+# Seconds: a handshake older than this counts as stale; a tunnel that hasn't
+# connected after this long counts as failed (the internet stays blocked).
+HANDSHAKE_MAX_AGE='150'
+CONNECT_TIMEOUT='30'

@@ -1,0 +1,32 @@
+# Public-network DNS bootstrap. NetworkManager uses this local listener only
+# for connections that are not listed as trusted in /etc/nulifyer-vpn/config.
+server_names = ['quad9-primary', 'quad9-secondary']
+listen_addresses = ['127.0.0.1:53', '[::1]:53']
+max_clients = 250
+
+ipv4_servers = true
+ipv6_servers = false
+dnscrypt_servers = false
+doh_servers = true
+odoh_servers = false
+require_dnssec = true
+require_nolog = true
+require_nofilter = false
+force_tcp = false
+http3 = false
+timeout = 5000
+keepalive = 30
+lb_strategy = 'first'
+
+cache = true
+cache_size = 4096
+cache_min_ttl = 2400
+cache_max_ttl = 86400
+cache_neg_min_ttl = 60
+cache_neg_max_ttl = 600
+
+[static.'quad9-primary']
+stamp = 'sdns://AgMAAAAAAAAABzkuOS45LjkgsBkgdEu7dsmrBT4B4Ht-BQ5HPSD3n3vqQ1-v5DydJC8SZG5zOS5xdWFkOS5uZXQ6NDQzCi9kbnMtcXVlcnk'
+
+[static.'quad9-secondary']
+stamp = 'sdns://AgMAAAAAAAAADTE0OS4xMTIuMTEyLjkgsBkgdEu7dsmrBT4B4Ht-BQ5HPSD3n3vqQ1-v5DydJC8SZG5zOS5xdWFkOS5uZXQ6NDQzCi9kbnMtcXVlcnk'

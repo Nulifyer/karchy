@@ -1,0 +1,165 @@
+#!/usr/bin/python3 -I
+"""Check a nulifyer-vpn configuration and install it as /etc/nulifyer-vpn/config.
+
+Run as root (nulifyer-vpn setup, through pkexec); the configuration arrives on
+stdin, so root never opens a file the user could swap. Nothing is executed
+from it: each line must be KEY=value, and the file root later sources is
+written back canonically quoted. After writing it, the units are enabled and
+the policy applies the configuration.
+"""
+
+import ipaddress
+import os
+import re
+import shlex
+import socket
+import subprocess
+import sys
+import tempfile
+import uuid
+
+CONFIG = "/etc/nulifyer-vpn/config"
+STATE = "/var/lib/nulifyer-vpn"
+REQUIRED = ["VPN_CONNECTION", "VPN_INTERFACE", "VPN_ENDPOINT_HOST", "VPN_ENDPOINT_PORT",
+            "VPN_CLIENT_PORT", "VPN_DNS"]
+OPTIONAL = {
+    "INTEGRATION": "auto", "TRUSTED_UUIDS": "", "TRUSTED_INTERFACE": "",
+    "TRUSTED_GATEWAY": "", "DOH_IPV4": "", "HOME_LAN": "yes", "HANDSHAKE_MAX_AGE": "150",
+    "CONNECT_TIMEOUT": "30",
+}
+# Accepted from 1.x configurations and dropped: the status no longer expires,
+# and the router's DNS comes from the network itself.
+RETIRED = {"STATUS_MAX_AGE", "TRUSTED_DNS"}
+UNITS = ["nulifyer-vpn-guard.service", "nulifyer-vpn-policy.path"]
+
+
+def fail(message):
+    print(f"Setup failed: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def parse(text):
+    values = {}
+    for number, line in enumerate(text.splitlines(), 1):
+        parts = shlex.split(line, comments=True)
+        if not parts:
+            continue
+        if len(parts) != 1 or "=" not in parts[0]:
+            fail(f"line {number} isn't KEY=value")
+        key, value = parts[0].split("=", 1)
+        if key in values:
+            fail(f"{key} is set twice")
+        if key in RETIRED:
+            continue
+        if key not in REQUIRED and key not in OPTIONAL:
+            fail(f"unknown setting {key}")
+        values[key] = value
+    missing = [key for key in REQUIRED if key not in values]
+    if missing:
+        fail("missing " + ", ".join(missing))
+    return {**OPTIONAL, **values}
+
+
+def validate(c):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 _.-]*", c["VPN_CONNECTION"]):
+        fail("VPN_CONNECTION must be a NetworkManager profile name or UUID")
+    for key in ("VPN_INTERFACE", "TRUSTED_INTERFACE"):
+        if (c[key] or key == "VPN_INTERFACE") and not re.fullmatch(r"[A-Za-z0-9_.-]{1,15}", c[key]):
+            fail(f"{key} isn't an interface name")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{0,252}", c["VPN_ENDPOINT_HOST"]):
+        fail("VPN_ENDPOINT_HOST must be an IPv4 address or a host name")
+    for key in ("VPN_ENDPOINT_PORT", "VPN_CLIENT_PORT"):
+        if not c[key].isdigit() or not 1 <= int(c[key]) <= 65535:
+            fail(f"{key} isn't a UDP port")
+    for key in ("HANDSHAKE_MAX_AGE", "CONNECT_TIMEOUT"):
+        if not c[key].isdigit() or not 1 <= int(c[key]) <= 86400:
+            fail(f"{key} isn't a number of seconds")
+    if c["INTEGRATION"] not in ("auto", "karchy", "standalone"):
+        fail("INTEGRATION must be auto, karchy or standalone")
+    if c["HOME_LAN"] not in ("yes", "no"):
+        fail("HOME_LAN must be yes or no")
+    try:
+        ipaddress.IPv4Address(c["VPN_DNS"])
+        for key in ("TRUSTED_GATEWAY",):
+            if c[key]:
+                ipaddress.IPv4Address(c[key])
+        for address in filter(None, (a.strip() for a in c["DOH_IPV4"].split(","))):
+            ipaddress.IPv4Address(address)
+        for trusted in c["TRUSTED_UUIDS"].split():
+            if str(uuid.UUID(trusted)) != trusted:
+                raise ValueError("Trusted network UUIDs must use their canonical form")
+    except ValueError as error:
+        fail(str(error))
+    if c["TRUSTED_INTERFACE"] and not c["TRUSTED_GATEWAY"]:
+        fail("TRUSTED_INTERFACE needs TRUSTED_GATEWAY")
+
+
+def nm(*fields, profile):
+    out = subprocess.run(["nmcli", "--escape", "no", "-g", ",".join(fields), "connection", "show", profile],
+                         text=True, capture_output=True)
+    if out.returncode:
+        fail(f"NetworkManager has no connection {profile!r}")
+    return out.stdout.strip()
+
+
+def preflight(c):
+    profile = c["VPN_CONNECTION"]
+    if nm("connection.type", profile=profile) != "wireguard":
+        fail("VPN_CONNECTION must be a WireGuard connection")
+    if nm("wireguard.listen-port", profile=profile) != c["VPN_CLIENT_PORT"]:
+        fail("VPN_CLIENT_PORT must match the connection's fixed wireguard.listen-port")
+    if nm("connection.interface-name", profile=profile) != c["VPN_INTERFACE"]:
+        fail("VPN_INTERFACE must match the connection's connection.interface-name")
+    if c["VPN_DNS"] not in nm("ipv4.dns", profile=profile).replace(",", " ").split():
+        fail("VPN_DNS must be in the connection's ipv4.dns")
+    priority = nm("ipv4.dns-priority", profile=profile)
+    search = nm("ipv4.dns-search", profile=profile).split(",")
+    routes = nm("wireguard.peer-routes", profile=profile)
+    if routes != "yes" or not priority.lstrip("-").isdigit() or int(priority) >= 0 or "~." not in search:
+        fail("the connection needs wireguard.peer-routes yes, a negative ipv4.dns-priority and ipv4.dns-search '~.'")
+    peers = nm("wireguard.peers", profile=profile)
+    endpoints = re.findall(r"endpoint=([^\s,]+)", peers)
+    if endpoints != [c["VPN_ENDPOINT_HOST"] + ":" + c["VPN_ENDPOINT_PORT"]] or "allowed-ips=0.0.0.0/0" not in peers:
+        fail("use one IPv4 full-tunnel peer (allowed-ips=0.0.0.0/0) matching VPN_ENDPOINT_HOST and VPN_ENDPOINT_PORT")
+
+
+def write(path, text, mode):
+    directory = os.path.dirname(path)
+    os.makedirs(directory, mode=0o755, exist_ok=True)
+    with tempfile.NamedTemporaryFile("w", dir=directory, delete=False) as stream:
+        stream.write(text)
+        os.fchmod(stream.fileno(), mode)
+    os.replace(stream.name, path)
+
+
+def main():
+    if os.geteuid() != 0:
+        fail("run it as root: nulifyer-vpn setup")
+    os.environ["PATH"] = "/usr/bin"
+    config = parse(sys.stdin.read(65536))
+    validate(config)
+    preflight(config)
+    write(CONFIG, "".join(f"{k}={shlex.quote(v)}\n" for k, v in config.items()), 0o644)
+    os.makedirs(STATE, mode=0o755, exist_ok=True)
+    if not os.path.exists(f"{STATE}/mode"):
+        write(f"{STATE}/mode", "auto\n", 0o644)
+    # The guard needs the endpoint's address before DNS works; the policy
+    # refreshes it whenever the tunnel is up.
+    try:
+        address = socket.getaddrinfo(config["VPN_ENDPOINT_HOST"], None, socket.AF_INET)[0][4][0]
+        write(f"{STATE}/endpoint-ip", address + "\n", 0o644)
+    except OSError:
+        print(f"Couldn't resolve {config['VPN_ENDPOINT_HOST']} now; it is looked up when the tunnel first connects.")
+    # The policy starts the tunnel; NetworkManager must not start it on its own.
+    subprocess.run(["nmcli", "connection", "modify", config["VPN_CONNECTION"], "connection.autoconnect", "no"], check=True)
+    subprocess.run(["systemctl", "daemon-reload"], check=True)
+    subprocess.run(["systemctl", "enable", "--now", *UNITS], check=True)
+    subprocess.run(["/usr/lib/nulifyer-vpn/control", "start"], check=True)
+    integration = subprocess.run(
+        ["bash", "-c", "source /usr/lib/nulifyer-vpn/common.sh; nv_load_config; echo $NV_INTEGRATION"],
+        text=True, capture_output=True).stdout.strip()
+    print(f"nulifyer-vpn is set up ({integration}). Mode: {open(f'{STATE}/mode').read().strip()}.")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,15 @@
+# The tunnel's health check. Started only by the one-shot timer the policy
+# sets while the tunnel connects, protects or has failed (WireGuard has no
+# event for a handshake), and at the end of a sign-in pause.
+[Unit]
+Description=Check the VPN tunnel's health
+Documentation=https://github.com/Nulifyer/omarchy-vpn-plugin
+After=NetworkManager.service
+ConditionPathExists=/etc/nulifyer-vpn/config
+# Bursts of network events are normal; each run coalesces what came before it.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/nulifyer-vpn/policy check
+TimeoutStartSec=60

@@ -1,0 +1,28 @@
+# nulifyer-vpn: the WireGuard VPN policy, kill switch and sign-in pause, as a
+# system package. Builds a tagged release of this repository:
+#   makepkg -si
+# To build a local branch instead (testing before a release):
+#   NULIFYER_VPN_GIT=/path/to/checkout NULIFYER_VPN_REF=my-branch makepkg -si
+# karchy builds the same thing from its own PKGBUILD (packaging/pkgbuilds/nulifyer-vpn).
+
+pkgname=nulifyer-vpn
+pkgver=2.0.0
+pkgrel=1
+pkgdesc="WireGuard VPN policy with a kill switch: Auto on untrusted networks, captive-portal sign-in pause"
+arch=('any')
+url="https://github.com/Nulifyer/omarchy-vpn-plugin"
+license=('MIT')
+depends=('bash' 'networkmanager' 'wireguard-tools' 'nftables' 'iproute2' 'jq' 'polkit' 'python' 'systemd' 'util-linux')
+optdepends=('dnscrypt-proxy: encrypted DNS on untrusted networks without karchy')
+makedepends=('git' 'make')
+install=nulifyer-vpn.install
+_repo=${NULIFYER_VPN_GIT:-https://github.com/Nulifyer/omarchy-vpn-plugin.git}
+[[ $_repo == /* ]] && _repo=file://$_repo
+_ref=tag=v$pkgver
+[[ -n ${NULIFYER_VPN_REF:-} ]] && _ref=branch=$NULIFYER_VPN_REF
+source=("$pkgname::git+$_repo#$_ref")
+sha256sums=('SKIP')
+
+package() {
+  make -C "$srcdir/$pkgname" DESTDIR="$pkgdir" install
+}

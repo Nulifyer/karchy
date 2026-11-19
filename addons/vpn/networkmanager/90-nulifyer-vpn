@@ -1,0 +1,41 @@
+#!/bin/bash
+# nulifyer-vpn: a network change asks the VPN policy to look again. Also
+# linked into pre-up.d, so the guard closes before a new link carries
+# anything. The policy itself runs outside the dispatcher (which runs one
+# script at a time), started by nulifyer-vpn-policy.path.
+set -euo pipefail
+[[ -r /etc/nulifyer-vpn/config ]] || exit 0
+
+iface=${1:-}
+action=${2:-}
+lib=/usr/lib/nulifyer-vpn
+
+physical() {
+  case ${CONNECTION_UUID:+$(nmcli -g connection.type connection show "$CONNECTION_UUID" 2>/dev/null || true)} in
+    802-11-wireless|802-3-ethernet) return 0 ;;
+  esac
+  return 1
+}
+
+standalone() {
+  # shellcheck source=lib/common.sh
+  source "$lib/common.sh"
+  [[ -n ${NV_INTEGRATION:-} ]] || nv_load_config
+  [[ $NV_INTEGRATION == standalone ]]
+}
+
+case $action in
+  pre-up)
+    physical || exit 0
+    # On stock Omarchy the plugin's own DNS goes on before the link is used.
+    if standalone; then "$lib/standalone-dns" "$CONNECTION_UUID" "$iface" apply-active || true; fi
+    "$lib/control" prepare "$iface"
+    ;;
+  up|dhcp4-change|dhcp6-change)
+    if physical && standalone; then "$lib/standalone-dns" "$CONNECTION_UUID" "$iface" || true; fi
+    "$lib/control" refresh
+    ;;
+  down|connectivity-change)
+    "$lib/control" refresh
+    ;;
+esac

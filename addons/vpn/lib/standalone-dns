@@ -1,0 +1,137 @@
+#!/bin/bash
+# Stock Omarchy only (INTEGRATION=standalone): networks that aren't trusted
+# use DNSCrypt-proxy on 127.0.0.1, written into their saved profiles with a
+# snapshot to restore. On karchy, karchy's own DNS helper owns upstream DNS
+# and this is never run.
+set -euo pipefail
+# shellcheck source=lib/common.sh
+source /usr/lib/nulifyer-vpn/common.sh
+nv_require_root
+nv_load_config
+
+readonly PROFILE_STATE=/var/lib/nulifyer-vpn/profiles
+readonly PROPERTIES=(
+  ipv4.ignore-auto-dns
+  ipv4.dns
+  ipv4.dns-search
+  ipv4.dns-priority
+  ipv6.ignore-auto-dns
+  ipv6.dns
+  ipv6.dns-search
+  ipv6.dns-priority
+)
+
+install -d -m 0700 "$PROFILE_STATE"
+
+valid_uuid() {
+  [[ $1 =~ ^[0-9a-fA-F-]{36}$ ]]
+}
+
+property_file() {
+  printf '%s/%s/%s\n' "$PROFILE_STATE" "$1" "${2//./_}"
+}
+
+snapshot_profile() {
+  local uuid=$1 directory property
+  directory="$PROFILE_STATE/$uuid"
+  [[ -e "$directory/complete" ]] && return 0
+  rm -rf -- "$directory"
+  install -d -m 0700 "$directory"
+  for property in "${PROPERTIES[@]}"; do
+    nmcli --escape no -g "$property" connection show "$uuid" > "$(property_file "$uuid" "$property")"
+  done
+  printf 'managed\n' > "$directory/complete"
+  chmod 0600 "$directory"/*
+}
+
+restore_profile() {
+  local uuid=$1 directory property value active_iface
+  directory="$PROFILE_STATE/$uuid"
+  [[ -e "$directory/complete" ]] || return 0
+  if ! nmcli connection show "$uuid" >/dev/null 2>&1; then
+    rm -rf -- "$directory"
+    return 0
+  fi
+  for property in "${PROPERTIES[@]}"; do
+    value=$(<"$(property_file "$uuid" "$property")")
+    nmcli connection modify "$uuid" "$property" "$value"
+  done
+  active_iface=$(nmcli --escape no -g GENERAL.DEVICES connection show "$uuid" 2>/dev/null || true)
+  if [[ -n $active_iface && $active_iface != -- ]]; then
+    nmcli device reapply "$active_iface" >/dev/null
+  fi
+  rm -rf -- "$directory"
+}
+
+reapply_if_active() {
+  local iface=$1
+  if [[ -n $iface ]] && nmcli -t -f DEVICE,STATE device status | grep -Fqx "$iface:connected"; then
+    nmcli device reapply "$iface" >/dev/null
+  fi
+}
+
+apply_public_dns_to_device() {
+  local iface=$1 ipv6_method=$2
+  [[ -n $iface ]] || { printf 'Interface is required for pre-up DNS configuration.\n' >&2; return 2; }
+  nmcli device modify "$iface" \
+    ipv4.ignore-auto-dns yes \
+    ipv4.dns '127.0.0.1' \
+    ipv4.dns-search '~.' \
+    ipv4.dns-priority 100
+  if [[ $ipv6_method != disabled && $ipv6_method != ignore ]]; then
+    nmcli device modify "$iface" \
+      ipv6.ignore-auto-dns yes \
+      ipv6.dns '::1' \
+      ipv6.dns-search '~.' \
+      ipv6.dns-priority 100
+  fi
+}
+
+if [[ ${1:-} == --restore-all ]]; then
+  shopt -s nullglob
+  for directory in "$PROFILE_STATE"/*; do
+    uuid=${directory##*/}
+    valid_uuid "$uuid" && restore_profile "$uuid"
+  done
+  exit 0
+fi
+
+uuid=${1:?connection UUID required}
+iface=${2:-}
+apply_active=${3:-}
+valid_uuid "$uuid" || { printf 'Invalid connection UUID.\n' >&2; exit 2; }
+
+type=$(nmcli --escape no -g connection.type connection show "$uuid")
+case "$type" in
+  802-11-wireless|802-3-ethernet) ;;
+  *) exit 0 ;;
+esac
+
+for trusted in $TRUSTED_UUIDS; do
+  if [[ $uuid == "$trusted" ]]; then
+    restore_profile "$uuid"
+    exit 0
+  fi
+done
+
+snapshot_profile "$uuid"
+nmcli connection modify "$uuid" \
+  ipv4.ignore-auto-dns yes \
+  ipv4.dns '127.0.0.1' \
+  ipv4.dns-search '~.' \
+  ipv4.dns-priority 100
+
+ipv6_method=$(nmcli --escape no -g ipv6.method connection show "$uuid")
+if [[ $ipv6_method != disabled && $ipv6_method != ignore ]]; then
+  nmcli connection modify "$uuid" \
+    ipv6.ignore-auto-dns yes \
+    ipv6.dns '::1' \
+    ipv6.dns-search '~.' \
+    ipv6.dns-priority 100
+fi
+
+if [[ $apply_active == apply-active ]]; then
+  apply_public_dns_to_device "$iface" "$ipv6_method"
+else
+  reapply_if_active "$iface"
+fi

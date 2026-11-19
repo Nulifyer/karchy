@@ -1,0 +1,16 @@
+# Started for every request (a dispatcher event, a command): the policy runs
+# while /run/nulifyer-vpn/pending exists and again if a request arrived while
+# it was running.
+[Unit]
+Description=Apply the VPN policy when asked
+Documentation=https://github.com/Nulifyer/omarchy-vpn-plugin
+ConditionPathExists=/etc/nulifyer-vpn/config
+
+[Path]
+PathExists=/run/nulifyer-vpn/pending
+MakeDirectory=yes
+DirectoryMode=0755
+Unit=nulifyer-vpn-policy.service
+
+[Install]
+WantedBy=multi-user.target
