@@ -14,8 +14,8 @@
 # karchy:version-cmd=sed -n 's/^pkgver=//p' packaging/pkgbuilds/karchy-bees/PKGBUILD
 
 pkgname=karchy-bees
-pkgver=0.11_karchy3
-_commit=4ed240d2d1a8a3619a0675b7a53690100b2cfd8b
+pkgver=0.11_karchy4
+_commit=8326b0ea2a4121679b11c13a53da03a0bc86cc94
 pkgrel=1
 pkgdesc="bees, the btrfs deduplication daemon, from karchy's fork"
 arch=('x86_64')
