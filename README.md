@@ -13,17 +13,11 @@
 
 </div>
 
-<!-- Three screenshots, side by side. When the three files exist, delete this
-     line and the closing line of this comment, and delete the single
-     screenshot below.
 <p align="center">
-  <img src="docs/screenshots/desktop.png" alt="The karchy desktop" width="32%">
-  <img src="docs/screenshots/menu.png" alt="The menu" width="32%">
-  <img src="docs/screenshots/settings.png" alt="The Settings window" width="32%">
+  <a href="docs/screenshots/desktop.png"><img src="docs/screenshots/desktop.png" alt="The karchy desktop: a terminal with fastfetch and a git project, btop and Thunar, tiled under the bar" width="32%"></a>
+  <a href="docs/screenshots/menu.png"><img src="docs/screenshots/menu.png" alt="The menu, searching: settings pages, package actions and apps in one list" width="32%"></a>
+  <a href="docs/screenshots/settings.png"><img src="docs/screenshots/settings.png" alt="The Settings window on Keybindings: every binding, its keys and where it comes from" width="32%"></a>
 </p>
--->
-
-![karchy desktop with fastfetch, btop and Thunar](docs/screenshot.png)
 
 karchy is one person's Linux distro. Its author built it for their own laptop
 and desktop, and publishes it so that others can use it or take parts of it.

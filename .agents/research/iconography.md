@@ -95,7 +95,7 @@ Yaru colors come from `ubuntu/yaru` `common/accent-colors.scss.in`. Papirus colo
 - **Shipped desktop entries.** `system/applications/karchy-foot*.desktop` (`Icon=foot`) and `default/alacritty/Alacritty.desktop`.
 - **Web apps.** `bin/karchy-webapp-install` downloads site icons into `~/.local/share/icons/hicolor/256x256/apps`. These are brand-colored, which is correct.
 - **Cursor.** No theme is set. `default/hypr/startup-cursor.lua:6-17` falls back to `default` (Adwaita cursors), and `default/hypr/cursors/karchy-startup` is the blank startup cursor. This is neutral and fine; no change proposed.
-- **Images.** `docs/logo.svg`, `docs/screenshot.png`, `default/fonts/omarchy/hermes.svg` and the theme backgrounds and previews. No SVG icon assets are used by the shell.
+- **Images.** `docs/logo.svg`, `docs/screenshots/*.png`, `default/fonts/omarchy/hermes.svg` and the theme backgrounds and previews. No SVG icon assets are used by the shell.
 
 ### 2.5 Shared helpers
 
