@@ -156,7 +156,8 @@ def main():
         stem = re.sub(r'-(bin|git)$', '', p)
         return stem, stem + '-bin'
     aur_wanted = {p for a in data['apps'] if a.get('source') == 'aur' for p in a['packages'] if p not in every_repo}
-    aur_wanted |= {v for a in data['apps'] if not a.get('feature') for v in variants(a['packages'][0]) if v not in every_repo}
+    aur_wanted |= {v for a in data['apps'] if not a.get('feature') and a.get('source') != 'karchy'
+                   for v in variants(a['packages'][0]) if v not in every_repo}
     aur_wanted = sorted(aur_wanted)
     aur = {}
     for i in range(0, len(aur_wanted), 100):
@@ -167,6 +168,13 @@ def main():
     for a in data['apps']:
         src, where = a.get('source'), a.get('id')
         if a.get('feature'):
+            continue
+        if src == 'karchy':
+            # karchy's add-ons: built from this repository and released in
+            # [karchy] with karchy itself (D-106).
+            main = a['packages'][0]
+            if not os.path.isfile(os.path.join(ROOT, 'packaging', 'pkgbuilds', main, 'PKGBUILD')):
+                errors.append(f'{where}: {main} has no packaging/pkgbuilds/{main}/PKGBUILD')
             continue
         for n, p in enumerate(a.get('packages', [])):
             if p in base and not a.get('required'):

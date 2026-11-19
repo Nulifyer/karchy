@@ -16,6 +16,7 @@ function parse(text, fallback) {
 var icons = {
   all: { iconName: "menu.apps" },
   installed: { iconName: "app.installed" },
+  karchy: { iconName: "plugin" },
   browsers: { iconName: "app.browser" },
   chat: { iconName: "app.chat" },
   office: { iconName: "app.office" },
@@ -87,13 +88,15 @@ function capitalized(s) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function sourceText(source) {
+// A karchy entry is a feature (Arch's packages, set up by karchy's script) or
+// one of karchy's add-on packages (D-106), released in [karchy].
+function sourceText(source, feature) {
   switch (source) {
     case "arch": return "from Arch's repositories"
     case "cachyos": return "from CachyOS's repository"
     case "omarchy": return "from Omarchy's repository"
     case "aur": return "from the AUR: built on this computer from a community-maintained script"
-    case "karchy": return "from Arch's repositories, set up by karchy"
+    case "karchy": return feature ? "from Arch's repositories, set up by karchy" : "from karchy's repository"
     default: return ""
   }
 }
@@ -101,7 +104,7 @@ function sourceText(source) {
 // "firefox from Arch's repositories"
 function installsText(app) {
   var pkgs = (app.packages || []).join(", ")
-  var from = sourceText(app.source)
+  var from = sourceText(app.source, !!app.feature)
   return from === "" ? pkgs : pkgs + " " + from
 }
 
