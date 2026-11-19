@@ -108,7 +108,11 @@ QtObject {
 
   // Text on a solid accent fill (a primary button): whichever of the theme's
   // background and foreground stands out more on the accent.
-  readonly property color onAccent: Util.contrast(background, accent) >= Util.contrast(foreground, accent)
+  //
+  // Not named onAccent: QML reads a binding to a name that starts with "on"
+  // and a capital as a signal handler, so that property stayed the invalid
+  // color (black) in every theme, 2.9:1 on a light theme's dark accent.
+  readonly property color accentText: Util.contrast(background, accent) >= Util.contrast(foreground, accent)
     ? background : foreground
 
   // ---------------------------------------------------------- status roles
@@ -120,7 +124,7 @@ QtObject {
   // whose hue fits wins, then karchy's default theme's color. A theme can pin
   // one in shell.toml `[status]`. Each is then kept at 4.5:1 on the
   // background, so it works as text, as an icon and as a border; text drawn
-  // on a solid status fill uses the paired `on*` color.
+  // on a solid status fill uses the paired `*Text` color.
   readonly property var statusHues: ({
     error: { ranges: [[340, 360], [0, 25]], keys: ["red", "bright_red", "color1", "color9"], fallback: "#ea6962" },
     warning: { ranges: [[25, 62]], keys: ["yellow", "bright_yellow", "orange", "color3", "color11"], fallback: "#d8a657" },
@@ -157,9 +161,9 @@ QtObject {
     readonly property color success: root.statusColor("success")
     // Each status color clears 4.5:1 on the background, so the background
     // reads on a solid status fill just as well.
-    readonly property color onError: root.background
-    readonly property color onWarning: root.background
-    readonly property color onSuccess: root.background
+    readonly property color errorText: root.background
+    readonly property color warningText: root.background
+    readonly property color successText: root.background
   }
 
   // Flat dictionary of "section.key" -> raw string from shell.toml.

@@ -75,7 +75,7 @@ The shell's shared look lives in `shell/Commons`: `Color` owns color roles, `Sty
 |---|---|---|
 | `Color.secondaryText(text, surface)`, `Color.textSecondary` | Descriptions, metadata, section headers, placeholders, a dimmed icon that still carries meaning | The text color blended toward its surface, then backed off until it reaches 4.5:1. Quieter than the text in dark and light themes alike. |
 | `Color.disabledText(text, surface)`, `Color.textDisabled` | A control that can't be used now, content outside the current scope (days outside the shown month) | A stronger blend with a 2:1 floor. Not for anything people must read. |
-| `Color.status.error` / `warning` / `success` and `onError` / `onWarning` / `onSuccess` | Failures and destructive actions; conditions that need attention but aren't failures (captive portal, packet loss); healthy or running state | From the theme's red, yellow and green, or the first palette color of that hue, else karchy's default theme's color; then lightness adjusted to 4.5:1 on the background. `on*` is the text color on a solid status fill. A theme can pin them in `shell.toml` `[status]`. |
+| `Color.status.error` / `warning` / `success` and `errorText` / `warningText` / `successText` | Failures and destructive actions; conditions that need attention but aren't failures (captive portal, packet loss); healthy or running state | From the theme's red, yellow and green, or the first palette color of that hue, else karchy's default theme's color; then lightness adjusted to 4.5:1 on the background. `on*` is the text color on a solid status fill. A theme can pin them in `shell.toml` `[status]`. |
 | `Color.focus`, `Border.focusSpec()`, `Ui/FocusRing` | Where the keyboard is: Qt focus, and the keyboard cursor of the panels, the menu and the clipboard | The accent, lightness adjusted to 3:1 against the background and the selected fill, drawn as a ring inside the control so focus never shifts layout. Hover is a faint foreground fill and border; selection is a stronger fill. `[controls] focus-*` in `shell.toml` can restyle it. |
 
 Don't dim text with `Qt.darker()` or a hand-picked alpha: `Qt.darker()` makes dark text darker, so in light themes it inverts the hierarchy. Don't use `Color.urgent` for errors; it is the theme's raw `red`, which isn't red or readable in every theme, and it stays only for the bar's attention mark (`[bar] active`).
@@ -97,7 +97,7 @@ Don't dim text with `Qt.darker()` or a hand-picked alpha: `Qt.darker()` makes da
 | `motion.fast` / `base` / `slow` | 120 / 200 / 320 ms, always through `Style.duration()` | Hover and color / open, morph, move / toasts, progress. |
 | `spacing.panelWidth`, `panelWidthWide`, `sidebarWidth`, `formLabelWidth`, `actionButtonSize`, `heroGap` | 380, 560, 200, 170, 22, 14 | The sizes panels, windows and forms had repeated as literals. |
 
-`Color.onAccent` is the text on a solid accent fill. Panel content sits on `[popups]` and reads `Panel.panelText` / `panelSurface` (`Color.popups.*`), never the bar's colors; so do the OSD and `PanelSlider`.
+`Color.accentText` is the text on a solid accent fill (never name a property `on` + capital: QML binds it as a signal handler and it stays black). Panel content sits on `[popups]` and reads `Panel.panelText` / `panelSurface` (`Color.popups.*`), never the bar's colors; so do the OSD and `PanelSlider`.
 
 ### Components
 

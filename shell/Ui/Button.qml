@@ -101,7 +101,7 @@ BorderSurface {
   readonly property bool _destructive: variant === "destructive"
   // The color the label, icon and borders are drawn in.
   readonly property color _ink: !enabled ? Commons.Color.disabledText(root.foreground)
-    : _primary ? Commons.Color.onAccent
+    : _primary ? Commons.Color.accentText
     : _destructive ? Commons.Color.status.error
     : root.foreground
   readonly property bool hot: enabled && (mouseArea.containsMouse || hasCursor)
@@ -148,8 +148,8 @@ BorderSurface {
   // A primary button keeps its accent fill and shows hover and press by
   // mixing in its text color; the others lay the state fills over `background`.
   readonly property color _primaryFill: !enabled ? Util.alpha(Commons.Color.accent, 0.35)
-    : mouseArea.pressed ? Util.mix(Commons.Color.onAccent, Commons.Color.accent, 0.2)
-    : hot || _showFocusRing ? Util.mix(Commons.Color.onAccent, Commons.Color.accent, 0.1)
+    : mouseArea.pressed ? Util.mix(Commons.Color.accentText, Commons.Color.accent, 0.2)
+    : hot || _showFocusRing ? Util.mix(Commons.Color.accentText, Commons.Color.accent, 0.1)
     : Commons.Color.accent
   readonly property color _stateTint: _destructive ? Commons.Color.status.error : root.foreground
 
