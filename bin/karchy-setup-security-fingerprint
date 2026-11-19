@@ -217,7 +217,7 @@ if (( enroll_status == 0 )); then
   fi
 else
   echo -e "\e[31m\nEnrollment failed. Please try again.\e[0m"
-  echo "If it keeps failing, the reader may need newer firmware: run Update Firmware from"
-  echo "the menu (Update), then set up the fingerprint again."
+  echo "If it keeps failing, the reader may need newer firmware: open Update System from"
+  echo "the menu, check for firmware updates there, then set up the fingerprint again."
   exit 1
 fi

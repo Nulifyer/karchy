@@ -11,7 +11,7 @@ import "Model.js" as Model
 
 // The Updates window: what `karchy update` would install, read before it
 // runs, and the release channel. Opened by the bar's updates indicator, the
-// menu (Update › Update System), Settings › About and `karchy updates`.
+// menu (Update System), Settings › About and `karchy updates`.
 //
 // It checks with `karchy-update --plan` (no root, nothing installed) when it
 // opens and on Check now (F5). Install runs `karchy update` in the floating
@@ -22,7 +22,8 @@ import "Model.js" as Model
 // Page: a PageHeader with the release, channel and check time, Check now and
 // the one primary action; then Arch news (read before updating), karchy,
 // apps, system components (the ones that need a restart first) and AUR
-// packages, each a Card; the channel last.
+// packages, each a Section; then firmware (run by itself in a terminal) and
+// the channel last.
 Item {
   id: root
 
@@ -51,9 +52,13 @@ Item {
   readonly property var retiredKeep: Model.retired(plan, "keep")
   readonly property var restartParts: Model.restartParts(plan)
 
+  // `karchy-updates firmware` opens the window at its Firmware part.
   function open(payloadJson) {
+    var payload = {}
+    try { payload = JSON.parse(payloadJson || "{}") } catch (e) {}
     root.opened = true
     root.showAllSystem = false
+    if (payload && payload.section === "firmware") revealFirmware.restart()
     // A check a minute old is still the answer; otherwise check again.
     if (!root.plan || root.hasError || Date.now() - Date.parse(root.plan.checked || "") > 60000) root.check()
     if (root.channels.length === 0) channelsProc.running = true
@@ -105,6 +110,28 @@ Item {
         root.plan = { error: "The update check stopped before it finished.", changes: [], news: [], release: {} }
         root.checking = false
       }
+    }
+  }
+
+  // Firmware updates come through fwupd, which needs UEFI firmware to talk
+  // to (or is already installed for some other device).
+  property bool firmwareApplies: false
+  Process {
+    running: true
+    command: ["sh", "-c", "[ -d /sys/firmware/efi ] || command -v fwupdmgr >/dev/null"]
+    onExited: function(code) { root.firmwareApplies = code === 0 }
+  }
+
+  // Once the window is laid out: the keyboard on the Firmware button, and
+  // the button in view.
+  Timer {
+    id: revealFirmware
+    interval: 150
+    onTriggered: {
+      if (!root.firmwareApplies) return
+      firmwareButton.forceActiveFocus()
+      var top = firmwareSection.mapToItem(page, 0, 0).y
+      content.contentY = Math.max(0, Math.min(top, content.contentHeight - content.height))
     }
   }
 
@@ -466,6 +493,25 @@ Item {
             color: Commons.Color.textSecondary
             font.family: Style.font.family
             font.pixelSize: Style.font.body
+          }
+
+          // Not part of `karchy update`: firmware comes from the makers, is
+          // rare, and can need a restart into the firmware's own updater, so
+          // it runs by itself in a terminal, which lists what there is and
+          // asks before installing.
+          Section {
+            id: firmwareSection
+            Layout.fillWidth: true
+            visible: root.firmwareApplies
+            title: "Firmware"
+            info: "For this computer's own firmware (BIOS) and its devices, from their makers through fwupd. The terminal lists what is available and asks before it installs anything."
+            Button {
+              id: firmwareButton
+              focusable: true
+              bordered: true
+              text: "Check for firmware updates…"
+              onClicked: Quickshell.execDetached(["karchy-launch-floating-terminal-with-presentation", "karchy-update-firmware"])
+            }
           }
 
           // Not on a dev checkout, which has no channel.

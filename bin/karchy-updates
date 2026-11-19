@@ -1,9 +1,18 @@
 #!/bin/bash
 
 # karchy:summary=Open the Updates window: what karchy update would install, Arch news and the release channel
-# karchy:args=
-# karchy:examples=karchy updates
+# karchy:args=[firmware]
+# karchy:examples=karchy updates | karchy updates firmware
 
 # The window (shell plugin karchy.updates) checks with `karchy-update --plan`
 # and runs the update itself in a terminal. The shell's "ok" is not news here.
-exec karchy-shell shell summon karchy.updates >/dev/null
+#
+#   firmware   open at the Firmware part (karchy-update-firmware runs from it)
+case "${1:-}" in
+  "") exec karchy-shell shell summon karchy.updates >/dev/null ;;
+  firmware) exec karchy-shell shell summon karchy.updates '{"section":"firmware"}' >/dev/null ;;
+  *)
+    echo "Usage: karchy updates [firmware]" >&2
+    exit 1
+    ;;
+esac
