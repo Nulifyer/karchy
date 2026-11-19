@@ -138,10 +138,22 @@ def main():
     except OSError:
         print(f"Couldn't resolve {config['VPN_ENDPOINT_HOST']} now; it is looked up when the tunnel first connects.")
     # The policy starts the tunnel; NetworkManager must not start it on its own.
-    subprocess.run(["nmcli", "connection", "modify", config["VPN_CONNECTION"], "connection.autoconnect", "no"], check=True)
-    subprocess.run(["systemctl", "daemon-reload"], check=True)
-    subprocess.run(["systemctl", "enable", "--now", *UNITS], check=True)
-    subprocess.run(["/usr/lib/karchy-vpn/control", "start"], check=True)
+    # The control helper refuses everything but the mode commands to a pkexec
+    # caller. This is root's own call, made after the configuration was
+    # checked, so it goes without pkexec's mark.
+    own = {key: value for key, value in os.environ.items() if key != "PKEXEC_UID"}
+    steps = [
+        (["nmcli", "connection", "modify", config["VPN_CONNECTION"], "connection.autoconnect", "no"], None,
+         "NetworkManager couldn't change the connection"),
+        (["systemctl", "daemon-reload"], None, "systemd couldn't reload its units"),
+        (["systemctl", "enable", "--now", *UNITS], None, "the VPN's services couldn't be started"),
+        (["/usr/lib/karchy-vpn/control", "start"], own, "the VPN's policy couldn't be started"),
+    ]
+    for command, env, problem in steps:
+        done = subprocess.run(command, env=env, text=True, capture_output=True)
+        if done.returncode:
+            detail = (done.stderr or done.stdout).strip().splitlines()
+            fail(problem + (": " + detail[-1] if detail else ""))
     print(f"karchy-vpn is set up. Mode: {open(f'{STATE}/mode').read().strip()}.")
 
 
