@@ -136,7 +136,7 @@ prompt_for_github_user() {
   local username=""
 
   while true; do
-    username=$(gum input --prompt "$(karchy-i18n sshd.githubUserPrompt)" --placeholder "your-github-username" --value "$username") || exit 130
+    username=$(karchy-gum input --prompt "$(karchy-i18n sshd.githubUserPrompt)" --placeholder "your-github-username" --value "$username") || exit 130
     [[ -n $username ]] && authorize_keys_from_github "$username" && break
   done
 }
@@ -145,7 +145,7 @@ authorize_pasted_key() {
   local key
 
   while true; do
-    key=$(gum input --prompt "$(karchy-i18n sshd.publicKeyPrompt)" --placeholder "ssh-ed25519 AAAA... user@host" --value "${key:-}") || exit 130
+    key=$(karchy-gum input --prompt "$(karchy-i18n sshd.publicKeyPrompt)" --placeholder "ssh-ed25519 AAAA... user@host" --value "${key:-}") || exit 130
     [[ -n $key ]] && authorize_key "$key" && break
   done
 }
@@ -208,7 +208,7 @@ elif authorized=$(ssh-keygen -lf "$AUTHORIZED_KEYS" 2>/dev/null) && [[ -n $autho
 else
   from_github=$(karchy-i18n sshd.keyFromGithub)
   paste_key=$(karchy-i18n sshd.keyPaste)
-  how=$(gum choose "$from_github" "$paste_key" --header "$(karchy-i18n sshd.howToAddKey)") || exit 130
+  how=$(karchy-gum choose "$from_github" "$paste_key" --header "$(karchy-i18n sshd.howToAddKey)") || exit 130
   case $how in
   "$from_github") prompt_for_github_user ;;
   "$paste_key") authorize_pasted_key ;;

@@ -61,7 +61,7 @@ if [[ -z $1 ]]; then
   reason=$(mktemp)
   trap 'rm -f "$reason"' EXIT
   while true; do
-    REPO_URL=$(gum input --placeholder="$(karchy-i18n theme.repoPlaceholder)" --header="$header" --value "$REPO_URL") || exit 130
+    REPO_URL=$(karchy-gum input --placeholder="$(karchy-i18n theme.repoPlaceholder)" --header="$header" --value "$REPO_URL") || exit 130
     if [[ -z $REPO_URL ]]; then
       header="Type the git address of the theme's repository."
       continue

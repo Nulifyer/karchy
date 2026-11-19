@@ -53,7 +53,7 @@ import)
   echo "This replaces the key that opens your current keyring with the one in $in."
   echo "Passwords saved since this install won't open afterwards (unless you import"
   echo "the old key again; it's kept as $key.before-import)."
-  gum confirm --default=false "Use the key from $in?" || exit 130
+  karchy-gum confirm --default=false "Use the key from $in?" || exit 130
   sudo install -d -m 0700 /etc/credstore
   [[ -z $current ]] || printf '%s' "$current" | sudo install -m 0600 /dev/stdin "$key.before-import"
   printf '%s' "$value" | sudo install -m 0600 /dev/stdin "$key"

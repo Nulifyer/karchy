@@ -42,7 +42,7 @@ if [[ ${1:-} == "--remove" ]]; then
   echo "Stop keeping ${label:-the disk} ($size, $device) mounted at $mount."
   echo "It is unmounted now and no longer mounts at startup. The files on it are not touched."
   echo
-  [[ -n $confirmed ]] || gum confirm "Stop keeping it mounted?" || exit 130
+  [[ -n $confirmed ]] || karchy-gum confirm "Stop keeping it mounted?" || exit 130
   sudo -v -p "Your password, to change /etc/fstab: " || exit 130
 
   # Unmounted first: while something holds it open, nothing is changed.
@@ -74,7 +74,7 @@ echo "Mount ${label:-the disk} ($size, $device) at $mount from now on."
 echo "It appears in the file manager and never delays startup if it's missing."
 echo
 # Declining closes the window (exit 130, the menu terminal's cancel).
-gum confirm "Keep it mounted?" || exit 130
+karchy-gum confirm "Keep it mounted?" || exit 130
 
 sudo mkdir -p "$mount"
 echo "$line" | sudo tee -a /etc/fstab >/dev/null

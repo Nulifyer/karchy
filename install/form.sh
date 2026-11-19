@@ -37,7 +37,7 @@ form_pick() {
 }
 
 form_require_gum() {
-  command -v gum >/dev/null && return
+  type -P gum >/dev/null && return
   log "installing gum for the installer form"
   pacman -Sy --noconfirm --needed gum >>"$KARCHY_INSTALL_LOG" 2>&1 || die "could not install gum"
 }

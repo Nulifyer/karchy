@@ -47,7 +47,8 @@ ui_init() {
 
   # gum, in the theme's colours: 3 accent, 7 text, 15 bright text, 8 muted,
   # 0 the background. Everything is indented two columns, like the rest
-  # (gum confirm indents its question by one column itself).
+  # (gum confirm indents its question by one column itself). The gum
+  # function below puts karchy's help line under each question, not gum's.
   export GUM_INPUT_PADDING="0 2" GUM_INPUT_PROMPT="> " GUM_INPUT_PROMPT_FOREGROUND=3 \
     GUM_INPUT_CURSOR_FOREGROUND=3 GUM_INPUT_HEADER_FOREGROUND=15 GUM_INPUT_PLACEHOLDER_FOREGROUND=8
   export GUM_CHOOSE_PADDING="0 2" GUM_CHOOSE_CURSOR="> " GUM_CHOOSE_CURSOR_FOREGROUND=3 \
@@ -58,6 +59,17 @@ ui_init() {
     GUM_FILTER_HEIGHT=10
   export GUM_CONFIRM_PADDING="0 1" GUM_CONFIRM_PROMPT_FOREGROUND=15 GUM_CONFIRM_SELECTED_FOREGROUND=0 \
     GUM_CONFIRM_SELECTED_BACKGROUND=3 GUM_CONFIRM_UNSELECTED_FOREGROUND=15 GUM_CONFIRM_UNSELECTED_BACKGROUND=8
+}
+
+# gum with karchy's help line under each question instead of gum's
+# (bin/karchy-gum, which the desktop's commands use too). Outside the
+# installer's screens (plain output) gum runs as it is.
+gum() {
+  if [[ $KARCHY_UI == tui ]]; then
+    KARCHY_GUM_HELP_STYLE=$UI_DIM "$KARCHY_SRC/bin/karchy-gum" "$@"
+  else
+    command gum "$@"
+  fi
 }
 
 # The Linux console: karchy's monospace font in the size that suits the

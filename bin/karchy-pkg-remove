@@ -38,6 +38,6 @@ fi
 echo "These will be removed:"
 sed 's/^/  /' <<<"$plan"
 echo
-gum confirm "Remove $(wc -l <<<"$plan") package(s)?" --affirmative "Remove" --negative "Keep them" --default=false || exit 130
+karchy-gum confirm "Remove $(wc -l <<<"$plan") package(s)?" --affirmative "Remove" --negative "Keep them" --default=false || exit 130
 sudo pacman --color auto -Rns --noconfirm -- "${pkgs[@]}"
 karchy-show-done $?

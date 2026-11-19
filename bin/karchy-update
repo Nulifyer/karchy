@@ -341,7 +341,7 @@ if [[ $assume_yes != "true" ]]; then
   source karchy-restart-gum 2>/dev/null || true
   while :; do
     echo
-    choice=$(gum choose --header "Install these updates? Keep the computer plugged in; don't turn it off." \
+    choice=$(karchy-gum choose --header "Install these updates? Keep the computer plugged in; don't turn it off." \
       "Update" "Show details" "Not now") || choice="Not now"
     case "$choice" in
       Update) break ;;
@@ -544,7 +544,7 @@ fi
 # The running kernel's modules are gone once its package was replaced.
 if [[ ! -d /usr/lib/modules/$(uname -r) ]] || [[ $needs_restart == "true" ]]; then
   echo
-  if [[ $assume_yes != "true" ]] && gum confirm --affirmative "Restart now" --negative "Later" "Restart to finish the update?"; then
+  if [[ $assume_yes != "true" ]] && karchy-gum confirm --affirmative "Restart now" --negative "Later" "Restart to finish the update?"; then
     systemctl reboot
   else
     warn "Restart when convenient to finish the update."

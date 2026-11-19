@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# karchy:summary=Run gum with karchy's own help line under the question instead of gum's
+# karchy:hidden=true
+
+# Usage: karchy-gum choose|filter|input|confirm [gum's arguments...]
+#
+# gum's help line names its keys as four arrows ("←↓↑→ navigate • enter
+# submit…"), lists keys that do nothing there, and sits a column left of the
+# question. This runs gum without it and puts karchy's line, in muted text,
+# right under the question: a list's or a text field's header, a yes/no's
+# question. A question without a header gets the line as its header. It can't
+# go under the whole widget, as gum's did: gum clears everything below its
+# question when it draws, so a line printed there first is wiped.
+#
+# Any other gum command runs unchanged. KARCHY_GUM_HELP_STYLE sets how the
+# line is drawn (an SGR sequence; muted, colour 8, by default).
+
+help_for() {
+  case "$1" in
+    choose) echo "↑↓ move · enter select · esc cancel" ;;
+    filter) echo "type to filter · ↑↓ move · enter select · esc cancel" ;;
+    input) echo "enter continue · esc cancel" ;;
+    confirm) echo "←→ choose · enter confirm · y yes · n no" ;;
+  esac
+}
+
+help=$(help_for "${1:-}")
+[[ -n $help ]] || exec gum "$@"
+
+help="${KARCHY_GUM_HELP_STYLE:-$'\033[90m'}$help"$'\033[0m'
+args=("$@")
+prompt=-1
+header=-1
+for ((i = 1; i < ${#args[@]}; i++)); do
+  case "${args[i]}" in
+    --header)
+      header=$((i + 1))
+      i=$((i + 1))
+      ;;
+    --header=*)
+      args[i]="${args[i]}"$'\n'"$help"
+      header=-2
+      ;;
+    # Flags whose value is the next argument.
+    --affirmative | --negative | --timeout | --placeholder | --value | --selected | --height | \
+      --prompt | --width | --char-limit | --cursor | --limit | --delimiter | --output-delimiter)
+      i=$((i + 1))
+      ;;
+    -*) ;;
+    *) prompt=$i ;;
+  esac
+done
+
+if [[ $1 == confirm ]]; then
+  if ((prompt > 0)); then
+    args[prompt]="${args[prompt]}"$'\n'"$help"
+  else
+    args+=("Are you sure?"$'\n'"$help")
+  fi
+elif ((header > 0)); then
+  args[header]="${args[header]}"$'\n'"$help"
+elif ((header == -1)); then
+  args+=(--header "$help")
+fi
+
+exec gum "${args[@]}" --show-help=false

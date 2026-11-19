@@ -74,7 +74,7 @@ pick_share() {
     open+=("$i") names+=("$name")
   done
   if ((${#open[@]})); then
-    choice=$(gum choose --header "Keep which share mounted?" "${names[@]}" "$other") || exit 0
+    choice=$(karchy-gum choose --header "Keep which share mounted?" "${names[@]}" "$other") || exit 0
     for i in "${!names[@]}"; do
       [[ ${names[i]} == "$choice" ]] && { printf '%s' "${open[i]}"; return; }
     done
@@ -84,7 +84,7 @@ pick_share() {
   local header="The share's address"
   name=""
   while true; do
-    name=$(gum input --header "$header" --placeholder "smb://server/share" --value "$name") || exit 0
+    name=$(karchy-gum input --header "$header" --placeholder "smb://server/share" --value "$name") || exit 0
     [[ -n $name ]] || exit 0
     [[ $name == smb://* ]] || name="smb://${name#//}"
     [[ $name =~ ^smb://[^/@]+@?[^/]*/[^/]+ ]] && break
@@ -139,7 +139,7 @@ keep() {
     target=$(fstab_unescape "$(awk '{ print $2 }' <<<"$kept")")
     cred=$(fstab_unescape "$(sed -n 's/.*credentials=\([^,]*\).*/\1/p' <<<"$kept")")
     echo "//$server/$share is kept at $target already."
-    gum confirm "Change the username and password karchy uses for it?" || exit 130
+    karchy-gum confirm "Change the username and password karchy uses for it?" || exit 130
   else
     # /mnt/<share>, or /mnt/<server>-<share> when that is taken: a folder
     # no fstab line mounts, and that is missing or an empty folder nothing is
@@ -187,9 +187,9 @@ keep() {
   local user_header="Username for //$server/$share"
   [[ -n $user ]] || user_header+=" (Enter keeps $USER)"
   while true; do
-    user=$(gum input --header "$user_header" --placeholder "$USER" --value "$user") || give_up
+    user=$(karchy-gum input --header "$user_header" --placeholder "$USER" --value "$user") || give_up
     user=${user:-$USER}
-    password=$(gum input --password --header "Password for //$server/$share" --placeholder "empty for a guest share") || give_up
+    password=$(karchy-gum input --password --header "Password for //$server/$share" --placeholder "empty for a guest share") || give_up
     sudo -v -p "Your password for this computer, to save the share: " ||
       give_up 1 "This computer's password wasn't accepted."
     # Side files a closed window left behind, for any share.
@@ -201,7 +201,7 @@ keep() {
     echo "Checking the username and password with //$server/$share…"
     share_signs_in "$new_cred" && break
     echo "//$server/$share didn't accept them: the username or password is wrong, the share's name is, or the server is away."
-    case $(gum choose --header "What now?" "Try another username or password" "Use another address" "Stop") in
+    case $(karchy-gum choose --header "What now?" "Try another username or password" "Use another address" "Stop") in
       "Try another username or password") ;;
       # The new run takes the lock again, so this one lets go of it first.
       "Use another address") give_up_quietly || exit 1; clear; exec {lock_fd}>&-; exec "$0" ;;
@@ -343,7 +343,7 @@ pick_kept() {
     printf '%s' "${targets[0]}"
     return
   fi
-  choice=$(gum choose --header "Stop keeping which share?" "${labels[@]}") || exit 0
+  choice=$(karchy-gum choose --header "Stop keeping which share?" "${labels[@]}") || exit 0
   for i in "${!labels[@]}"; do
     [[ ${labels[i]} == "$choice" ]] && { printf '%s' "${targets[i]}"; return 0; }
   done
@@ -364,7 +364,7 @@ remove() {
   local source
   source=$(fstab_unescape "$(awk '{ print $1 }' <<<"$line")")
   echo "Stop keeping $source mounted at $target"
-  [[ -n $confirmed ]] || gum confirm "Stop keeping it? Files on the server are not touched." || exit 130
+  [[ -n $confirmed ]] || karchy-gum confirm "Stop keeping it? Files on the server are not touched." || exit 130
   sudo -v -p "Your password for this computer, to remove the share: " || exit 1
 
   # Unmounted first: while something holds it open, nothing is changed.

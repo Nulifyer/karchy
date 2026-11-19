@@ -164,7 +164,7 @@ if (( $# < 3 )); then
   # A problem shows as the prompt's header, so it goes once fixed.
   APP_NAME="" problem=""
   while true; do
-    APP_NAME=$(gum input --header "$problem" --prompt "$(karchy-i18n tui.namePrompt)" --placeholder "$(karchy-i18n webapp.namePlaceholder)" --value "$APP_NAME") || exit 130
+    APP_NAME=$(karchy-gum input --header "$problem" --prompt "$(karchy-i18n tui.namePrompt)" --placeholder "$(karchy-i18n webapp.namePlaceholder)" --value "$APP_NAME") || exit 130
     if [[ -z $APP_NAME ]]; then
       problem=$(karchy-i18n webapp.nameEmpty)
     elif [[ $APP_NAME == */* ]]; then
@@ -175,7 +175,7 @@ if (( $# < 3 )); then
   done
   APP_URL="" problem=""
   while true; do
-    APP_URL=$(gum input --header "$problem" --prompt "URL> " --placeholder "https://example.com" --value "$APP_URL") || exit 130
+    APP_URL=$(karchy-gum input --header "$problem" --prompt "URL> " --placeholder "https://example.com" --value "$APP_URL") || exit 130
     url=$(normalize_webapp_url "$APP_URL")
     if [[ -z $APP_URL || $url =~ [[:space:]] || ! ${url,,} =~ ^https?://[^/]+ ]]; then
       problem=$(karchy-i18n webapp.urlInvalid)
@@ -185,7 +185,7 @@ if (( $# < 3 )); then
     if ! curl -fsSL --max-time 8 -o /dev/null "$url" 2>/dev/null; then
       make_anyway=$(karchy-i18n webapp.makeAnyway)
       change=$(karchy-i18n webapp.changeAddress)
-      choice=$(gum choose --header "$(karchy-i18n webapp.unreachable "$url")" "$change" "$make_anyway") || exit 130
+      choice=$(karchy-gum choose --header "$(karchy-i18n webapp.unreachable "$url")" "$change" "$make_anyway") || exit 130
       if [[ $choice != "$make_anyway" ]]; then
         problem=$(karchy-i18n webapp.checkAddress)
         continue
@@ -206,7 +206,7 @@ if (( $# < 3 )); then
     ICON_REF="$ICON_VALUE"
   else
     [[ -n ${unreachable:-} ]] || echo "$(karchy-i18n webapp.iconNotFound)"
-    ICON_REF=$(gum input --prompt "$(karchy-i18n tui.iconPrompt)" --placeholder "$(karchy-i18n webapp.iconPlaceholder)") || exit 130
+    ICON_REF=$(karchy-gum input --prompt "$(karchy-i18n tui.iconPrompt)" --placeholder "$(karchy-i18n webapp.iconPlaceholder)") || exit 130
     [[ -n $ICON_REF ]] || ICON_REF=$GENERIC_ICON
   fi
 
