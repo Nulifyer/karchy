@@ -5,10 +5,12 @@
 // (Store.closedEntry); Service.qml says which are waiting and ongoing.
 
 // The name an app's notifications are listed under, where the name it gives
-// itself is an internal one. Omasnap is the program behind Print and
-// Super+Shift+S, which karchy calls a screenshot everywhere else. Keyed by the
-// app's name in lower case; the rule key (`app:<name>`) stays the app's own.
-var APP_LABELS = { "omasnap": "Screenshot" }
+// itself is an internal one: the programs karchy runs for the desktop's own
+// jobs. Omasnap is behind Print and Super+Shift+S, which karchy calls a
+// screenshot everywhere else; udiskie mounts the drives that are plugged in
+// and says so. Keyed by the app's name in lower case; the rule key
+// (`app:<name>`) stays the app's own.
+var APP_LABELS = { "omasnap": "Screenshot", "udiskie": "Drives" }
 
 function appLabel(app) {
   var name = String(app || "")

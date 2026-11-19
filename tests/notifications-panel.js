@@ -72,6 +72,7 @@ assert.deepStrictEqual(M.groupOf({ app: "Firefox", groupKey: "web:mail.example.o
 assert.strictEqual(M.rows([e("s", "Signal", 1)], {}, {})[0].app, "app:signal")
 // An app with an internal name is listed under the name karchy uses; its rule key is still its own.
 assert.deepStrictEqual(M.groupOf({ app: "omasnap", groupKey: "app:omasnap" }), { id: "app:omasnap", label: "Screenshot", system: false })
+assert.strictEqual(M.groupOf({ app: "udiskie", groupKey: "app:udiskie" }).label, "Drives")
 assert.strictEqual(M.appLabel("Signal"), "Signal")
 // The same key closed twice is two rows.
 const twice = M.historyRows([e("k", "Chat", 1, { waiting: false }), e("k", "Chat", 1, { waiting: false, closed_ts: 50 })])
