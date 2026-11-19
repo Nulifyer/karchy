@@ -294,11 +294,9 @@ Item {
 
           // Arch's own announcements: some ask for a manual step before or
           // after updating, so they come first.
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.total > 0 && root.plan.news.length > 0
-            iconName: "info"
-            iconColor: Commons.Color.status.warning
             title: "Arch news since your last update"
             subtitle: "Read these before installing; some need a step by hand."
             trailing: Button {
@@ -316,10 +314,9 @@ Item {
             }
           }
 
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.karchyChanges.length > 0
-            iconName: "update.system"
             title: root.plan && root.plan.release.available
               ? "karchy " + root.plan.release.installed + " → " + root.plan.release.available
               : "karchy"
@@ -342,7 +339,7 @@ Item {
             }
           }
 
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.appChanges.length > 0
             title: "Apps"
@@ -359,7 +356,7 @@ Item {
           }
 
           // Usually the longest list: the restart ones show, the rest one click away.
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.systemChanges.length > 0
             title: "System"
@@ -384,7 +381,7 @@ Item {
             }
           }
 
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.aurChanges.length > 0
             title: "AUR"
@@ -402,7 +399,7 @@ Item {
 
           // Packages karchy no longer uses (D-108): removed by the update
           // when nothing else needs them; one you installed yourself stays.
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.retiredRemove.length + root.retiredKeep.length > 0
             title: "No longer part of karchy"
@@ -436,7 +433,7 @@ Item {
           }
 
           // Not on a dev checkout, which has no channel.
-          Card {
+          Section {
             Layout.fillWidth: true
             visible: root.channel !== ""
             title: "Release channel"

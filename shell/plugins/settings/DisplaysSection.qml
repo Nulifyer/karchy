@@ -336,7 +336,7 @@ ColumnLayout {
 
   // Night light: the same switch as the display panel's, plus its hours and
   // warmth. Applies to every monitor.
-  Card {
+  Section {
     id: nightCard
     title: "Night light"
     subtitle: root.nightSummary()
@@ -481,7 +481,7 @@ ColumnLayout {
 
   Repeater {
     model: root.monitors
-    delegate: Card {
+    delegate: Section {
       id: card
       required property var modelData
       readonly property var monitor: modelData

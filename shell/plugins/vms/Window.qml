@@ -516,7 +516,7 @@ Item {
 
       Messages {}
 
-      Card {
+      Section {
         GridLayout {
           Layout.fillWidth: true
           columns: 2
@@ -667,7 +667,7 @@ Item {
       Messages {}
 
       // Live figures from the QEMU process.
-      Card {
+      Section {
         visible: detail.vm.state === "running"
         title: "Now"
         KeyValueGrid {
@@ -682,7 +682,7 @@ Item {
         }
       }
 
-      Card {
+      Section {
         title: "Settings"
         subtitle: detail.running ? "Shut the VM down to change these." : ""
 
@@ -806,7 +806,7 @@ Item {
         }
       }
 
-      Card {
+      Section {
         title: "Snapshots"
         subtitle: detail.running ? "Shut the VM down to take or restore a snapshot."
           : root.snapshots.length === 0 ? "A snapshot saves the disk, firmware settings and TPM as they are now." : ""
@@ -883,7 +883,7 @@ Item {
       // Apart at the bottom: what can't be undone, each asked about first.
       SectionHeader { text: "Can't be undone" }
 
-      Card {
+      Section {
         DangerRow {
           visible: detail.running
           title: "Force off"

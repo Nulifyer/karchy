@@ -274,7 +274,7 @@ ColumnLayout {
     onDismissed: root.setupDone = ""
   }
 
-  Card {
+  Section {
     visible: root.packaged && root.facts.length > 0
     title: "What it's doing"
     subtitle: "The internet is blocked while it connects, and stays blocked if it can't."

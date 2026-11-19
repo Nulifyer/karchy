@@ -37,6 +37,11 @@ o.window({ title = "^karchy Settings$" }, { center = true })
 o.window({ title = "^Quick install$" }, { float = true })
 o.window({ title = "^Quick install$" }, { center = true })
 
+-- The Updates window: every shell window floats at the size it gives itself
+-- (Settings, Quick install, Virtual machines and Containers in vms.lua).
+o.window({ class = "^org.quickshell$", title = "^Updates$" }, { float = true })
+o.window({ class = "^org.quickshell$", title = "^Updates$" }, { center = true })
+
 -- Fullscreen screensaver.
 o.window("org.karchy.screensaver", { fullscreen = true })
 o.window("org.karchy.screensaver", { float = true })

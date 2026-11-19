@@ -549,7 +549,7 @@ Item {
 
       Messages {}
 
-      Card {
+      Section {
         title: "Overview"
         KeyValueGrid {
           Layout.fillWidth: true
@@ -562,7 +562,7 @@ Item {
         }
       }
 
-      Card {
+      Section {
         visible: page.c.ports && page.c.ports.length > 0
         title: "Ports"
         subtitle: page.running ? "" : "Start the container to open these."
@@ -585,7 +585,7 @@ Item {
         }
       }
 
-      Card {
+      Section {
         id: logsCard
         title: "Logs"
         subtitle: "The last 300 lines" + (root.logsFollow ? ", read again every few seconds." : ".")
@@ -652,7 +652,7 @@ Item {
       // Apart at the bottom: what can't be undone, asked about first.
       SectionHeader { text: "Can't be undone" }
 
-      Card {
+      Section {
         DangerRow {
           title: "Remove this container"
           description: "Deletes the container and what it wrote outside its volumes. Its image and named volumes are kept."
@@ -790,7 +790,7 @@ Item {
 
       SectionHeader { text: "Can't be undone" }
 
-      Card {
+      Section {
         DangerRow {
           title: "Prune"
           description: "Removes every stopped container, unused network and dangling image. Volumes and tagged images are kept."
