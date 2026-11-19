@@ -61,6 +61,10 @@
       "name": "Utilities"
     },
     {
+      "id": "fonts",
+      "name": "Fonts"
+    },
+    {
       "id": "system",
       "name": "System features"
     }
@@ -5917,6 +5921,276 @@
         "zsh"
       ],
       "source": "arch"
+    },
+    {
+      "id": "font-0xproto",
+      "name": "0xProto",
+      "category": "fonts",
+      "description": "Made for source code: clear at small sizes, with distinct 0, O, 1, l and I",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-0xproto-nerd"
+      ],
+      "source": "arch",
+      "font": "0xProto Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "0xProto Nerd Font"
+      ]
+    },
+    {
+      "id": "font-atkinson-hyperlegible-mono",
+      "name": "Atkinson Hyperlegible",
+      "category": "fonts",
+      "description": "From the Braille Institute, drawn so that similar letters stay apart for low-vision readers",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "otf-atkinsonhyperlegiblemono-nerd"
+      ],
+      "source": "arch",
+      "font": "AtkynsonMono Nerd Font Mono",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "AtkynsonMono Nerd Font Mono"
+      ]
+    },
+    {
+      "id": "font-cascadia-code",
+      "name": "Cascadia Code",
+      "category": "fonts",
+      "description": "Microsoft's terminal font, with ligatures and a cursive italic",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-cascadia-code-nerd"
+      ],
+      "source": "arch",
+      "font": "CaskaydiaCove Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "CaskaydiaCove Nerd Font"
+      ]
+    },
+    {
+      "id": "font-commit-mono",
+      "name": "Commit Mono",
+      "category": "fonts",
+      "description": "A neutral coding font that evens out the spacing between letters",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "otf-commit-mono-nerd"
+      ],
+      "source": "arch",
+      "font": "CommitMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "CommitMono Nerd Font"
+      ]
+    },
+    {
+      "id": "font-dejavu-sans-mono",
+      "name": "DejaVu Sans Mono",
+      "category": "fonts",
+      "description": "The long-standing Linux default: wide, plain and easy to read",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-dejavu-nerd"
+      ],
+      "source": "arch",
+      "font": "DejaVuSansM Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "DejaVuSansM Nerd Font"
+      ]
+    },
+    {
+      "id": "font-fira-code",
+      "name": "Fira Code",
+      "category": "fonts",
+      "description": "Mozilla's Fira Mono with ligatures for ->, => and !=",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-firacode-nerd"
+      ],
+      "source": "arch",
+      "font": "FiraCode Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "FiraCode Nerd Font"
+      ]
+    },
+    {
+      "id": "font-geist-mono",
+      "name": "Geist Mono",
+      "category": "fonts",
+      "description": "Vercel's geometric coding font",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "otf-geist-mono-nerd"
+      ],
+      "source": "arch",
+      "font": "GeistMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "GeistMono Nerd Font"
+      ]
+    },
+    {
+      "id": "font-hack",
+      "name": "Hack",
+      "category": "fonts",
+      "description": "A sturdy font for source code, built on DejaVu and Bitstream Vera",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-hack-nerd"
+      ],
+      "source": "arch",
+      "font": "Hack Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "Hack Nerd Font"
+      ]
+    },
+    {
+      "id": "font-ibm-plex-mono",
+      "name": "IBM Plex Mono",
+      "category": "fonts",
+      "description": "IBM's typeface, with slab serifs and a true italic",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-ibmplex-mono-nerd"
+      ],
+      "source": "arch",
+      "font": "BlexMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "BlexMono Nerd Font"
+      ]
+    },
+    {
+      "id": "font-inconsolata",
+      "name": "Inconsolata",
+      "category": "fonts",
+      "description": "A narrow, humanist font that fits more columns on a line",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-inconsolata-nerd"
+      ],
+      "source": "arch",
+      "font": "Inconsolata Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "Inconsolata Nerd Font"
+      ]
+    },
+    {
+      "id": "font-meslo",
+      "name": "Meslo",
+      "category": "fonts",
+      "description": "Apple's Menlo with adjusted line spacing; the font Powerlevel10k recommends",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-meslo-nerd"
+      ],
+      "source": "arch",
+      "font": "MesloLGS Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "MesloLGS Nerd Font"
+      ]
+    },
+    {
+      "id": "font-roboto-mono",
+      "name": "Roboto Mono",
+      "category": "fonts",
+      "description": "Google's Roboto as a fixed-width font",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-roboto-mono-nerd"
+      ],
+      "source": "arch",
+      "font": "RobotoMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "RobotoMono Nerd Font"
+      ]
+    },
+    {
+      "id": "font-source-code-pro",
+      "name": "Source Code Pro",
+      "category": "fonts",
+      "description": "Adobe's coding font: light, open and evenly spaced",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-sourcecodepro-nerd"
+      ],
+      "source": "arch",
+      "font": "SauceCodePro Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "SauceCodePro Nerd Font"
+      ]
+    },
+    {
+      "id": "font-ubuntu-mono",
+      "name": "Ubuntu Mono",
+      "category": "fonts",
+      "description": "The Ubuntu terminal font: compact, with rounded shapes",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-ubuntu-mono-nerd"
+      ],
+      "source": "arch",
+      "font": "UbuntuMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "UbuntuMono Nerd Font"
+      ]
+    },
+    {
+      "id": "font-victor-mono",
+      "name": "Victor Mono",
+      "category": "fonts",
+      "description": "A thin font with ligatures and a cursive italic",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-victor-mono-nerd"
+      ],
+      "source": "arch",
+      "font": "VictorMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "VictorMono Nerd Font"
+      ]
     },
     {
       "id": "asusctl",

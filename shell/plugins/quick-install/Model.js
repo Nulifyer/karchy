@@ -31,6 +31,7 @@ var icons = {
   security: { iconName: "security" },
   network: { iconName: "app.sync" },
   utilities: { iconName: "app.utility" },
+  fonts: { iconName: "look.font" },
   system: { iconName: "features" }
 }
 

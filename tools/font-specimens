@@ -1,0 +1,99 @@
+#!/bin/bash
+# Draw the pictures Settings › Fonts shows for the fonts on the Quick install
+# list (default/karchy/quick-install.json, category "fonts"): the font's name
+# and a sample line, in that font, so a font can be judged before it is
+# installed (D-120).
+#
+# Usage:
+#   tools/font-specimens            Draw every font's picture
+#   tools/font-specimens <id>...    Draw these (font-fira-code)
+#   tools/font-specimens --check    Exit 1 when a listed font has no picture,
+#                                   or a picture has no font (no network)
+#
+# The pictures are committed (default/karchy/font-specimens/<id>.png) rather
+# than drawn while packaging: drawing them means downloading every font
+# package (about 60 MB) from an Arch mirror, and they change only when the
+# list does. Run this after adding a font to the list.
+#
+# Each picture is white on transparent, drawn at twice the size it is shown,
+# with the name at the left edge and the sample starting at NAME_COLUMN; the
+# shell paints the text color through it (shell/plugins/settings/FontPicker.qml,
+# which holds the same sample and measures).
+#
+# Needs pacman (for the packages' addresses), curl, pango-view, magick, jq.
+set -euo pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+catalog=$root/default/karchy/quick-install.json
+out=$root/default/karchy/font-specimens
+icons=$root/default/karchy/icons.json
+
+# Keep these in step with FontPicker.qml.
+PX=28                  # font size drawn; shown at 14 px at the default text size
+HEIGHT=44              # picture height
+NAME_COLUMN=$((PX * 16)) # where the sample starts: 16 em
+SAMPLE_ICONS=(ui.check notify.bell disk)
+
+listed() { jq -r '.apps[] | select(.category == "fonts" and .font) | .id' "$catalog"; }
+
+if [[ ${1:-} == --check ]]; then
+  failed=0
+  while read -r id; do
+    [[ -s $out/$id.png ]] || { echo "error: $id has no picture; run tools/font-specimens $id"; failed=1; }
+  done < <(listed)
+  for file in "$out"/*.png; do
+    [[ -e $file ]] || continue
+    id=${file##*/}; id=${id%.png}
+    listed | grep -qxF -- "$id" || { echo "error: $file is for a font that is no longer listed"; failed=1; }
+  done
+  exit "$failed"
+fi
+
+sample="0O1lI => !="
+for name in "${SAMPLE_ICONS[@]}"; do
+  cp=$(jq -r --arg n "$name" '.[$n].cp' "$icons")
+  sample+="  $(printf "\\U$(printf '%08x' "0x$cp")")"
+done
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+mkdir -p "$out"
+
+draw() { # <family> <text> <file>
+  pango-view --no-display --backend=cairo --font="$1 ${PX}px" --dpi=96 --margin=0 \
+    --background=transparent --foreground=white --text="$2" --output="$3" >/dev/null
+}
+
+mapfile -t ids < <(if (($#)); then printf '%s\n' "$@"; else listed; fi)
+for id in "${ids[@]}"; do
+  entry=$(jq -ce --arg id "$id" '.apps[] | select(.id == $id and .font)' "$catalog") || { echo "$id is not a font on the list" >&2; exit 1; }
+  name=$(jq -r .name <<<"$entry")
+  family=$(jq -r .font <<<"$entry")
+  package=$(jq -r '.packages[0]' <<<"$entry")
+
+  dir=$work/$id
+  mkdir -p "$dir/fonts"
+  url=$(pacman -Sp "$package")
+  curl -sfL -o "$dir/package" "$url"
+  tar -I zstd -xf "$dir/package" -C "$dir/fonts" usr/share/fonts
+  # Only this package's fonts, so a missing family can't be drawn in another.
+  cat >"$dir/fonts.conf" <<XML
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig><dir>$dir/fonts</dir><cachedir>$dir/cache</cachedir></fontconfig>
+XML
+  export FONTCONFIG_FILE=$dir/fonts.conf
+  fc-list : family | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -qxF -- "$family" ||
+    { echo "$id: $package has no family '$family'" >&2; exit 1; }
+
+  draw "$family" "$name" "$dir/name.png"
+  draw "$family" "$sample" "$dir/sample.png"
+  width=$((NAME_COLUMN + $(magick identify -format '%w' "$dir/sample.png")))
+  magick -size "${width}x${HEIGHT}" xc:none \
+    \( "$dir/name.png" \) -gravity West -geometry +0+0 -composite \
+    \( "$dir/sample.png" \) -gravity West -geometry "+${NAME_COLUMN}+0" -composite \
+    -alpha extract -background white -alpha shape \
+    -strip -define png:compression-level=9 "PNG32:$out/$id.png"
+  unset FONTCONFIG_FILE
+  echo "$id: $family ($(stat -c %s "$out/$id.png") bytes)"
+done
