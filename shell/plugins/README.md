@@ -8,8 +8,9 @@ First-party non-bar plugins are enabled unless listed in `disabledPlugins[]`;
 `kind: "bar"` plugin is selected. Services and keep-loaded panels are mounted
 at startup; other panels, overlays, and menus are loaded on demand.
 
-User-installed plugins live alongside these conceptually but on disk under
-`~/.config/karchy/plugins/<plugin-id>/` rather than in this directory.
+Add-on packages (karchy's `addons/`, D-106) install theirs under
+`/usr/share/karchy/plugins/<plugin-id>/` rather than in this directory. The
+shell loads no plugins from the home folder.
 
 | Plugin | id | kinds | entry points |
 |---|---|---|---|

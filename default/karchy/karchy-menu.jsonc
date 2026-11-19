@@ -60,12 +60,6 @@
   "appearance.workspace-layout.floating": {"iconName":"menu.layout.floating","label":"Floating","checked":"[[ $(karchy-hyprland-workspace-layout-default) == \"floating\" ]]","action":"karchy-hyprland-workspace-layout-default floating"},
 
   // Setup
-  "setup.plugin": {"iconName":"plugin","label":"Plugins","aliases":["plugin","plugins"]},
-  "setup.plugin.enable": {"iconName":"plugin.enable","label":"Enable Plugin","action":"karchy-menu-plugin enable"},
-  "setup.plugin.disable": {"iconName":"plugin.disable","label":"Disable Plugin","action":"karchy-menu-plugin disable"},
-  "setup.plugin.add": {"iconName":"plugin.add","label":"Add Plugin","action":"karchy-launch-floating-terminal-with-presentation 'karchy-plugin-add'"},
-  "setup.plugin.clone": {"iconName":"copy","label":"Clone Plugin","action":"karchy-menu-plugin clone"},
-  "setup.plugin.remove": {"iconName":"plugin.remove","label":"Remove Plugin","when":"compgen -G \"$HOME/.config/karchy/plugins/*/manifest.json\"","action":"karchy-menu-plugin remove"},
   // Security: each Remove row shows only once its feature is set up.
   "setup.security": {"iconName":"security","label":"Security"},
   "setup.security.fingerprint": {"iconName":"security.fingerprint","label":"Set Up Fingerprint","when":"karchy-hw-fingerprint","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-fingerprint"},

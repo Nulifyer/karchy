@@ -21,8 +21,7 @@ Usage:
 The build runs in a fresh container of karchy's build environment
 (packaging/container/run): stock Arch's makepkg settings and packages, the
 same on every machine, never this machine's (a CachyOS makepkg.conf builds
-for its own CPU). NULIFYER_VPN_GIT and NULIFYER_VPN_REF are passed in, and a
-local NULIFYER_VPN_GIT is mounted read-only.
+for its own CPU).
 
 Versions (D-61) come from git tags, converted to pacman's ordering:
   v3.0.0             -> 3.0.0             stable releases
@@ -44,12 +43,13 @@ A package can name a file it needs ("# karchy:requires=<path>", relative to
 the repository); without that file it is skipped, as karchy-keyring is until
 the signing key's public half is in packaging/keyring.
 
-Native packages, and packages built from another repository's releases
-(nulifyer-vpn), compute their own version: a "# karchy:version-cmd=" line in
+Native packages compute their own version: a "# karchy:version-cmd=" line in
 the PKGBUILD, run with bash from the repository root. They are rebuilt only
 when that version is new, and their source is whatever their PKGBUILD names
-(a git tag) rather than karchy-src.tar.gz. A version command that prints
-nothing means there is no release to build yet, and the package is skipped.
+rather than karchy-src.tar.gz. A version command that prints nothing means
+there is no release to build yet, and the package is skipped. karchy's
+add-ons (addons/, such as nulifyer-vpn) are built from karchy-src.tar.gz like
+karchy itself.
 
 Hashes live next to the database in karchy.versions, so the repository is the
 only state: CI downloads a channel's repository, builds, signs and uploads it.
@@ -270,12 +270,6 @@ def in_container(argv, repo):
     if repo and out not in (repo, *repo.parents):
         repo.mkdir(parents=True, exist_ok=True)
         runner += ["--volume", str(repo)]
-    for name in ("NULIFYER_VPN_GIT", "NULIFYER_VPN_REF"):
-        if os.environ.get(name):
-            runner += ["--env", name]
-    vpn = os.environ.get("NULIFYER_VPN_GIT", "")
-    if vpn and "://" not in vpn and Path(vpn).is_dir():
-        runner += ["--volume-ro", str(Path(vpn).resolve())]
     os.execv(runner[0], [*runner, "--", str(PACKAGING / "build"), *argv])
 
 

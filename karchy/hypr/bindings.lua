@@ -59,9 +59,8 @@ o.bind("SUPER + SHIFT + CTRL + RIGHT", "Move window to right monitor", o.workspa
 o.bind("SUPER + SHIFT + CTRL + UP", "Move window to up monitor", o.workspaces.move_window_to_monitor("u"))
 o.bind("SUPER + SHIFT + CTRL + DOWN", "Move window to down monitor", o.workspaces.move_window_to_monitor("d"))
 o.bind("CTRL + ALT + TAB", "Focus on next monitor", hl.dsp.focus({ monitor = "+1" }))
--- The project picker plugin (docs/keybindings.md). Its install.py skips adding
--- its own binding when one with this description exists.
-o.bind("CTRL + ALT + P", "Project picker", "karchy-shell shell toggle nulifyer.project-picker '{}'")
+-- Ctrl+Alt+P (the project picker) comes with its package, nulifyer-project-picker
+-- (/usr/share/karchy/hypr.d, loaded by karchy/hypr/init.lua).
 
 -- Shell and system
 o.bind("SUPER + SPACE", "Menu", { menu = "root" })

@@ -116,24 +116,6 @@
   "appearance.workspace-layout.floating": {
     "label": "Floating"
   },
-  "setup.plugin": {
-    "label": "Plugins"
-  },
-  "setup.plugin.enable": {
-    "label": "Enable Plugin"
-  },
-  "setup.plugin.disable": {
-    "label": "Disable Plugin"
-  },
-  "setup.plugin.add": {
-    "label": "Add Plugin"
-  },
-  "setup.plugin.clone": {
-    "label": "Clone Plugin"
-  },
-  "setup.plugin.remove": {
-    "label": "Remove Plugin"
-  },
   "setup.security": {
     "label": "Security"
   },

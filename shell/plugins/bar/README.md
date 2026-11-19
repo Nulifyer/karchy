@@ -185,4 +185,4 @@ richer popup plugins live in feature directories such as `../panels/audio/`,
 `manifest.json`. Bar layout ids are namespaced, e.g. `karchy.audio`,
 `karchy.network`, and `karchy.clock`.
 
-Third-party widgets ship as separate plugins under `~/.config/karchy/plugins/<plugin-id>/` with their own `manifest.json` declaring `kinds: ["bar-widget"]` and a `barWidget` entry point. See the [shell reference](../../../docs/karchy-shell.md#plugin-manifest) for the manifest schema. Rescan, enable, and place third-party plugins with `karchy-shell shell rescanPlugins`, `karchy plugin enable`, and `karchy bar move`.
+Add-on widgets ship in pacman packages (karchy's `addons/`, D-106) under `/usr/share/karchy/plugins/<plugin-id>/` with their own `manifest.json` declaring `kinds: ["bar-widget"]` and a `barWidget` entry point. See the [shell reference](../../../docs/karchy-shell.md#plugin-manifest) for the manifest schema. Rescan, enable, and place third-party plugins with `karchy-shell shell rescanPlugins`, `karchy plugin enable`, and `karchy bar move`.

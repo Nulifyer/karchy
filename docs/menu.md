@@ -19,7 +19,6 @@ Layout revised 2026-11-15 from a menu audit (D-73): every row says what it does,
   - Workspace Layout: Tiling or Floating [O]
 - **Settings:** opens the karchy Settings window (D-27). Its pages are search-only rows (user 2026-11-15): searching wifi or network offers Network Settings, keyboard or mouse Input Settings, displays or scale Display Settings, text size Appearance Settings, ssh SSH Settings, default browser Default Apps; each opens Settings at that page. In search, a row whose name matches comes before a submenu matched only by an alias ("install package" puts Install Package first) [New]
 - **Setup**
-  - Plugins: enable, disable, add, clone, remove [O]
   - Security: Set Up Fingerprint (with a reader), Set Up FIDO2 Key; Remove Fingerprint and Remove FIDO2 Key once each is set up [O]. SSH is in Settings › SSH (D-78)
   - Network Shares: Keep a Share Mounted (pick a share open in the file manager, or type `smb://server/share`) and Remove a Kept Share (once one is kept); D-24, D-76 [New]
   - Set Up Git: name, email and GitHub sign-in [O]

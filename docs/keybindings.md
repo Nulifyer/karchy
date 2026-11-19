@@ -59,7 +59,7 @@ This is the complete default set. Anything not listed is unbound. New bindings n
 |---|---|---|
 | Super+Return | Terminal (foot) | [O] |
 | Super+E | File manager (Thunar) | [New] (Omarchy: Super+Shift+F) |
-| Ctrl+Alt+P | Project picker (plugin) | [New] |
+| Ctrl+Alt+P | Project picker (only while the nulifyer-project-picker package is installed) | [New] |
 
 ## Capture
 

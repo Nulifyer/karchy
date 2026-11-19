@@ -107,17 +107,5 @@
         "defaultValue": false
       }
     ]
-  },
-  "karchy": {
-    "clonePaths": [
-      {
-        "source": "../indicators",
-        "target": "indicators"
-      },
-      {
-        "source": "IndicatorsModel.js",
-        "target": "IndicatorsModel.js"
-      }
-    ]
   }
 }

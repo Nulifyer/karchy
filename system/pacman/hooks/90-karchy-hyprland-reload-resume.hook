@@ -4,8 +4,15 @@ Operation = Upgrade
 Type = Package
 Target = karchy
 
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Path
+Target = usr/share/karchy/hypr.d/*.lua
+
 [Action]
-Description = Reloading Hyprland after karchy update...
+Description = Reloading Hyprland after a karchy update...
 When = PostTransaction
 Depends = karchy
 Exec = /usr/bin/karchy-hyprland-reload-guard resume

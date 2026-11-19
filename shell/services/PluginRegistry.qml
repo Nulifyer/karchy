@@ -7,8 +7,10 @@ import qs.Commons
 QtObject {
   id: registry
 
-  property string home: Quickshell.env("HOME")
-  property string pluginsDir: home + "/.config/karchy/plugins"
+  // Add-on packages (karchy's addons/, such as nulifyer-vpn) install their
+  // shell UI here, one folder per plugin id. Root-owned: the shell loads no
+  // UI code from the home folder.
+  property string pluginsDir: "/usr/share/karchy/plugins"
 
   // Set by shell.qml at startup so we can also scan bundled first-party plugins.
   property string firstPartyDir: ""
@@ -714,12 +716,6 @@ QtObject {
     }
   }
 
-  property Process initProcess: Process {
-    onExited: {
-      registry.reapOrphanedPluginWatchers()
-    }
-  }
-
   // Quickshell does not take its Process children with it when it stops, so
   // every shell restart leaves this watcher running, reparented to init
   // (63 of them on one long-lived machine). Before starting our own, stop
@@ -787,7 +783,7 @@ QtObject {
     // First-party bar widgets can also carry sibling manifests such as
     // widgets/Clock.manifest.json so multiple widgets can live in one source
     // directory without wrapper folders.
-    // Third-party plugins stay at the top level of ~/.config/karchy/plugins.
+    // Add-on plugins stay at the top level of /usr/share/karchy/plugins.
     var script = ""
       + "emit_manifest() { local kind=\"$1\"; local manifest=\"$2\"; local sub; "
       + "  if [[ ${manifest##*/} == \"manifest.json\" ]]; then sub=\"${manifest%/manifest.json}\"; else sub=\"${manifest%/*}\"; fi; "
@@ -812,11 +808,6 @@ QtObject {
     scanProcess.running = true
   }
 
-  function ensureUserDir() {
-    initProcess.command = ["bash", "-c", "mkdir -p \"$0\"", registry.pluginsDir]
-    initProcess.running = true
-  }
-
   function localPluginIdForPath(filePath) {
     var base = pluginsDir.replace(/\/$/, "") + "/"
     var path = String(filePath || "").trim()
@@ -833,5 +824,5 @@ QtObject {
     return slash === -1 ? relative : relative.slice(0, slash)
   }
 
-  Component.onCompleted: ensureUserDir()
+  Component.onCompleted: reapOrphanedPluginWatchers()
 }

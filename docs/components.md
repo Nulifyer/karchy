@@ -52,7 +52,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 ## Shell (Omarchy Quickshell)
 
 Kept:
-- **Core:** host, IPC, plugin registry and CLI, bar engine, `omarchy` router, Commons and Ui, `shell.json`.
+- **Core:** host, IPC, plugin registry (first-party plugins and add-on packages in `/usr/share/karchy/plugins`, D-106) and `karchy plugin list|enable|disable`, bar engine, `omarchy` router, Commons and Ui, `shell.json`.
 - **Services:** notifications (with the hover ✕), OSD, polkit, lock (with the time and date above the password field [New]; turn it off in Settings › Appearance › Lock screen, or `lock.clock: false` in `~/.config/karchy/shell.json`), idle, clipboard history, reminders, theme/background picker, speed tests, and the battery service (only on machines with a battery). `~/.config/karchy/shell.json` holds only what you changed; everything else follows karchy's defaults, also after updates (D-92).
 - **Menu:** the engine, used as the launcher (app search). The tree is in `menu.md`.
 - **Floating bar** [New]: floats inset from the screen edge and docks on a monitor while a window there is maximized; `bar.style` auto, floating or docked (`karchy bar style`, Settings › Appearance). See `architecture.md`, "The bar: floating and docked".
@@ -110,7 +110,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | Quick install | A window of its own (shell plugin `karchy.quick-install`, D-70): about 520 common apps from Arch's repositories, `[cachyos]`, `[omarchy]` and well-kept AUR packages, plus karchy's optional features, in categories with counts (All and Installed first), searched like fzf across every category; each row installs, opens or (once open in place, showing what it installs, from where, its size and its setup) removes the app, in a floating terminal. `karchy quick-install [search]`, Packages › Quick install | [New] |
 | Web apps | Omarchy web-app mechanism; icons from the site, then Dashboard Icons (D-82) | [O] + [New] |
 | Shell | fish, native config from the dotfiles user layer | [New] |
-| Plugins | omarchy-vpn-plugin, omarchy-project-picker (Ctrl+Alt+P) | [New] |
+| Add-ons | Pacman packages built from karchy's `addons/` and offered in Quick install › karchy (D-106): `nulifyer-vpn` (WireGuard with a kill switch), `nulifyer-project-picker` (Ctrl+Alt+P, only while installed). No plugins from git | [New] |
 
 ## Mounts
 

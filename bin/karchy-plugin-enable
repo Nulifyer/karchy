@@ -83,8 +83,18 @@ placement=$(jq -cn \
   ')
 
 result=$(karchy-shell shell enablePlugin "$id" "$placement")
+# A plugin its package installed a moment ago (Quick install) is unknown until
+# the shell scans again; the scan takes well under a second.
+if [[ $result == "unknown" || $result == "not ready" ]]; then
+  karchy-shell shell rescanPlugins >/dev/null
+  for _ in {1..20}; do
+    sleep 0.25
+    result=$(karchy-shell shell enablePlugin "$id" "$placement")
+    [[ $result == "unknown" || $result == "not ready" ]] || break
+  done
+fi
 if [[ $result == "unknown" ]]; then
-  fail "plugin '$id' is not known; run: karchy-shell shell rescanPlugins"
+  fail "plugin '$id' is not known; is its package installed?"
 elif [[ $result != "ok" ]]; then
   fail "$result"
 fi

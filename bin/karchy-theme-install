@@ -30,7 +30,7 @@ theme_name_for() {
 }
 
 # Refuses a URL that names a git option or a transport helper before cloning
-# (karchy-git-url-check, shared with karchy-plugin-add; a missing checker
+# (karchy-git-url-check; a missing checker
 # refuses), then clones into a new folder beside the themes and only replaces
 # an installed theme of that name once the clone worked. Prints why it can't.
 fetch_theme() {
