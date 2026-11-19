@@ -94,6 +94,20 @@ Local commits on `main` (`aca1d86` to the commit of this entry), not pushed. Scr
 - **For the user to decide:** pages for Sound, Bluetooth and Users don't exist (the bar panels cover the first two; Security holds the current user's password). Theme and Background are out of the root by D-135; say if they should come back. The clock's middle click still opens the standalone timezone picker.
 - VM `inst` is shut down on these packages with dev mode off and its passwords as before; snapshot `pre-menu-settings` is the state before this work.
 
+## UI bug list, Sound and Bluetooth pages, Storage overview (D-136 to D-141), 2026-11-19
+
+Local commits on `main` (`1a6df4d` to the commit of this entry), not pushed. Screenshots in `out/ui-bugs/` (before and after by item number; `A-*` Sound and Bluetooth, `B-*` Storage, `packaged/` on the built packages).
+
+- **Fixed from the README-screenshot list:** Quick install's Space picks (D-137); About shows the user's shell, and a plain `fastfetch` shows karchy's mark with no Terminal Font row, from one packaged config (D-138); screenshot and drive notifications are listed under "Screenshot" and "Drives" (they were "omasnap" and "udiskie"); the notifications header reads "3 waiting · 1 new"; the Updates header fits on a dev build and its rows no longer log "recursive rearrange"; a Settings page keeps its padding while it scrolls; the menu matches words at their start (D-136); the bell's dot stands a pixel clear of the bell.
+- **Looked at, not changed:** fastfetch's "1.59x" at scale 1.6 is its own integer arithmetic (153 dpi ÷ 96), not Hyprland's scale: Hyprland reports 1.6 and lays the screen out at 1410×940, which is 2256×1504 ÷ 1.6 exactly, so the Displays page's 1.6 is true. The 5 px of wallpaper above the bar is the floating style's margin (D-65), on all three sides; the docked style has none. Thunar's status bar counts hidden items by itself; karchy sets no Thunar preference.
+- **Settings › Sound and › Bluetooth (D-140).** Each shares one owner with its bar panel (`AudioControl`, `BluetoothControl` in `shell/Commons`); `karchy-settings-sound` for profiles, ports and the test sound; the page list scrolls and the window is 680 high.
+- **Settings › Storage (D-141).** An overview of tiles for every place files are opened from, the stack under each volume, a btrfs filesystem's subvolumes (root helper request `show=subvolumes`), and the page's own reads never ask for a password.
+- **Checks without a VM:** `tests/menu-search.js`, `tests/notifications-panel.js`, `tests/storage-model.js`, `tests/storage-helpers.sh system/storage`, the other `tests/*.js`, `tests/agent-skills.sh`, `tools/icon-check`, shellcheck on the new and changed commands.
+- **Seen in VM `inst`:** every item in dev mode at 1× and, for the changed screens, 1.6×; then on `karchy` and `karchy-settings` built from the committed tree (a clean clone, since the working tree held another agent's unfinished work) with dev mode off. Sound against QEMU's sound card and a null sink; Bluetooth against two emulated controllers (bluez's `btvirt`, built in the VM); Storage with a second virtio disk and a USB disk attached for the session. The lists of what was run and what was not are in D-136 to D-141.
+- **Not tested, needs hardware or a second account:** real Bluetooth devices and headsets (profiles, battery, the output following a headset), HDMI and headphone ports, a kept share's tile, a standard user's Storage and Bluetooth pages, zsh as the login shell under About.
+- **Left for whoever comes next:** `main` at `5a0ae8a` and after lists a Users page in Settings whose file is the Users work's, not yet committed (three of its hunks rode along in that commit); it loads once that work lands. None of the new pages was opened as a standard user.
+- VM `inst` is shut down on these packages with dev mode off; the extra disks are detached and their images deleted; snapshot `pre-ui-bugs` is the state before this work.
+
 ## Current batch
 
 None: everything is merged.

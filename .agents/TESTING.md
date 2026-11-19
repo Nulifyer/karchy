@@ -28,7 +28,10 @@ shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they 
 tools/quick-install-search-check   # the Quick install window's search ranking, against the real list
 python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, rules, the generated Lua; with lua installed, karchy's real Lua layer under a stand-in Hyprland
 bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
-bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, en/menu.json agrees
+bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, what loose typing no longer finds (D-136), en/menu.json agrees
+bun tests/notifications-panel.js "$PWD"   # the notifications panel: sections, groups, the names apps are listed under
+bun tests/storage-model.js "$PWD"  # Settings › Storage: sizes, the live figures, the overview's tiles, the stack and subvolume rows
+tests/storage-helpers.sh system/storage   # Storage's root side: what the helpers refuse, and how they read bees, SMART and the subvolume list
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
 tests/users-settings.sh system/users/users-settings   # Settings › Users' root helper as a user: what it turns away, and, in a user namespace with a made-up /etc, the rules between several people and the greetd file automatic login writes
 podman run --rm --user 0 -v "$PWD":/repo:ro localhost/karchy-build:<hash> bash /repo/tests/users-accounts.sh   # the same helper making real accounts, as root in a throwaway container (it refuses to run anywhere else)
