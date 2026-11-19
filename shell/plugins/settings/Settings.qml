@@ -28,32 +28,41 @@ Item {
   property var manifest: null
   property string karchyPath: Quickshell.env("KARCHY_PATH")
   property bool opened: false
-  property string section: "displays"
+  property string section: "network"
   // What the section was opened at, from the summon payload.
   property var target: ({})
   onSectionChanged: if (!root.target || root.target.section !== root.section) root.target = ({})
 
-  readonly property var sections: [
-    { id: "displays", label: "Displays", iconName: "display" },
-    { id: "input", label: "Input", iconName: "input.keyboard" },
-    { id: "keybindings", label: "Keybindings", iconName: "config.keybindings" },
-    { id: "power", label: "Power", iconName: "system.power" },
-    { id: "network", label: "Network", iconName: "net.network" },
-    { id: "notifications", label: "Notifications", iconName: "notify.bell" },
-    { id: "storage", label: "Storage", iconName: "disk" },
-    { id: "security", label: "Security", iconName: "security" },
-    { id: "ssh", label: "SSH & Git", iconName: "security.ssh" },
-    { id: "datetime", label: "Date & Time", iconName: "time" },
-    { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
-    { id: "fonts", label: "Fonts", iconName: "look.font" },
-    { id: "apps", label: "Default apps", iconName: "menu.apps" },
-    { id: "about", label: "About", iconName: "info" }
+  // The pages, grouped by what people come to Settings for (user
+  // 2026-11-19): connecting and controlling the machine, how it looks and
+  // behaves, the system, accounts and access, and About last. The list shows
+  // a quiet rule where the group changes; a page hidden on this machine
+  // (`visible: false`) leaves no empty group and no doubled rule. Keep the
+  // order the same in bin/karchy-settings, the menu's search rows and the
+  // docs.
+  readonly property var allSections: [
+    { id: "network", label: "Network", iconName: "net.network", group: 1 },
+    { id: "displays", label: "Displays", iconName: "display", group: 1 },
+    { id: "input", label: "Input", iconName: "input.keyboard", group: 1 },
+    { id: "keybindings", label: "Keybindings", iconName: "config.keybindings", group: 1 },
+    { id: "appearance", label: "Appearance", iconName: "menu.appearance", group: 2 },
+    { id: "fonts", label: "Fonts", iconName: "look.font", group: 2 },
+    { id: "notifications", label: "Notifications", iconName: "notify.bell", group: 2 },
+    { id: "apps", label: "Default apps", iconName: "menu.apps", group: 2 },
+    { id: "power", label: "Power", iconName: "system.power", group: 3 },
+    { id: "storage", label: "Storage", iconName: "disk", group: 3 },
+    { id: "datetime", label: "Date & Time", iconName: "time", group: 3 },
+    { id: "security", label: "Security", iconName: "security", group: 4 },
+    { id: "ssh", label: "SSH & Git", iconName: "security.ssh", group: 4 },
+    { id: "about", label: "About", iconName: "info", group: 5 }
   ]
+  readonly property var sections: allSections.filter(function(entry) { return entry.visible !== false })
 
   function open(payloadJson) {
     var payload = {}
     try { payload = JSON.parse(payloadJson || "{}") } catch (e) {}
-    if (payload && payload.section) root.section = String(payload.section)
+    // The page asked for, else the first one.
+    root.section = payload && payload.section ? String(payload.section) : root.sections[0].id
     root.target = payload || {}
     if (sectionLoader.item && "target" in sectionLoader.item) sectionLoader.item.target = root.target
     // Already open: move the keyboard to the section asked for (or let the
@@ -250,6 +259,17 @@ Item {
               required property var modelData
               required property int index
               Layout.fillWidth: true
+              // Where the group changes: room above, with a thin rule in it.
+              readonly property bool startsGroup: index > 0 && root.sections[index - 1].group !== modelData.group
+              Layout.topMargin: startsGroup ? Style.spacing.lg : 0
+              Rectangle {
+                visible: parent.startsGroup
+                anchors.left: parent.left
+                anchors.right: parent.right
+                y: -Math.round((Style.spacing.lg + Style.spacing.sm) / 2) - height
+                height: Math.max(1, Style.space(1))
+                color: Util.alpha(Commons.Color.foreground, 0.12)
+              }
               focusable: true
               function step(dy) {
                 var next = index + dy
@@ -296,7 +316,6 @@ Item {
               case "input": return "InputSection.qml"
               case "keybindings": return "KeybindingsSection.qml"
               case "power": return "PowerSection.qml"
-              case "network": return "NetworkSection.qml"
               case "notifications": return "NotificationsSection.qml"
               case "storage": return "StorageSection.qml"
               case "security": return "SecuritySection.qml"
@@ -306,7 +325,8 @@ Item {
               case "fonts": return "FontsSection.qml"
               case "apps": return "DefaultAppsSection.qml"
               case "about": return "AboutSection.qml"
-              default: return "DisplaysSection.qml"
+              case "displays": return "DisplaysSection.qml"
+              default: return "NetworkSection.qml"
             }
           }
           onLoaded: {

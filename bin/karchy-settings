@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Open the karchy Settings window
-# karchy:args=[displays|input|keybindings|power|network|notifications|storage|security|ssh|datetime|appearance|fonts|apps|about] [item]
+# karchy:args=[network|displays|input|keybindings|appearance|fonts|notifications|apps|power|storage|datetime|security|ssh|about] [item]
 # karchy:examples=karchy settings | karchy settings displays | karchy settings power | karchy settings network Home-5G
 
 # `karchy settings <section>` runs this for every section, also where a
@@ -15,8 +15,9 @@
 #
 #   --sections   Print the section names, one per line
 
-# The window's sections, as listed in shell/plugins/settings/Settings.qml.
-sections=(displays input keybindings power network notifications storage security ssh datetime appearance fonts apps about)
+# The window's sections, in the order shell/plugins/settings/Settings.qml
+# lists them.
+sections=(network displays input keybindings appearance fonts notifications apps power storage datetime security ssh about)
 
 if [[ ${1:-} == --sections ]]; then
   printf '%s\n' "${sections[@]}"
@@ -33,7 +34,8 @@ usage() {
   exit 1
 }
 
-section="${1:-displays}"
+# No section named: the window opens on its first page.
+section="${1:-${sections[0]}}"
 
 # Optional features moved to the Quick install window (D-70).
 [[ $section == features ]] && exec karchy-quick-install window @system
