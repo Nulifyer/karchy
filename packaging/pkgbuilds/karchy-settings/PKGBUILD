@@ -32,6 +32,7 @@ backup=(
   'etc/xdg/xdg-terminals.list'
   'etc/xdg/mimeapps.list'
   'etc/pam.d/karchy-lock-password'
+  'etc/pam.d/karchy-login'
 )
 source=("karchy-src.tar.gz")
 sha256sums=('SKIP')
@@ -71,6 +72,11 @@ package() {
   for unit in start poweroff reboot halt kexec; do
     install -Dm644 plymouth/10-karchy-splash.conf \
       "$pkgdir/usr/lib/systemd/system/plymouth-$unit.service.d/10-karchy-splash.conf"
+  done
+  # ...and the shutdown splash without Pango, which held /var/cache busy.
+  for unit in poweroff reboot halt kexec; do
+    install -Dm644 plymouth/20-karchy-shutdown-no-pango.conf \
+      "$pkgdir/usr/lib/systemd/system/plymouth-$unit.service.d/20-karchy-shutdown-no-pango.conf"
   done
   # Hooks that must be in place before the desktop packages arrive (karchy-settings
   # is pacstrapped with the base system), such as limiting nethogs.
@@ -150,6 +156,9 @@ package() {
   # Thunar's Send To › LocalSend; hidden while LocalSend isn't installed.
   install -Dm644 thunar/sendto/karchy-localsend.desktop "$pkgdir/usr/share/Thunar/sendto/karchy-localsend.desktop"
   install -Dm644 pam.d/karchy-lock-password "$pkgdir/etc/pam.d/karchy-lock-password"
+  # The login screen's PAM service on an install whose keyring opens with the
+  # login password (D-127); greetd's config names it only there.
+  install -Dm644 pam.d/karchy-login "$pkgdir/etc/pam.d/karchy-login"
   # Font defaults: monospace is JetBrainsMono Nerd Font, unless karchy-font-set
   # chose another (the state file it includes) or the user's fontconfig does.
   install -Dm644 fontconfig/50-karchy.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-karchy.conf"
