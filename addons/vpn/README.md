@@ -161,7 +161,9 @@ changes (never on a timer), so a bar or panel can watch it instead of polling:
 Quick install › karchy › WireGuard VPN › Remove, or `sudo pacman -R karchy-vpn`.
 
 Removing the package takes the tunnel down, removes the kill switch, restores
-the DNS settings it changed and keeps your WireGuard connection and keys.
+the DNS settings it changed, and deletes root's copy of the configuration
+(`/etc/karchy-vpn`) and the saved mode. It keeps your WireGuard connection and
+keys, and your `~/.config/karchy-vpn/config` for setting it up again.
 
 ## License
 

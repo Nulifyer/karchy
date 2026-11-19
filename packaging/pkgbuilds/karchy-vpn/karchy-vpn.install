@@ -33,4 +33,8 @@ post_remove() {
   systemd-run --quiet --wait --collect /usr/bin/bash -c \
     'nft delete table inet karchy_vpn_guard 2>/dev/null; while ip -4 rule del priority 20054 protocol 242 2>/dev/null; do :; done; rm -rf /run/karchy-vpn' \
     >/dev/null 2>&1 || true
+  # Root's copy of the configuration and the saved mode go too, so nothing of
+  # the VPN is left; the user's own ~/.config/karchy-vpn/config stays, for
+  # `karchy-vpn setup` after installing it again.
+  rm -rf /etc/karchy-vpn /var/lib/karchy-vpn
 }
