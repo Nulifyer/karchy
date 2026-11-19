@@ -421,6 +421,10 @@
   "notifications.title": "Notifications",
   "notifications.turnOff": "Turn off",
   "notifications.turnOffAsk": "Turn off notifications from %1? Turn them back on in Settings › Notifications.",
+  "notifications.waitingShort": {
+    "one": "%1 waiting",
+    "other": "%1 waiting"
+  },
   "notifications.yesterday": "yesterday",
   "polkit.authenticationNeeded": "Authentication is needed…",
   "polkit.authorizeRunning": "Authorize running '%1'",

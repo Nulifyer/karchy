@@ -46,7 +46,13 @@ Panel {
   // The entries that were new when the panel opened: they keep their mark
   // while it is open, though opening has already marked them seen.
   property var newIds: ({})
-  property int newCount: 0
+  // ...and how many of those are still listed.
+  readonly property int newCount: {
+    var n = 0
+    for (var i = 0; i < entries.length; i++)
+      if (entries[i].waiting && newIds[Model.entryId(entries[i])] === true) n++
+    return n
+  }
   property double now: Date.now()
   readonly property double midnight: { var d = new Date(now); d.setHours(0, 0, 0, 0); return d.getTime() }
 
@@ -239,14 +245,12 @@ Panel {
     closeMenu()
     // Entries past their day go before the list is drawn.
     var current = service ? service.currentHistory() : []
-    var fresh = {}, count = 0
+    var fresh = {}
     for (var i = 0; i < current.length; i++) {
       if (!current[i].waiting || current[i].seen !== false) continue
       fresh[Model.entryId(current[i])] = true
-      count++
     }
     newIds = fresh
-    newCount = count
     markSeen()
   }
 
@@ -322,11 +326,18 @@ Panel {
         PanelHero {
           iconText: Icons.glyph(root.doNotDisturb ? "notify.silenced" : "notify.bell")
           title: I18n.t("notifications.title")
-          meta: root.view === "history" ? I18n.t("notifications.historyMeta")
-            : root.newCount > 0
-              ? I18n.tn("notifications.newShort", root.newCount).arg(I18n.formatNumber(root.newCount))
-              : ""
-          metaColor: root.view === "history" ? dim : Commons.Color.accent
+          // How many are listed, and how many of them came since the panel
+          // was last open (the ones the bell's dot was for, marked in the
+          // list): "3 waiting · 1 new", "2 new" when all are, "3 waiting".
+          meta: {
+            if (root.view === "history") return I18n.t("notifications.historyMeta")
+            var fresh = root.newCount > 0
+              ? I18n.tn("notifications.newShort", root.newCount).arg(I18n.formatNumber(root.newCount)) : ""
+            if (root.waitingCount <= root.newCount) return fresh
+            var waiting = I18n.tn("notifications.waitingShort", root.waitingCount).arg(I18n.formatNumber(root.waitingCount))
+            return fresh !== "" ? waiting + " · " + fresh : waiting
+          }
+          metaColor: root.view === "history" || root.newCount === 0 ? dim : Commons.Color.accent
           fontFamily: root.fontFamily
         }
 
