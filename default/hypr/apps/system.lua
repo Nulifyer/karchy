@@ -23,7 +23,11 @@ o.window({
 -- karchy sizes the About window here; karchy-launch-about no longer measures it.
 o.window("org.karchy.about", { float = true })
 o.window("org.karchy.about", { center = true })
-o.window("org.karchy.about", { size = { 920, 480 } })
+-- Height: the logo is 12 rows but the facts beside it decide: about 26 rows
+-- with the title, the color blocks and the line that waits for a key, at 18 px
+-- each plus foot's padding is 516 px. 560 leaves room for the rows a laptop or
+-- a second disk adds; at 480 the first row (user@host) scrolled off.
+o.window("org.karchy.about", { size = { 920, 560 } })
 
 o.window("omacalc", { float = true })
 
