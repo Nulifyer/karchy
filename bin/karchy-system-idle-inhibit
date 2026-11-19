@@ -20,6 +20,14 @@ its own idle_inhibit window rules. Three other routes never reach Hyprland:
   up, so the screen may lock but the idle suspend waits.
 - logind inhibitor locks: `systemd-inhibit --what=idle` holds idle, what=sleep
   holds the idle suspend.
+- Sound playing through PipeWire: an output stream that isn't paused (corked)
+  holds sleep only, like PowerManagement, so a music player or a browser tab
+  playing audio keeps the machine awake while the screen may still lock and
+  go dark (Windows does the same for an open audio stream). Event and
+  notification sounds (media.role) don't count. Only the shell's idle suspend
+  waits: the lid, the power button and UPower's critical-battery action don't
+  ask here.
+  Followed through `pactl subscribe` (libpulse, which pipewire-pulse needs).
 
 `serve` is the service: it owns the two names (ScreenSaver at both
 /org/freedesktop/ScreenSaver and /ScreenSaver), follows logind's inhibitors,
@@ -137,6 +145,9 @@ class Service:
         self.owns_power = False
         self.published = None
         self.sleep_held = False
+        self.audio = []
+        self.audio_listing = False
+        self.audio_again = False
 
         own = Gio.DBusNodeInfo.new_for_xml(OWN_XML).interfaces[0]
         self.session.register_object(OWN_PATH, own, self.on_own_call, None, None)
@@ -166,6 +177,8 @@ class Service:
             self.read_logind()
         except GLib.Error as error:
             log(f"logind inhibitors are not followed: {error.message}")
+
+        self.follow_audio()
 
     # ------------------------------------------- ScreenSaver, PowerManagement
 
@@ -303,10 +316,98 @@ class Service:
         self.logind = held
         self.publish()
 
+    # ----------------------------------------------------------------- audio
+
+    def follow_audio(self):
+        """Run `pactl subscribe`; each stream event lists the streams again."""
+        try:
+            process = Gio.Subprocess.new(
+                ["pactl", "subscribe"],
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE)
+        except GLib.Error as error:
+            log(f"audio playback is not followed: {error.message}")
+            return
+        stream = Gio.DataInputStream.new(process.get_stdout_pipe())
+        stream.read_line_async(GLib.PRIORITY_DEFAULT, None, self.on_audio_event, process)
+        self.list_audio()
+
+    def on_audio_event(self, stream, result, process):
+        try:
+            line, _length = stream.read_line_finish_utf8(result)
+        except GLib.Error:
+            line = None
+        if line is None:
+            # The sound server went away (a restart, or the session ending):
+            # nothing plays until it is back.
+            process.force_exit()
+            if self.audio:
+                self.audio = []
+                self.publish()
+            GLib.timeout_add_seconds(2, lambda: self.follow_audio() and False)
+            return
+        if "sink-input" in line or "'server'" in line:
+            self.list_audio()
+        stream.read_line_async(GLib.PRIORITY_DEFAULT, None, self.on_audio_event, process)
+
+    def list_audio(self):
+        # One listing at a time; events during it ask for one more after.
+        if self.audio_listing:
+            self.audio_again = True
+            return
+        self.audio_listing = True
+        self.pactl_list("sink-inputs", self.on_audio_streams)
+
+    def pactl_list(self, what, callback, *data):
+        try:
+            process = Gio.Subprocess.new(
+                ["pactl", "--format=json", "list", what],
+                Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE)
+        except GLib.Error as error:
+            log(f"could not run pactl: {error.message}")
+            callback(None, *data)
+            return
+
+        def done(proc, result):
+            try:
+                _ok, out, _err = proc.communicate_utf8_finish(result)
+                parsed = json.loads(out or "[]")
+            except (GLib.Error, ValueError) as error:
+                log(f"could not read pactl's {what}: {error}")
+                parsed = None
+            callback(parsed if isinstance(parsed, list) else None, *data)
+
+        process.communicate_utf8_async(None, None, done)
+
+    def on_audio_streams(self, streams):
+        if streams is None:
+            self.audio_listed()
+            return
+        # A native PipeWire stream names its process only on its client.
+        if any(not stream.get("corked", True) for stream in streams if isinstance(stream, dict)):
+            self.pactl_list("clients", self.on_audio_clients, streams)
+        else:
+            self.audio_listed([])
+
+    def on_audio_clients(self, clients, streams):
+        pids = {}
+        for client in clients or []:
+            if isinstance(client, dict):
+                pids[str(client.get("index"))] = (client.get("properties") or {}).get("application.process.id")
+        self.audio_listed(playing_streams(streams, pids))
+
+    def audio_listed(self, playing=None):
+        self.audio_listing = False
+        if playing is not None:
+            self.audio = playing
+            self.publish()
+        if self.audio_again:
+            self.audio_again = False
+            self.list_audio()
+
     # ------------------------------------------------------------- publishing
 
     def state(self):
-        inhibitors = sorted(self.cookies.values(), key=lambda held: held["since"]) + self.logind
+        inhibitors = sorted(self.cookies.values(), key=lambda held: held["since"]) + self.logind + self.audio
         return json.dumps(
             {"service": True, "screensaver": self.owns_screensaver, "power": self.owns_power,
              "inhibitors": inhibitors},
@@ -333,6 +434,33 @@ class Service:
 
     def run(self):
         self.loop.run()
+
+
+def playing_streams(streams, client_pids=None):
+    """The output streams (pactl's sink-inputs) that hold sleep: not paused,
+    and not an event or notification sound. One entry per application.
+    `client_pids` maps pactl's client index to its process id."""
+    client_pids = client_pids or {}
+    held = {}
+    for stream in streams if isinstance(streams, list) else []:
+        if not isinstance(stream, dict) or stream.get("corked", True):
+            continue
+        props = stream.get("properties") or {}
+        if str(props.get("media.role") or "").lower() in ("event", "notification"):
+            continue
+        try:
+            pid = int(props.get("application.process.id") or client_pids.get(str(stream.get("client"))) or 0)
+        except ValueError:
+            pid = 0
+        who = props.get("application.name") or props.get("node.name") or ""
+        key = (who, pid)
+        if key in held:
+            continue
+        held[key] = {
+            "source": "audio", "what": "sleep", "who": who, "why": "playing audio",
+            "pid": pid, "process": process_name(pid) if pid else "",
+        }
+    return list(held.values())
 
 
 def describe(inhibitors):
