@@ -977,7 +977,7 @@ Item {
     readonly property bool repoApp: app.source !== "aur" && !app.feature
     readonly property string size: info === "loading" ? "Reading…" : Model.sizeText(info)
     readonly property var rows: {
-      var out = [{ label: "Installs", value: Model.installsText(app) }]
+      var out = [{ label: "Installs", value: Model.installsText(app, info) }]
       if (repoApp && size !== "")
         out.push({ label: "Size", value: size + ((app.packages || []).length > 1 && info !== "loading" ? " for " + app.packages[0] : "") })
       out.push({ label: "Setup", value: setup.length > 0 ? setup.join(" ") : "Nothing else to set up." })

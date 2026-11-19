@@ -19,7 +19,8 @@
 #                 open the Quick install window (the default), searching for
 #                 the given text, or at a category with `window @<category>`
 #   status        {"installed": {"<id>": "<desktop file or empty>"}}
-#   info <id>     {"download": "98 MiB", "installed": "290 MiB"} for repo apps
+#   info <id>     {"download": "98 MiB", "installed": "290 MiB", "repo": "extra"}
+#                 for repo apps: the repository pacman installs it from
 #   apply install|remove <id>...
 #                 the window's action for several apps at once. Prints, one
 #                 line each: "log <file>", "terminal <id>" for each app the
@@ -159,7 +160,8 @@ info() {
   out=$(LC_ALL=C pacman -Si "$main" 2>/dev/null) || { echo '{}'; return; }
   jq -cn --arg d "$(sed -n 's/^Download Size *: //p' <<<"$out" | head -n1)" \
     --arg i "$(sed -n 's/^Installed Size *: //p' <<<"$out" | head -n1)" \
-    '{download: $d, installed: $i}'
+    --arg r "$(sed -n 's/^Repository *: //p' <<<"$out" | head -n1)" \
+    '{download: $d, installed: $i, repo: $r}'
 }
 
 # The 32-bit graphics driver games need, for the GPUs in this machine. Every
