@@ -211,6 +211,7 @@ form_load() {
   for var in KARCHY_DISK KARCHY_USER KARCHY_PASSWORD KARCHY_HOSTNAME KARCHY_TIMEZONE; do
     [[ -n ${!var:-} ]] || die "$file does not set $var"
   done
+  [[ -b $KARCHY_DISK ]] || die "$file names $KARCHY_DISK as the disk, which is not a disk on this computer (lsblk lists them); nothing was changed."
   KARCHY_KEYMAP=${KARCHY_KEYMAP:-us}
   KARCHY_BEES=${KARCHY_BEES:-yes}
   # dev: a local packaging/build, for VM tests only.

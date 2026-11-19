@@ -113,7 +113,7 @@ ui_header() {
 
 # One line of text under the header, indented like everything else.
 ui_line() {
-  [[ $KARCHY_UI == tui ]] || { [[ -z ${1:-} ]] || echo "$1" >&"$KARCHY_CONSOLE"; return 0; }
+  [[ $KARCHY_UI == tui ]] || { [[ -z ${1:-} ]] || echo "  $1" >&"$KARCHY_CONSOLE"; return 0; }
   ui_out "  ${2:-}${1:-}$UI_RESET"$'\n'
 }
 
@@ -244,7 +244,12 @@ ui_error() {
   else
     ui_out $'\n'
   fi
-  ui_line "✗ $message" "$UI_RED$UI_BOLD"
+  # The message, wrapped to the screen with its mark in front.
+  local mark="✗ "
+  while IFS= read -r line; do
+    ui_line "$mark$line" "$UI_RED$UI_BOLD"
+    mark="  "
+  done < <(fold -s -w $((UI_COLS - 6)) <<<"$message")
   if [[ -n $during ]]; then
     ui_line
     while IFS= read -r line; do

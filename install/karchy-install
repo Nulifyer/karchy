@@ -55,8 +55,8 @@ preflight() {
 # is lost.
 summary() {
   local size model
-  size=$(lsblk -dno SIZE "$KARCHY_DISK" 2>/dev/null | tr -d ' ')
-  model=$(lsblk -dno MODEL "$KARCHY_DISK" 2>/dev/null | sed 's/[[:space:]]*$//')
+  size=$(lsblk -dno SIZE "$KARCHY_DISK" 2>/dev/null | tr -d ' ') || true
+  model=$(lsblk -dno MODEL "$KARCHY_DISK" 2>/dev/null | sed 's/[[:space:]]*$//') || true
   ui_header "Ready to install" 16
   ui_field "Disk" "$KARCHY_DISK  ${size}${model:+  $model}"
   ui_field "User" "$KARCHY_USER"

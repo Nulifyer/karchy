@@ -46,6 +46,9 @@ KARCHY_STEP_COMMANDS=()
 
 on_error() {
   local status=$?
+  # errtrace runs this in a failing $(...) too, and again in the shell that
+  # ran it: report once, from the installer's own shell.
+  ((BASH_SUBSHELL == 0)) || exit "$status"
   echo "$(date +%H:%M:%S) ERROR: step '${KARCHY_STEP:-startup}' failed (exit $status)" >>"$KARCHY_INSTALL_LOG"
   if [[ ${KARCHY_UI:-plain} == tui ]]; then
     if [[ -n $KARCHY_STEP ]]; then
