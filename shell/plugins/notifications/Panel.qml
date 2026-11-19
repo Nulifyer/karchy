@@ -282,10 +282,12 @@ Panel {
       radius: width / 2
       antialiasing: true
       color: Commons.Color.accent
-      // Centred on the icon's top-right corner, so it sits clear of the
-      // bell's shoulder instead of touching it.
-      x: Math.round(parent.width / 2 + Style.bar.iconSize * 0.45 - width / 2)
-      y: Math.round(parent.height / 2 - Style.bar.iconSize * 0.45 - height / 2)
+      // Centred just outside the icon's top-right corner. Centred on the
+      // corner itself, its edge met the bell's shoulder by a pixel at 1× and
+      // at 1.6×; a pixel further out there is background between them.
+      readonly property real reach: Style.bar.iconSize * 0.45 + Style.space(1)
+      x: Math.round(parent.width / 2 + reach - width / 2)
+      y: Math.round(parent.height / 2 - reach - height / 2)
     }
   }
 
