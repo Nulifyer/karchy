@@ -99,6 +99,7 @@ Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/p
 - Touchpad: tap, two-finger scroll, the 3-finger swipe, palm rejection while typing.
 - Display scale: `hyprctl monitors` shows 2 or the scale set in Settings › Displays, text is sharp; Steam or another X11 app has a usable size at that scale.
 - Play a 10-minute video in Brave and in mpv on battery: the screensaver, lock and suspend do not start.
+- Play music (a player, or a Brave tab with only sound) on battery past the idle suspend time: the screen locks and goes dark but the laptop stays awake; pause it and it suspends (D-110).
 - s2idle reaches hardware sleep: on battery, `systemctl suspend`, wait 10 minutes, wake; `cat /sys/power/suspend_stats/last_hw_sleep` is close to 600000000.
 - Power profiles: each profile in the power panel changes `energy_performance_preference`; `powerprofilesctl list-actions` shows `amdgpu_panel_power` disabled.
 - bees follows the charger: `systemctl is-active karchy-bees` is active on AC, inactive 10 seconds after unplugging, active again when plugged in.
