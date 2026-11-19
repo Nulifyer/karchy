@@ -150,6 +150,8 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 
 ## Needs the user
 
+- Boot screens (D-121, report of 2026-11-19), for your decision: (a) the disk prompt reads "disk karchy (luks-<36 characters>)" because the unlocked disk is named after its UUID; naming it `root` would make it "disk karchy (root)", but changes the kernel line, `fstab` and the recovery steps (D-12); (b) a wrong disk password only asks again, with no message (systemd's behaviour); a message, or a prompt in the middle of the screen, means replacing systemd's console agent in the initramfs, which was not done because a fault there leaves a machine that can't unlock; (c) the Limine menu keeps its key help and 3 second timeout; (d) the `karchy` figlet word beside the mark is `logo.txt` as it is, thin beside the mark at large sizes; (e) kmscon on the ISO was tried and not adopted (D-121 item 2).
+
 - Try resizing the `karchy-disp` window in virt-manager (View › Scale Display › Auto resize VM with window) and say whether the desktop follows.
 
 - Desktop cohesion, for your decision (report of 2026-11-18, D-114 item 6): (a) GTK and Qt apps use a proportional font (Adwaita Sans) and rounded controls, the shell a monospace font and the theme's corners; (b) GNOME Disks ignores the dark theme's colours unless started with `GTK_THEME` set (libhandy); (c) the Limine boot menu, the disk-unlock prompt, the text greeter after logging out and the installer form (gum's default colours) are unthemed.
@@ -176,6 +178,7 @@ VM test, 2026-11-13, working tree packaged by the build now at `packaging/build`
 
 ## Project notes
 
+- Boot screens (D-121), 2026-11-19, VM `inst`: the Limine menu, the disk-password screen and the installer share the default theme's colours and JetBrains Mono as bitmap fonts. `inst` is a fresh install from this work (dev packages). Screenshots before and after are in `out/boot-tui/`. Not checked: real hardware, Secure Boot, the ISO's BIOS menu.
 - Work happens in the checkout at `~/Projects/karchy` with no extra worktrees. Commits, PRs and merges happen only when the user asks, through `/git-delivery`.
 - `packaging/build` packages the working tree by default (uncommitted and untracked files included); `--ref` packages a commit.
 - Omarchy references: `/home/nulifyer/Projects/Omarchy/reference/omarchy-v4.5.0` and `/home/nulifyer/Projects/Omarchy/audit/`.

@@ -70,6 +70,7 @@ The daily scheduled run of `release.yml` rebuilds the titlebars; when that fails
 | 10 | NVIDIA: the GPU generation table (`karchy-hw-nvidia-generation`) and CachyOS's driver package names | A new GPU generation; CachyOS retires the 580xx branch | Package names: the upkeep issue. A new generation: a new install picks the wrong driver | Update the table or the meta-package's depends |
 | 11 | Arch manual interventions | Arch announces one | The Updates window and `karchy update` show Arch news since the last update | Follow it on each machine; if it concerns files karchy owns, ship a migration (`migrations/*.sh`) |
 | 12 | GitHub's scheduled runs | GitHub turns them off in a public repository after 60 days without repository activity. That stops the titlebars rebuild and the upkeep check | The Actions page shows the workflows as disabled; floating windows lose their titlebars after the next Hyprland update | Actions › the workflow › Enable workflow. Any work on karchy within 60 days avoids it. karchy doesn't work around the limit: the best-known tool for that was removed by GitHub for breaking its terms |
+| 13 | The console and boot-menu fonts (`system/console/`: JetBrains Mono as bitmaps, D-121) | Only when karchy's monospace font changes, or a screen before the desktop needs a character they lack | By hand: a missing character shows as `?` or a plain substitute | Run `tools/console-font --fonts <ttf-jetbrains-mono-nerd's TTF folder> --out system/console` and commit the results |
 
 ## Not tracked
 

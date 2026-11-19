@@ -40,7 +40,7 @@ Restore a header only to the disk it came from. A header from another disk makes
 
 ## The boot menu
 
-Limine shows its menu for 3 seconds. Press an arrow key to stop the countdown. The menu lists, under "Arch Linux":
+Limine shows its menu for 3 seconds. Press an arrow key to stop the countdown. The menu lists, under "karchy":
 
 - `linux-cachyos`, the normal entry
 - `linux-cachyos-lts`, the same system with the older long-term kernel
@@ -86,7 +86,7 @@ If the LTS kernel shows the same fault, the cause is not the kernel alone. Boot 
 
 ## The screen stays dark or stops during boot
 
-karchy boots quietly, so that kernel messages do not write over the disk password prompt. A failed unit still prints its error. A step that waits longer than 25 seconds prints what it waits for.
+karchy boots quietly, so that kernel messages do not write over the disk password prompt. The prompt is at the bottom left of a screen with karchy's logo; a wrong password asks again on the next line, and Tab hides the dots. The logo is decoration: if it is missing, or the prompt is a single line on a black screen, the prompt works the same. A failed unit still prints its error. A step that waits longer than 25 seconds prints what it waits for.
 
 To see every message for one boot:
 
