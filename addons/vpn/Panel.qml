@@ -17,6 +17,9 @@ Panel {
   property var vpnInfo: emptyInfo("unknown")
   property string lastError: ""
   property bool statusPresent: false
+  // `nulifyer-vpn setup` writes /etc/nulifyer-vpn/config (world-readable);
+  // until then the VPN is installed but not set up.
+  property bool configured: false
   // The theme's green from colors.toml, for shells without status roles.
   property color themeGreen: Commons.Color.accent
   property bool cursorActive: false
@@ -86,8 +89,17 @@ Panel {
 
   // The live details come from the package's status helper, which only
   // makes sense while the status file exists; until then just look again.
+  function missingStatusText() {
+    return configured
+      ? "The VPN is set up but not running. Run: nulifyer-vpn status"
+      : "Not set up yet. Import your WireGuard connection in Settings › Network › VPN, then copy /usr/share/nulifyer-vpn/config.example to ~/.config/nulifyer-vpn/config, fill it in and run: nulifyer-vpn setup"
+  }
+
   function refresh() {
-    if (!statusPresent) statusFile.reload()
+    if (!statusPresent) {
+      configFile.reload()
+      statusFile.reload()
+    }
     else if (!statusProcess.running) statusProcess.running = true
   }
 
@@ -273,9 +285,17 @@ Panel {
       var info = root.emptyInfo("unknown")
       info.mode = info.intent = "unknown"
       root.vpnInfo = info
-      root.lastError = "The VPN isn't running, or its package isn't installed. See the README."
+      root.lastError = root.missingStatusText()
     }
     onFileChanged: reload()
+  }
+
+  FileView {
+    id: configFile
+    path: "/etc/nulifyer-vpn/config"
+    printErrors: false
+    onLoaded: { root.configured = true; if (!root.statusPresent) root.lastError = root.missingStatusText() }
+    onLoadFailed: { root.configured = false; if (!root.statusPresent) root.lastError = root.missingStatusText() }
   }
 
   // A watch can't see a file appear while its folder doesn't exist yet, as
@@ -286,7 +306,7 @@ Panel {
     interval: 30000
     running: !root.statusPresent
     repeat: true
-    onTriggered: statusFile.reload()
+    onTriggered: { configFile.reload(); statusFile.reload() }
   }
 
   FileView {
@@ -352,7 +372,7 @@ Panel {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: "\uf132"
+    text: Icons.glyph("net.vpn.shield")
     active: root.connected
     activeColor: root.success
     dimmed: root.policyMode === "off"
@@ -417,7 +437,7 @@ Panel {
 
           Text {
             id: heroIcon
-            text: "\uf132"
+            text: Icons.glyph("net.vpn.shield")
             color: root.iconColor
             font.family: root.fontFamily
             font.pixelSize: Style.font.display
@@ -434,7 +454,7 @@ Panel {
 
             Button {
               id: refreshAction
-              iconText: "󰑐"
+              iconText: Icons.glyph("ui.refresh")
               tooltipText: "Refresh VPN status"
               foreground: root.foreground
               fontFamily: root.fontFamily

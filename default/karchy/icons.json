@@ -92,6 +92,7 @@
   "net.qr": {"cp": "f0432", "nf": "md-qrcode"},
   "net.speedtest": {"cp": "f04c5", "nf": "md-speedometer"},
   "net.vpn": {"cp": "f0582", "nf": "md-vpn"},
+  "net.vpn.shield": {"cp": "f0498", "nf": "md-shield"},
   "net.wifi.0": {"cp": "f092f", "nf": "md-wifi_strength_outline"},
   "net.wifi.0.vpn": {"cp": "f092c", "nf": "md-wifi_strength_lock_outline"},
   "net.wifi.1": {"cp": "f091f", "nf": "md-wifi_strength_1"},

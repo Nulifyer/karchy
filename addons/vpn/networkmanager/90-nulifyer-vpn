@@ -17,25 +17,12 @@ physical() {
   return 1
 }
 
-standalone() {
-  # shellcheck source=lib/common.sh
-  source "$lib/common.sh"
-  [[ -n ${NV_INTEGRATION:-} ]] || nv_load_config
-  [[ $NV_INTEGRATION == standalone ]]
-}
-
 case $action in
   pre-up)
     physical || exit 0
-    # On stock Omarchy the plugin's own DNS goes on before the link is used.
-    if standalone; then "$lib/standalone-dns" "$CONNECTION_UUID" "$iface" apply-active || true; fi
     "$lib/control" prepare "$iface"
     ;;
-  up|dhcp4-change|dhcp6-change)
-    if physical && standalone; then "$lib/standalone-dns" "$CONNECTION_UUID" "$iface" || true; fi
-    "$lib/control" refresh
-    ;;
-  down|connectivity-change)
+  up|dhcp4-change|dhcp6-change|down|connectivity-change)
     "$lib/control" refresh
     ;;
 esac

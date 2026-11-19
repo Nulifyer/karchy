@@ -23,13 +23,13 @@ STATE = "/var/lib/nulifyer-vpn"
 REQUIRED = ["VPN_CONNECTION", "VPN_INTERFACE", "VPN_ENDPOINT_HOST", "VPN_ENDPOINT_PORT",
             "VPN_CLIENT_PORT", "VPN_DNS"]
 OPTIONAL = {
-    "INTEGRATION": "auto", "TRUSTED_UUIDS": "", "TRUSTED_INTERFACE": "",
-    "TRUSTED_GATEWAY": "", "DOH_IPV4": "", "HOME_LAN": "yes", "HANDSHAKE_MAX_AGE": "150",
+    "TRUSTED_INTERFACE": "", "TRUSTED_GATEWAY": "", "HOME_LAN": "yes", "HANDSHAKE_MAX_AGE": "150",
     "CONNECT_TIMEOUT": "30",
 }
-# Accepted from 1.x configurations and dropped: the status no longer expires,
-# and the router's DNS comes from the network itself.
-RETIRED = {"STATUS_MAX_AGE", "TRUSTED_DNS"}
+# Accepted and dropped: settings for stock Omarchy (trust and DNS come from
+# karchy) and from 1.x (the status no longer expires, and the router's DNS
+# comes from the network itself).
+RETIRED = {"STATUS_MAX_AGE", "TRUSTED_DNS", "INTEGRATION", "TRUSTED_UUIDS", "DOH_IPV4"}
 UNITS = ["nulifyer-vpn-guard.service", "nulifyer-vpn-policy.path"]
 
 
@@ -74,8 +74,6 @@ def validate(c):
     for key in ("HANDSHAKE_MAX_AGE", "CONNECT_TIMEOUT"):
         if not c[key].isdigit() or not 1 <= int(c[key]) <= 86400:
             fail(f"{key} isn't a number of seconds")
-    if c["INTEGRATION"] not in ("auto", "karchy", "standalone"):
-        fail("INTEGRATION must be auto, karchy or standalone")
     if c["HOME_LAN"] not in ("yes", "no"):
         fail("HOME_LAN must be yes or no")
     try:
@@ -83,11 +81,6 @@ def validate(c):
         for key in ("TRUSTED_GATEWAY",):
             if c[key]:
                 ipaddress.IPv4Address(c[key])
-        for address in filter(None, (a.strip() for a in c["DOH_IPV4"].split(","))):
-            ipaddress.IPv4Address(address)
-        for trusted in c["TRUSTED_UUIDS"].split():
-            if str(uuid.UUID(trusted)) != trusted:
-                raise ValueError("Trusted network UUIDs must use their canonical form")
     except ValueError as error:
         fail(str(error))
     if c["TRUSTED_INTERFACE"] and not c["TRUSTED_GATEWAY"]:
@@ -155,10 +148,7 @@ def main():
     subprocess.run(["systemctl", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "enable", "--now", *UNITS], check=True)
     subprocess.run(["/usr/lib/nulifyer-vpn/control", "start"], check=True)
-    integration = subprocess.run(
-        ["bash", "-c", "source /usr/lib/nulifyer-vpn/common.sh; nv_load_config; echo $NV_INTEGRATION"],
-        text=True, capture_output=True).stdout.strip()
-    print(f"nulifyer-vpn is set up ({integration}). Mode: {open(f'{STATE}/mode').read().strip()}.")
+    print(f"nulifyer-vpn is set up. Mode: {open(f'{STATE}/mode').read().strip()}.")
 
 
 if __name__ == "__main__":

@@ -19,10 +19,8 @@ Item {
   readonly property string pluginId: "nulifyer.project-picker"
   readonly property string home: Quickshell.env("HOME")
   readonly property string helper: decodeURIComponent(Qt.resolvedUrl("projects.py").toString().replace(/^file:\/\//, ""))
-  // karchy runs the same shell under its own name and config folder.
-  readonly property bool onKarchy: !!Quickshell.env("KARCHY_PATH")
   readonly property string settingsPath: (Quickshell.env("XDG_CONFIG_HOME") || home + "/.config")
-    + (onKarchy ? "/karchy" : "/omarchy") + "/shell.json"
+    + "/karchy/shell.json"
   property string projectsRoot: Quickshell.env("Z_PROJECTS_ROOT") || home + "/Projects"
   readonly property string projectsRootLabel: displayPath(projectsRoot)
   property var editor: ["code"]

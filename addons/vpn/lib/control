@@ -112,7 +112,6 @@ case $command in
     systemctl stop nulifyer-vpn-check.timer >/dev/null 2>&1 || true
     if nv_vpn_active; then nmcli --wait 10 connection down "$VPN_CONNECTION" >/dev/null 2>&1 || true; fi
     "$NV_LIB/guard" off
-    [[ $NV_INTEGRATION != standalone ]] || "$NV_LIB/standalone-dns" --restore-all || true
     rm -f "$NV_STATUS" "$NV_PENDING"
     ;;
   status)

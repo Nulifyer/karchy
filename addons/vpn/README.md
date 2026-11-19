@@ -1,6 +1,6 @@
-# Omarchy VPN
+# nulifyer-vpn
 
-Your WireGuard VPN, with a kill switch, in the Omarchy bar.
+Your WireGuard VPN, with a kill switch, on karchy.
 
 Connect automatically on public networks, stay off the VPN at home, or require
 VPN protection everywhere. A shield in your bar shows whether your connection
@@ -18,42 +18,33 @@ is protected, with a panel for switching modes and checking connection health.
   the router's own names (`nas.lan`) keep working beside the tunnel.
 - **Bring your own VPN.** Use an existing WireGuard connection in NetworkManager.
 
-This plugin does not provide a VPN account or server.
+This package does not provide a VPN account or server.
 
-The system half (policy service, kill switch, polkit rule) is a pacman
-package, `nulifyer-vpn`; the bar widget is the Omarchy plugin. On
-[karchy](https://github.com/Nulifyer/karchy) the network panel has the VPN
-controls built in and only the package is needed.
+It is one of karchy's add-ons (`addons/vpn` in karchy's repository), built and
+released with karchy as the `nulifyer-vpn` package: the policy service, kill
+switch and polkit rule, plus the bar widget in `/usr/share/karchy/plugins`.
+karchy's network panel and Settings › Network › VPN have the VPN controls too.
 
 ## What you need
 
 - A NetworkManager WireGuard connection with one IPv4 peer, full-tunnel
   routing (`0.0.0.0/0`), and a fixed client listen port.
 - A DNS server reachable through your VPN that responds to ping.
-- NetworkManager with systemd-resolved.
-- Without karchy: DNSCrypt-proxy for encrypted DNS on untrusted networks.
 
 ## Setup
 
 ### 1. Install the package
 
-On karchy: `sudo pacman -S nulifyer-vpn` (from the `[karchy]` repository).
-
-On stock Omarchy, build it from this repository's release:
-
-```bash
-git clone https://github.com/Nulifyer/omarchy-vpn-plugin.git
-cd omarchy-vpn-plugin/packaging/arch
-makepkg -si
-```
-
+Quick install › karchy › WireGuard VPN, or `sudo pacman -S nulifyer-vpn`.
 Everything root runs is installed under `/usr` by pacman. Nothing runs from
 your home folder.
 
 ### 2. Prepare the WireGuard connection
 
-Configure the connection to use your VPN DNS for all domains. Replace
-`wgclient` and `10.66.0.1` below with your connection name and VPN DNS address:
+Import your WireGuard configuration in Settings › Network › VPN, or with
+`nmcli connection import type wireguard file <file>.conf`. Then configure the
+connection to use your VPN DNS for all domains. Replace `wgclient` and
+`10.66.0.1` below with your connection name and VPN DNS address:
 
 ```bash
 nmcli connection modify wgclient wireguard.peer-routes yes \
@@ -73,40 +64,18 @@ Match the connection name, interface, endpoint, ports and VPN DNS address to
 your WireGuard connection; the example explains each setting. `setup` asks for
 your password, checks the connection, installs the configuration as
 `/etc/nulifyer-vpn/config` and starts the service. A new installation starts
-in Auto mode. Run it again after editing the file.
+in Auto mode. Run it again after editing the file. Until then the widget says
+the VPN isn't set up.
 
-**Trusted networks.** On karchy, mark networks as trusted in Settings ›
-Network; the VPN reads karchy's list (`karchy-trusted-networks status --json`),
-which recognises a network by its router. On stock Omarchy, list trusted
-connection UUIDs in `TRUSTED_UUIDS`:
+**Trusted networks.** Mark networks as trusted in Settings › Network; the VPN
+reads karchy's list (`karchy-trusted-networks status --json`), which
+recognises a network by its router. Untrusted networks use karchy's own DNS
+setting.
 
-```bash
-nmcli -g connection.uuid connection show 'Home Wi-Fi'
-```
+### 4. The bar widget
 
-**Encrypted DNS without karchy.** Untrusted networks use DNSCrypt-proxy on
-`127.0.0.1`, set on their saved connections and restored when the package is
-removed. To use the bundled Quad9 configuration:
-
-```bash
-sudo pacman -S dnscrypt-proxy
-sudo install -m644 /usr/share/nulifyer-vpn/dnscrypt-proxy.toml /etc/dnscrypt-proxy/dnscrypt-proxy.toml
-sudo systemctl enable --now dnscrypt-proxy
-```
-
-On karchy, karchy's own DNS setting covers untrusted networks and the
-package leaves saved connections alone.
-
-### 4. Add the bar widget (stock Omarchy)
-
-```bash
-omarchy plugin add https://github.com/Nulifyer/omarchy-vpn-plugin.git --enable
-omarchy bar move nulifyer.vpn --after omarchy.network
-```
-
-The widget also loads on karchy (`karchy plugin add` with the same URL), for
-a shield in the bar next to the network panel's controls. It takes its colors
-from the shell's theme roles on both. It reads the status file when the file
+Quick install turns the widget on next to the network icon. It takes its
+colors from the shell's theme roles and reads the status file when the file
 changes; while the file is missing it looks for it every 30 seconds.
 
 ## Everyday use
@@ -187,23 +156,9 @@ changes (never on a timer), so a bar or panel can watch it instead of polling:
   on that network the kill switch's table gives those replies the endpoint's
   address back before connection tracking sees them.
 
-## Upgrading from 1.x
-
-1.x installed with `sudo python3 scripts/system.py install`. Remove that
-installation first (the script now only does this), then install the package
-and run `nulifyer-vpn setup` with your configuration (`STATUS_MAX_AGE` and
-`TRUSTED_DNS` are no longer used and are ignored):
-
-```bash
-sudo python3 scripts/system.py uninstall
-```
-
 ## Remove
 
-```bash
-sudo pacman -R nulifyer-vpn
-omarchy plugin remove nulifyer.vpn
-```
+Quick install › karchy › WireGuard VPN › Remove, or `sudo pacman -R nulifyer-vpn`.
 
 Removing the package takes the tunnel down, removes the kill switch, restores
 the DNS settings it changed and keeps your WireGuard connection and keys.

@@ -97,14 +97,10 @@ if [[ $mode == off ]]; then
 fi
 
 # The encrypted DNS that may leave while the tunnel is down: karchy's DNS over
-# TLS servers, or DNSCrypt-proxy's DNS over HTTPS servers on stock Omarchy.
+# TLS servers.
 encrypted_dns() {
-  if [[ $NV_INTEGRATION == karchy ]]; then
-    /usr/bin/karchy-network-dns status 2>/dev/null |
-      jq -r 'select(.encrypted) | .servers[] | sub("#.*$"; "") | select(test("^[0-9.]+$")) | . + ":853"' 2>/dev/null || true
-  else
-    tr ',' '\n' <<<"$DOH_IPV4" | awk '{ $1 = $1; if (NF) print $0 ":443" }'
-  fi
+  /usr/bin/karchy-network-dns status 2>/dev/null |
+    jq -r 'select(.encrypted) | .servers[] | sub("#.*$"; "") | select(test("^[0-9.]+$")) | . + ":853"' 2>/dev/null || true
 }
 
 endpoint=$(wg show "$VPN_INTERFACE" endpoints 2>/dev/null | awk 'NR == 1 { print $2 }' | sed -E 's/:[0-9]+$//' || true)

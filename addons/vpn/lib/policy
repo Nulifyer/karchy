@@ -119,8 +119,7 @@ read_network() {
     done | sort -u | paste -sd, -)
 }
 
-# Trust: karchy's answer for this connection, or TRUSTED_UUIDS on stock
-# Omarchy. A health check reuses the last answer for the same activation:
+# Trust: karchy's answer for this connection. A health check reuses the last answer for the same activation:
 # trust only changes with an event (karchy also asks after a trust change).
 read_trust() {
   local cached json line fields
@@ -133,20 +132,11 @@ read_trust() {
     fi
   fi
   net_trusted=false net_trust="not trusted"
-  if [[ $NV_INTEGRATION == karchy ]]; then
-    json=$(/usr/bin/karchy-trusted-networks status --json 2>/dev/null || true)
-    line=$(jq -r --arg d "$net_device" \
-      '.active[]? | select(.device == $d) | [(.trusted | tostring), .reason] | @tsv' <<<"$json" 2>/dev/null | head -n 1)
-    if [[ -n $line ]]; then
-      net_trusted=${line%%$'\t'*} net_trust=${line#*$'\t'}
-    fi
-  else
-    local trusted
-    for trusted in $TRUSTED_UUIDS; do
-      if [[ -n $net_uuid && $net_uuid == "$trusted" ]]; then
-        net_trusted=true net_trust=trusted
-      fi
-    done
+  json=$(/usr/bin/karchy-trusted-networks status --json 2>/dev/null || true)
+  line=$(jq -r --arg d "$net_device" \
+    '.active[]? | select(.device == $d) | [(.trusted | tostring), .reason] | @tsv' <<<"$json" 2>/dev/null | head -n 1)
+  if [[ -n $line ]]; then
+    net_trusted=${line%%$'\t'*} net_trust=${line#*$'\t'}
   fi
   [[ $net_trusted == true ]] || net_trusted=false
   printf '%s\t%s\t%s\t%s\n' "$net_device" "$net_path" "$net_trusted" "$net_trust" >"$NV_RUN/trust"

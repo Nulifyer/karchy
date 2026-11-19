@@ -12,14 +12,8 @@ VPN_CLIENT_PORT='51820'
 # A DNS server inside the VPN. It must answer ping: that is the health probe.
 VPN_DNS='10.66.0.1'
 
-# Where trust and upstream DNS come from. auto: karchy's trusted networks and
-# DNS when karchy is installed, otherwise the two settings below.
-INTEGRATION='auto'
-# Without karchy: trusted NetworkManager connection UUIDs, space-separated
-# (empty: trust none), and the DNS-over-HTTPS servers DNSCrypt-proxy uses on
-# the other networks.
-TRUSTED_UUIDS=''
-DOH_IPV4='9.9.9.9, 149.112.112.9'
+# Trusted networks and the DNS for the others come from karchy (Settings ›
+# Network).
 
 # On a trusted network in On mode, keep the local network and the router's
 # own names (nas.lan) reachable beside the tunnel.

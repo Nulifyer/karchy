@@ -27,34 +27,16 @@ nv_require_root() {
 # which quotes every value, so it is safe to source. Defaults first, so an
 # older file without the newer keys still works.
 nv_load_config() {
-  INTEGRATION=auto
-  TRUSTED_UUIDS=''
   TRUSTED_INTERFACE=''
   TRUSTED_GATEWAY=''
-  DOH_IPV4=''
   HOME_LAN=yes
   HANDSHAKE_MAX_AGE=150
   CONNECT_TIMEOUT=30
   # shellcheck source=/dev/null
   source "$NV_CONFIG"
-  NV_INTEGRATION=$(nv_integration)
-}
-
-# "karchy" when karchy's trusted-network query and DNS helper are installed
-# (or the configuration says so): trust and upstream DNS then come from karchy.
-# "standalone" otherwise (stock Omarchy): TRUSTED_UUIDS, and DNSCrypt-proxy
-# for networks that aren't trusted.
-nv_integration() {
-  case ${INTEGRATION:-auto} in
-    karchy|standalone) printf '%s\n' "$INTEGRATION" ;;
-    *)
-      if [[ -x /usr/bin/karchy-trusted-networks && -x /usr/bin/karchy-network-dns ]]; then
-        printf 'karchy\n'
-      else
-        printf 'standalone\n'
-      fi
-      ;;
-  esac
+  # Trust and upstream DNS come from karchy (karchy-trusted-networks and
+  # karchy-network-dns); the package is built only for karchy.
+  NV_INTEGRATION=karchy
 }
 
 nv_write_atomic() {

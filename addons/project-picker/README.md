@@ -1,72 +1,29 @@
-# Project picker for Omarchy
+# Project picker
 
-A Quickshell overlay hosted by the existing Omarchy shell. The plugin needs
-Omarchy 4 with its plugin host and Hyprland Lua configuration, plus Python 3.
-The default editor is VS Code. Terminals use Omarchy's default terminal through
-`xdg-terminal-exec`. No build step or third-party Python packages are required.
+A Quickshell overlay for the karchy shell: find projects across your home
+folder and open them in an editor or a terminal. It needs Python 3; the
+default editor is VS Code, and terminals open through `xdg-terminal-exec`.
 
 ![Project picker searching for its own source repository](docs/preview.png)
 
+It is one of karchy's add-ons (`addons/project-picker` in karchy's
+repository), built and released with karchy as the `nulifyer-project-picker`
+package. The package installs the overlay into `/usr/share/karchy/plugins`
+and its Ctrl+Alt+P binding into `/usr/share/karchy/hypr.d`, so the binding
+exists only while the package is installed.
+
 ## Install
 
-Install the plugin from GitHub:
+Quick install › karchy › Project picker, or
+`sudo pacman -S nulifyer-project-picker` followed by
+`karchy plugin enable nulifyer.project-picker`.
 
-```sh
-omarchy plugin add https://github.com/Nulifyer/omarchy-project-picker --enable
-```
+## Develop
 
-Then set up Ctrl+Alt+P using the included installer:
-
-```sh
-python3 ~/.config/omarchy/plugins/nulifyer.project-picker/install.py
-```
-
-On [karchy](https://github.com/Nulifyer/karchy), use `karchy plugin add` with
-the same URL; the plugin lands in `~/.config/karchy/plugins/` and the installer
-below works the same way, using `karchy` and `karchy-shell`.
-
-This enables the plugin and adds the shortcut to `~/.config/hypr/bindings.lua`.
-It backs up previous configuration under
-`~/.local/state/nulifyer.project-picker/backups/` and validates Hyprland after
-updating the shortcut. Running it again does not duplicate the binding. An
-existing global Ctrl+Alt+P binding is explicitly unbound, and the installer
-reports its previous action. If your desktop configuration already binds
-Ctrl+Alt+P to the picker, the installer leaves your bindings alone.
-
-Omarchy does not execute the included installer automatically. To configure the
-shortcut by hand instead, add the following to `~/.config/hypr/bindings.lua`,
-unbinding the combination first if it is already in use:
-
-```lua
-o.bind("CTRL + ALT + P", "Project picker",
-  "omarchy-shell shell toggle nulifyer.project-picker '{}'")
-```
-
-After a manual binding edit, run `hyprctl reload` and `hyprctl configerrors`.
-
-## Update
-
-```sh
-omarchy plugin update nulifyer.project-picker
-```
-
-If the running shell retains the previous QML component, run
-`omarchy restart shell` to load the updated code.
-
-## Develop locally
-
-```sh
-git clone https://github.com/Nulifyer/omarchy-project-picker ~/Projects/omarchy-project-picker
-cd ~/Projects/omarchy-project-picker
-python3 install.py
-```
-
-The installer copies changed files into the installed plugin directory. It
-preserves that directory's Git metadata if it was installed through Omarchy.
-When QML or search code changes, it restarts the Omarchy shell to load the
-updated files. Runtime dependencies are Python 3 and the Quickshell, Hyprland,
-`uwsm-app`, and `xdg-terminal-exec` commands supplied by Omarchy. Testing also
-requires Node.js. CI tests Python 3.10 and 3.14 with Node.js 24.
+Change the files under `addons/project-picker` and build the package with
+`packaging/build nulifyer-project-picker`. Tests: `python3 -m unittest
+discover addons/project-picker/tests` and `node
+addons/project-picker/tests/search.test.cjs`.
 
 ## Use
 
@@ -102,24 +59,22 @@ Canonical paths are deduplicated while preserving the first alias.
 Discovery runs outside the UI process. Results stream in, remain in memory
 between openings, and refresh on each opening. A failed scan restores the
 previous results. The picker shows the focused monitor and follows the active
-Omarchy menu theme. Paths are displayed as plain text and passed to launchers
+menu theme. Paths are displayed as plain text and passed to launchers
 as separate arguments, without shell evaluation. Launching checks that the
 directory still exists. Application startup after handing off to `uwsm-app`
 is managed by the desktop session.
 
 ## Theme integration
 
-The picker uses the same `[menu]` surface roles as Omarchy's menu, clipboard,
-and emoji plugins. Background, text, scrim, selected-row colors, and border
+The picker uses the same `[menu]` surface roles as karchy's menu. Background, text, scrim, selected-row colors, and border
 specifications come from `qs.Commons.Color` and `Border`. The plugin reads
 colors as `Commons.Color` (imported `as Commons`): a bare `Color` resolves to
-Qt Quick's own `Color` type, which has none of the shell's roles. On karchy,
-secondary text and errors use its derived `secondaryText` and `status.error`
+Qt Quick's own `Color` type, which has none of the shell's roles. Secondary text and errors use the shell's derived `secondaryText` and `status.error`
 roles. Selected rows support
 the menu's border widths, gradients, and per-side overrides. Secondary text
 uses the menu foreground with reduced opacity, matching the built-in menu.
 
-The search field is Omarchy's shared `qs.Ui.TextField`, so focus borders,
+The search field is the shell's shared `qs.Ui.TextField`, so focus borders,
 text selection, padding, and control fills follow the shell's `[style]`
 settings. Fonts use `Style.font.menuFamily` and the shared size tokens. Input,
 header, and row heights grow with their text. Theme changes update the bound
@@ -128,7 +83,7 @@ colors and geometry without restarting the plugin.
 ## Configure
 
 Edit the plugin's entry inside the existing `plugins` array in
-`~/.config/omarchy/shell.json` (`~/.config/karchy/shell.json` on karchy). Preserve the surrounding configuration:
+`~/.config/karchy/shell.json`. Preserve the surrounding configuration:
 
 ```json
 {
@@ -147,20 +102,19 @@ Inspect discovery without opening the UI:
 
 ```sh
 python3 projects.py scan --home "$HOME" --root "$HOME/Projects"
-omarchy-shell shell call nulifyer.project-picker status '{}'
+karchy-shell shell call nulifyer.project-picker status '{}'
 ```
 
 The summon payload accepts an optional `query` string for opening a filtered
 picker from another command. For example:
 
 ```sh
-omarchy-shell shell summon nulifyer.project-picker '{"query":"dotfiles"}'
+karchy-shell shell summon nulifyer.project-picker '{"query":"dotfiles"}'
 ```
 
 ## Validate
 
 ```sh
-omarchy plugin validate .
 python3 -m unittest discover -s tests -p 'test_*.py'
 node tests/search.test.cjs
 ```
@@ -168,18 +122,14 @@ node tests/search.test.cjs
 Node is needed only for the search tests. Automated tests cover discovery,
 symlinks, path transport, launch arguments, missing editors, and fuzzy ranking.
 Popup focus, keyboard navigation, editor launch, terminal working directory,
-repeated toggles, and theme changes require an Omarchy desktop. Source changes
-in the installed plugin directory trigger Omarchy's plugin watcher. If the shell
-retains a previous QML component, run `omarchy restart shell` after updating files
-by hand.
+repeated toggles, and theme changes need a karchy desktop: install the built
+package and run `karchy restart shell`.
 
 ## Remove
 
-Run `omarchy plugin disable nulifyer.project-picker`, remove the block between
-`-- BEGIN nulifyer.project-picker` and `-- END nulifyer.project-picker` from
-`~/.config/hypr/bindings.lua`, then remove the installed plugin folder when
-you no longer need it. Run `hyprctl reload` and `hyprctl configerrors` after
-editing bindings.
+Quick install › karchy › Project picker › Remove, or
+`sudo pacman -R nulifyer-project-picker`. The overlay and the Ctrl+Alt+P
+binding go with the package.
 
 ## License
 
