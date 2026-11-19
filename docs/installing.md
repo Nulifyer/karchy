@@ -3,12 +3,13 @@
 karchy installs from the karchy ISO or from the stock Arch Linux ISO; both run the same installer. It erases one disk and sets up:
 
 - a 4 GiB EFI partition
-- LUKS2 encryption
+- LUKS2 encryption, unless you choose an install without it (see [Disk encryption and login](#disk-encryption-and-login))
 - btrfs with the subvolumes `@ @home @root @srv @cache @log @tmp @swap`
 - a swap file sized to RAM, with zswap
 - `linux-cachyos` plus `linux-cachyos-lts`
 - Limine, with snapshot boot entries (snapper + snap-pac + limine-snapper-sync)
 - a splash screen that asks for the disk password (Plymouth, karchy's theme), with a text prompt behind it for a boot without the splash
+- karchy's login screen after logging out, and at boot on an install with a login screen
 - NetworkManager and systemd-resolved
 - your user, with fish as the login shell
 - the karchy desktop from the `[karchy]` package repository: `karchy-desktop`, plus `karchy-laptop` on a machine with a battery and the NVIDIA driver with an NVIDIA GPU: `karchy-nvidia` for Turing (RTX 20 / GTX 16) and newer, `karchy-nvidia-580xx` for Maxwell, Pascal and Volta (GTX 900 and 10 series, Quadro M and P, Titan V; this also enables `[multilib]`). Kepler and older cards are not supported by NVIDIA's current drivers, so they keep nouveau; the installer prints a message when it finds one
@@ -26,14 +27,38 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
    karchy/install/karchy-install
    ```
 
-3. Answer the form: keyboard, disk (typed confirmation), username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; only channels with a published release are offered, so stable appears from karchy's first release on), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees background deduplication (on by default; answer No to leave it off). The keyboard layout applies as soon as it's picked, so the password is typed in the layout the disk prompt will use. Esc or Ctrl-C at a question that asks for an answer stops the installer with nothing changed; at a yes/no question Esc means No.
-4. Check the summary, which lists every answer and says in red which disk is erased, then confirm "Erase and install". Nothing is written to the disk before this.
+3. Answer the form: keyboard, disk (typed confirmation), disk encryption (see [below](#disk-encryption-and-login); Encrypted is selected already), what to do with each other internal disk (asked only with encryption), username, one password for both the disk and your login, name and email for git, computer name, timezone, release channel (stable, rc or nightly; only channels with a published release are offered, so stable appears from karchy's first release on), Secure Boot (asked only when the firmware is in Setup Mode; on by default then), and bees background deduplication (on by default; answer No to leave it off). The keyboard layout applies as soon as it's picked, so the password is typed in the layout the disk prompt will use. Esc or Ctrl-C at a question that asks for an answer stops the installer with nothing changed; at a yes/no question Esc means No.
+4. Check the summary, which lists every answer and says in red which disks are erased and, without encryption, who can then read the disk. Then confirm "Erase and install". Nothing is written to the disk before this.
 5. The installer shows its steps as a numbered list: a check mark and the time for each finished one, the time of the step under way, and the last line of the log. A step that fails turns red, with the end of the log and how to try again under it.
-6. The last screen says what to do next. Choose **Restart now** with the install media still in: the live system runs from it. When the screen goes dark, take the media out. Then type the password at the disk-password screen. If the installer's boot menu comes up again instead, the media was still in and the computer started from it: take it out and restart.
+6. The last screen says what to do next. Choose **Restart now** with the install media still in: the live system runs from it. When the screen goes dark, take the media out. Then type the password at the disk-password screen (at the login screen on an install without encryption). If the installer's boot menu comes up again instead, the media was still in and the computer started from it: take it out and restart.
 
    Restart now restarts at once, without the live system's usual shutdown (the installed system is already unmounted and closed by then), so a stick pulled out too early no longer leaves the computer stuck on read errors. "Stay in the live system" leaves a root shell; restart from there with `reboot` and take the media out once the screen goes dark.
 
 Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
+
+### Disk encryption and login
+
+One question decides both. The first answer is selected already, so pressing Enter gives the protected install.
+
+| Answer | The disk | At boot | Saved passwords (the keyring) |
+|---|---|---|---|
+| **Encrypted** (the default) | LUKS2. Nobody reads it without the password | The disk-password screen; the same password logs you in | Opened by a key that is itself on the encrypted disk |
+| **Not encrypted** | Plain btrfs. Anyone who has the computer or the disk can read your files | karchy's login screen asks for your password | Opened by your login password, so they stay protected on the plain disk |
+
+Every install asks for a password at boot; there is none that starts straight into the desktop. Not encrypted shows its warning in red and asks once more, and the summary repeats it in red beside the erase line. The choice is made at install time. Changing it later means installing again (encrypting a plain disk in place is not something karchy does).
+
+After logging out, every install shows karchy's login screen: the mark, a password box, your name (the arrows or Up and Down pick another person when the computer has several), and Suspend, Restart and Shut down in the corner. If that screen can't start, greetd's text login appears instead, so there is always a way in. To get the text login on purpose, add `karchy.greeter=text` to the kernel line in the boot menu's editor for one boot, or run `sudo touch /etc/karchy/greeter-text` for every boot (`sudo rm` it to go back); `journalctl -t karchy-greeter` says why the screen fell back.
+
+### Other internal disks
+
+With **Encrypted**, the installer then shows each other internal disk (not USB sticks, not the install media) with its size, model, partitions and labels, and asks what should happen to it:
+
+- **Keep it as it is** (selected already): nothing on it changes. Its partitions with files are mounted under `/mnt/<label>`, as before.
+- **Erase and encrypt it**: everything on it is erased; you type the disk's name to confirm. It becomes one LUKS2 volume with a btrfs filesystem, `data` (then `data2`, …), mounted at `/mnt/data` with the system disk's options (`noatime,compress=zstd:1`) and its monthly scrub, and yours to write to. It opens at boot together with the system disk, with no second question: a key file for it is kept on the encrypted system disk (`/etc/cryptsetup-keys.d`, root only, named in `/etc/crypttab`). Your install password opens it too, which is what you use to open it by hand, from the install media or in another computer.
+
+Without encryption on the system disk the question isn't asked and the other disks are kept as they are: a key file on a plain disk would protect nothing.
+
+`karchy-drive-password` (Update › Change Drive Password) changes the system disk's password and then offers the new one to each other disk the old one still opens.
 
 The installer's screens use karchy's default theme and its console font. On the Linux console it loads both itself, so they look the same from the stock Arch ISO and from the karchy ISO. When its output is not a terminal (a pipe, a file) or `KARCHY_UI=plain` is set, it prints one timestamped line per step instead, as the log has them.
 
@@ -79,7 +104,7 @@ KARCHY_VM_ISO=out/iso/karchy-….iso tools/vm run --name isotest --iso
 
 ## Unattended installs
 
-`karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL`, `KARCHY_BEES`, `KARCHY_CHANNEL` (`stable`, `rc`, `nightly`; `dev` for VM tests), `KARCHY_SECUREBOOT` (`auto`, the default, sets it up when the firmware is in Setup Mode; or `yes`/`no`), `KARCHY_REPO_SERVER` and `KARCHY_REPO_SIGLEVEL` for another `[karchy]` repository, `KARCHY_CACHYOS_LEVEL` (`generic` skips CachyOS's CPU-tuned repositories; otherwise the installer picks `v3`, `v4` or `znver4` from the CPU, as CachyOS's own installer does), and `KARCHY_KEYRING_KEY_FILE` (a key saved with `karchy keyring-key export`, so a home folder restored from a backup opens its keyring; D-57). `KARCHY_CONSOLE_FONT` names the console font (`karchy-10x20`, `karchy-12x24` or `karchy-16x32`) instead of the one picked from the screen's height. `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
+`karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL`, `KARCHY_BEES`, `KARCHY_ENCRYPT` (`encrypted`, the default, or `login` for no encryption and a login screen at boot; anything else is refused), `KARCHY_ENCRYPT_DISKS` (other internal disks to erase and encrypt, separated by spaces, such as `"/dev/sdb /dev/nvme1n1"`; needs `KARCHY_ENCRYPT=encrypted`), `KARCHY_CHANNEL` (`stable`, `rc`, `nightly`; `dev` for VM tests), `KARCHY_SECUREBOOT` (`auto`, the default, sets it up when the firmware is in Setup Mode; or `yes`/`no`), `KARCHY_REPO_SERVER` and `KARCHY_REPO_SIGLEVEL` for another `[karchy]` repository, `KARCHY_CACHYOS_LEVEL` (`generic` skips CachyOS's CPU-tuned repositories; otherwise the installer picks `v3`, `v4` or `znver4` from the CPU, as CachyOS's own installer does), and `KARCHY_KEYRING_KEY_FILE` (a key saved with `karchy keyring-key export`, so a home folder restored from a backup opens its keyring; D-57; not with `KARCHY_ENCRYPT=login`, where the login password opens the keyring). `KARCHY_CONSOLE_FONT` names the console font (`karchy-10x20`, `karchy-12x24` or `karchy-16x32`) instead of the one picked from the screen's height. `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
 
 ## Testing in a VM
 

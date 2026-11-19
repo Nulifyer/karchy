@@ -194,6 +194,14 @@ console_font() {
   fi
 }
 
+# The answer to the form's question about disk encryption (KARCHY_ENCRYPT,
+# D-130): encrypted (LUKS2; the disk password also logs in) or login (a plain
+# disk, and karchy's login screen asks for the password at every boot). The
+# steps ask this, never the value.
+install_encrypted() {
+  [[ ${KARCHY_ENCRYPT:-encrypted} == encrypted ]]
+}
+
 # Total RAM in whole GiB, rounded up.
 ram_gib() {
   awk '/^MemTotal:/ { printf "%d\n", ($2 + 1048575) / 1048576 }' /proc/meminfo

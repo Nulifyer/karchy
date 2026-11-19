@@ -16,7 +16,8 @@ Read this before you mount or unmount storage, change `/etc/fstab`, switch backg
 
 ## The system disk layout
 
-- Partition 1 is the EFI partition at `/boot`. Partition 2 is LUKS2 with one btrfs filesystem inside.
+- Partition 1 is the EFI partition at `/boot`. Partition 2 is LUKS2 with one btrfs filesystem inside. An install made without disk encryption has the btrfs filesystem directly on partition 2. `lsblk -o NAME,FSTYPE` shows which: `crypto_LUKS` or `btrfs`. `KARCHY_ENCRYPT` in `/etc/karchy/install.conf` records the install's answer (`encrypted` or `login`).
+- A data disk the installer encrypted is one LUKS2 volume with btrfs, mounted at `/mnt/data` (`data2`, …). `/etc/crypttab` opens it at boot with a key file in `/etc/cryptsetup-keys.d` (root only). The install password opens it too. Do not delete the key file or the crypttab line while the disk is in use.
 - The subvolumes are `@ @home @root @srv @cache @log @tmp @swap`. Mount options are `noatime,compress=zstd:1`.
 - Do not change the subvolume layout, the system lines in `/etc/fstab`, or the swap file. Snapshots, hibernation and recovery depend on them.
 
@@ -75,4 +76,4 @@ Shares opened in the file manager (gvfs) are disconnected before sleep by `karch
 
 ## Encryption password
 
-`karchy-drive-password` changes a drive's LUKS password. It is interactive and uses sudo. The user must run it and type the passwords. Never take a disk password as an argument, in a file, or in chat. After a change, remind the user to make a new LUKS header backup. `docs/recovery.md` in the karchy repository describes the backup.
+`karchy-drive-password` changes a drive's LUKS password. On a computer with no encrypted drive it says so and changes nothing; that is not an error, and the login password is changed with `passwd`. After it changes the system disk's password, it offers the new one to each other encrypted drive the old password still opens (the installer's encrypted data disks). A data disk's key file slot is not a password and is left alone. It is interactive and uses sudo. The user must run it and type the passwords. Never take a disk password as an argument, in a file, or in chat. After a change, remind the user to make a new LUKS header backup. `docs/recovery.md` in the karchy repository describes the backup.

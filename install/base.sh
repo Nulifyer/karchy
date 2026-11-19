@@ -290,7 +290,18 @@ base_user() {
   in_target passwd --lock root
   # The sudo policy comes from karchy-settings, pacstrapped with the base.
   in_target visudo -cf /etc/sudoers.d/karchy
-  # The login keyring's key (D-57), before any snapshot is taken. A key saved
+  # The login keyring (D-57, D-131). Without disk encryption it opens with
+  # the login password (PAM, system/pam.d/karchy-login), and no key is made: a
+  # key on a plain disk would open the keyring for anyone who has the disk.
+  # This file says so to the unit that would make one
+  # (karchy-keyring-key@.service) and to karchy-keyring-key.
+  if ! install_encrypted; then
+    install -d -m 0755 "$KARCHY_MNT/etc/karchy"
+    echo "# karchy: the login keyring opens with the login password (D-131); no key is kept in /etc/credstore." \
+      >"$KARCHY_MNT/etc/karchy/keyring-login-password"
+    return 0
+  fi
+  # On an encrypted disk its key, before any snapshot is taken. A key saved
   # with karchy-keyring-key export (KARCHY_KEYRING_KEY_FILE in an unattended
   # config) is used instead of a new one, so a restored home's keyring opens.
   local uid key=""
@@ -305,13 +316,16 @@ base_user() {
 }
 
 # Internal data disks already in the machine get mounts at /mnt/<label> (D-24),
-# by the same rules the login check uses for disks added later.
+# by the same rules the login check uses for disks added later. The disks
+# just encrypted (disk_data_encrypt) are among them: they are open, and the
+# target's crypttab names them.
 base_data_disks() {
   local uid gid device fstype mount line
   uid=$(in_target id -u "$KARCHY_USER")
   gid=$(in_target id -g "$KARCHY_USER")
   while IFS=$'\t' read -r device _ fstype _ mount; do
-    line=$(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" "$KARCHY_SRC/bin/karchy-disk-fstab" line "$device" "$uid" "$gid")
+    line=$(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" KARCHY_CRYPTTAB="$KARCHY_MNT/etc/crypttab" \
+      "$KARCHY_SRC/bin/karchy-disk-fstab" line "$device" "$uid" "$gid")
     mkdir -p "$KARCHY_MNT$mount"
     echo "$line" >>"$KARCHY_MNT/etc/fstab"
     log "data disk $device mounts at $mount"
@@ -321,7 +335,8 @@ base_data_disks() {
     if [[ $fstype == btrfs ]]; then
       in_target systemctl enable "btrfs-scrub@$(systemd-escape -p "$mount").timer"
     fi
-  done < <(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" "$KARCHY_SRC/bin/karchy-disk-fstab" list)
+  done < <(KARCHY_FSTAB="$KARCHY_MNT/etc/fstab" KARCHY_CRYPTTAB="$KARCHY_MNT/etc/crypttab" \
+    "$KARCHY_SRC/bin/karchy-disk-fstab" list)
 }
 
 # Non-secret install answers, for setup steps that run later. System files
@@ -331,13 +346,17 @@ base_install_conf() {
   {
     printf 'KARCHY_USER=%q\n' "$KARCHY_USER"
     printf 'KARCHY_BEES=%q\n' "$KARCHY_BEES"
+    printf 'KARCHY_ENCRYPT=%q\n' "$KARCHY_ENCRYPT"
     printf 'KARCHY_SECUREBOOT=%q\n' "$KARCHY_SECUREBOOT"
     printf 'KARCHY_CHANNEL=%q\n' "$KARCHY_CHANNEL"
     printf 'KARCHY_INSTALLED=%q\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   } >"$KARCHY_MNT/etc/karchy/install.conf"
 }
 
-# Limine with systemd-based unlock (D-12): rd.luks.uuid + sd-encrypt, zswap on (D-10).
+# Limine (D-12), zswap on (D-10). An encrypted disk is unlocked in the
+# initramfs by systemd (rd.luks.uuid + sd-encrypt); a plain one (D-130) has no
+# rd.luks.* words, so sd-encrypt has nothing to do and Plymouth asks nothing:
+# the splash shows its tiles until the login screen or the desktop.
 base_bootloader() {
   local cmdline resume_uuid resume_offset
   # Hibernation resumes from the swap file: the btrfs filesystem's UUID and the
@@ -358,8 +377,13 @@ base_bootloader() {
   # this line: the LTS kernel and the snapshots (limine-snapper-sync copies
   # it).
   cmdline="quiet splash loglevel=3 systemd.show_status=auto systemd.tty.term.console=dumb"
-  cmdline+=" rw rootflags=subvol=/@ rd.luks.uuid=$KARCHY_LUKS_UUID rd.luks.options=discard"
-  cmdline+=" root=/dev/mapper/$KARCHY_ROOT_MAPPER zswap.enabled=1 zswap.compressor=zstd"
+  cmdline+=" rw rootflags=subvol=/@"
+  if install_encrypted; then
+    cmdline+=" rd.luks.uuid=$KARCHY_LUKS_UUID rd.luks.options=discard root=$KARCHY_ROOT_DEV"
+  else
+    cmdline+=" root=UUID=$resume_uuid"
+  fi
+  cmdline+=" zswap.enabled=1 zswap.compressor=zstd"
   cmdline+=" resume=UUID=$resume_uuid resume_offset=$resume_offset"
   cat >"$KARCHY_MNT/etc/default/limine" <<EOF
 ESP_PATH="/boot"

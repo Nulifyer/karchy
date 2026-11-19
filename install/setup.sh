@@ -66,8 +66,19 @@ setup_enable_multilib() {
 }
 
 setup_system_files() {
-  # Auto-login for the installed user (D-08).
-  sed "s/@USER@/$KARCHY_USER/" "$KARCHY_SRC/system/greetd/config.toml" >"$KARCHY_MNT/etc/greetd/config.toml"
+  # greetd (D-13, D-130). On an encrypted disk: automatic login for the
+  # installed user after the disk password, and karchy's login screen after
+  # logging out. Without encryption: that screen at every boot, through the
+  # PAM service that opens the keyring with the login password (D-131).
+  if install_encrypted; then
+    sed "s/@USER@/$KARCHY_USER/" "$KARCHY_SRC/system/greetd/config.toml" >"$KARCHY_MNT/etc/greetd/config.toml"
+  else
+    install -m 0644 "$KARCHY_SRC/system/greetd/config-login.toml" "$KARCHY_MNT/etc/greetd/config.toml"
+    # ...and a changed login password changes the keyring's with it. passwd's
+    # PAM file is a backup file of shadow, so pacman keeps the line.
+    grep -q pam_oo7 "$KARCHY_MNT/etc/pam.d/passwd" ||
+      echo "password	optional	pam_oo7.so" >>"$KARCHY_MNT/etc/pam.d/passwd"
+  fi
 
   # Resolve .local names (printers, NAS) through avahi before resolved (D-28).
   if ! grep -q mdns_minimal "$KARCHY_MNT/etc/nsswitch.conf"; then
@@ -82,7 +93,7 @@ setup_system_files() {
   # ...and the same 2-minute lockout as the lock screen, instead of 10.
   sed -i 's/^#\?[[:space:]]*unlock_time[[:space:]]*=.*/unlock_time = 120/' "$KARCHY_MNT/etc/security/faillock.conf"
 
-  # The text greeter after logging out (agreety, D-13) prints /etc/issue but
+  # The text greeter (agreety, behind karchy's login screen) prints /etc/issue but
   # doesn't expand \S{PRETTY_NAME}, so it showed "Arch Linux{PRETTY_NAME}".
   # A backup file of filesystem, so pacman keeps the edit.
   printf 'karchy \\r (\\l)\n\n' >"$KARCHY_MNT/etc/issue"

@@ -13,14 +13,20 @@
 #
 # A data partition is on a non-removable disk, has a regular filesystem, is
 # not mounted, is not in fstab, is at least 1 GiB, and is not an EFI or
-# Windows recovery partition or an encrypted volume. It mounts at /mnt/<label>
+# Windows recovery partition. An encrypted volume counts once it is open and
+# /etc/crypttab names it, so it opens at every boot (the installer's
+# "erase and encrypt" disks, D-132); one opened by hand does not, since its
+# mount would fail at the next boot. It mounts at /mnt/<label>
 # with nofail and x-gvfs-show (shown in the file manager). NTFS, exFAT and FAT
-# get the user as owner; Linux filesystems keep their own ownership.
+# get the user as owner; Linux filesystems keep their own ownership. The
+# installer's own encrypted btrfs disks also get compress=zstd:1, as the
+# system disk has.
 
 set -euo pipefail
 
 MARKER="# karchy-data-disk"
 FSTAB=${KARCHY_FSTAB:-/etc/fstab}
+CRYPTTAB=${KARCHY_CRYPTTAB:-/etc/crypttab}
 EFI_TYPE=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
 RECOVERY_TYPE=de94bba4-06d1-4d40-a16a-bfd50179d6ac
 
@@ -34,7 +40,9 @@ mount_name() {
 }
 
 list() {
-  local device uuid fstype size label mount used=()
+  local device uuid fstype size label mount opened="" used=()
+  # The volumes crypttab opens at boot, by name.
+  [[ ! -r $CRYPTTAB ]] || opened=$(awk '!/^[[:space:]]*#/ && NF { print $1 }' "$CRYPTTAB")
   mapfile -t used < <(awk '!/^#/ && $2 ~ "^/mnt/" { print $2 }' "$FSTAB")
   while IFS=$'\t' read -r device uuid fstype size label; do
     grep -q "UUID=$uuid" "$FSTAB" && continue
@@ -46,16 +54,21 @@ list() {
     used+=("$mount")
     printf '%s\t%s\t%s\t%s\t%s\n' "$device" "$uuid" "$fstype" "$size" "$mount"
   done < <(lsblk -J -l -b -o PATH,NAME,TYPE,FSTYPE,UUID,SIZE,LABEL,PARTTYPE,MOUNTPOINTS,RM,HOTPLUG,PKNAME |
-    jq -r --arg efi "$EFI_TYPE" --arg recovery "$RECOVERY_TYPE" '
+    jq -r --arg efi "$EFI_TYPE" --arg recovery "$RECOVERY_TYPE" --arg opened "$opened" '
       .blockdevices as $all
       | ($all | map({key: .name, value: .}) | from_entries) as $by
-      | $all[]
-      | select(.type == "part" and .uuid != null)
+      | ($opened | split("\n")) as $crypttab
+      # The disk a partition or an opened volume is on.
+      | def disk_of($name): $by[$name] as $d
+          | if $d == null then null elif $d.type == "disk" then $d else disk_of($d.pkname) end;
+      $all[]
+      | select(.uuid != null)
+      | select(.type == "part" or (.type == "crypt" and (.name as $n | $crypttab | index($n))))
       | select((.mountpoints | map(select(. != null)) | length) == 0)
       | select(.fstype as $f | ["ntfs", "exfat", "vfat", "ext4", "btrfs", "xfs"] | index($f))
       | select(.parttype != $efi and .parttype != $recovery)
       | select(.size >= 1073741824)
-      | select($by[.pkname] as $disk | $disk.rm == false and $disk.hotplug == false)
+      | select(disk_of(.pkname) as $disk | $disk != null and $disk.rm == false and $disk.hotplug == false)
       | [.path, .uuid, .fstype, (.size | tostring), (.label // "")] | @tsv')
 }
 
@@ -74,7 +87,14 @@ line() {
     exfat) options+=",uid=$uid,gid=$gid,umask=022" ;;
     vfat) options+=",uid=$uid,gid=$gid,umask=022"; passno=2 ;;
     ext4) options+=",noatime"; passno=2 ;;
-    btrfs | xfs) options+=",noatime" ;;
+    btrfs)
+      options+=",noatime"
+      # A btrfs filesystem on a volume crypttab opens is one the installer
+      # made (D-132): karchy's own, mounted like the system disk. A data disk
+      # found as it is keeps its files as they were written.
+      [[ $device != /dev/mapper/* ]] || options+=",compress=zstd:1"
+      ;;
+    xfs) options+=",noatime" ;;
   esac
   printf 'UUID=%s %s %s %s 0 %s %s\n' "$uuid" "$mount" "$fstype" "$options" "$passno" "$MARKER"
 }

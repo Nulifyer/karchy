@@ -157,7 +157,7 @@ package() {
   install -Dm644 thunar/sendto/karchy-localsend.desktop "$pkgdir/usr/share/Thunar/sendto/karchy-localsend.desktop"
   install -Dm644 pam.d/karchy-lock-password "$pkgdir/etc/pam.d/karchy-lock-password"
   # The login screen's PAM service on an install whose keyring opens with the
-  # login password (D-127); greetd's config names it only there.
+  # login password (D-131); greetd's config names it only there.
   install -Dm644 pam.d/karchy-login "$pkgdir/etc/pam.d/karchy-login"
   # Font defaults: monospace is JetBrainsMono Nerd Font, unless karchy-font-set
   # chose another (the state file it includes) or the user's fontconfig does.

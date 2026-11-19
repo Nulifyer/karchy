@@ -16,6 +16,8 @@
 #                  keyring opens; takes effect at the next sign-in. The key
 #                  it replaces is kept beside it in /etc/credstore.
 #
+# An install without disk encryption has no such key: its keyring opens with the login password (D-131).
+#
 # The installer takes one too: KARCHY_KEYRING_KEY_FILE=<file> in an unattended
 # config (docs/installing.md).
 
@@ -29,6 +31,12 @@ fail() {
 }
 
 valid() { [[ $1 =~ ^[A-Za-z0-9+/]{43}=$ ]]; }
+
+if [[ -e /etc/karchy/keyring-login-password ]]; then
+  echo "This install's keyring opens with your login password, not with a key, so there is no key to save or restore."
+  echo "A restored home folder's keyring opens here if your login password is the one it had."
+  exit 0
+fi
 
 case "${1:-}" in
 export)

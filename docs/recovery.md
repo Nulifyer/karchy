@@ -8,6 +8,8 @@ karchy's disk layout, which the commands below rely on:
 - Partition 2 is LUKS2-encrypted. One password unlocks it.
 - Inside is one btrfs filesystem with the subvolumes `@ @home @root @srv @cache @log @tmp @swap`.
 
+An install made without disk encryption has the btrfs filesystem directly on partition 2. `lsblk -o NAME,FSTYPE` tells which you have: partition 2 is `crypto_LUKS` on an encrypted install and `btrfs` on a plain one. On a plain install, skip the LUKS header backup below, and in "Get into the system from the install media" skip the unlock step and use partition 2 itself as `root` (the note there says how).
+
 ## Back up the LUKS header now, while everything works
 
 The LUKS header is the first 16 MiB of partition 2. It holds the key slots. If it is damaged, the password no longer opens the disk and the data is lost. A backup of the header is small and takes a second to make.
@@ -153,6 +155,8 @@ Boot the karchy ISO or the Arch Linux ISO. On the karchy ISO, press Esc at the i
    root=/dev/mapper/$name
    ```
 
+   On an install without disk encryption there is nothing to unlock: set `root=$luks` instead, and leave out `cryptsetup close` at the end.
+
 3. Mount the subvolumes as the installer does:
 
    ```sh
@@ -193,6 +197,28 @@ Boot the karchy ISO or the Arch Linux ISO. On the karchy ISO, press Esc at the i
    umount -R /mnt
    cryptsetup close "$name"
    ```
+
+## The login screen does not appear
+
+After logging out (and at boot on an install without disk encryption) karchy shows its own login screen. When it can't start, greetd's text login takes its place by itself: type your username and password there. `journalctl -t karchy-greeter` says why the screen fell back.
+
+To get the text login on purpose:
+
+- for one boot: in the boot menu press `e` on the entry, add ` karchy.greeter=text` at the end of the `cmdline:` line, then F10 (the editor is off under Secure Boot);
+- for every boot: `sudo touch /etc/karchy/greeter-text`. Remove the file to get the screen back.
+
+Ctrl+Alt+F2 opens a text console with its own login at any time.
+
+## A data disk the installer encrypted
+
+A disk you chose to "erase and encrypt" at install opens at boot with a key file on the system disk (`/etc/cryptsetup-keys.d/luks-<UUID>.key`, named in `/etc/crypttab`) and is mounted at `/mnt/data`. Your install password opens it as well:
+
+```sh
+sudo cryptsetup open /dev/sdb1 data      # asks for the password
+sudo mount /dev/mapper/data /mnt/data
+```
+
+Use this from the install media, in another computer, or after reinstalling the system disk (the key file is gone with the old system, the password still works). Back up its LUKS header as for the system disk. If the disk is taken out for good, delete its line from `/etc/crypttab` and from `/etc/fstab`; until then a boot goes on without it.
 
 ## The firmware lost the boot entry
 

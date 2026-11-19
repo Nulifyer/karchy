@@ -11,6 +11,11 @@
 # so every snapshot of the system holds it: a new key would leave the existing
 # keyring unopenable, so a key exists before any keyring does.
 #
+# An install without disk encryption keeps no key: there
+# the keyring opens with the login password (D-131), and a key on a plain
+# disk would open it for anyone who has the disk. The installer marks such an
+# install with /etc/karchy/keyring-login-password.
+#
 # Usage: keyring-key <uid>   (run by the installer and karchy-keyring-key@<uid>.service)
 
 set -euo pipefail
@@ -18,6 +23,7 @@ set -euo pipefail
 uid=${1:-}
 [[ $uid =~ ^[0-9]+$ ]] || exit 1
 ((uid >= 1000)) || exit 0
+[[ ! -e /etc/karchy/keyring-login-password ]] || exit 0
 
 store=/etc/credstore
 key=$store/karchy.keyring.$uid

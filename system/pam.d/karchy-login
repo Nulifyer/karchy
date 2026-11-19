@@ -1,7 +1,6 @@
-# karchy (D-127): logging in at karchy's login screen on an install whose
-# keyring opens with the login password (no disk encryption, no automatic
-# login). greetd's own service plus oo7's module: it keeps the password typed
-# at the login screen and hands it to the user's oo7 daemon once the session
+# karchy (D-131): logging in at karchy's login screen on an install whose
+# keyring opens with the login password (no disk encryption). greetd's own
+# service plus oo7's module: it keeps the password typed at the login screen and hands it to the user's oo7 daemon once the session
 # is open, which unlocks the login keyring with it. /etc/greetd/config.toml
 # names this service only on such an install.
 #%PAM-1.0

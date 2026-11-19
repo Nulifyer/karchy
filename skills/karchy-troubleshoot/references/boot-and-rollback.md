@@ -4,10 +4,11 @@ The full procedures are in karchy's `docs/recovery.md` (github.com/Nulifyer/karc
 
 ## Layout the steps rely on
 
-- Partition 1 is the 4 GiB EFI partition, mounted at `/boot`. Partition 2 is LUKS2. One password unlocks it.
+- Partition 1 is the 4 GiB EFI partition, mounted at `/boot`. Partition 2 is LUKS2. One password unlocks it. An install made without disk encryption has btrfs directly on partition 2 and asks no disk password: `lsblk -o NAME,FSTYPE` shows `btrfs` there instead of `crypto_LUKS`, and `/etc/karchy/install.conf` has `KARCHY_ENCRYPT=login`. That is a choice made at install, not a fault.
 - Inside is one btrfs filesystem with the subvolumes `@ @home @root @srv @cache @log @tmp @swap`.
 - The boot loader is Limine. Its menu shows for 3 seconds. An arrow key stops the countdown.
 - The disk password is asked on a splash screen (Plymouth, theme `karchy`: the mark and a password box). The kernel line carries `splash` for it. Without `splash`, or with `plymouth.enable=0`, the password is asked as text on a screen with karchy's name. Escape on the splash shows the boot messages.
+- After logging out, and at boot on an install with `KARCHY_ENCRYPT=login`, greetd shows karchy's login screen (`/usr/lib/karchy/greeter`: Quickshell in a Hyprland of its own, as the `greeter` user). When it can't start, greetd's text login (agreety) replaces it.
 - snapper's config is `root`. snap-pac takes a snapshot before and after every pacman transaction, and limine-snapper-sync lists them in the boot menu under `Snapshots`.
 - `/home` is not in a snapshot. A rollback keeps the user's files and the user's `~/.config` as they are now.
 
@@ -20,6 +21,10 @@ The full procedures are in karchy's `docs/recovery.md` (github.com/Nulifyer/karc
 | No password box, a black screen where it should be, or keys do nothing there | Boot once without the splash: press `e` on the entry, add ` plymouth.enable=0` at the end of the `cmdline:` line, then F10. The text prompt asks instead. For good: delete `splash` from `KERNEL_CMDLINE[default]` in `/etc/default/limine`, then `sudo limine-mkinitcpio`. |
 | Dark screen or a stall during boot | For one boot, press `e` on the entry and delete `quiet splash loglevel=3 systemd.show_status=auto` from the `cmdline:` line, then F10. The editor is off under Secure Boot. Escape on the splash also shows the messages. |
 | "You are in emergency mode" | Press Enter for a root shell. `journalctl -xb` shows what failed. A wrong `/etc/fstab` line is the usual cause. |
+| The text login appears where the login screen should be, or the login screen is black | `journalctl -b -t karchy-greeter` says why it fell back. For the text login on purpose: ` karchy.greeter=text` on the kernel line for one boot, or `sudo touch /etc/karchy/greeter-text`. Ctrl+Alt+F2 is a text console either way. |
+| The password is right but the login screen says "Wrong password" or names a locked account | Ten wrong tries lock the account for 2 minutes (`faillock --user <name>` shows the tally; `sudo faillock --user <name> --reset` clears it). Check the keyboard layout named at the bottom left of the screen. |
+| Saved passwords are not available after login on an install with a login screen | The keyring opens with the login password (`pam_oo7` in `/etc/pam.d/karchy-login`). `journalctl -b --user -u oo7-daemon` and `journalctl -b -t greetd` show the hand-over. A login password changed by root (`sudo passwd <name>`) leaves the keyring on the old one. |
+| A data disk at `/mnt/data` is missing after boot | `systemctl status 'systemd-cryptsetup@*'` and `journalctl -b -u 'systemd-cryptsetup@*'`. Its line in `/etc/crypttab` names a key file in `/etc/cryptsetup-keys.d`; the install password opens the disk by hand (`docs/recovery.md`, "A data disk the installer encrypted"). |
 | No menu entry works | Boot the karchy or Arch ISO, unlock, mount and chroot. Follow `docs/recovery.md`, "Get into the system from the install media", exactly. |
 | The firmware lost the boot entry | The machine still boots from the fallback path. `sudo limine-install` puts the named entry back. |
 | Resume from hibernation fails | `journalctl -b -k \| grep -i -E 'hibernat\|resume\|PM:'`. See `docs/recovery.md` for turning hibernation off. |
