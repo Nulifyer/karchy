@@ -101,9 +101,10 @@ wanted=()
 find_wanted() {
   local dir requirement ok
   [[ -d $SOURCE ]] || return 0
-  for dir in "$SOURCE"/*/; do
+  # "$SOURCE"/* rather than */: with the slash, the C locale sorts karchy/
+  # after karchy-troubleshoot/, and the order would depend on the locale.
+  for dir in "$SOURCE"/*; do
     [[ -d $dir ]] || continue
-    dir=${dir%/}
     ok=true
     if [[ -f $dir/.requires ]]; then
       while read -r requirement _; do
@@ -364,9 +365,9 @@ status() {
     [[ $(folder_state "$dir") == folder ]] && folders+=("$dir")
   done < <(each_agent_dirs)
   [[ -d $SOURCE ]] || return 0
-  for dir in "$SOURCE"/*/; do
+  for dir in "$SOURCE"/*; do
     [[ -d $dir ]] || continue
-    name=${dir%/} name=${name##*/}
+    name=${dir##*/}
     if ! is_wanted "$name"; then
       say "not installed here  $name (needs: $(tr '\n' ' ' <"$dir/.requires" | sed 's/ *$//'))"
       continue
