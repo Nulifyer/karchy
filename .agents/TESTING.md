@@ -54,6 +54,8 @@ Dev mode in a test VM (D-55), to try shell and command changes without rebuildin
 - VM files: `${KARCHY_VM_DIR:-~/.local/state/karchy-vm}`. Override the VM size with `KARCHY_VM_CPUS`, `KARCHY_VM_MEMORY` and `KARCHY_VM_DISPLAY`.
 - Install media: the current stock Arch Linux ISO, from `geo.mirror.pkgbuild.com/iso/latest`.
 
+- The VMs have QEMU's iTCO watchdog (libvirt adds it to q35 machines, action reset). A watchdog left running survives a forced reset: systemd arms it for 10 minutes on the way into a reboot, so a reboot that hangs and is then forced can reset the VM again up to 10 minutes later, in the middle of the next boot. Look for `event 'watchdog'` in `virsh event --domain karchy-<vm> --all --loop` before blaming the guest.
+
 ## Known gaps
 
 - The VM cannot test NVIDIA, fingerprint, laptop power or suspend, real docking, or Wi-Fi.
