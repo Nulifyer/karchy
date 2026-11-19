@@ -241,5 +241,5 @@ factor="$(awk -v s="$size" -v b="$SHELL_DEFAULT_PX" -v f="$(gtk_font_pt)" \
   'BEGIN { printf "%.4f", int(f * s / b + 0.5) / f }')"
 set_factor "$factor"
 
-# Terminal side: point size anchored so 12px == 9pt.
+# Terminal side: point size anchored so 12px == 10pt.
 set_terminal_size "$(term_pt_for "$size")"
