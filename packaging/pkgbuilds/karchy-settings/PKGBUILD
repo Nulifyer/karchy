@@ -39,6 +39,10 @@ package() {
   install -m440 sudoers.d/karchy sudoers.d/karchy-theme-browser "$pkgdir/etc/sudoers.d/"
   install -Dm755 limine/95-karchy-limine-fallback "$pkgdir/etc/boot/hooks/post.d/95-karchy-limine-fallback"
   install -Dm644 makepkg.conf.d/karchy.conf "$pkgdir/etc/makepkg.conf.d/karchy.conf"
+  # Limine's look (D-119): karchy's name, the default theme's colours and
+  # the font as an 8x16 bitmap, written into limine.conf by limine-brand.
+  install -Dm755 limine/limine-brand "$pkgdir/usr/lib/karchy/limine-brand"
+  install -Dm644 console/karchy-8x16.bin "$pkgdir/usr/share/karchy/limine/karchy-8x16.bin"
   # The console font (D-119): karchy's monospace font as bitmaps
   # (tools/console-font), which the installer names in vconsole.conf.
   install -Dm644 -t "$pkgdir/usr/share/kbd/consolefonts" console/karchy-*.psfu

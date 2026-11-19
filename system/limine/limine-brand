@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# karchy: gives the Limine boot menu karchy's name, colours and font.
+# Installed as /usr/lib/karchy/limine-brand; the installer runs it as root
+# after limine-update has written limine.conf, and it can be run again at any
+# time (a later karchy that changes the look runs it from a migration).
+#
+# limine.conf's entries belong to limine-entry-tool and limine-snapper-sync,
+# which rewrite them and keep everything above the first entry as it is. This
+# writes only one marked block there, in front of the first entry (Limine reads
+# global options only before it), and replaces that block on the next run.
+# Options the tools own (timeout, default_entry, hash_mismatch_panic) are left
+# alone.
+#
+# The font is a file on the ESP, so its path carries the file's BLAKE2B hash:
+# with Secure Boot and an enrolled config Limine loads no file without one.
+# Limine skips a font it can't load or verify and uses its built-in one, so a
+# damaged or missing font file never stops a boot.
+#
+# When limine.conf's hash is enrolled in the Limine binary (Secure Boot), a
+# changed limine.conf must be enrolled again: limine-update does that through
+# its hooks, so this runs it after a change.
+
+set -euo pipefail
+
+((EUID == 0)) || { echo "limine-brand: run as root" >&2; exit 1; }
+
+setting() {
+  grep -hE "^$1=" /etc/limine-entry-tool.conf /etc/default/limine 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d "\"'"
+}
+
+esp=$(setting ESP_PATH)
+esp=${esp:-/boot}
+config=$esp/limine.conf
+font_src=/usr/share/karchy/limine/karchy-8x16.bin
+font_dir=$esp/karchy
+begin="### karchy: begin (written by /usr/lib/karchy/limine-brand, which replaces this block)"
+end="### karchy: end"
+
+[[ -f $config ]] || { echo "limine-brand: $config not found; run limine-update first" >&2; exit 1; }
+
+font_lines=""
+if [[ -f $font_src ]] && install -Dm644 "$font_src" "$font_dir/font-8x16.bin"; then
+  hash=$(b2sum "$font_dir/font-8x16.bin" | cut -d' ' -f1)
+  font_lines="term_font: boot():/karchy/font-8x16.bin#$hash
+term_font_size: 8x16
+term_font_spacing: 0"
+fi
+
+# The default theme (themes/nulifyer/colors.toml), which is what a karchy
+# machine shows before any user's theme can apply.
+block="$begin
+interface_branding: karchy
+interface_branding_colour: d8a657
+interface_help_colour: d8a657
+interface_help_colour_bright: ebdbb2
+term_palette: 202020;ea6962;a9b665;d8a657;7daea3;d3869b;89b482;ddc7a1
+term_palette_bright: 7c6f64;ea6962;a9b665;d8a657;7daea3;d3869b;89b482;ebdbb2
+term_background: 202020
+term_foreground: ddc7a1
+term_background_bright: 7c6f64
+term_foreground_bright: ebdbb2
+term_font_scale: 2x2
+$font_lines
+$end"
+
+new=$(mktemp "$config.karchy.XXXXXX")
+trap 'rm -f "$new"' EXIT
+# Drop the old block, then put the new one in front of the first entry (a
+# line starting with "/"), or at the end of a file that has none yet.
+awk -v begin="$begin" -v end="$end" -v block="$block" '
+  $0 == begin { skipping = 1; next }
+  skipping { if ($0 == end) { skipping = 0; blank = 1 }; next }
+  blank { blank = 0; if ($0 == "") next }
+  !placed && /^\// { print block; print ""; placed = 1 }
+  { print }
+  END { if (!placed) print block }
+' "$config" >"$new"
+
+if cmp -s "$new" "$config"; then
+  exit 0
+fi
+cat "$new" >"$config"
+sync -f "$config"
+echo "limine-brand: $config updated"
+
+if [[ $(setting ENABLE_ENROLL_LIMINE_CONFIG) == "yes" ]]; then
+  limine-update
+fi

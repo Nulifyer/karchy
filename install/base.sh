@@ -346,7 +346,10 @@ ESP_PATH="/boot"
 KERNEL_CMDLINE[default]="$cmdline"
 BOOT_ORDER="*, *lts, Snapshots"
 ENABLE_LIMINE_FALLBACK=yes
+TARGET_OS_NAME="karchy"
 EOF
+  # TARGET_OS_NAME: the menu's top entry reads "karchy", not os-release's
+  # "Arch Linux" (limine-snapper-sync finds the entry by its machine ID).
   # ENABLE_LIMINE_FALLBACK: limine-update keeps the firmware's fallback copy
   # of Limine (EFI/BOOT/BOOTX64.EFI) current. Setting up Secure Boot
   # (karchy-secureboot setup, at the end of the install or later) takes the
@@ -354,6 +357,9 @@ EOF
   # signed binary.
   in_target limine-install --fallback
   in_target limine-update
+  # karchy's name, colours and font for the menu, above the entries that
+  # limine-update just wrote. Decoration: the menu works without it.
+  in_target /usr/lib/karchy/limine-brand || echo "limine-brand failed: the boot menu keeps Limine's own look"
   # These are the only kernel files on the ESP (see base_pacstrap), and
   # limine-update carries on when one kernel's build fails: stop here rather
   # than at a first boot with nothing to start.
