@@ -28,4 +28,7 @@ package() {
   make DESTDIR="$pkgdir" install
   # The bar widget, loaded by the shell from the root-owned add-on folder.
   install -Dm644 -t "$pkgdir/usr/share/karchy/plugins/karchy.vpn" manifest.json Panel.qml
+  # Its agent skill, linked for each user by karchy-agent-skills.
+  install -d "$pkgdir/usr/share/karchy/agents/skills"
+  cp -a "$srcdir/karchy/skills/karchy-vpn" "$pkgdir/usr/share/karchy/agents/skills/"
 }

@@ -50,6 +50,10 @@ package() {
   # Where add-on packages (addons/) put their shell UI and Hyprland drop-ins.
   install -d "$share/plugins" "$share/hypr.d"
   cp -a default "$share/"
+  # Agent skills for AI coding agents, linked for each user by
+  # karchy-agent-skills. Feature packages add theirs to the same folder.
+  install -d "$share/agents/skills"
+  cp -a skills/karchy skills/karchy-troubleshoot skills/karchy-vms "$share/agents/skills/"
   install -d "$share/install"
   cp -a install/helpers install/provisioning "$share/install/"
   # Migrations (karchy-migrate), and /etc/skel marks for each one shipped, so
