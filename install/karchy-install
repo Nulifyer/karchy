@@ -199,7 +199,7 @@ elif [[ -z $config_file && $KARCHY_UI == tui ]]; then
   # Stay in the live system on No, Esc or Ctrl-C: the shell is the way back
   # to the log or to a second look at the disk.
   if gum confirm --default=true --affirmative "Restart now" --negative "Stay in the live system" \
-    "Restart now? Take the USB stick out once the screen goes dark."; then
+    "Restart now?"; then
     restart_now
   fi
 fi

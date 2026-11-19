@@ -272,13 +272,19 @@ form_run() {
 
   KARCHY_SECUREBOOT=no
   if firmware_setup_mode; then
-    if form_yes_no --default=true "Set up Secure Boot? The firmware is in Setup Mode, so karchy can enroll its own keys (with Microsoft's, for GPU firmware and dual boot)."; then
+    # gum draws its question on one line and cuts it at the screen's edge,
+    # so the explanation goes above it, each line within 80 columns.
+    ui_line "The firmware is in Setup Mode, so karchy can enroll its own keys" "$UI_DIM"
+    ui_line "(with Microsoft's, for GPU firmware and dual boot)." "$UI_DIM"
+    if form_yes_no --default=true "Set up Secure Boot?"; then
       KARCHY_SECUREBOOT=yes
     fi
   fi
 
   KARCHY_BEES=yes
-  if ! form_yes_no --default=true "Deduplicate the disk in the background (bees)? Saves space with worktrees, caches and copied VM disks."; then
+  ui_line "bees finds identical data and stores it once: it saves space with" "$UI_DIM"
+  ui_line "worktrees, caches and copied VM disks." "$UI_DIM"
+  if ! form_yes_no --default=true "Deduplicate the disk in the background?"; then
     KARCHY_BEES=no
   fi
 }
