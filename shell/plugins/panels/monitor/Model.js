@@ -137,11 +137,11 @@ function parseNightLight(raw) {
 }
 
 // The line under the night light's name. The switch already shows on or off,
-// so this says what a schedule will do next ("On until 07:00"), or with no
-// schedule what the night light is.
+// so this says what a schedule will do next ("On until 07:00"); with no
+// schedule there is nothing to add.
 function nightLightLabel(on, until, tr) {
   var t = typeof tr === "function" ? tr : function(key, english) { return english }
-  if (!until) return t("monitor.nightLightHint", "Warmer colors for the evening")
+  if (!until) return ""
   return on
     ? t("monitor.nightLightOnUntil", "On until %1").replace("%1", until)
     : t("monitor.nightLightOffUntil", "Off until %1").replace("%1", until)

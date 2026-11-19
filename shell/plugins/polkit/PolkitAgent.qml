@@ -369,9 +369,12 @@ Item {
       }
     }
 
+    // What the password approves, whole: a long request wraps instead of
+    // losing its middle.
     Rectangle {
-      width: Math.min(justificationText.implicitWidth + Style.space(24), panel.width - Style.gapsOut * 2)
-      height: Style.space(28)
+      readonly property real room: Math.min(Style.space(560), panel.width - Style.gapsOut * 2)
+      width: Math.min(justificationText.implicitWidth + Style.space(24), room)
+      height: justificationText.height + Style.space(14)
       anchors.horizontalCenter: card.horizontalCenter
       anchors.bottom: card.top
       anchors.bottomMargin: Style.space(10)
@@ -381,16 +384,17 @@ Item {
       Text {
         id: justificationText
         textFormat: Text.PlainText
-        anchors.fill: parent
-        anchors.leftMargin: Style.space(12)
-        anchors.rightMargin: Style.space(12)
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(implicitWidth, parent.room - Style.space(24))
         text: root.authorizationLabel(root.currentMessage)
         color: root.foreground
         font.family: root.fontFamily
-        font.pixelSize: Style.font.bodySmall
+        font.pixelSize: Style.font.body
         horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideMiddle
+        wrapMode: Text.Wrap
+        maximumLineCount: 6
+        elide: Text.ElideRight
       }
     }
   }

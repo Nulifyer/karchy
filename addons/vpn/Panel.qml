@@ -21,6 +21,10 @@ Panel {
   // until then the VPN is installed but not set up.
   property bool configured: false
   property bool cursorActive: false
+  // Handshake, route, DNS and the rest: closed until asked for.
+  property bool detailsOpen: false
+  readonly property bool probeFailing: vpnInfo.probe === "unreachable"
+  readonly property bool guardBlocking: vpnInfo.guard === "connecting"
   property string focusSection: "header"
   property int modeIndex: 1
   property int phraseIndex: 0
@@ -229,6 +233,7 @@ Panel {
 
   function activateCursor() {
     if (focusSection === "header") refresh()
+    else if (focusSection === "details") detailsOpen = !detailsOpen
     else setMode(["off", "auto", "on"][modeIndex])
   }
 
@@ -238,6 +243,7 @@ Panel {
   onOpenedChanged: {
     if (opened) {
       cursorActive = false
+      detailsOpen = false
       focusSection = "header"
       modeIndex = selectedModeIndex()
       refresh()
@@ -387,6 +393,10 @@ Panel {
         if (dy > 0 && root.focusSection === "header") {
           root.focusSection = "mode"
           root.modeIndex = root.selectedModeIndex()
+        } else if (dy > 0 && root.focusSection === "mode") {
+          root.focusSection = "details"
+        } else if (dy < 0 && root.focusSection === "details") {
+          root.focusSection = "mode"
         } else if (dy < 0 && root.focusSection === "mode") {
           root.focusSection = "header"
         } else if (dx !== 0 && root.focusSection === "mode") {
@@ -528,7 +538,40 @@ Panel {
           wrapMode: Text.WordWrap
         }
 
+        // What matters at a glance: the network, what happens to traffic,
+        // and anything that is failing. The rest is under Connection details.
         GridLayout {
+          width: parent.width
+          columns: 2
+          columnSpacing: Style.space(20)
+          rowSpacing: Style.spacing.labelGap
+
+          InfoLabel { text: "Network" }
+          DetailValue { text: root.trustText() }
+          InfoLabel { text: "Traffic" }
+          DetailValue {
+            text: root.trafficText()
+            color: root.vpnInfo.traffic === "blocked" ? root.urgent : root.foreground
+          }
+          InfoLabel { visible: root.probeFailing; text: "Probe" }
+          DetailValue { visible: root.probeFailing; text: root.probeText(); color: root.urgent }
+          InfoLabel { visible: root.guardBlocking; text: "Guard" }
+          DetailValue { visible: root.guardBlocking; text: root.guardText(); color: root.urgent }
+        }
+
+        Button {
+          leftAlign: true
+          text: "Connection details"
+          iconText: Icons.glyph(root.detailsOpen ? "ui.chevron.up" : "ui.chevron.down")
+          foreground: root.foreground
+          fontFamily: root.fontFamily
+          hasCursor: root.cursorActive && root.focusSection === "details"
+          onClicked: root.detailsOpen = !root.detailsOpen
+          onHovered: function(on) { if (on) { root.cursorActive = true; root.focusSection = "details" } }
+        }
+
+        GridLayout {
+          visible: root.detailsOpen
           width: parent.width
           columns: 2
           columnSpacing: Style.space(20)
@@ -536,54 +579,18 @@ Panel {
 
           InfoLabel { text: "Upstream" }
           DetailValue { text: root.upstreamText() }
-          InfoLabel { text: "Network" }
-          DetailValue { text: root.trustText() }
           InfoLabel { text: "Tunnel" }
           DetailValue { text: root.tunnelText() }
           InfoLabel { text: "Handshake" }
           DetailValue { text: root.handshakeText() }
-          InfoLabel { text: "Probe" }
-          DetailValue {
-            text: root.probeText()
-            color: root.vpnInfo.probe === "unreachable" ? root.urgent : root.foreground
-          }
-        }
-
-        PanelSeparator {
-          foreground: root.foreground
-        }
-
-        Column {
-          width: parent.width
-          spacing: Style.space(10)
-
-          PanelSectionHeader {
-            text: "NETWORK POLICY"
-            foreground: root.foreground
-            fontFamily: root.fontFamily
-          }
-
-          GridLayout {
-            width: parent.width
-            columns: 2
-            columnSpacing: Style.space(20)
-            rowSpacing: Style.spacing.labelGap
-
-            InfoLabel { text: "Traffic" }
-            DetailValue {
-              text: root.trafficText()
-              color: root.vpnInfo.traffic === "blocked" ? root.urgent : root.foreground
-            }
-            InfoLabel { text: "Route" }
-            DetailValue { text: root.routeText() }
-            InfoLabel { text: "DNS" }
-            DetailValue { text: root.dnsText() }
-            InfoLabel { text: "Guard" }
-            DetailValue {
-              text: root.guardText()
-              color: root.vpnInfo.guard === "connecting" ? root.urgent : root.foreground
-            }
-          }
+          InfoLabel { visible: !root.probeFailing; text: "Probe" }
+          DetailValue { visible: !root.probeFailing; text: root.probeText() }
+          InfoLabel { text: "Route" }
+          DetailValue { text: root.routeText() }
+          InfoLabel { text: "DNS" }
+          DetailValue { text: root.dnsText() }
+          InfoLabel { visible: !root.guardBlocking; text: "Guard" }
+          DetailValue { visible: !root.guardBlocking; text: root.guardText() }
         }
       }
     }
