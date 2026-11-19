@@ -100,10 +100,15 @@ build_iso() {
   # shellcheck disable=SC2016  # for zsh, at login
   printf '\n# karchy: start the installer on the first console, once per boot.\n[[ $(tty) == /dev/tty1 ]] && /usr/local/bin/karchy-iso-start\n' \
     >>"$profile/airootfs/root/.zlogin"
-  # Name the boot menu entries after karchy.
+  # Name the boot menu and its entries after karchy. The UEFI menu
+  # (systemd-boot) has no colours to set. The BIOS one (syslinux) gets the
+  # default theme's in place of releng's and of the Arch splash image; karchy
+  # only installs under UEFI, so that menu leads to the installer saying so.
   grep -rlZ 'Arch Linux install medium' "$profile/efiboot" "$profile/grub" "$profile/syslinux" |
-    xargs -0 sed -i 's/Arch Linux install medium/karchy install medium/g'
-  sed -i 's/^MENU TITLE Arch Linux$/MENU TITLE karchy/' "$profile/syslinux/archiso_head.cfg"
+    xargs -0 sed -i 's/Arch Linux install medium/karchy installer/g'
+  sed -i -e 's/^MENU TITLE Arch Linux$/MENU TITLE karchy installer/' \
+    -e '/^MENU BACKGROUND /d' -e '/^MENU COLOR /d' "$profile/syslinux/archiso_head.cfg"
+  cat "$PROFILE_SRC/syslinux-colors.cfg" >>"$profile/syslinux/archiso_head.cfg"
 
   # The installer, as it runs from a checkout.
   installer="$profile/airootfs/usr/share/karchy-installer"
