@@ -2,12 +2,10 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
-import Quickshell.Bluetooth
-import Quickshell.Services.Pipewire
 import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
-import "Model.js" as Model
+import "../../../Commons/BluetoothControlModel.js" as Model
 
 Panel {
   id: root
@@ -17,37 +15,38 @@ Panel {
   // permits — needed for the toggleBluetooth method below.
   manageIpc: false
 
-  // Address -> "connecting" | "disconnecting" | "forgetting".
-  // The actual Bluetooth sequencing lives in bin/karchy-bluetooth-device;
-  // this map only keeps the panel responsive while BlueZ catches up.
-  property var pendingActions: ({})
+  // The adapter, its devices, what is being done to them, the pairing in
+  // progress and the scan are BluetoothControl's (qs.Commons), which
+  // Settings › Bluetooth uses too. The panel adds its cursor, its rows' looks
+  // and the keys.
+  readonly property var pendingActions: BluetoothControl.pendingActions
+  readonly property string pairingAddress: BluetoothControl.pairingAddress
+  readonly property string pairingName: BluetoothControl.pairingName
+  readonly property bool pairingPaired: BluetoothControl.pairingPaired
+  readonly property var pairingQuestion: BluetoothControl.pairingQuestion
+  readonly property string pairingAnswerText: BluetoothControl.pairingAnswerText
+  readonly property string pairFailureAddress: BluetoothControl.pairFailureAddress
+  readonly property string pairFailureText: BluetoothControl.pairFailureText
 
-  // Pairing runs one device at a time, in karchy-bluetooth-device pair, which
-  // stays up until the device is connected or the pairing failed. A device
-  // that wants a code asks through it: each question is a line on its stdout
-  // (Model.parsePairEvent) and the answer goes to its stdin.
-  property string pairingAddress: ""
-  property string pairingName: ""
-  property bool pairingPaired: false
-  // { kind, code } while a question is open, else null.
-  property var pairingQuestion: null
-  property string pairingAnswerText: ""
-  // Why the last pairing failed, shown on that device's row for a while.
-  property string pairFailureAddress: ""
-  property string pairFailureText: ""
+  readonly property var adapter: BluetoothControl.adapter
+  readonly property var devices: BluetoothControl.devices
 
-  readonly property var adapter: Bluetooth.defaultAdapter
-
-  // True while this instance owes BlueZ a StopDiscovery: set when it starts
-  // discovery (or opens onto a session already running) and cleared once
-  // discovery is confirmed down after close. Ownership, not state — BlueZ's
-  // Discovering property also reflects sessions other clients hold, which are
-  // never this panel's to stop.
-  property bool owesDiscoveryStop: false
-  readonly property var devices: Bluetooth.devices ? Bluetooth.devices.values : []
-  readonly property var pipewireNodes: Pipewire.nodes ? Pipewire.nodes.values : []
-  property var pendingAudioOutputDevice: null
-  property int pendingAudioOutputAttempts: 0
+  // While this panel is open the scan runs and it shows the pairing question
+  // (BluetoothControl.scan, attend). A question nobody is showing opens one
+  // panel: the first of the per-monitor instances.
+  readonly property string viewKey: "bluetooth-panel-" + Math.random().toString(36).slice(2)
+  Connections {
+    target: BluetoothControl
+    function onQuestionAsked() {
+      if (BluetoothControl.attended) return
+      var items = root.bar && typeof root.bar.moduleWidgets === "function" ? root.bar.moduleWidgets(root.moduleName) : []
+      if (items.length === 0 || items[0] === root) root.open()
+    }
+  }
+  Component.onDestruction: {
+    BluetoothControl.stopScan(viewKey)
+    BluetoothControl.leave(viewKey)
+  }
 
   function deviceLabel(device) {
     return Model.deviceLabel(device)
@@ -65,10 +64,10 @@ Panel {
     return Model.hasHumanName(device)
   }
 
-  readonly property var deviceGroups: Model.deviceLists(devices)
-  readonly property var connectedDevices: deviceGroups.connected || []
-  readonly property var knownDevices: deviceGroups.known || []
-  readonly property var discoveredDevices: deviceGroups.discovered || []
+  readonly property var deviceGroups: BluetoothControl.deviceGroups
+  readonly property var connectedDevices: BluetoothControl.connectedDevices
+  readonly property var knownDevices: BluetoothControl.knownDevices
+  readonly property var discoveredDevices: BluetoothControl.discoveredDevices
 
   readonly property string icon: {
     // No adapter reads like switched off, so the header keeps its shape.
@@ -197,215 +196,20 @@ Panel {
     return rows[index].section === "known" ? Commons.I18n.t("bluetooth.paired") : Commons.I18n.t("bluetooth.available")
   }
 
-  function audioSinks() {
-    var sinks = []
-    for (var i = 0; i < pipewireNodes.length; i++) {
-      var node = pipewireNodes[i]
-      if (node && node.isSink && !node.isStream) sinks.push(node)
-    }
-    return sinks
-  }
-
-  function bluetoothAudioSink(device) {
-    var sinks = audioSinks()
-    for (var i = 0; i < sinks.length; i++) {
-      if (Model.bluetoothSinkMatchesDevice(sinks[i], device)) return sinks[i]
-    }
-    return null
-  }
-
-  function setDefaultAudioSink(sink) {
-    if (!sink) return
-    Pipewire.preferredDefaultAudioSink = sink
-    if (sink.id !== undefined && sink.name) {
-      Quickshell.execDetached([
-        "karchy-audio-output-set-default",
-        String(sink.id),
-        String(sink.name)
-      ])
-    }
-  }
-
-  function scheduleAudioOutputSwitch(device) {
-    pendingAudioOutputDevice = {
-      address: device && device.address ? device.address : "",
-      name: device && device.name ? device.name : "",
-      deviceName: device && device.deviceName ? device.deviceName : ""
-    }
-    pendingAudioOutputAttempts = 0
-    audioSwitchTimer.restart()
-  }
-
-  function switchPendingAudioOutput() {
-    if (!pendingAudioOutputDevice) return
-
-    var sink = bluetoothAudioSink(pendingAudioOutputDevice)
-    if (sink) {
-      setDefaultAudioSink(sink)
-      pendingAudioOutputDevice = null
-      audioSwitchTimer.stop()
-      return
-    }
-
-    pendingAudioOutputAttempts += 1
-    if (pendingAudioOutputAttempts >= 8) {
-      pendingAudioOutputDevice = null
-      return
-    }
-    audioSwitchTimer.restart()
-  }
-
   function deviceAt(section, index) {
     var list = devicesForSection(section)
     return index >= 0 && index < list.length ? list[index] : null
   }
 
-  function cloneMap(map) {
-    return Model.cloneMap(map)
-  }
-
-  function pendingAction(address) {
-    return Model.pendingAction(pendingActions, address)
-  }
-
-  function setPendingAction(address, action) {
-    if (!address) return
-    pendingActions = Model.withPendingAction(pendingActions, address, action)
-    if (action) pendingTimeout.restart()
-  }
-
-  function deviceCommand(action, address) {
-    return ["karchy-bluetooth-device", action, address]
-  }
-
-  function runDeviceAction(device, action, pending) {
-    if (!device || !device.address) return
-    setPendingAction(device.address, pending)
-    Quickshell.execDetached(deviceCommand(action, device.address))
-  }
-
-  function connectDevice(device) {
-    if (!device || device.connected) return
-    if (device.paired || device.bonded || device.trusted) runDeviceAction(device, "connect", "connecting")
-    else startPairing(device)
-  }
-
-  function startPairing(device) {
-    if (!device || !device.address || pairProc.running) return
-    pairingAddress = device.address
-    pairingName = deviceLabel(device)
-    pairingPaired = false
-    pairingQuestion = null
-    pairFailureAddress = ""
-    pairFailureText = ""
-    pairProc.command = deviceCommand("pair", device.address)
-    pairProc.running = true
-  }
-
-  function handlePairEvent(line) {
-    var event = Model.parsePairEvent(line)
-    if (!event) return
-
-    if (event.type === "question") {
-      pairingAnswerText = ""
-      pairingQuestion = { kind: event.kind, code: event.code }
-      // The device waits for the answer, so bring the question to the person.
-      if (!opened) open()
-      return
-    }
-
-    pairingQuestion = null
-    if (event.type === "paired") {
-      pairingPaired = true
-    } else if (event.type === "connected") {
-      scheduleAudioOutputSwitch(deviceForAddress(pairingAddress))
-    } else if (event.type === "failed") {
-      pairFailureAddress = pairingAddress
-      pairFailureText = Model.pairFailureText(event.reason, Commons.I18n.t)
-      if (pairFailureText !== "") pairFailureClear.restart()
-    }
-  }
-
-  function deviceForAddress(address) {
-    for (var i = 0; i < devices.length; i++) {
-      if (devices[i] && devices[i].address === address) return devices[i]
-    }
-    return null
-  }
-
-  function answerPairing(text) {
-    if (!pairProc.running) return
-    pairProc.write(text + "\n")
-    pairingQuestion = null
-  }
-
-  function submitPairingText() {
-    if (!pairingQuestion) return
-    var answer = Model.pairTypedAnswer(pairingQuestion.kind, pairingAnswerText)
-    if (answer !== "") answerPairing(answer)
-  }
-
-  // Enter and Escape while a question is open. A code that is only read
-  // (typed on the device) has nothing to accept; Escape gives the pairing up.
-  function acceptPairingQuestion() {
-    if (!pairingQuestion) return
-    if (pairingQuestion.kind === "confirm") answerPairing("yes")
-    else if (Model.pairQuestionTyped(pairingQuestion.kind)) submitPairingText()
-  }
-
-  function declinePairingQuestion() {
-    if (!pairingQuestion) return
-    answerPairing(pairingQuestion.kind === "confirm" ? "no" : "cancel")
-  }
-
-  function pairingEnded() {
-    pairingQuestion = null
-    pairingAddress = ""
-    pairingName = ""
-    pairingPaired = false
-  }
-
-  function disconnectDevice(device) {
-    if (!device || !device.address) return
-    if (!device.connected) return
-    setPendingAction(device.address, "disconnecting")
-    if (device.disconnect) device.disconnect()
-    Quickshell.execDetached(deviceCommand("disconnect", device.address))
-  }
-
-  function forgetDevice(device) {
-    if (!device || !device.address) return
-    runDeviceAction(device, "forget", "forgetting")
-  }
-
-  function syncPendingActions() {
-    var next = cloneMap(pendingActions)
-    var changed = false
-
-    for (var address in next) {
-      var action = next[address]
-      var found = null
-
-      for (var i = 0; i < devices.length; i++) {
-        var d = devices[i]
-        if (d && d.address === address) {
-          found = d
-          break
-        }
-      }
-
-      var finishedConnecting = action === "connecting" && found && found.connected
-      if (finishedConnecting
-          || (action === "disconnecting" && found && !found.connected)
-          || (action === "forgetting" && (!found || (!found.paired && !found.bonded && !found.trusted)))) {
-        if (finishedConnecting) scheduleAudioOutputSwitch(found)
-        delete next[address]
-        changed = true
-      }
-    }
-
-    if (changed) pendingActions = next
-  }
+  function pendingAction(address) { return BluetoothControl.pendingAction(address) }
+  function connectDevice(device) { BluetoothControl.connectDevice(device) }
+  function disconnectDevice(device) { BluetoothControl.disconnectDevice(device) }
+  function forgetDevice(device) { BluetoothControl.forgetDevice(device) }
+  function answerPairing(text) { BluetoothControl.answerPairing(text) }
+  function submitPairingText() { BluetoothControl.submitPairingText() }
+  function acceptPairingQuestion() { BluetoothControl.acceptPairingQuestion() }
+  function declinePairingQuestion() { BluetoothControl.declinePairingQuestion() }
+  function toggleBluetooth() { BluetoothControl.togglePower() }
 
   // j/k navigates the hero toggle ("header") and the device sections
   // row-by-row.
@@ -492,31 +296,19 @@ Panel {
   }
 
   onOpenedChanged: {
-    if (opened) {
-      // Adopt a discovery session that is already running — a popout handoff
-      // from another monitor, or one leaked by an instance that could not
-      // finish its own stop — so this close settles it either way.
-      if (adapter !== null && adapter.discovering) owesDiscoveryStop = true
-      if (connectedDevices.length > 0) { focusSection = "connected"; selectedIndex = 0 }
-      else if (knownDevices.length > 0) { focusSection = "known"; selectedIndex = 0 }
-      else if (discoveredDevices.length > 0) { focusSection = "discovered"; selectedIndex = 0 }
-      else { focusSection = "header" }
-      actionFocused = false
-      cursorActive = false
+    if (!opened) {
+      BluetoothControl.stopScan(viewKey)
+      BluetoothControl.leave(viewKey)
+      return
     }
-  }
-
-  // Another per-monitor instance of this widget whose panel is open, if any.
-  // All instances share the default adapter, and switching the popout to a
-  // different monitor closes one instance as it opens the next, so the
-  // closing side has to leave the scan alone for the side still on screen.
-  function openSibling() {
-    if (!bar || typeof bar.moduleWidgets !== "function") return null
-    var items = bar.moduleWidgets(moduleName)
-    for (var i = 0; i < items.length; i++) {
-      if (items[i] && items[i] !== root && items[i].opened === true) return items[i]
-    }
-    return null
+    BluetoothControl.scan(viewKey)
+    BluetoothControl.attend(viewKey)
+    if (connectedDevices.length > 0) { focusSection = "connected"; selectedIndex = 0 }
+    else if (knownDevices.length > 0) { focusSection = "known"; selectedIndex = 0 }
+    else if (discoveredDevices.length > 0) { focusSection = "discovered"; selectedIndex = 0 }
+    else { focusSection = "header" }
+    actionFocused = false
+    cursorActive = false
   }
 
   function updateFocusedAddress() {
@@ -550,9 +342,9 @@ Panel {
 
   onSelectedIndexChanged: updateFocusedAddress()
   onFocusSectionChanged: updateFocusedAddress()
-  onConnectedDevicesChanged: { reselectFocusedDevice(); syncPendingActions() }
-  onKnownDevicesChanged: { reselectFocusedDevice(); syncPendingActions() }
-  onDiscoveredDevicesChanged: { reselectFocusedDevice(); syncPendingActions() }
+  onConnectedDevicesChanged: reselectFocusedDevice()
+  onKnownDevicesChanged: reselectFocusedDevice()
+  onDiscoveredDevicesChanged: reselectFocusedDevice()
   onVisibleSectionsChanged: clampCursor()
 
   function clampCursor() {
@@ -586,128 +378,6 @@ Panel {
   visible: adapter !== null
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-
-  // BlueZ rejects StartDiscovery while the adapter is still powering up, and
-  // discovery can also time out on its own. While the panel is open, keep
-  // nudging it back on so an enabled adapter is always scanning.
-  Timer {
-    id: discoveryRetry
-    interval: 1000
-    repeat: true
-    triggeredOnStart: true
-    running: root.opened && root.adapter !== null && root.adapter.enabled && !root.adapter.discovering
-    onTriggered: {
-      root.owesDiscoveryStop = true
-      root.adapter.discovering = true
-    }
-  }
-
-  // The way back down. The BlueZ discovery session behind adapter.discovering
-  // is held by quickshell's D-Bus connection, so nothing ends it at close:
-  // without this timer, one visit to the panel left the radio in inquiry
-  // until the next shell restart, starving A2DP audio on the same controller
-  // into stutters.
-  //
-  // A timer bound to the confirmed state rather than a write at close time:
-  // quickshell only forwards a discovering write that differs from the last
-  // state BlueZ reported, so a stop issued while a just-fired StartDiscovery
-  // is still awaiting confirmation would be swallowed and leak the session.
-  // Binding to adapter.discovering means a confirmation landing at any point
-  // after close re-arms the stop, and a reopen inside the first interval
-  // keeps the scan running uninterrupted. Attempts are bounded so a session
-  // some other BlueZ client keeps up cannot draw StopDiscovery fire forever.
-  Timer {
-    id: discoveryStop
-    interval: 1000
-    repeat: true
-    property int attempts: 0
-    running: !root.opened && root.owesDiscoveryStop && root.adapter !== null && root.adapter.discovering === true
-    onRunningChanged: if (running) attempts = 0
-    onTriggered: {
-      // The scan now serves the open panel, so the debt moves with it — B may
-      // have opened before BlueZ confirmed A's start, in which case B's own
-      // open-time adoption saw nothing to adopt.
-      var sibling = root.openSibling()
-      if (sibling) {
-        sibling.owesDiscoveryStop = true
-        root.owesDiscoveryStop = false
-        return
-      }
-      attempts += 1
-      if (attempts > 3) { root.owesDiscoveryStop = false; return }
-      root.adapter.discovering = false
-    }
-  }
-
-  // The debt is settled the moment BlueZ reports discovery down — whether
-  // because the stop above landed or the session ended some other way — so a
-  // stale claim never touches a scan another client starts later. While the
-  // panel is open, discoveryRetry re-incurs it as it restarts the scan.
-  Connections {
-    target: root.adapter
-    function onDiscoveringChanged() {
-      if (!root.adapter.discovering) root.owesDiscoveryStop = false
-    }
-  }
-
-  // A destroyed instance cannot wait for BlueZ confirmations, so it hands any
-  // debt to a surviving sibling — whose declarative stop catches even a start
-  // confirmed after this object is gone — and only writes the stop directly
-  // when it is the last one standing.
-  Component.onDestruction: {
-    if (!owesDiscoveryStop) return
-    var items = bar && typeof bar.moduleWidgets === "function" ? bar.moduleWidgets(moduleName) : []
-    for (var i = 0; i < items.length; i++) {
-      if (items[i] && items[i] !== root) { items[i].owesDiscoveryStop = true; return }
-    }
-    if (adapter !== null && adapter.discovering) adapter.discovering = false
-  }
-
-  Timer {
-    id: pendingTimeout
-    interval: 20000
-    repeat: false
-    onTriggered: root.pendingActions = ({})
-  }
-
-  Process {
-    id: pairProc
-    stdinEnabled: true
-    stdout: SplitParser {
-      onRead: function(line) { root.handlePairEvent(line) }
-    }
-    onExited: root.pairingEnded()
-  }
-
-  Timer {
-    id: pairFailureClear
-    interval: 10000
-    repeat: false
-    onTriggered: {
-      root.pairFailureAddress = ""
-      root.pairFailureText = ""
-    }
-  }
-
-  Timer {
-    id: audioSwitchTimer
-    interval: 500
-    repeat: false
-    onTriggered: root.switchPendingAudioOutput()
-  }
-
-  // Not adapter.enabled: that writes BlueZ's Powered, which nothing persists, so
-  // the adapter came back on at the next boot. karchy-bluetooth-power moves the
-  // rfkill soft block instead, which systemd-rfkill restores across reboots.
-  // Powered still follows the block, so the switch and icon read it as before.
-  //
-  // Asking for a direction rather than a toggle: the helper runs detached and the
-  // switch only moves once BlueZ catches up, so a second click inside that window
-  // would re-read the old state and undo the first.
-  function toggleBluetooth() {
-    if (!adapter) return
-    Quickshell.execDetached(["karchy-bluetooth-power", adapter.enabled ? "off" : "on"])
-  }
 
   ShellIpc {
     target: "karchy.bluetooth"
@@ -871,7 +541,7 @@ Panel {
             font.family: root.bar.fontFamily
             inputMethodHints: pairCard.kind === "enter-passkey" ? Qt.ImhDigitsOnly : Qt.ImhNone
             text: root.pairingAnswerText
-            onTextChanged: if (text !== root.pairingAnswerText) root.pairingAnswerText = text
+            onTextChanged: if (text !== root.pairingAnswerText) BluetoothControl.pairingAnswerText = text
             onAccepted: root.submitPairingText()
             Keys.onEscapePressed: root.declinePairingQuestion()
           }
