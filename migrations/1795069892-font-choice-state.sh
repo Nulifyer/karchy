@@ -13,4 +13,5 @@ if [[ -n $family ]]; then
   karchy-font-set --no-restart "$family" || true
 fi
 rm -f "$old"
-rmdir "${old%/*}" 2>/dev/null || true
+# The folders karchy made for it, when nothing else is in them.
+rmdir "${old%/*}" "${old%/*/*}" 2>/dev/null || true
