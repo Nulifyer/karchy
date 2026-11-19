@@ -26,7 +26,7 @@
 | rc | release candidates and releases | `3.1.0rc1`, `3.0.0` | `repo-rc` |
 | nightly | every push to main | `3.0.0.r12.gabc1234` | `repo-nightly` |
 
-Versions come from git tags (`v3.0.0`, `v3.1.0-rc.1`) through `git describe`, in pacman's ordering: `3.1.0rc1 < 3.1.0`, and a nightly `3.0.0.r12.g…` sits between `3.0.0` and the next release. Users pick a channel in the installer or in Settings › About (`karchy channel set <channel>`). Only karchy's packages follow the channel; Arch, CachyOS and AUR packages update through pacman and paru as usual, all in one `karchy update`.
+Versions come from git tags (`v3.0.0`, `v3.1.0-rc.1`) through `git describe`, in pacman's ordering: `3.1.0rc1 < 3.1.0`, and a nightly `3.0.0.r12.g…` sits between `3.0.0` and the next release. Users pick a channel in the installer or in the Updates window (`karchy channel set <channel>`). Only karchy's packages follow the channel; Arch, CachyOS and AUR packages update through pacman and paru as usual, all in one `karchy update`.
 
 Within a channel every package is rebuilt and compared by content hash with the repository's copy; only packages whose contents changed take the new version, so an update downloads what changed (`karchy` always changes: it carries the release file). Native packages and packages built from another repository compute their own version (`# karchy:version-cmd=`) and rebuild when it changes: for the titlebars when Arch's Hyprland changes, for `karchy-bees` when its `pkgver` is moved to a new tag. A version command that prints nothing skips the package. The add-ons (`karchy-vpn`, `karchy-project-picker`) are built from this repository like `karchy` and take its version.
 
