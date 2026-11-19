@@ -181,12 +181,6 @@ ColumnLayout {
     else root.setNight(["set", "temperature", String(kelvin)])
   }
 
-  // One step warmer (1) or cooler (-1), from the keyboard.
-  function stepNightWarmth(delta) {
-    var next = Math.max(root.nightWarmest, Math.min(root.nightCoolest, root.nightWarmth - delta * root.nightStep))
-    if (next !== root.nightWarmth) root.saveNightWarmth(next)
-  }
-
   // With hours set, the card also says when the night light next changes.
   function nightSummary() {
     if (root.night.until === "") return ""
@@ -411,40 +405,20 @@ ColumnLayout {
         spacing: Style.spacing.lg
 
         // Tab reaches the slider; Left and Right move it a step and save.
-        Item {
+        PageSlider {
           id: warmth
-          readonly property int kelvin: warmthSlider.dragging
-            ? root.nightCoolest - Math.round(warmthSlider.liveValue) * root.nightStep
+          readonly property int kelvin: warmth.dragging
+            ? root.nightCoolest - Math.round(warmth.liveValue) * root.nightStep
             : root.nightWarmth
 
-          Layout.fillWidth: true
-          Layout.maximumWidth: Style.space(320)
-          implicitHeight: warmthSlider.implicitHeight + Style.spacing.md
-          activeFocusOnTab: true
-          Accessible.role: Accessible.Slider
-          Accessible.name: "Night light warmth, " + warmth.kelvin + " kelvin"
-          Keys.onLeftPressed: root.stepNightWarmth(LayoutMirroring.enabled ? 1 : -1)
-          Keys.onRightPressed: root.stepNightWarmth(LayoutMirroring.enabled ? -1 : 1)
-
-          FocusRing { shown: warmth.activeFocus; control: warmth; radius: Style.radius.control }
-
-          PanelSlider {
-            id: warmthSlider
-            anchors.fill: parent
-            anchors.leftMargin: Style.spacing.sm
-            anchors.rightMargin: Style.spacing.sm
-            // A window, not a panel: the slider takes the window's colors.
-            trackColor: Style.selectedFillFor(Commons.Color.foreground, Commons.Color.accent)
-            fillColor: Commons.Color.foreground
-            knobColor: Commons.Color.foreground
-            minimum: 0
-            maximum: (root.nightCoolest - root.nightWarmest) / root.nightStep
-            step: 1
-            integer: true
-            value: (root.nightCoolest - root.nightWarmth) / root.nightStep
-            onMoved: function(v) { root.previewNight(root.nightCoolest - Math.round(v) * root.nightStep) }
-            onReleased: function(v) { root.saveNightWarmth(root.nightCoolest - Math.round(v) * root.nightStep) }
-          }
+          accessibleName: "Night light warmth, " + warmth.kelvin + " kelvin"
+          minimum: 0
+          maximum: (root.nightCoolest - root.nightWarmest) / root.nightStep
+          step: 1
+          integer: true
+          value: (root.nightCoolest - root.nightWarmth) / root.nightStep
+          onMoved: function(v) { root.previewNight(root.nightCoolest - Math.round(v) * root.nightStep) }
+          onReleased: function(v) { root.saveNightWarmth(root.nightCoolest - Math.round(v) * root.nightStep) }
         }
 
         Text {
