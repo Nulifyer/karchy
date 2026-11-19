@@ -134,18 +134,30 @@ term_pt_for() {
     'BEGIN { printf "%d", int(s * p / b + 0.5) }'
 }
 
+# Ghostty's size for a terminal point size. Ghostty is a GTK app and scales
+# its font by GTK's text scale (gtk-xft-dpi, which follows the
+# text-scaling-factor set above), where foot, kitty and Alacritty don't: 13pt
+# at text size 16 came out as 13 x 1.36 = 17.7pt. Its file takes the size
+# divided by that factor, to a tenth of a point, so all four show the same.
+ghostty_pt_for() {
+  local factor
+  factor="$(gsettings get "$GKEY_SCHEMA" "$GKEY_NAME" 2>/dev/null)" || factor=1
+  awk -v p="$1" -v f="$factor" \
+    'BEGIN { if (f + 0 <= 0) f = 1; printf "%g", int(p / f * 10 + 0.5) / 10 }'
+}
+
 # The terminals' size lives in karchy's own files, one per terminal, which
 # the starter configs include (D-117): the user's foot.ini, kitty.conf,
 # alacritty.toml and Ghostty config are never edited (D-23). All four are
 # written whether or not the terminal is installed, so one added later already
 # has its size. The family is "monospace", which karchy-font-set points at the
-# chosen font through fontconfig.
+# chosen font through fontconfig. Callers set GTK's factor first.
 write_terminal_files() {
   local pt="$1" note="Written by karchy-display-text-size (Settings › Appearance › Text size). Don't edit: set your own size in the terminal's config instead."
   mkdir -p "$terminal_dir"
   write_file foot.ini "# $note" "[main]" "font=monospace:size=$pt"
   write_file kitty.conf "# $note" "font_size $pt.0"
-  write_file ghostty.conf "# $note" "font-size = $pt"
+  write_file ghostty.conf "# $note" "font-size = $(ghostty_pt_for "$pt")"
   write_file alacritty.toml "# $note" "[font]" "size = $pt"
 }
 
