@@ -93,8 +93,8 @@ Item {
   // but only where a screen-off time is set for the power source in use
   // (Settings › Power, resolved by the idle service). With "Never" the lock
   // stays lit. Without the idle service the lock keeps turning it off.
-  readonly property var idleService: shell && shell.firstPartyServiceFor
-    ? shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property var idleService: shell && shell.serviceFor
+    ? shell.serviceFor("karchy.idle") : null
   readonly property bool blankWhenLocked: !idleService || idleService.screenOffEnabled !== false
   readonly property bool fingerprintUnavailable: FingerprintModel.isUnavailable(fingerprintProbeStreak) || (fingerprintConfigured && (!fingerprintAttemptReachedDevice || fingerprintAttemptFastError) && FingerprintModel.isUnavailable(fingerprintUnreachedStreak))
 

@@ -24,7 +24,7 @@ Item {
   // true or idle.ac.suspend gives plugged-in its own time. 0 turns it off.
   readonly property int defaultSuspendSeconds: 900
   readonly property var idleConfig: shell && shell.shellConfig && shell.shellConfig.idle
-    ? shell.shellConfig.idle : (shell && shell.idleConfig ? shell.idleConfig : ({}))
+    ? shell.shellConfig.idle : ({})
   // A desktop's UPower reports no laptop battery and never "on battery", so
   // it follows the plugged-in times.
   readonly property bool hasBattery: UPower.displayDevice && UPower.displayDevice.isLaptopBattery

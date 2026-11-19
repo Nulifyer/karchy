@@ -2,8 +2,8 @@
 
 # karchy:summary=Configure the bar and its widget layout
 # karchy:group=bar
-# karchy:args=use <id> | reset | defaults | position [top|bottom|left|right] | background [opaque|glassy|none|cycle] | style [auto|floating|docked|cycle] | put <id> [placement] | move <id> [placement] | set <id> <key> <value> [--json] [placement] | get <id> <key>
-# karchy:examples=karchy bar use local.neon-bar | karchy bar put karchy.keyboard-layout --after karchy.clock | karchy bar move karchy.weather --section centerBegin --index 0 | karchy bar set karchy.clock format HH:mm
+# karchy:args=defaults | position [top|bottom|left|right] | background [opaque|glassy|none|cycle] | style [auto|floating|docked|cycle] | put <id> [placement] | move <id> [placement] | set <id> <key> <value> [--json] [placement] | get <id> <key>
+# karchy:examples=karchy bar put karchy.microphone --after karchy.audio | karchy bar move karchy.media --section centerBegin --index 0 | karchy bar set karchy.clock format HH:mm
 
 set -euo pipefail
 
@@ -13,8 +13,6 @@ usage() {
   cat <<USAGE
 Usage: karchy bar <command> [args...]
 
-  use <id>                             Use a bar option as the active bar
-  reset                                Return to the built-in Karchy bar
   defaults                             Restore the default bar and service widgets
   position [top|bottom|left|right]     Bar position; prints the current one
                                        when given none
@@ -56,21 +54,14 @@ already on the bar where it is, and falls back to the widget's usual spot when
 --before / --after names a widget the bar does not carry.
 
 Examples:
-  karchy bar use local.neon-bar
-  karchy bar put karchy.keyboard-layout --after karchy.clock
+  karchy bar put karchy.microphone --after karchy.audio
   karchy bar move karchy.media left
-  karchy bar move karchy.weather --section centerBegin --index 0
+  karchy bar move karchy.media --section centerBegin --index 0
   karchy bar set karchy.clock format HH:mm
 USAGE
 }
 
 # ------------------------------------------------------------------ validation
-
-bar_option_exists() {
-  karchy-plugin-catalog | jq -e --arg id "$1" '
-    any(.[]; (.kinds | index("bar")) and .barPath != null and .id == $id)
-  ' >/dev/null
-}
 
 validate_section() {
   [[ $1 =~ ^(left|centerBegin|center|centerEnd|tray|right)$ ]] ||
@@ -155,23 +146,6 @@ placement_json() {
 }
 
 # -------------------------------------------------------------------- commands
-
-cmd_use() {
-  local plugin="${1:-}"
-  [[ -n $plugin ]] || fail "bar option id is required"
-  (( $# == 1 )) || fail "use takes a single bar option id"
-  if [[ $plugin == "default" || $plugin == "built-in" ]]; then
-    plugin="karchy.bar"
-  fi
-  bar_option_exists "$plugin" || fail "$plugin is not a known bar option; run 'karchy plugin list'"
-
-  if [[ $plugin == "karchy.bar" ]]; then
-    commit "$NORMALIZE | del(.bar.id)"
-  else
-    commit "$NORMALIZE | .bar.id = \$plugin" --arg plugin "$plugin"
-  fi
-  echo "Using $plugin as the active bar"
-}
 
 cmd_defaults() {
   (( $# == 0 )) || fail "defaults does not take arguments"
@@ -312,19 +286,6 @@ sync_glass() {
   fi
 
   karchy-restart-hyprctl
-}
-
-bar_widget_default_section() {
-  local catalog
-  catalog=$(karchy-plugin-catalog 2>/dev/null) || {
-    echo "centerEnd"
-    return 0
-  }
-  # A manifest's center means beside the clock, which is centerEnd.
-  jq -r --arg id "$1" '
-    map(select(.id == $id))[0].barWidget.defaultSection // "centerEnd"
-    | if IN("left", "centerBegin", "centerEnd", "tray", "right") then . else "centerEnd" end
-  ' <<<"$catalog"
 }
 
 # Asks the shell to place a widget, waiting out one still coming up. Answers 0
@@ -500,13 +461,6 @@ command="${1:-}"
 (( $# > 0 )) && shift || true
 
 case "$command" in
-  use)
-    cmd_use "$@"
-    ;;
-  reset)
-    (( $# == 0 )) || fail "reset does not take arguments"
-    cmd_use karchy.bar
-    ;;
   defaults)
     cmd_defaults "$@"
     ;;

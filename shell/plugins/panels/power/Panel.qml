@@ -59,7 +59,7 @@ Panel {
   // Stay Awake belongs to the idle service, which keeps it across restarts
   // (~/.local/state/karchy/indicators/stay-awake); the bar's indicator shows
   // while it is on.
-  readonly property var idle: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property var idle: bar && bar.shell ? bar.shell.serviceFor("karchy.idle") : null
   readonly property bool stayAwake: idle ? idle.stayAwake === true : false
 
   function toggleStayAwake() {

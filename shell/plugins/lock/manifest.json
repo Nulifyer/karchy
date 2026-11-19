@@ -5,11 +5,6 @@
   "version": "1.0.0",
   "author": "Karchy",
   "description": "Quickshell session lock with separate password and fingerprint PAM flows.",
-  "karchy": {
-    "capabilities": [
-      "authentication"
-    ]
-  },
   "kinds": [
     "service"
   ],

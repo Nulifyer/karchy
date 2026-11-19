@@ -177,7 +177,7 @@ Widgets receive `bar` (the shell root), `moduleName` (string), and `settings` (o
 - `bar.showTooltip(target, text)` / `bar.hideTooltip(target)` — shared tooltip popup
 - `bar.requestPopout(owner)` / `bar.releasePopout(owner)` — one-popup-at-a-time coordinator
 
-First-party bar widgets are manifest-backed just like third-party widgets.
+Every bar widget is manifest-backed.
 Simple widgets carry sibling manifests such as `widgets/Workspaces.manifest.json`;
 richer popup plugins live in feature directories such as `../panels/audio/`,
 `../panels/network/`, and `../agents/`; and feature plugins such as
@@ -185,4 +185,4 @@ richer popup plugins live in feature directories such as `../panels/audio/`,
 `manifest.json`. Bar layout ids are namespaced, e.g. `karchy.audio`,
 `karchy.network`, and `karchy.clock`.
 
-Add-on widgets ship in pacman packages (karchy's `addons/`, D-106) under `/usr/share/karchy/plugins/<plugin-id>/` with their own `manifest.json` declaring `kinds: ["bar-widget"]` and a `barWidget` entry point. See the [shell reference](../../../docs/karchy-shell.md#plugin-manifest) for the manifest schema. Rescan, enable, and place third-party plugins with `karchy-shell shell rescanPlugins`, `karchy plugin enable`, and `karchy bar move`.
+Add-on widgets ship in karchy's add-on packages (`addons/`, D-106) under `/usr/share/karchy/plugins/<plugin-id>/` with their own `manifest.json` declaring `kinds: ["bar-widget"]` and a `barWidget` entry point, and are hosted exactly like the built-in ones. Place them with `karchy plugin enable` and `karchy bar move`.

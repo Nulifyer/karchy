@@ -4,15 +4,18 @@ import Quickshell.Io
 import qs.Commons
 
 // Instance, not a singleton — see BarWidgetRegistry for rationale.
+//
+// Every plugin is karchy's own: the first-party ones in shell/plugins, and
+// the add-ons that karchy's add-on packages (built from addons/) install
+// under /usr/share/karchy/plugins. All of them are trusted alike (D-111).
 QtObject {
   id: registry
 
-  // Add-on packages (karchy's addons/, such as nulifyer-vpn) install their
-  // shell UI here, one folder per plugin id. Root-owned: the shell loads no
-  // UI code from the home folder.
+  // Add-on packages install their shell UI here, one folder per plugin id.
+  // Root-owned: the shell loads no plugin from the home folder.
   property string pluginsDir: "/usr/share/karchy/plugins"
 
-  // Set by shell.qml at startup so we can also scan bundled first-party plugins.
+  // Set by shell.qml at startup: the plugins that ship in the shell itself.
   property string firstPartyDir: ""
 
   // Wired by shell.qml so the registry can read the canonical shell.json
@@ -22,7 +25,7 @@ QtObject {
   property var shellConfigProvider: null
   property var shellConfigMutator: null
 
-  // { pluginId: manifest } — manifests have source/trust metadata stamped in.
+  // { pluginId: manifest } — each manifest has __sourceDir stamped in.
   property var installedPlugins: ({})
   property int registryRevision: 0
   property bool scanning: false
@@ -31,16 +34,9 @@ QtObject {
   signal pluginsChanged()
   signal scanFinished()
   signal pluginLoadFailed(string id, string error)
-  signal localPluginChanged(string id)
+  signal addonChanged(string id)
 
   // ---------------------------------------------------------------- helpers
-
-  function isSafeEntryPoint(value) {
-    if (typeof value !== "string" || value.length === 0) return false
-    if (value.charAt(0) === "/") return false
-    if (value.indexOf("..") !== -1) return false
-    return true
-  }
 
   function validateManifest(manifest, sourcePath) {
     if (!Util.isPlainObject(manifest)) {
@@ -58,11 +54,6 @@ QtObject {
         return null
       }
     }
-    var id = String(manifest.id)
-    if (!id || id.indexOf("/") !== -1 || id.indexOf("..") !== -1 || id.charAt(0) === "/") {
-      console.warn("PluginRegistry: invalid plugin id '" + id + "' at " + sourcePath)
-      return null
-    }
     if (!Array.isArray(manifest.kinds) || manifest.kinds.length === 0) {
       console.warn("PluginRegistry: kinds must be a non-empty array at " + sourcePath)
       return null
@@ -79,90 +70,30 @@ QtObject {
         return null
       }
     }
-    // Every entry point must be a relative path inside the plugin's source
-    // directory. Reject the whole manifest if an entry point escapes it.
-    for (var key in manifest.entryPoints) {
-      if (!isSafeEntryPoint(manifest.entryPoints[key])) {
-        console.warn("PluginRegistry: unsafe entryPoint '" + key + "'='"
-          + manifest.entryPoints[key] + "' at " + sourcePath)
-        return null
-      }
-    }
     return manifest
-  }
-
-  function trustedCapabilities(manifest) {
-    if (!manifest || !manifest.__isFirstParty) return []
-    var metadata = Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
-    var declared = metadata && Array.isArray(metadata.capabilities) ? metadata.capabilities : []
-    var out = []
-    for (var i = 0; i < declared.length; i++) {
-      var capability = String(declared[i] || "")
-      if (capability && out.indexOf(capability) === -1) out.push(capability)
-    }
-    return out
-  }
-
-  function stampHostCapabilities(firstParty, thirdParty) {
-    for (var firstPartyId in firstParty)
-      firstParty[firstPartyId].__hostCapabilities = trustedCapabilities(firstParty[firstPartyId])
-
-    for (var thirdPartyId in thirdParty) {
-      var manifest = thirdParty[thirdPartyId]
-      var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
-      var clonedFrom = metadata ? String(metadata.clonedFrom || "") : ""
-      var source = clonedFrom ? firstParty[clonedFrom] : null
-      manifest.__hostCapabilities = source && Array.isArray(source.__hostCapabilities)
-        ? source.__hostCapabilities.slice() : []
-    }
   }
 
   function entryPointUrl(manifest, kind) {
     if (!Util.isPlainObject(manifest)) return ""
     var ep = manifest.entryPoints ? manifest.entryPoints[kind] : null
-    if (!ep) return ""
     var dir = manifest.__sourceDir || ""
-    if (!dir) return ""
-    // Defense in depth: even after validateManifest, confirm the resolved
-    // path stays inside the plugin's sourceDir.
-    var resolved = dir.replace(/\/$/, "") + "/" + String(ep)
-    var expectedPrefix = dir.replace(/\/$/, "") + "/"
-    if (resolved.indexOf(expectedPrefix) !== 0) {
-      console.warn("PluginRegistry: entry point escapes sourceDir: " + resolved)
-      return ""
-    }
-    return Util.fileUrl(resolved)
+    if (!ep || !dir) return ""
+    return Util.fileUrl(dir.replace(/\/$/, "") + "/" + String(ep))
   }
 
-  // Enabled = the plugin id is referenced somewhere in shell.json. That can
-  // be either the active bar option in `bar.id`, a layout entry inside
-  // `bar.layout.*` (bar widgets), or a top-level entry in `plugins[]` (panels,
-  // overlays, services).
-  //
-  // Special cases (implicitly always enabled, no shell.json entry needed):
-  //   - the built-in bar option (`karchy.bar`) is active when `bar.id` is
-  //     missing or set to `karchy.bar`.
-  //   - first-party non-bar plugins are shell infrastructure (settings,
-  //     image-picker, ...). Requiring users to add them to plugins[] just to
-  //     summon them was a footgun: a stock shell.json with `plugins: []` would
-  //     silently make `karchy launch bar-settings` a no-op. Turning one off
-  //     is therefore recorded the other way round, in `disabledPlugins[]`.
+  function hasKind(manifest, kind) {
+    return !!manifest && Array.isArray(manifest.kinds) && manifest.kinds.indexOf(kind) !== -1
+  }
+
+  // Every installed plugin is on unless shell.json lists it in
+  // disabledPlugins[]. A bar widget that is on can be loaded; whether it sits
+  // in the bar is inBar(). The bar itself (karchy.bar) cannot be switched off.
   function isEnabled(id) {
-    var key = String(id)
+    var key = Util.canonicalWidgetId(String(id))
     var manifest = installedPlugins[key]
-    var config = shellConfigProvider ? shellConfigProvider() : null
-    if (manifest) {
-      if (Array.isArray(manifest.kinds) && manifest.kinds.indexOf("bar") !== -1) {
-        var selectedBar = ""
-        if (Util.isPlainObject(config) && Util.isPlainObject(config.bar))
-          selectedBar = Util.canonicalWidgetId(String(config.bar.id || ""))
-        if (!selectedBar) selectedBar = "karchy.bar"
-        return selectedBar === key
-      }
-      if (isDisabled(config, key)) return false
-      if (manifest.__isFirstParty) return true
-    }
-    return findEntryLocation(config, key).found
+    if (!manifest) return false
+    if (hasKind(manifest, "bar")) return true
+    return !isDisabled(shellConfigProvider ? shellConfigProvider() : null, key)
   }
 
   function isDisabled(config, id) {
@@ -170,27 +101,14 @@ QtObject {
       && config.disabledPlugins.indexOf(Util.canonicalWidgetId(String(id))) !== -1
   }
 
-  function resolveEnabledId(id) {
-    var key = Util.canonicalWidgetId(String(id || ""))
-    // Callers keep using the built-in id after cloning; the enabled local
-    // manifest is the implementation that should receive the call.
-    for (var candidate in installedPlugins) {
-      var manifest = installedPlugins[candidate]
-      var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
-      if (metadata && String(metadata.clonedFrom || "") === key && isEnabled(candidate))
-        return candidate
-    }
-    return key
-  }
-
-  // A bar widget is on when it sits in the bar, whoever shipped it. That is a
-  // different question from isEnabled(), which decides whether the widget's
-  // component is loaded at all — a built-in stays loadable so it can be put
-  // back, and so a plugin that is both a widget and a menu (karchy.menu)
-  // cannot be locked out of the shell by taking its button off the bar.
+  // A bar widget is on when it sits in the bar. That is a different question
+  // from isEnabled(), which decides whether the widget's component is loaded
+  // at all — a widget stays loadable so it can be put back, and so a plugin
+  // that is both a widget and a menu (karchy.menu) cannot be locked out of
+  // the shell by taking its button off the bar.
   function inBar(id) {
     var config = shellConfigProvider ? shellConfigProvider() : null
-    return findEntryLocation(config, id).kind === "bar"
+    return findBarLocation(config, id, "").found
   }
 
   // A manifest's "center" means beside the clock, so it lands in centerEnd, as
@@ -223,53 +141,17 @@ QtObject {
     return { found: false }
   }
 
-  // A caller naming a widget that has been cloned means the clone that took
-  // its place, the way resolveEnabledId routes calls to it.
-  function findRelativeBarLocation(config, id, section) {
-    var location = findBarLocation(config, id, section)
-    if (location.found) return location
-    if (!Util.isPlainObject(config) || !Util.isPlainObject(config.bar)) return { found: false }
-    var clone = activeCloneFor(config, Util.canonicalWidgetId(String(id)))
-    return clone ? findBarLocation(config, clone, section) : { found: false }
-  }
-
-  function findEntryLocation(config, id) {
-    if (!Util.isPlainObject(config)) return { found: false }
-    var key = Util.canonicalWidgetId(String(id))
-    if (Util.isPlainObject(config.bar)) {
-      var selectedBar = Util.canonicalWidgetId(String(config.bar.id || ""))
-      if (selectedBar === key) return { found: true, kind: "bar-option" }
-    }
-    if (Util.isPlainObject(config.bar) && Util.isPlainObject(config.bar.layout)) {
-      var barLocation = findBarLocation(config, key, "")
-      if (barLocation.found) return barLocation
-    }
-    if (Array.isArray(config.plugins)) {
-      for (var j = 0; j < config.plugins.length; j++) {
-        if (config.plugins[j] && Util.canonicalWidgetId(config.plugins[j].id) === key) return { found: true, kind: "plugin", index: j }
-      }
-    }
-    return { found: false }
-  }
-
-  // The tray, or a clone standing in for it.
-  function isTray(id) {
-    var manifest = installedPlugins[id]
-    var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
-    return id === "karchy.tray" || (!!metadata && Util.canonicalWidgetId(String(metadata.clonedFrom || "")) === "karchy.tray")
-  }
-
   // The tray section is drawn inside the tray, so the tray cannot go there.
   function barTarget(config, placement, fallbackSection, id) {
     var target = placement || {}
     var section = Util.barSections.indexOf(String(target.section || "")) !== -1
       ? String(target.section) : fallbackSection
-    var tray = isTray(id)
+    var tray = id === "karchy.tray"
     var trayError = { error: "the tray cannot go in its own drawer" }
     if (tray && section === "tray") return trayError
     var relativeId = String(target.before || target.after || "")
     if (relativeId) {
-      var relative = findRelativeBarLocation(config, relativeId, section && target.section ? section : "")
+      var relative = findBarLocation(config, relativeId, section && target.section ? section : "")
       if (!relative.found) return { error: "could not find target widget " + relativeId }
       if (tray && relative.section === "tray") return trayError
       return {
@@ -288,7 +170,7 @@ QtObject {
     // put there at its end.
     var anchors = { left: "karchy.workspaces", centerEnd: "karchy.media", right: "karchy.tray" }
     if (!anchors[section]) return { section: section, index: config.bar.layout[section].length }
-    var anchor = findRelativeBarLocation(config, anchors[section], section)
+    var anchor = findBarLocation(config, anchors[section], section)
     return {
       section: section,
       index: anchor.found ? anchor.index + 1 : config.bar.layout[section].length
@@ -341,16 +223,13 @@ QtObject {
   function putBarWidget(id, placement) {
     if (inBar(id)) return ""
     var config = shellConfigProvider ? shellConfigProvider() : null
-    // Enabling a source whose clone is active switches back to the built-in,
-    // which is the owner's call, not an unattended caller's.
-    if (findRelativeBarLocation(config, id, "").found) return ""
     // The manifest scan is a subprocess and IPC answers before it returns, so
     // an id it has not reached yet is not one that does not exist.
     if (scanning && !installedPlugins[Util.canonicalWidgetId(String(id))]) return "not ready"
     var target = Util.isPlainObject(placement) ? Util.cloneJson(placement) : {}
     var relativeId = String(target.before || target.after || "")
     if (relativeId) {
-      if (!findRelativeBarLocation(config, relativeId, String(target.section || "")).found) {
+      if (!findBarLocation(config, relativeId, String(target.section || "")).found) {
         delete target.before
         delete target.after
       }
@@ -411,15 +290,11 @@ QtObject {
     for (var i = 0; i < sections.length; i++) {
       if (!Array.isArray(config.bar.layout[sections[i]])) config.bar.layout[sections[i]] = []
     }
-    if (!Array.isArray(config.plugins)) config.plugins = []
   }
 
-  // Bar widgets use the default section declared in their manifest, falling
-  // back to centerEnd, beside the center box rather than in it.
-  // Panels/overlays/menus/services go into the plugins[] array.
-  // Built-ins are already loaded, so shell.json only ever records the
-  // deviation: an added third-party plugin in plugins[], a switched-off
-  // built-in in disabledPlugins[].
+  // Built-ins and add-ons are loaded by default, so shell.json records only
+  // the deviation: a bar widget's place in bar.layout, a plugin switched off
+  // in disabledPlugins[].
   function removeDisabled(config, id) {
     if (!Array.isArray(config.disabledPlugins)) return
     config.disabledPlugins = config.disabledPlugins.filter(function(entry) { return entry !== id })
@@ -456,70 +331,9 @@ QtObject {
     config.disabledPlugins.push(id)
   }
 
-  function cloneShouldRestoreSource(config, id) {
-    return Array.isArray(config.cloneSourceRestores) && config.cloneSourceRestores.indexOf(id) !== -1
-  }
-
-  function setCloneShouldRestoreSource(config, id, value) {
-    var restores = Array.isArray(config.cloneSourceRestores) ? config.cloneSourceRestores : []
-    restores = restores.filter(function(entry) { return entry !== id })
-    if (value) restores.push(id)
-    if (restores.length) config.cloneSourceRestores = restores
-    else delete config.cloneSourceRestores
-  }
-
-  function activeCloneFor(config, sourceId) {
-    for (var candidate in installedPlugins) {
-      var candidateManifest = installedPlugins[candidate]
-      var candidateMetadata = candidateManifest && Util.isPlainObject(candidateManifest.karchy)
-        ? candidateManifest.karchy : null
-      if (!candidateMetadata || String(candidateMetadata.clonedFrom || "") !== sourceId) continue
-      if (Array.isArray(candidateManifest.kinds) && candidateManifest.kinds.indexOf("bar") !== -1) {
-        if (Util.canonicalWidgetId(String(config.bar.id || "")) === candidate) return candidate
-      } else if (findEntryLocation(config, candidate).found) {
-        return candidate
-      }
-    }
-    return ""
-  }
-
-  function restoreCloneSource(config, cloneId, sourceId) {
-    var cloneManifest = installedPlugins[cloneId]
-    var isBarOption = cloneManifest && Array.isArray(cloneManifest.kinds)
-      && cloneManifest.kinds.indexOf("bar") !== -1
-    if (isBarOption) {
-      if (sourceId === "karchy.bar") delete config.bar.id
-      else config.bar.id = sourceId
-    } else {
-      var cloneLocation = findEntryLocation(config, cloneId)
-      if (cloneLocation.kind === "bar") {
-        var cloneEntry = config.bar.layout[cloneLocation.section][cloneLocation.index]
-        var sections = Util.barSections
-        for (var s = 0; s < sections.length; s++) {
-          if (!Array.isArray(config.bar.layout[sections[s]])) continue
-          for (var i = config.bar.layout[sections[s]].length - 1; i >= 0; i--) {
-            if (barEntryId(config.bar.layout[sections[s]][i]) === sourceId)
-              config.bar.layout[sections[s]].splice(i, 1)
-          }
-        }
-        cloneLocation = findBarLocation(config, cloneId, "")
-        if (cloneLocation.found) {
-          var restoredEntry = Util.isPlainObject(cloneEntry) ? Util.cloneJson(cloneEntry) : {}
-          restoredEntry.id = sourceId
-          config.bar.layout[cloneLocation.section][cloneLocation.index] = restoredEntry
-        }
-      }
-      // A multi-kind clone can sit in the bar and in plugins[] at once, and
-      // either record alone would keep it active.
-      config.plugins = config.plugins.filter(function(entry) {
-        return !entry || Util.canonicalWidgetId(String(entry.id)) !== cloneId
-      })
-    }
-
-    if (cloneShouldRestoreSource(config, cloneId)) removeDisabled(config, sourceId)
-    setCloneShouldRestoreSource(config, cloneId, false)
-  }
-
+  // Enabling a bar widget puts it in the bar (where it was when it was taken
+  // off, unless a placement says otherwise); disabling takes it off. Any
+  // other plugin is switched with disabledPlugins[].
   function setEnabled(id, value, placement) {
     var key = Util.canonicalWidgetId(String(id))
     lastEnableError = ""
@@ -528,22 +342,23 @@ QtObject {
       return false
     }
     var manifest = installedPlugins[key]
-    if (value && !manifest) {
+    if (!manifest) {
       console.warn("PluginRegistry.setEnabled: unknown plugin " + key)
       return false
     }
-    var isBarOption = manifest && Array.isArray(manifest.kinds) && manifest.kinds.indexOf("bar") !== -1
-    var isBarWidget = manifest && Array.isArray(manifest.kinds) && manifest.kinds.indexOf("bar-widget") !== -1
-    var hasNonWidgetKind = manifest && Array.isArray(manifest.kinds)
-      && manifest.kinds.some(function(kind) { return kind !== "bar-widget" })
-    var metadata = manifest && Util.isPlainObject(manifest.karchy) ? manifest.karchy : null
-    var clonedFrom = metadata ? Util.canonicalWidgetId(String(metadata.clonedFrom || "")) : ""
+    if (hasKind(manifest, "bar")) {
+      if (value) return true
+      lastEnableError = "the bar cannot be switched off"
+      return false
+    }
+    var isBarWidget = hasKind(manifest, "bar-widget")
+    var hasPlacement = !!placement && Object.keys(placement).length > 0
     shellConfigMutator(function(config) {
       ensureConfigShape(config)
 
       // A placement that cannot be honoured is refused before anything
       // changes: a missing neighbour, or the tray asked into its own drawer.
-      if (value && isBarWidget && placement && Object.keys(placement).length) {
+      if (value && isBarWidget && hasPlacement) {
         var requested = barTarget(config, placement, defaultBarWidgetSection(manifest), key)
         if (requested.error) {
           lastEnableError = requested.error
@@ -551,77 +366,26 @@ QtObject {
         }
       }
 
-      if (value && manifest && manifest.__isFirstParty) {
-        var activeClone = activeCloneFor(config, key)
-        if (activeClone) {
-          restoreCloneSource(config, activeClone, key)
-          removeDisabled(config, key)
-        }
-      }
-
-      if (isBarOption) {
-        if (value) {
-          config.bar.id = key
-        } else if (Util.canonicalWidgetId(String(config.bar.id || "")) === key) {
-          if (clonedFrom && clonedFrom !== "karchy.bar") config.bar.id = clonedFrom
-          else delete config.bar.id
-        }
-        return
-      }
-
-      var isFirstParty = manifest && manifest.__isFirstParty
-      var location = findEntryLocation(config, key)
-      // A widget that also carries a non-bar kind (panel, service, menu) can
-      // hold both a bar.layout entry and a plugins[] record. findEntryLocation
-      // matches any of them, so keying the restore off it left a widget whose
-      // bar entry was removed (disable) unreplaceable (enable) while a residual
-      // plugins[] record survived: the enable branch never ran and the layout
-      // entry stayed gone. Key the restore off bar presence instead.
-      var onBar = findBarLocation(config, key, "").found
-
+      var location = findBarLocation(config, key, "")
       if (value) {
         removeDisabled(config, key)
-        var entry = { id: key }
-        var insertedWithPlacement = false
-        if (!onBar && isBarWidget) {
-          var sourceLocation = clonedFrom ? findEntryLocation(config, clonedFrom) : { found: false }
-          if (sourceLocation.kind === "bar") {
-            var sourceEntry = config.bar.layout[sourceLocation.section][sourceLocation.index]
-            var replacement = Util.isPlainObject(sourceEntry) ? Util.cloneJson(sourceEntry) : entry
-            replacement.id = key
-            config.bar.layout[sourceLocation.section][sourceLocation.index] = replacement
-          } else if (!(placement && Object.keys(placement).length) && restoreRemovedWidget(config, key)) {
-            // Back where it was when it was switched off, with its options.
-          } else {
-            var section = defaultBarWidgetSection(manifest)
-            var target = barTarget(config, placement || {}, section, key)
-            config.bar.layout[target.section].splice(target.index, 0, entry)
-            insertedWithPlacement = true
-          }
-        } else if (!location.found && !isFirstParty) {
-          config.plugins.push(entry)
-        }
-
-        if (isBarWidget && !insertedWithPlacement && placement && Object.keys(placement).length)
-          moveBarEntry(config, key, placement)
-
-        if (clonedFrom && hasNonWidgetKind && !isDisabled(config, clonedFrom)) {
-          addDisabled(config, clonedFrom)
-          setCloneShouldRestoreSource(config, key, true)
+        if (!isBarWidget) return
+        if (location.found) {
+          if (hasPlacement) moveBarEntry(config, key, placement)
+        } else if (hasPlacement || !restoreRemovedWidget(config, key)) {
+          var target = barTarget(config, placement || {}, defaultBarWidgetSection(manifest), key)
+          config.bar.layout[target.section].splice(target.index, 0, { id: key })
         }
         return
       }
 
-      if (clonedFrom) restoreCloneSource(config, key, clonedFrom)
-      else if (location.kind === "bar") {
+      if (location.found) {
         rememberRemovedWidget(config, key, location)
         config.bar.layout[location.section].splice(location.index, 1)
       }
-      else if (location.kind === "plugin") config.plugins.splice(location.index, 1)
-
-      // Dropping the layout entry is the whole story for a widget. Anything
-      // else built-in loads by default, so switching it off has to be stated.
-      if (isFirstParty && !isBarWidget) addDisabled(config, key)
+      // Taking a widget off the bar is the whole story for a widget. Anything
+      // else loads by default, so switching it off has to be stated.
+      if (!isBarWidget) addDisabled(config, key)
     })
     if (lastEnableError) return false
     registryRevision++
@@ -632,16 +396,14 @@ QtObject {
   // ---------------------------------------------------------------- scanning
 
   // Output format produced by the rescan script:
-  //   ===<kind>::<absolute-source-dir>===
+  //   ===<absolute-source-dir>===
   //   ... raw manifest.json content ...
   //   === EOM ===
   // (repeating for every manifest found)
   function parseScanOutput(text) {
     var lines = String(text || "").split("\n")
-    var firstParty = {}
-    var thirdParty = {}
+    var merged = {}
     var currentSource = null
-    var currentKind = null
     var currentJson = []
 
     function flush() {
@@ -650,27 +412,26 @@ QtObject {
       try {
         var manifest = JSON.parse(raw)
         manifest.__sourceDir = currentSource
-        manifest.__isFirstParty = (currentKind === "firstparty")
         var validated = validateManifest(manifest, currentSource + "/manifest.json")
-        if (validated) {
-          if (currentKind === "firstparty") firstParty[validated.id] = validated
-          else thirdParty[validated.id] = validated
-        }
+        // The shell's own plugins are scanned first, so an add-on can never
+        // stand in for one of them.
+        if (validated && merged[validated.id])
+          console.warn("PluginRegistry: duplicate plugin id " + validated.id + " at " + currentSource + ", ignored")
+        else if (validated)
+          merged[validated.id] = validated
       } catch (e) {
         console.warn("PluginRegistry: bad manifest at " + currentSource + ": " + e)
       }
       currentSource = null
-      currentKind = null
       currentJson = []
     }
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i]
-      var startMatch = line.match(/^===([a-z]+)::(.+)===$/)
-      if (startMatch) {
+      var startMatch = line.match(/^===(.+)===$/)
+      if (startMatch && line !== "=== EOM ===") {
         flush()
-        currentKind = startMatch[1]
-        currentSource = startMatch[2].replace(/\/$/, "")
+        currentSource = startMatch[1].replace(/\/$/, "")
         currentJson = []
         continue
       }
@@ -681,22 +442,6 @@ QtObject {
       if (currentSource) currentJson.push(line)
     }
     flush()
-
-    stampHostCapabilities(firstParty, thirdParty)
-
-    var merged = {}
-    for (var fk in firstParty) merged[fk] = firstParty[fk]
-    // Third-party plugins never shadow first-party ids. The whole
-    // `karchy.*` namespace is reserved for built-ins, including bar widgets
-    // registered outside the manifest-based plugin registry.
-    for (var tk in thirdParty) {
-      if (firstParty[tk] || String(tk).indexOf("karchy.") === 0) {
-        console.warn("PluginRegistry: plugin " + tk
-          + " rejected: id is reserved for first-party Karchy plugins")
-        continue
-      }
-      merged[tk] = thirdParty[tk]
-    }
 
     installedPlugins = merged
     registryRevision++
@@ -724,7 +469,7 @@ QtObject {
   // own command line from matching its search.
   property Process watcherReaper: Process {
     onExited: {
-      localPluginWatcher.running = true
+      addonWatcher.running = true
       registry.rescan()
     }
   }
@@ -744,11 +489,13 @@ QtObject {
   // A graceful stop takes the watcher with it; the reaper above covers the
   // stops that never run this (a killed or crashed shell).
   Component.onDestruction: {
-    localPluginWatcherRestart.stop()
-    localPluginWatcher.running = false
+    addonWatcherRestart.stop()
+    addonWatcher.running = false
   }
 
-  property Process localPluginWatcher: Process {
+  // Installing, upgrading or removing an add-on package changes this folder,
+  // and the shell reloads its plugins to match.
+  property Process addonWatcher: Process {
     command: [
       "inotifywait",
       "-m",
@@ -762,63 +509,48 @@ QtObject {
     ]
     stdout: SplitParser {
       onRead: function(path) {
-        var pluginId = registry.localPluginIdForPath(path)
-        if (pluginId) registry.localPluginChanged(pluginId)
+        var pluginId = registry.addonIdForPath(path)
+        if (pluginId) registry.addonChanged(pluginId)
       }
     }
-    onExited: localPluginWatcherRestart.restart()
+    onExited: addonWatcherRestart.restart()
   }
 
-  property Timer localPluginWatcherRestart: Timer {
+  property Timer addonWatcherRestart: Timer {
     interval: 1000
-    onTriggered: localPluginWatcher.running = true
+    onTriggered: addonWatcher.running = true
   }
 
   function rescan() {
     if (scanning) return
     scanning = true
-    // $0 = first-party dir, $1 = third-party dir. Some bash versions need the explicit -- separator.
-    // First-party plugins may be grouped one level deeper, e.g. panels/audio
-    // or services/battery.
-    // First-party bar widgets can also carry sibling manifests such as
-    // widgets/Clock.manifest.json so multiple widgets can live in one source
-    // directory without wrapper folders.
-    // Add-on plugins stay at the top level of /usr/share/karchy/plugins.
+    // $0 = the shell's own plugins, $1 = add-ons. The shell's own come first
+    // (parseScanOutput keeps the first of a duplicate id). They may be grouped
+    // one level deeper, e.g. panels/audio or services/battery, and bar widgets
+    // can carry sibling manifests such as widgets/Clock.manifest.json so
+    // several widgets live in one directory. Add-ons sit at the top level of
+    // /usr/share/karchy/plugins.
     var script = ""
-      + "emit_manifest() { local kind=\"$1\"; local manifest=\"$2\"; local sub; "
+      + "emit_manifest() { local manifest=\"$1\"; local sub; "
       + "  if [[ ${manifest##*/} == \"manifest.json\" ]]; then sub=\"${manifest%/manifest.json}\"; else sub=\"${manifest%/*}\"; fi; "
-      + "  printf '===%s::%s===\\n' \"$kind\" \"$sub\"; "
+      + "  printf '===%s===\\n' \"$sub\"; "
       + "  printf '%s\\n' \"$(<\"$manifest\")\"; "
       + "  printf '\\n=== EOM ===\\n'; "
       + "}; "
-      + "scan_firstparty() { local dir=\"$1\"; "
-      + "  [[ -d \"$dir\" ]] || return 0; "
-      + "  while IFS= read -r manifest; do emit_manifest firstparty \"$manifest\"; done < <(find \"$dir\" -mindepth 2 -maxdepth 3 -type f \\( -name manifest.json -o -name '*.manifest.json' \\) | sort); "
-      + "}; "
-      + "scan_thirdparty() { local dir=\"$1\"; "
-      + "  [[ -d \"$dir\" ]] || return 0; "
-      + "  for sub in \"$dir\"/*/; do "
-      + "    [[ -f \"$sub/manifest.json\" ]] || continue; "
-      + "    emit_manifest thirdparty \"$sub/manifest.json\"; "
-      + "  done; "
-      + "}; "
-      + "scan_firstparty \"$0\"; "
-      + "scan_thirdparty \"$1\""
+      + "[[ -d \"$0\" ]] && while IFS= read -r manifest; do emit_manifest \"$manifest\"; done < <(find \"$0\" -mindepth 2 -maxdepth 3 -type f \\( -name manifest.json -o -name '*.manifest.json' \\) | sort); "
+      + "for sub in \"$1\"/*/; do [[ -f \"$sub/manifest.json\" ]] && emit_manifest \"$sub/manifest.json\"; done; true"
     scanProcess.command = ["bash", "-c", script, registry.firstPartyDir, registry.pluginsDir]
     scanProcess.running = true
   }
 
-  function localPluginIdForPath(filePath) {
+  function addonIdForPath(filePath) {
     var base = pluginsDir.replace(/\/$/, "") + "/"
     var path = String(filePath || "").trim()
     if (path.indexOf(base) !== 0) return ""
 
     var relative = path.slice(base.length)
-    // Hidden entries are not plugins: clone staging dirs, remove backups.
+    // Hidden entries are not plugins.
     if (relative.indexOf(".") === 0) return ""
-    if (relative.indexOf("/.git/") !== -1 || relative.endsWith("/.git")) return ""
-    // Bytecode a plugin's Python helper writes on import would otherwise reload it, restart the helper, and loop.
-    if (/\/__pycache__(\/|$)/.test(relative)) return ""
 
     var slash = relative.indexOf("/")
     return slash === -1 ? relative : relative.slice(0, slash)

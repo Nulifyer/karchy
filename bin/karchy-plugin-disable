@@ -20,7 +20,7 @@ id="${1:-}"
 [[ -n $id ]] || fail "plugin id is required"
 
 result=$(karchy-shell shell setPluginEnabled "$id" false)
-[[ $result == "ok" ]] ||
-  fail "plugin '$id' is not known; run: karchy-shell shell rescanPlugins"
+[[ $result != "unknown" ]] || fail "plugin '$id' is not known; run: karchy plugin list"
+[[ $result == "ok" ]] || fail "$result"
 
 echo "Disabled $id"

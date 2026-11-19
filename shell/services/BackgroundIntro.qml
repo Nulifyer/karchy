@@ -26,7 +26,7 @@ Item {
   property string themeColors: ""
   property string themeShell: ""
   property real themeOpacity: 1
-  readonly property var backgroundService: host && host.services ? host.firstPartyServiceFor("karchy.background") : null
+  readonly property var backgroundService: host && host.services ? host.serviceFor("karchy.background") : null
   readonly property bool backgroundActive: !!backgroundService && !backgroundService.suspended
   readonly property bool backgroundReady: backgroundActive && backgroundService.ready !== false
 
@@ -37,8 +37,7 @@ Item {
   function finishStartup() {
     if (!cover || !startupSettled) return
     var registry = host ? host.pluginRegistry : null
-    var backgroundId = registry ? registry.resolveEnabledId("karchy.background") : ""
-    var disabled = registry && registry.installedPlugins[backgroundId] && !registry.isEnabled(backgroundId)
+    var disabled = registry && registry.installedPlugins["karchy.background"] && !registry.isEnabled("karchy.background")
     if (!backgroundReady && !disabled) return
     cover = false
     if (!themeToken) themeBackground = ""

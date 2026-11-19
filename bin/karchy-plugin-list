@@ -36,11 +36,10 @@ jq -r '
   .[] |
   [ .id,
     (if .enabled then "enabled" else "disabled" end),
-    (if .firstParty then "first-party" else "third-party" end),
     ((.kinds // []) | join(",")),
     (.name // "")
   ] | @tsv
 ' <<<"$plugins" | awk -F '\t' '
-  BEGIN { printf "%-32s %-9s %-11s %-18s %s\n", "ID", "STATE", "SOURCE", "KINDS", "NAME" }
-  { printf "%-32s %-9s %-11s %-18s %s\n", $1, $2, $3, $4, $5 }
+  BEGIN { printf "%-32s %-9s %-18s %s\n", "ID", "STATE", "KINDS", "NAME" }
+  { printf "%-32s %-9s %-18s %s\n", $1, $2, $3, $4 }
 '

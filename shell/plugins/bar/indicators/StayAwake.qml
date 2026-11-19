@@ -9,7 +9,7 @@ import qs.Ui
 BarIndicator {
   id: root
 
-  readonly property var idle: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property var idle: bar && bar.shell ? bar.shell.serviceFor("karchy.idle") : null
 
   active: idle ? idle.stayAwake === true : false
   // Nothing to offer while off: the way in is the panel's switch.

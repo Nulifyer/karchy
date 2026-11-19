@@ -8,7 +8,7 @@ BarWidget {
   id: root
   moduleName: "karchy.media"
 
-  readonly property var mediaService: bar?.shell?.firstPartyServiceFor("karchy.media")
+  readonly property var mediaService: bar?.shell?.serviceFor("karchy.media")
   readonly property var activePlayer: mediaService ? mediaService.activePlayer : null
   readonly property var sourcePlayers: mediaService ? mediaService.sourcePlayers : []
 

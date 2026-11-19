@@ -98,7 +98,7 @@ Panel {
 
   // Do Not Disturb belongs to the notification service, which remembers it
   // across restarts; the bar's indicator shows while it is on.
-  readonly property var notifications: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.notifications") : null
+  readonly property var notifications: bar && bar.shell ? bar.shell.serviceFor("karchy.notifications") : null
   readonly property bool doNotDisturb: notifications ? notifications.doNotDisturb === true : false
 
   function toggleDoNotDisturb() {

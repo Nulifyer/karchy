@@ -8,7 +8,7 @@ import qs.Ui
 BarIndicator {
   id: root
 
-  readonly property var notifications: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.notifications") : null
+  readonly property var notifications: bar && bar.shell ? bar.shell.serviceFor("karchy.notifications") : null
 
   active: notifications ? notifications.doNotDisturb === true : false
   // Nothing to offer while off: the way in is the clock panel's switch.

@@ -3,7 +3,7 @@
 # karchy:summary=Enable a shell plugin
 # karchy:group=plugin
 # karchy:args=<id> [placement]
-# karchy:examples=karchy plugin enable acme.weather --section right
+# karchy:examples=karchy plugin enable karchy.microphone --after karchy.audio
 
 set -euo pipefail
 
@@ -20,12 +20,6 @@ fi
 id="${1:-}"
 [[ -n $id ]] || fail "plugin id is required"
 shift
-
-if (( $# > 0 )) && karchy-plugin-catalog | jq -e --arg id "$id" '
-  any(.[]; .id == $id and (.kinds | index("bar")))
-' >/dev/null; then
-  fail "'$id' is a bar; it replaces the bar in use rather than taking a place in one"
-fi
 
 section=""
 index=""
@@ -101,10 +95,6 @@ fi
 
 if [[ $placement != "{}" ]]; then
   echo "Enabled and moved $id"
-elif karchy-plugin-catalog | jq -e --arg id "$id" '
-  any(.[]; .id == $id and (.kinds | index("bar")))
-' >/dev/null; then
-  echo "Now using $id as the bar"
 else
   echo "Enabled $id"
 fi

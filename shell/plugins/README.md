@@ -1,16 +1,13 @@
 # First-party plugins
 
 These plugins ship with Karchy and are discovered by the shell at startup.
-They use the same `manifest.json` contract as third-party plugins; the
-only difference is that the shell flags them with `__isFirstParty: true`.
-First-party non-bar plugins are enabled unless listed in `disabledPlugins[]`;
-`karchy.bar` is the default bar option and becomes inactive only while another
-`kind: "bar"` plugin is selected. Services and keep-loaded panels are mounted
-at startup; other panels, overlays, and menus are loaded on demand.
-
 Add-on packages (karchy's `addons/`, D-106) install theirs under
-`/usr/share/karchy/plugins/<plugin-id>/` rather than in this directory. The
-shell loads no plugins from the home folder.
+`/usr/share/karchy/plugins/<plugin-id>/` with the same `manifest.json`
+contract; the shell treats both alike (D-111) and loads no plugins from the
+home folder. Every plugin is enabled unless listed in `disabledPlugins[]`; a
+bar widget is in the bar while `bar.layout` holds it. `karchy.bar` is the bar
+and cannot be switched off. Services and keep-loaded panels are mounted at
+startup; other panels, overlays, and menus are loaded on demand.
 
 | Plugin | id | kinds | entry points |
 |---|---|---|---|
@@ -48,7 +45,7 @@ own plugin directories, each with its own `manifest.json`.
 
 ## Bar
 
-The built-in status bar and default full-bar option. Layout lives in the
+The status bar. Layout lives in the
 top-level `bar:` subtree of `~/.config/karchy/shell.json` (with the shell
 providing [`config/karchy/shell.json`](../../config/karchy/shell.json) when
 the user has no file). See [`bar/README.md`](bar/README.md) for the widget catalogue

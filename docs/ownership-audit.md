@@ -59,7 +59,7 @@ Decided so far (2026-11-13):
 ## Keep as-is (renamed)
 
 These are the reason for taking Omarchy's code at all:
-- **Shell and plugin system:** `shell`, `shell-config`, `plugin-*` (9 commands, including clone, update and validate), `bar`, `bar-text-color`, `osd`, `notification-send`, `menu`, `menu-select`, `menu-images`, `menu-plugin`, `menu-timezone`, `menu-keybindings` (the Super+K viewer).
+- **Shell and plugin system:** `shell`, `shell-config`, `plugin-*` (9 commands then; since D-106 only `list`, `enable` and `disable`, as add-ons became packages), `bar`, `bar-text-color`, `osd`, `notification-send`, `menu`, `menu-select`, `menu-images`, `menu-plugin` (dropped by D-106), `menu-timezone`, `menu-keybindings` (the Super+K viewer).
 - **Theme engine:** `theme-set-templates`, `theme-color`, `theme-osc`, `theme-install`/`-remove`/`-list`/`-extras`/`-refresh`, `theme-bg-*` (except the intro), `theme-switcher`, `theme-colors-from-alacritty` (installs older community themes), `theme-set-browser`(+`-policy`), `-gnome`, `-glass`, `-foot`, `-vscode`, `-claude`, `-t3code`.
 - **Hyprland:**
   - monitors: `-monitor-*`, `-monitor-scaling`, clamshell, internal display and mirroring for docking

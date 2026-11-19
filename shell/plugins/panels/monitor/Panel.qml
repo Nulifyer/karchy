@@ -40,7 +40,7 @@ Panel {
 
   // Stay Awake lives in the power panel, which a computer without a battery
   // doesn't have, so there it is offered here. It belongs to the idle service.
-  readonly property var idle: bar && bar.shell ? bar.shell.firstPartyServiceFor("karchy.idle") : null
+  readonly property var idle: bar && bar.shell ? bar.shell.serviceFor("karchy.idle") : null
   readonly property bool stayAwake: idle ? idle.stayAwake === true : false
   readonly property bool stayAwakeOffered: idle !== null && !(UPower.displayDevice && UPower.displayDevice.isPresent)
 
