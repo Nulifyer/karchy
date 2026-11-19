@@ -26,6 +26,7 @@ declare -A ROUTE_IS_ALIAS
 declare -A BINARY_TO_KEY
 declare -A GROUP_DESCRIPTIONS
 
+GROUP_DESCRIPTIONS[agent]="Skills for AI coding agents"
 GROUP_DESCRIPTIONS[audio]="Audio input and output controls"
 GROUP_DESCRIPTIONS[bar]="Karchy shell bar layout and settings"
 GROUP_DESCRIPTIONS[battery]="Battery status helpers"

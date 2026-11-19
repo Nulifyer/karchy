@@ -24,6 +24,13 @@ jobs:
       - name: NVIDIA GPU generations map to the right driver
         run: tools/nvidia-generation-check
 
+  agent-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Agent skills are linked safely and each one is packaged once (D-115)
+        run: tests/agent-skills.sh
+
   quick-install:
     runs-on: ubuntu-latest
     steps:

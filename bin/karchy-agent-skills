@@ -1,0 +1,395 @@
+#!/bin/bash
+
+# karchy:summary=Give AI coding agents one shared skills folder, with karchy's skills in it
+# karchy:args=[status | --adopt]
+# karchy:examples=karchy agent skills | karchy agent skills status | karchy agent skills --adopt
+
+# ~/.agents/skills is the machine's skills folder for AI coding agents. Most
+# agents read it themselves; for the ones that don't, their own skills folder
+# is made a link to it, so every agent sees the same skills, the user's and
+# karchy's, with nothing to relink when one is added.
+#
+# karchy's packages ship Agent Skills (folders with a SKILL.md) in
+# /usr/share/karchy/agents/skills, each in the package it describes, so an
+# agent is told only about what is installed. Each is linked as
+# ~/.agents/skills/<name>.
+#
+# This command runs when the session starts and whenever karchy's skills
+# folder gains or loses a skill (karchy-agent-skills.service and .path), at
+# the end of `karchy update`, after Quick install adds an AI app, and from the
+# installer. It changes nothing when everything is in place, and prints only
+# what it changed.
+#
+#   ~/.agents/skills   made if missing; one link per karchy skill.
+#   Claude Code        reads only ~/.claude/skills: made a link to
+#                      ~/.agents/skills, ahead of time, even before Claude
+#                      Code is installed.
+#   Antigravity, Kiro  (FOLDER_AGENTS below) the same link, once the agent's
+#                      own config folder exists, so no folders are made for
+#                      agents the user never installs.
+#   Hermes             (EACH_AGENTS) keeps its bundled skills, a manifest and
+#                      hub state in its skills folder, so that folder is
+#                      never redirected: one link per karchy skill in it.
+#   not touched        agents that read ~/.agents/skills themselves: Codex
+#                      (its ~/.codex/skills holds its built-in skills), Gemini
+#                      CLI, Pi, OpenCode, GitHub Copilot CLI, Cursor, Amp,
+#                      Goose, Crush, Qwen Code, Cline, Droid, Kilo Code.
+#
+# An agent's skills folder that already exists as a real folder is not
+# replaced: it may hold things that aren't in ~/.agents/skills. karchy's
+# skills are linked into it one by one instead, and a line says how to share
+# it. A folder that is a link to somewhere else is left alone.
+#
+#   --adopt  for each such real folder: move what it holds into
+#            ~/.agents/skills, then make the folder the link. Nothing is
+#            overwritten: if a name is taken there by something different,
+#            that folder is left as it is and the names are listed. Links
+#            that already point into ~/.agents/skills are dropped, as the
+#            folder link replaces them. Runs only when asked.
+#   status   the folder links, then one line per karchy skill and folder:
+#            linked, missing, yours (a skill of the user's with that name),
+#            or not installed here.
+#
+# What it never does: replace a skill of the same name that is the user's (a
+# real folder, or a link that points anywhere but karchy's skills), or remove
+# anything but its own per-skill links, which go when the skill is gone (the
+# package was removed) or no longer applies. A folder link is never removed.
+#
+# A skill folder may hold `.requires`: commands, one per line, that must all
+# be installed for the skill to be linked (karchy-vms needs QEMU, which Quick
+# install adds without a karchy package).
+#
+# If ~/.agents is the user's own git repository, karchy's links are ignored
+# there, once: a marked `skills/karchy*` line is added to its .gitignore, or
+# to .git/info/exclude when the repository has no .gitignore. Nothing is
+# committed. The other way round also works: on a new machine the user can
+# `git init` in the existing ~/.agents, fetch and check out their repository,
+# since karchy's links don't collide with its files.
+#
+# KARCHY_AGENT_SKILLS_DIR overrides where the skills are read from (tests).
+
+set -euo pipefail
+
+SOURCE=${KARCHY_AGENT_SKILLS_DIR:-/usr/share/karchy/agents/skills}
+MAIN=$HOME/.agents/skills
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/karchy
+IGNORE_LINE='skills/karchy*'
+IGNORE_COMMENT="# karchy's agent skills: links into /usr/share/karchy (karchy-agent-skills)"
+
+# Agents that don't read ~/.agents/skills and write nothing of their own into
+# their skills folder: "<config folder>:<skills folder>[:always]", under
+# $HOME. The skills folder becomes a link to ~/.agents/skills once the config
+# folder exists ("always": made ahead of time). Sources for each path:
+# docs/architecture.md › Agent skills.
+FOLDER_AGENTS=(
+  ".claude:.claude/skills:always"
+  ".gemini/config:.gemini/config/skills"
+  ".kiro:.kiro/skills"
+)
+# Agents that keep their own files in their skills folder: one link per
+# karchy skill, once the folder before the colon exists. A glob is allowed.
+EACH_AGENTS=(
+  ".hermes:.hermes/skills"
+  ".hermes/profiles/*:.hermes/profiles/*/skills"
+)
+
+say() { printf '%s\n' "$*"; }
+short() { printf '%s' "${1/#"$HOME"/\~}"; }
+
+# The skills to link: every folder in SOURCE whose requirements are met.
+wanted=()
+find_wanted() {
+  local dir requirement ok
+  [[ -d $SOURCE ]] || return 0
+  for dir in "$SOURCE"/*/; do
+    [[ -d $dir ]] || continue
+    dir=${dir%/}
+    ok=true
+    if [[ -f $dir/.requires ]]; then
+      while read -r requirement _; do
+        [[ -z $requirement || $requirement == \#* ]] && continue
+        command -v "$requirement" >/dev/null 2>&1 || ok=false
+      done <"$dir/.requires"
+    fi
+    [[ $ok == true ]] && wanted+=("${dir##*/}")
+  done
+  return 0
+}
+
+is_wanted() {
+  local name
+  for name in "${wanted[@]}"; do
+    [[ $name == "$1" ]] && return 0
+  done
+  return 1
+}
+
+# shared, missing, folder or elsewhere: what an agent's skills folder is now.
+folder_state() {
+  local dir=$1
+  if [[ ! -e $dir && ! -L $dir ]]; then
+    echo missing
+  elif [[ -d $dir && $(realpath -m "$dir") == "$(realpath -m "$MAIN")" ]]; then
+    echo shared
+  elif [[ -d $dir && ! -L $dir ]]; then
+    echo folder
+  else
+    echo elsewhere
+  fi
+}
+
+# The skills folders of the EACH_AGENTS that are installed.
+each_agent_dirs() {
+  local pair parent
+  for pair in "${EACH_AGENTS[@]}"; do
+    # Unquoted on purpose: the entry may be a glob.
+    # shellcheck disable=SC2231
+    for parent in $HOME/${pair%%:*}; do
+      [[ -d $parent ]] || continue
+      printf '%s\n' "$parent/skills"
+    done
+  done
+}
+
+# Make the folder links, and collect the folders that get one link per skill
+# (`folders`) and, of those, the ones that could be shared (`unshared`).
+folders=()
+unshared=()
+find_folders() {
+  local entry parent dir always
+
+  mkdir -p "$MAIN"
+  folders=("$MAIN")
+  unshared=()
+  for entry in "${FOLDER_AGENTS[@]}"; do
+    IFS=: read -r parent dir always <<<"$entry"
+    parent=$HOME/$parent dir=$HOME/$dir
+    [[ -d $parent || $always == always ]] || continue
+    case $(folder_state "$dir") in
+      missing)
+        mkdir -p "${dir%/*}"
+        ln -sr "$MAIN" "$dir"
+        say "linked $(short "$dir") -> $(short "$MAIN")"
+        ;;
+      folder)
+        folders+=("$dir")
+        unshared+=("$dir")
+        ;;
+    esac
+  done
+  while read -r dir; do
+    # A link (to the main folder or anywhere else) is the user's arrangement.
+    [[ -L $dir ]] && continue
+    mkdir -p "$dir"
+    [[ $(folder_state "$dir") == folder ]] && folders+=("$dir")
+  done < <(each_agent_dirs)
+  return 0
+}
+
+# linked, missing or yours: what <folder>/<name> is now.
+state_of() {
+  local dest=$1/$2
+  if [[ -L $dest ]]; then
+    if [[ $(readlink "$dest") == "$SOURCE"/* ]]; then echo linked; else echo yours; fi
+  elif [[ -e $dest ]]; then
+    echo yours
+  else
+    echo missing
+  fi
+}
+
+sync_folder() {
+  local folder=$1 name dest target made=false
+
+  # Links of karchy's whose skill is gone or no longer applies.
+  for dest in "$folder"/*; do
+    [[ -L $dest ]] || continue
+    target=$(readlink "$dest")
+    [[ $target == "$SOURCE"/* ]] || continue
+    if [[ ! -d $target ]] || ! is_wanted "${dest##*/}"; then
+      rm -f "$dest"
+      say "removed $(short "$dest")"
+    fi
+  done
+
+  for name in "${wanted[@]}"; do
+    dest=$folder/$name
+    case $(state_of "$folder" "$name") in
+      missing)
+        ln -s "$SOURCE/$name" "$dest"
+        say "linked $(short "$dest")"
+        made=true
+        ;;
+      linked)
+        if [[ $(readlink "$dest") != "$SOURCE/$name" ]]; then
+          ln -sfn "$SOURCE/$name" "$dest"
+          say "linked $(short "$dest")"
+        fi
+        ;;
+      yours)
+        say "kept $(short "$dest"): your own skill of that name, so karchy's is not linked here"
+        ;;
+    esac
+  done
+
+  # Said when links were made, not at every login.
+  if [[ $made == true ]] && is_unshared "$folder"; then
+    say "$(short "$folder") is a folder of its own, so karchy's skills are linked into it one by one. To share ~/.agents/skills with it instead: karchy agent skills --adopt"
+  fi
+}
+
+is_unshared() {
+  local dir
+  for dir in "${unshared[@]}"; do
+    [[ $dir == "$1" ]] && return 0
+  done
+  return 1
+}
+
+# Keep karchy's links out of the user's ~/.agents repository, once.
+ignore_in_repo() {
+  local repo=$HOME/.agents marker=$STATE/agent-skills-ignored file top
+
+  [[ -e $repo/.git && ! -e $marker ]] || return 0
+  command -v git >/dev/null 2>&1 || return 0
+  top=$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null) || return 0
+  [[ $(realpath -m "$top") == "$(realpath -m "$repo")" ]] || return 0
+
+  if [[ -f $repo/.gitignore ]]; then
+    file=$repo/.gitignore
+  else
+    file=$(git -C "$repo" rev-parse --git-path info/exclude)
+    [[ $file == /* ]] || file=$repo/$file
+    mkdir -p "${file%/*}"
+  fi
+  if ! grep -qxF -e "$IGNORE_LINE" -e "/$IGNORE_LINE" "$file" 2>/dev/null; then
+    # Start on a new line when the file doesn't end with one.
+    if [[ -s $file && -n $(tail -c 1 "$file") ]]; then echo >>"$file"; fi
+    printf '%s\n%s\n' "$IGNORE_COMMENT" "$IGNORE_LINE" >>"$file"
+    say "ignored karchy's skills in $(short "$file")"
+  fi
+  mkdir -p "$STATE"
+  short "$file" >"$marker"
+}
+
+# Is <folder>/<entry> already in the main folder: a link into it or into
+# karchy's skills, or the same content as the entry of that name there?
+already_shared() {
+  local item=$1 name=${1##*/} target
+  if [[ -L $item ]]; then
+    target=$(readlink "$item")
+    [[ $target == "$SOURCE"/* ]] && return 0
+    [[ $(realpath -m "$item") == "$(realpath -m "$MAIN")"/* ]] && return 0
+  fi
+  [[ -e $MAIN/$name || -L $MAIN/$name ]] || return 1
+  diff -rq --no-dereference "$item" "$MAIN/$name" >/dev/null 2>&1
+}
+
+# --adopt: turn one real skills folder into the link, keeping what it holds.
+adopt_folder() {
+  local dir=$1 item name target
+  local -a items=() taken=()
+
+  shopt -s nullglob dotglob
+  items=("$dir"/*)
+  shopt -u nullglob dotglob
+
+  for item in "${items[@]}"; do
+    name=${item##*/}
+    already_shared "$item" && continue
+    [[ -e $MAIN/$name || -L $MAIN/$name ]] && taken+=("$name")
+  done
+  if ((${#taken[@]} > 0)); then
+    say "left $(short "$dir") as it is: $(short "$MAIN") already has something different named ${taken[*]}. Rename or remove one of each, then run this again."
+    return 1
+  fi
+
+  for item in "${items[@]}"; do
+    name=${item##*/}
+    if already_shared "$item"; then
+      rm -rf -- "$item"
+    elif [[ -L $item ]]; then
+      # A link is made again rather than moved: a relative one would point
+      # somewhere else from its new place.
+      target=$(realpath -m "$item")
+      ln -s "$target" "$MAIN/$name"
+      rm -f -- "$item"
+      say "moved $(short "$item") to $(short "$MAIN/$name")"
+    else
+      mv -n -- "$item" "$MAIN/$name"
+      say "moved $(short "$item") to $(short "$MAIN/$name")"
+    fi
+  done
+  rmdir "$dir"
+  ln -sr "$MAIN" "$dir"
+  say "linked $(short "$dir") -> $(short "$MAIN")"
+}
+
+adopt() {
+  local dir failed=0
+  find_wanted
+  find_folders
+  if ((${#unshared[@]} == 0)); then
+    say "Nothing to adopt: no agent's skills folder is a folder of its own."
+  fi
+  for dir in "${unshared[@]}"; do
+    adopt_folder "$dir" || failed=1
+  done
+  # The karchy skills, for folders that were left as they are.
+  find_folders
+  for dir in "${folders[@]}"; do
+    sync_folder "$dir"
+  done
+  ignore_in_repo
+  return $failed
+}
+
+status() {
+  local entry parent dir always folder name
+  find_wanted
+  folders=("$MAIN")
+  for entry in "${FOLDER_AGENTS[@]}"; do
+    IFS=: read -r parent dir always <<<"$entry"
+    dir=$HOME/$dir
+    case $(folder_state "$dir") in
+      shared) say "shared   $(short "$dir") -> $(short "$MAIN")" ;;
+      folder)
+        say "folder   $(short "$dir") (its own folder; share it with: karchy agent skills --adopt)"
+        folders+=("$dir")
+        ;;
+      elsewhere) say "elsewhere $(short "$dir") -> $(readlink "$dir") (left alone)" ;;
+    esac
+  done
+  while read -r dir; do
+    [[ $(folder_state "$dir") == folder ]] && folders+=("$dir")
+  done < <(each_agent_dirs)
+  [[ -d $SOURCE ]] || return 0
+  for dir in "$SOURCE"/*/; do
+    [[ -d $dir ]] || continue
+    name=${dir%/} name=${name##*/}
+    if ! is_wanted "$name"; then
+      say "not installed here  $name (needs: $(tr '\n' ' ' <"$dir/.requires" | sed 's/ *$//'))"
+      continue
+    fi
+    for folder in "${folders[@]}"; do
+      printf '%-8s %s\n' "$(state_of "$folder" "$name")" "$(short "$folder/$name")"
+    done
+  done
+}
+
+case ${1:-} in
+  "")
+    find_wanted
+    find_folders
+    for folder in "${folders[@]}"; do
+      sync_folder "$folder"
+    done
+    ignore_in_repo
+    ;;
+  --adopt) adopt ;;
+  status) status ;;
+  *)
+    echo "Usage: karchy-agent-skills [status | --adopt]" >&2
+    exit 2
+    ;;
+esac

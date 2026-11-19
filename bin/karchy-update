@@ -15,9 +15,10 @@
 #   4. system packages (pacman -Syu; snap-pac takes snapshots before and after,
 #      and karchy-settings' hooks pause Hyprland's auto-reload meanwhile)
 #   5. AUR packages (paru)
-#   6. config files left as .pacnew, then karchy migrations and a desktop
-#      reload; at the end, the release notes and a restart offer when the
-#      kernel or other boot-time parts changed
+#   6. config files left as .pacnew, then karchy migrations, the agent skills
+#      of the installed packages (karchy-agent-skills) and a desktop reload;
+#      at the end, the release notes and a restart offer when the kernel or
+#      other boot-time parts changed
 # Colors are the terminal's 16 ANSI colors, which follow the current theme,
 # and NO_COLOR turns them off. Holds /run/lock/karchy-update so mirror ranking
 # never runs alongside (D-29). In dev mode (/etc/karchy.conf) the checkout is
@@ -171,6 +172,8 @@ if [[ -z $repo_updates && -z $aur_updates && ${#retire_remove[@]} -eq 0 ]]; then
     exit 0
   fi
   good "Everything is up to date."
+  # A feature added or removed since the last run gains or loses its skill.
+  karchy-agent-skills >/dev/null 2>&1 || true
   karchy-update-check --quiet >/dev/null 2>&1 || true
   exit 0
 fi
@@ -459,6 +462,11 @@ if ((${#failed_migrations[@]} > 0)); then
   karchy-notification-send -u critical -g update "An update step failed" \
     "${#failed_migrations[@]} karchy migration(s) failed and will run again at the next update. Logs: $state_dir/migrations" || true
 fi
+# Agent skills (karchy-agent-skills): a feature package this update added or
+# removed gains or loses its skill in the user's agent folders.
+while read -r line; do
+  note "agent skills: $line"
+done < <(karchy-agent-skills 2>&1 || true)
 if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   karchy-reload-desktop
   good "Desktop reloaded"

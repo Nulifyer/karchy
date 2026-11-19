@@ -1,0 +1,11 @@
+# karchy: link the agent skills karchy's packages ship into the folders AI
+# coding agents read (karchy-agent-skills). Runs when the user's session
+# starts (default.target.wants) and when a package adds or removes a skill
+# (karchy-agent-skills.path). Changes nothing when the links are in place.
+[Unit]
+Description=Link karchy's agent skills
+ConditionPathExists=/usr/bin/karchy-agent-skills
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/karchy-agent-skills

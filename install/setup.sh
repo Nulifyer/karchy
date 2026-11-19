@@ -138,6 +138,9 @@ setup_user() {
   # This user's files are made by the karchy just installed, so the migrations
   # it ships, written for older installs, are already done (karchy-migrate).
   as_user env KARCHY_PATH=/usr/share/karchy karchy-migrate baseline
+  # The agent skills of the packages just installed, in ~/.agents/skills and
+  # for Claude Code, before the first login.
+  as_user karchy-agent-skills >/dev/null
   as_user env KARCHY_PATH=/usr/share/karchy KARCHY_SETUP_CONTEXT=install KARCHY_THEME_HEADLESS=1 \
     karchy-theme-set "${KARCHY_THEME:-nulifyer}"
   # shellcheck disable=SC2016  # expanded by the user's shell in the target

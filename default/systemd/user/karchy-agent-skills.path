@@ -1,0 +1,8 @@
+# karchy: run karchy-agent-skills.service when a package adds a skill to
+# karchy's skills folder or takes one away, so a feature installed from Quick
+# install or with pacman reaches the user's agents without a new login.
+[Unit]
+Description=Watch karchy's agent skills
+
+[Path]
+PathChanged=/usr/share/karchy/agents/skills
