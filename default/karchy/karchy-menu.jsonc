@@ -23,6 +23,7 @@
   "settings.displays": {"iconName":"display","label":"Display Settings","aliases":["displays","monitors","screen","resolution","scale"],"action":"karchy-settings displays"},
   "settings.input": {"iconName":"input.keyboard","label":"Input Settings","aliases":["keyboard","mouse","touchpad","trackpad","input"],"action":"karchy-settings input"},
   "settings.network": {"iconName":"net.network","label":"Network Settings","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
+  "settings.notifications": {"iconName":"notify.bell","label":"Notification Settings","aliases":["notifications","do not disturb","dnd","silent"],"action":"karchy-settings notifications"},
   "settings.ssh": {"iconName":"security.ssh","label":"SSH Settings","aliases":["ssh","sshd","ssh server","ssh agent"],"action":"karchy-settings ssh"},
   "settings.appearance": {"iconName":"menu.appearance","label":"Appearance Settings","aliases":["text size","bar style","monospace font"],"action":"karchy-settings appearance"},
   "settings.apps": {"iconName":"menu.apps","label":"Default Apps","aliases":["default apps","default browser","file associations"],"searchTerms":["settings"],"action":"karchy-settings apps"},
