@@ -117,7 +117,7 @@ CursorSurface {
       PanelActionButton {
         visible: row.openShown
         anchors.verticalCenter: parent.verticalCenter
-        iconText: Icons.glyph("ui.open-external")
+        iconText: Icons.glyph("display")
         tooltipText: "Show its screen"
         foreground: row.foreground
         fontFamily: row.fontFamily

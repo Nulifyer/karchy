@@ -576,6 +576,8 @@ Item {
         }
 
         SettingRow {
+          // This page's label column (FormLabel).
+          labelWidth: Style.space(140)
           label: "Start it and show its screen"
           checked: form.startNow
           onToggled: form.startNow = !form.startNow
@@ -640,7 +642,7 @@ Item {
           focusable: true
           variant: "primary"
           text: "Show screen"
-          iconText: Icons.glyph("ui.open-external")
+          iconText: Icons.glyph("display")
           onClicked: root.openVm(detail.vm.name)
         }
         Button {
@@ -780,24 +782,32 @@ Item {
           enabled: detail.editable
 
           SettingRow {
+            // This page's label column (FormLabel).
+            labelWidth: Style.space(140)
             label: "Network"
             info: "Internet through the host (QEMU user networking)."
             checked: detail.vm.net === "user"
             onToggled: root.setKey("net", checked ? "none" : "user")
           }
           SettingRow {
+            // This page's label column (FormLabel).
+            labelWidth: Style.space(140)
             label: "UEFI firmware"
             info: "Off boots with a legacy BIOS."
             checked: detail.vm.uefi === "yes"
             onToggled: root.setKey("uefi", checked ? "no" : "yes")
           }
           SettingRow {
-            label: "Secure Boot firmware"
+            // This page's label column (FormLabel).
+            labelWidth: Style.space(140)
+            label: "Secure Boot"
             info: "Firmware that can enforce Secure Boot; it starts with no keys enrolled."
             checked: detail.vm.secureboot === "yes"
             onToggled: root.setKey("secureboot", checked ? "no" : "yes")
           }
           SettingRow {
+            // This page's label column (FormLabel).
+            labelWidth: Style.space(140)
             label: "TPM 2.0"
             info: "A software TPM (swtpm), as Windows 11 needs."
             checked: detail.vm.tpm === "yes"
@@ -881,9 +891,8 @@ Item {
       }
 
       // Apart at the bottom: what can't be undone, each asked about first.
-      SectionHeader { text: "Can't be undone" }
-
       Section {
+        title: "Can't be undone"
         DangerRow {
           visible: detail.running
           title: "Force off"
@@ -961,17 +970,8 @@ Item {
     elide: Text.ElideMiddle
   }
 
-  // A caps label after a separator, as Settings and the bar panels do it.
-  component SectionHeader: ColumnLayout {
-    property alias text: header.text
-    Layout.fillWidth: true
-    Layout.topMargin: Style.spacing.lg
-    spacing: Style.spacing.lg
-    PanelSeparator { Layout.fillWidth: true }
-    PanelSectionHeader { id: header }
-  }
 
-  // One destructive action with what it does, in the "Can't be undone" card.
+  // One destructive action with what it does, in the "Can't be undone" section.
   component DangerRow: RowLayout {
     id: danger
     property string title: ""

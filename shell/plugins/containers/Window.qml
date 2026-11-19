@@ -650,9 +650,8 @@ Item {
       }
 
       // Apart at the bottom: what can't be undone, asked about first.
-      SectionHeader { text: "Can't be undone" }
-
       Section {
+        title: "Can't be undone"
         DangerRow {
           title: "Remove this container"
           description: "Deletes the container and what it wrote outside its volumes. Its image and named volumes are kept."
@@ -788,9 +787,8 @@ Item {
         }
       }
 
-      SectionHeader { text: "Can't be undone" }
-
       Section {
+        title: "Can't be undone"
         DangerRow {
           title: "Prune"
           description: "Removes every stopped container, unused network and dangling image. Volumes and tagged images are kept."
@@ -815,17 +813,8 @@ Item {
     onDismissed: { root.errorText = ""; root.errorDetails = "" }
   }
 
-  // A caps label after a separator, as Settings and the bar panels do it.
-  component SectionHeader: ColumnLayout {
-    property alias text: header.text
-    Layout.fillWidth: true
-    Layout.topMargin: Style.spacing.lg
-    spacing: Style.spacing.lg
-    PanelSeparator { Layout.fillWidth: true }
-    PanelSectionHeader { id: header }
-  }
 
-  // One destructive action with what it does, in a "Can't be undone" card.
+  // One destructive action with what it does, in a "Can't be undone" section.
   component DangerRow: RowLayout {
     id: danger
     property string title: ""
