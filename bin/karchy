@@ -553,7 +553,7 @@ Common commands:
   karchy theme set <name>    Apply a theme
   karchy font list           List available fonts
   karchy screenshot          Take a screenshot
-  karchy debug               Print debugging information
+  karchy version             Show the installed karchy version
 
 Groups:
 EOF
