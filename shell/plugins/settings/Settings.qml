@@ -52,6 +52,7 @@ Item {
     { id: "power", label: "Power", iconName: "system.power", group: 3 },
     { id: "storage", label: "Storage", iconName: "disk", group: 3 },
     { id: "datetime", label: "Date & Time", iconName: "time", group: 3 },
+    { id: "users", label: "Users", iconName: "account.user", group: 4 },
     { id: "security", label: "Security", iconName: "security", group: 4 },
     { id: "ssh", label: "SSH & Git", iconName: "security.ssh", group: 4 },
     { id: "about", label: "About", iconName: "info", group: 5 }
@@ -136,12 +137,14 @@ Item {
   // Sections ask before an action that removes or resets something, or
   // changes what gets installed, through this. The dialog opens on Cancel
   // either way; `destructive: false` draws the action as the primary button
-  // instead of in the error color. See ConfirmDialog.
-  function ask(message, confirmText, action, destructive) {
+  // instead of in the error color. `declineText` names the other button
+  // where "Cancel" would be wrong: nothing is cancelled by "Not now". See
+  // ConfirmDialog.
+  function ask(message, confirmText, action, destructive, declineText) {
     confirmDialog.returnFocus = frame.Window.activeFocusItem
     confirmDialog.message = message
     confirmDialog.confirmText = confirmText
-    confirmDialog.cancelText = Commons.I18n.t("common.cancel")
+    confirmDialog.cancelText = declineText || Commons.I18n.t("common.cancel")
     confirmDialog.destructive = destructive !== false
     confirmDialog.onYes = action
     confirmDialog.onNo = null
@@ -189,7 +192,7 @@ Item {
     if (!item || !page) return
     for (var p = item; p && p !== page; p = p.parent) {}
     if (!p) return
-    var margin = Style.spacing.panelPadding
+    var margin = Style.spacing.lg
     var top = item.mapToItem(content.contentItem, 0, 0).y
     var bottom = top + item.height
     var maxY = Math.max(0, content.contentHeight - content.height)
@@ -295,20 +298,24 @@ Item {
         }
       }
 
-      // Section content
+      // Section content. The page's padding at the top and bottom is the
+      // view's own margin, not part of what scrolls: a long page (the
+      // keybindings, the notification apps, a disk's parts) ends at the
+      // padding, and no row is cut by the window's border.
       Flickable {
         id: content
         Layout.fillWidth: true
         Layout.fillHeight: true
+        Layout.topMargin: Style.spacing.panelPadding
+        Layout.bottomMargin: Style.spacing.panelPadding
         clip: true
         contentWidth: width
-        contentHeight: sectionLoader.implicitHeight + Style.spacing.panelPadding * 2
+        contentHeight: sectionLoader.implicitHeight
         boundsBehavior: Flickable.StopAtBounds
 
         Loader {
           id: sectionLoader
           x: Style.spacing.panelPadding * 2
-          y: Style.spacing.panelPadding
           width: content.width - Style.spacing.panelPadding * 4
           active: root.opened
           source: {
@@ -318,6 +325,7 @@ Item {
               case "power": return "PowerSection.qml"
               case "notifications": return "NotificationsSection.qml"
               case "storage": return "StorageSection.qml"
+              case "users": return "UsersSection.qml"
               case "security": return "SecuritySection.qml"
               case "ssh": return "SshSection.qml"
               case "datetime": return "DateTimeSection.qml"
