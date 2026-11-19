@@ -151,6 +151,11 @@ package() {
   # action and the rule that spares the person at the computer the password;
   # and the one reader of bees' status file.
   install -Dm755 -t "$pkgdir/usr/lib/karchy" storage/storage-measure storage/storage-settings storage/bees-summary
+  # Quick install's root side (D-109): installs and removes catalog apps by
+  # id, always with an administrator's password.
+  install -Dm755 packages/app-packages "$pkgdir/usr/lib/karchy/app-packages"
+  install -Dm644 polkit/actions/org.karchy.app-packages.policy \
+    "$pkgdir/usr/share/polkit-1/actions/org.karchy.app-packages.policy"
   install -Dm644 -t "$pkgdir/usr/lib/systemd/system" storage/karchy-storage-measure.service \
     storage/karchy-storage-measure.timer
   install -d "$pkgdir/usr/lib/systemd/system/timers.target.wants"

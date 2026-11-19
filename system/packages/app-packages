@@ -1,0 +1,235 @@
+#!/bin/bash
+
+# karchy: Quick install's root side (D-109). Installed as
+# /usr/lib/karchy/app-packages and run only through
+#   pkexec /usr/lib/karchy/app-packages install|remove <app id>...
+# by karchy-quick-install apply (polkit action org.karchy.app-packages).
+#
+# It installs or removes apps from the Quick install list by their catalog
+# ids, in the order given, one after the other, with pacman running
+# non-interactively, and applies each app's declared system setup from the
+# catalog: Arch's 32-bit repository (multilib), the 32-bit graphics driver
+# for this machine's GPUs (gpu32), system services, groups for the calling
+# user, and the firewall rule for apps that need one on trusted networks.
+# User-level setup (user services, commands run as the user) is the caller's.
+#
+# Output, one line per change on stdout, for the window:
+#   queued <id>              before anything starts, for every id
+#   working <id>             pacman is installing or removing it now
+#   done <id>                installed (or removed) with its setup
+#   failed <id> <reason>     not installed (or not removed); the reason is
+#                            one line of plain text for a person
+# pacman's own output goes to stderr, which the caller keeps as the log.
+#
+# Threat reasoning. polkit asks for an administrator's password for every
+# call (auth_admin_keep; no rule waives it): installing software is a system
+# change. Assume the caller is any program in that user's session.
+# - What it can reach: install or remove the packages that root-owned,
+#   packaged /usr/share/karchy/default/karchy/quick-install.json lists for
+#   the named apps, from the repositories pacman.conf already trusts, plus
+#   the setup that file declares for them. Nothing else: no package names,
+#   paths or commands come from the caller, so a user-writable file can't
+#   make root install or run anything the list doesn't name.
+# - AUR apps and karchy's feature scripts are refused: an AUR package is
+#   built from a stranger's script (the user reviews it in a terminal), and
+#   a feature script runs as the user with sudo. Apps karchy needs
+#   (`required`) are never removed.
+# - Input is argv only: a verb from a fixed list and up to 64 ids matching
+#   ^[a-z0-9][a-z0-9.+-]*$, each of which must be a repository app in the
+#   list (exit 64 for a malformed request, 65 for an id that isn't one).
+#   Anything else ends the call before pacman or a file is touched. Nothing is read from
+#   the caller's files or environment.
+# - Files written: /etc/pacman.conf, only to uncomment the [multilib] section
+#   Arch ships commented out, for an app that declares it. Groups are added
+#   for the user pkexec names (PKEXEC_UID), never another.
+# - pacman runs with --noconfirm, so a conflict or anything pacman would ask
+#   about fails that app (reported) rather than prompting. Only packaged,
+#   root-owned programs are run, by absolute path or from a fixed PATH.
+
+set -uo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+
+CATALOG=/usr/share/karchy/default/karchy/quick-install.json
+FIREWALL=/usr/bin/karchy-localsend-firewall
+
+usage() {
+  echo "usage: app-packages install|remove <app id>..." >&2
+  exit 64
+}
+
+# The request first, before who is asking.
+(($# >= 2 && $# <= 65)) || usage
+verb=$1
+shift
+[[ $verb == install || $verb == remove ]] || usage
+for id in "$@"; do
+  [[ $id =~ ^[a-z0-9][a-z0-9.+-]*$ ]] || usage
+done
+
+[[ -f $CATALOG ]] || { echo "app-packages: no catalog at $CATALOG" >&2; exit 1; }
+
+entry() { jq -ce --arg id "$1" '.apps[] | select(.id == $id)' "$CATALOG" 2>/dev/null; }
+field() { jq -r "$2" <<<"$1"; }
+
+# Every id must be a repository app of the list before anything is done.
+declare -A apps=()
+for id in "$@"; do
+  app=$(entry "$id") || { echo "app-packages: '$id' is not in the Quick install list" >&2; exit 65; }
+  [[ $(field "$app" .source) != aur ]] || { echo "app-packages: '$id' is from the AUR; it installs in a terminal" >&2; exit 65; }
+  [[ -z $(field "$app" '.feature // empty') ]] || { echo "app-packages: '$id' is a karchy feature; it installs in a terminal" >&2; exit 65; }
+  apps[$id]=$app
+done
+
+# Who is asking comes after what is asked, so a bad request is refused the
+# same way for everyone.
+((EUID == 0)) || { echo "app-packages: must run as root (through pkexec)" >&2; exit 77; }
+
+user=""
+if [[ ${PKEXEC_UID:-} =~ ^[0-9]+$ ]]; then
+  user=$(getent passwd "$PKEXEC_UID" | cut -d: -f1)
+fi
+
+for id in "$@"; do echo "queued $id"; done
+
+if [[ -e /var/lib/pacman/db.lck ]]; then
+  for id in "$@"; do echo "failed $id Another install or update is running. Try again when it's done."; done
+  exit 1
+fi
+
+# The 32-bit graphics driver games need (karchy-quick-install's
+# gpu32_packages, kept in step).
+gpu32_packages() {
+  local dev vendor nvidia chosen pkg
+  nvidia=$(pacman -Qq nvidia-utils 2>/dev/null)
+  chosen=$(
+    case $nvidia in
+      nvidia-580xx-utils) echo lib32-nvidia-580xx-utils ;;
+      nvidia-utils) echo lib32-nvidia-utils ;;
+    esac
+    for dev in /sys/bus/pci/devices/*; do
+      [[ $(<"$dev/class") == 0x03* ]] 2>/dev/null || continue
+      vendor=$(<"$dev/vendor")
+      case $vendor in
+        0x1002) echo lib32-mesa lib32-vulkan-radeon ;;
+        0x8086) echo lib32-mesa lib32-vulkan-intel ;;
+        0x10de) [[ -n $nvidia ]] || echo lib32-mesa lib32-vulkan-nouveau ;;
+        0x1af4) echo lib32-mesa lib32-vulkan-virtio ;;
+      esac
+    done
+  )
+  [[ $chosen == *lib32-vulkan-* || $chosen == *lib32-nvidia-* ]] || chosen+=" lib32-mesa lib32-vulkan-swrast"
+  if ! pacman -Qq vulkan-driver >/dev/null 2>&1; then
+    for pkg in $chosen; do
+      [[ $pkg == lib32-vulkan-* ]] && chosen+=" ${pkg#lib32-}"
+    done
+  fi
+  tr ' ' '\n' <<<"$chosen" | grep . | sort -u
+}
+
+# The last line pacman printed as an error, for the window.
+reason_from() {
+  local text
+  text=$(grep -E '^error: ' "$1" | tail -n 1 | sed 's/^error: //')
+  echo "${text:-pacman stopped with an error (see the log)}"
+}
+
+synced_multilib=0
+install_app() {
+  local id=$1 app=${apps[$1]} pkgs=() extra=() sync=-S unit group out failed=()
+  mapfile -t pkgs < <(field "$app" '.packages[]')
+  if [[ $(field "$app" '.multilib // false') == true ]]; then
+    if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
+      sed -i '/^#\[multilib\]$/,/^#Include/ s/^#//' /etc/pacman.conf
+      grep -q '^\[multilib\]' /etc/pacman.conf || { echo "failed $id /etc/pacman.conf has no [multilib] section to turn on"; return 1; }
+    fi
+    # Arch needs a full update after adding a repository; once per call.
+    if [[ ! -e /var/lib/pacman/sync/multilib.db ]] && ((synced_multilib == 0)); then
+      sync=-Syu
+      synced_multilib=1
+    fi
+  fi
+  if [[ $(field "$app" '.setup.gpu32 // false') == true ]]; then
+    mapfile -t extra < <(gpu32_packages)
+  fi
+  echo "working $id"
+  out=$(mktemp)
+  if ! pacman "$sync" --needed --noconfirm --color never -- "${pkgs[@]}" "${extra[@]}" 2>&1 | tee "$out" >&2; then
+    echo "failed $id $(reason_from "$out")"
+    rm -f "$out"
+    return 1
+  fi
+  rm -f "$out"
+  while read -r unit; do
+    [[ -n $unit ]] || continue
+    systemctl enable --now "$unit" >&2 || failed+=("turning on $unit")
+  done < <(field "$app" '.setup.services[]? // empty')
+  while read -r group; do
+    [[ -n $group && -n $user ]] || continue
+    getent group "$group" >/dev/null || { failed+=("adding you to $group (no such group)"); continue; }
+    id -nG "$user" | tr ' ' '\n' | grep -qxF "$group" && continue
+    usermod -aG "$group" "$user" >&2 || failed+=("adding you to $group")
+  done < <(field "$app" '.setup.groups[]? // empty')
+  if [[ $(field "$app" '.setup.firewall // false') == true && -x $FIREWALL ]]; then
+    "$FIREWALL" >&2 || failed+=("opening its ports on trusted networks")
+  fi
+  if ((${#failed[@]})); then
+    echo "failed $id Installed, but $(printf '%s, ' "${failed[@]}" | sed 's/, $//') didn't work"
+    return 1
+  fi
+  echo "done $id"
+}
+
+remove_app() {
+  local id=$1 app=${apps[$1]} pkgs=() installed=() shared p unit out
+  if [[ -n $(field "$app" '.required // empty') ]]; then
+    echo "failed $id It is part of karchy and can't be removed"
+    return 1
+  fi
+  # Its own packages: the main one, and the others unless another entry also
+  # installs them.
+  shared=$(jq -r --arg id "$id" '[.apps[] | select(.id != $id) | .packages[]] | unique | .[]' "$CATALOG")
+  mapfile -t pkgs < <(field "$app" '.packages[]')
+  for p in "${pkgs[@]}"; do
+    [[ $p != "${pkgs[0]}" ]] && grep -qxF -- "$p" <<<"$shared" && continue
+    [[ $(pacman -Qq -- "$p" 2>/dev/null) == "$p" ]] && installed+=("$p")
+  done
+  if ((${#installed[@]} == 0)); then
+    echo "done $id"
+    return 0
+  fi
+  if ! pacman -Rs --print -- "${installed[@]}" >/dev/null 2>&1; then
+    echo "failed $id Another installed package needs it; nothing was changed"
+    return 1
+  fi
+  echo "working $id"
+  while read -r unit; do
+    [[ -n $unit ]] && systemctl disable --now "$unit" >&2 2>/dev/null
+  done < <(field "$app" '.setup.services[]? // empty')
+  out=$(mktemp)
+  if ! pacman -Rns --noconfirm --color never -- "${installed[@]}" 2>&1 | tee "$out" >&2; then
+    while read -r unit; do
+      [[ -n $unit ]] && systemctl enable --now "$unit" >&2 2>/dev/null
+    done < <(field "$app" '.setup.services[]? // empty')
+    echo "failed $id $(reason_from "$out")"
+    rm -f "$out"
+    return 1
+  fi
+  rm -f "$out"
+  if [[ $(field "$app" '.setup.firewall // false') == true && -x $FIREWALL ]]; then
+    "$FIREWALL" >&2 || true
+  fi
+  echo "done $id"
+}
+
+status=0
+for id in "$@"; do
+  if [[ $verb == install ]]; then
+    install_app "$id" || status=1
+  else
+    remove_app "$id" || status=1
+  fi
+done
+exit "$status"

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  Quick install's installs and removals (D-109): karchy-quick-install runs
+  /usr/lib/karchy/app-packages through pkexec, which picks this action by the
+  exec.path below. Installing software is a system change, so it always asks
+  for an administrator's password (kept for a few minutes); no rule waives it.
+-->
+<policyconfig>
+  <vendor>karchy</vendor>
+  <vendor_url>https://github.com/Nulifyer/karchy</vendor_url>
+
+  <action id="org.karchy.app-packages">
+    <description>Install or remove apps from Quick install</description>
+    <message>Install or remove apps you picked in Quick install.</message>
+    <icon_name>system-software-install</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/karchy/app-packages</annotate>
+  </action>
+</policyconfig>
