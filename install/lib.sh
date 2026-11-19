@@ -92,6 +92,19 @@ in_target() {
   arch-chroot "$KARCHY_MNT" "$@"
 }
 
+# pacman in the target, without snapshots. arch-chroot runs the command in a
+# new PID namespace but leaves it the live system's /proc, where ps can't find
+# itself: snap-pac's hooks run ps to name each pre snapshot, and it stopped
+# with "fatal library error, lookup self" (the snapshots were made, the pre
+# ones without a description). A /proc of the namespace's own (unshare
+# --mount-proc) mends ps but makes the chroot look like the running system to
+# snap-pac, which then asks snapperd over D-Bus and makes no snapshot at all.
+# The install's transactions are a half-built system nobody boots back to, so
+# they take none (D-129); the first update makes the first pair.
+in_target_pacman() {
+  SNAP_PAC_SKIP=y in_target pacman "$@"
+}
+
 # Run a command that downloads packages (pacman, pacstrap, in_target pacman)
 # and get round mirrors that fail. pacman tries the next mirror when one lacks
 # a package, but asks for the package's signature only where the package came

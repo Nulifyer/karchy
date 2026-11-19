@@ -174,7 +174,10 @@ base_pacstrap() {
   mapfile -t packages < <(base_packages)
   hooks=$(mktemp -d)
   ln -s /dev/null "$hooks/90-mkinitcpio-install.hook"
-  with_mirrors pacstrap "$KARCHY_MNT" --noconfirm --hookdir="$hooks" "${packages[@]}"
+  # No snapshots: snapper's config is made later (base_snapper), and the
+  # install takes none (in_target_pacman says why). Without this, snap-pac's
+  # hook still ran ps, which fails under pacstrap's PID namespace.
+  SNAP_PAC_SKIP=y with_mirrors pacstrap "$KARCHY_MNT" --noconfirm --hookdir="$hooks" "${packages[@]}"
   rm -rf "$hooks"
 }
 
