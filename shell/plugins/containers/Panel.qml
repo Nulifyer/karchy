@@ -10,7 +10,7 @@ import "Model.js" as Model
 // Containers in the bar (D-63): an icon with a count that shows only while
 // containers run, so one left running in the background is never forgotten.
 // Its panel answers "what runs, and is it OK?": up to six running containers
-// with their run switch and "Open <port>". Enter (or "Manage containers…")
+// with their run switch and "Open <port>". Enter (or the pop-out button in the header)
 // opens the window (Window.qml) at the container under the cursor; logs,
 // Compose projects, images, removing and pruning live there. Both read the
 // same Model.js and draw the same ContainerRow. Everything goes through
@@ -97,7 +97,7 @@ Panel {
     return (c.ports && c.ports.length > 0 ? ["open"] : []).concat(["power"])
   }
 
-  // The Manage button closes the list.
+  // The pop-out button in the header is the last stop.
   function moveCursor(dy) {
     var count = rows.length + 1
     cursorIndex = cursorIndex < 0 ? 0 : (cursorIndex + dy + count) % count
@@ -273,10 +273,22 @@ Panel {
         PanelHero {
           iconText: Icons.glyph("containers")
           title: "Containers"
-          meta: (root.runningCount === 0 ? "Nothing running" : root.runningCount + " running")
+          meta: (root.runningCount === 0 ? "None running" : root.runningCount + " running")
             + (root.engine ? " · " + root.engine : "")
           metaColor: root.runningCount > 0 ? Commons.Color.status.success : dim
           fontFamily: root.bar.fontFamily
+          // Pop out: the same things, and everything else, as a window.
+          trailingControl: Component {
+            PanelActionButton {
+              iconText: Icons.glyph("ui.open-external")
+              tooltipText: "Open as a window"
+              foreground: root.panelText
+              fontFamily: root.bar.fontFamily
+              hasCursor: root.cursorIndex === root.rows.length
+              onClicked: root.manage()
+              onHovered: function(h) { if (h) root.cursorIndex = root.rows.length }
+            }
+          }
         }
 
         PanelSeparator { foreground: root.panelText }
@@ -336,20 +348,6 @@ Panel {
           foreground: root.panelText
           surface: root.panelSurface
           fontFamily: root.bar.fontFamily
-        }
-
-        PanelSeparator { foreground: root.panelText }
-
-        Button {
-          width: parent.width
-          text: "Manage containers…"
-          iconText: Icons.glyph("ui.open-external")
-          bordered: true
-          foreground: root.panelText
-          fontFamily: root.bar.fontFamily
-          hasCursor: root.cursorIndex === root.rows.length
-          onClicked: root.manage()
-          onHovered: function(h) { if (h) root.cursorIndex = root.rows.length }
         }
       }
     }

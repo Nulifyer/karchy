@@ -9,7 +9,7 @@ import "Model.js" as Model
 // VMs in the bar (D-63): an icon that is there only while a VM runs, so one
 // running in the background is never forgotten, and a panel that answers
 // "what runs, and is it OK?": up to six VMs (running first) with their run
-// switch and "Show its screen". "Manage virtual machines…" opens the window
+// switch and "Show its screen". The pop-out button in the header opens the window
 // (Window.qml) at the VM under the cursor; creating, settings, snapshots,
 // forcing off and deleting live there. Both read the same Model.js and draw
 // the same VmRow.
@@ -124,7 +124,7 @@ Panel {
   }
 
   function moveCursor(dy) {
-    var count = rows.length + 1  // the Manage button closes the list
+    var count = rows.length + 1  // the pop-out button in the header is the last stop
     cursorIndex = cursorIndex < 0 ? 0 : (cursorIndex + dy + count) % count
     actionIndex = 0
   }
@@ -230,6 +230,18 @@ Panel {
           meta: root.running.length > 0 ? root.running.length + " running" : (root.vms.length > 0 ? "None running" : "")
           metaColor: root.running.length > 0 ? Commons.Color.status.success : dim
           fontFamily: root.bar.fontFamily
+          // Pop out: the same things, and everything else, as a window.
+          trailingControl: Component {
+            PanelActionButton {
+              iconText: Icons.glyph("ui.open-external")
+              tooltipText: "Open as a window"
+              foreground: root.panelText
+              fontFamily: root.bar.fontFamily
+              hasCursor: root.cursorIndex === root.rows.length
+              onClicked: root.manage()
+              onHovered: function(h) { if (h) root.cursorIndex = root.rows.length }
+            }
+          }
         }
 
         PanelSeparator { foreground: root.panelText }
@@ -297,24 +309,10 @@ Panel {
           width: parent.width
           iconName: "vms"
           title: "No virtual machines yet"
-          body: "Create one in the window: pick an installer ISO and it boots."
+          body: "Create one in the window."
           foreground: root.panelText
           surface: root.panelSurface
           fontFamily: root.bar.fontFamily
-        }
-
-        PanelSeparator { foreground: root.panelText }
-
-        Button {
-          width: parent.width
-          text: "Manage virtual machines…"
-          iconText: Icons.glyph("ui.open-external")
-          foreground: root.panelText
-          fontFamily: root.bar.fontFamily
-          bordered: true
-          hasCursor: root.cursorIndex === root.rows.length
-          onClicked: root.manage()
-          onHovered: function(h) { if (h) root.cursorIndex = root.rows.length }
         }
       }
     }
