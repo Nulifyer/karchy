@@ -422,13 +422,35 @@ Item {
       heights[key] = h
       return
     }
-    if (fresh[key] && !expanded && !sceneRun.running) {
-      heights[key] = h
-      land()
-    } else {
-      commit(function() { service.heights[key] = h })
+    // A card's height can change because its placement did (the front card
+    // shows its buttons), so this is often called while `placements` is still
+    // being evaluated. Moving the layout from in there re-enters that binding
+    // ("Binding loop detected for property placements"); the move waits until
+    // the evaluation has finished, and takes every height noted meanwhile.
+    pendingHeights[key] = h
+    Qt.callLater(applyHeights)
+  }
+
+  property var pendingHeights: ({})
+  function applyHeights() {
+    var noted = pendingHeights
+    pendingHeights = ({})
+    for (var key in noted) {
+      var h = noted[key]
+      // Closed, or measured again at the same height, since it was noted.
+      if (rowIndexFor(key) < 0 || Math.abs((heights[key] || 0) - h) < 0.5) continue
+      if (fresh[key] && !expanded && !sceneRun.running) {
+        heights[key] = h
+        land()
+      } else {
+        commitHeight(key, h)
+      }
+      if (key === keyboardKey) keepSelectionInReach()
     }
-    if (key === keyboardKey) keepSelectionInReach()
+  }
+
+  function commitHeight(key, h) {
+    commit(function() { service.heights[key] = h })
   }
 
   // ------------------------------------------------------- the scene clock
