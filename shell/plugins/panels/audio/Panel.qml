@@ -7,209 +7,43 @@ import Quickshell.Services.Pipewire
 import qs.Ui
 import qs.Commons
 import qs.Commons as Commons
-import "Model.js" as Model
+import "../../../Commons/AudioControlModel.js" as Model
 
 Panel {
   id: root
   moduleName: "karchy.audio"
   ipcTarget: "karchy.audio"
 
-  readonly property var sink: Pipewire.defaultAudioSink
-  readonly property var source: Pipewire.defaultAudioSource
-  readonly property var nodes: Pipewire.nodes ? Pipewire.nodes.values : []
+  // The devices, their levels and the apps playing are AudioControl's (qs.Commons),
+  // which Settings › Sound uses too. The panel adds its cursor, its rows'
+  // looks and the keys.
+  readonly property var sink: AudioControl.sink
+  readonly property var source: AudioControl.source
   readonly property var mprisPlayers: Mpris.players ? Mpris.players.values : []
   readonly property var mediaService: bar?.shell?.serviceFor("karchy.media")
   readonly property var activeMediaPlayer: mediaService ? mediaService.activePlayer : null
+  readonly property var audioStreams: AudioControl.streams
 
-  // Nodes of a platform's audio processing, which are neither devices nor apps,
-  // stay out of every list (AudioNodes.platformHides). Most machines have none.
-  readonly property var nodeNames: {
-    var names = []
-    for (var i = 0; i < nodes.length; i++)
-      if (nodes[i] && nodes[i].name) names.push(String(nodes[i].name))
-    return names
-  }
-
-  function platformHides(node) {
-    return !!node && AudioNodes.platformHides(node.name, nodeNames)
-  }
-
-  readonly property var candidateSinks: {
-    var list = []
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i]
-      if (!n || !n.isSink || n.isStream || platformHides(n)) continue
-      list.push(n)
-    }
-    return list
-  }
-
-  readonly property var candidateSources: {
-    var list = []
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i]
-      if (!n || n.isSink || n.isStream) continue
-      if (!isAudioSource(n) && !Model.isUntypedSource(n, sourceAvailability)) continue
-      var name = n.name || ""
-      if (name === "quickshell" || platformHides(n)) continue
-      list.push(n)
-    }
-    return list
-  }
-
-  readonly property var candidateStreams: {
-    var list = []
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i]
-      if (!n || !n.isStream || !isPlaybackStream(n)) continue
-      // A tuning's output is a playback stream too, but it is the processing
-      // itself rather than an application, so it does not belong in the list.
-      if (String(n.name || "").indexOf("karchy_speaker_tuning") === 0) continue
-      if (platformHides(n)) continue
-      list.push(n)
-    }
-    return list
-  }
-
-  property var sinkAvailability: ({})
-  property bool sinkAvailabilityLoaded: false
-  property var sourceAvailability: ({})
-
-  // Identify true playback streams without reading node.properties here:
-  // PwNode.properties is invalid until the node is bound, and reading it while
-  // capture streams are appearing (for example, when Voxtype starts recording)
-  // can destabilize Quickshell's Pipewire service. Quickshell versions differ
-  // in how `type` is exposed (media.class, enum name, or numeric enum), but
-  // playback streams consistently accept audio input from clients and publish
-  // `isSink: true`; capture streams publish as stream sources.
-  function isPlaybackStream(node) {
-    return Model.isPlaybackStream(node)
-  }
-
-  function isAudioSource(node) {
-    return Model.isAudioSource(node)
-  }
-
-  property var cachedAudioSinks: []
-  property var cachedAudioSources: []
-
-  readonly property var rawAudioSinks: {
-    var list = []
-    for (var i = 0; i < candidateSinks.length; i++)
-      if (sinkAvailable(candidateSinks[i])) list.push(candidateSinks[i])
-    if (sink && list.indexOf(sink) < 0) list.unshift(sink)
-    return list
-  }
-
-  readonly property var rawAudioSources: {
-    var list = candidateSources.slice()
-    if (source && list.indexOf(source) < 0) list.unshift(source)
-    return list
-  }
-
-  readonly property var audioSinks: rawAudioSinks.length > 0 ? rawAudioSinks : cachedAudioSinks
-  readonly property var audioSources: rawAudioSources.length > 0 ? rawAudioSources : cachedAudioSources
-
-  readonly property var audioStreams: {
-    var list = []
-    for (var i = 0; i < candidateStreams.length; i++)
-      if (candidateStreams[i].audio) list.push(candidateStreams[i])
-    return list
-  }
-
-  // Feed Repeaters with panel-local snapshots of primitives instead of the live
-  // PipeWire model. PipeWire can remove nodes while Quickshell is dispatching
-  // the removal signal, and a row still holding the PwNode is a QObject Qt
-  // dereferences without a null check, which segfaults the shell. Rows carry id
-  // and name only; every delegate resolves its own node through nodeFor(). The
-  // snapshot timer lets the mutation settle first, and closed panels keep their
-  // repeaters detached entirely.
-  property var displayAudioSinks: []
-  property var displayAudioSources: []
-  property var displayAudioStreams: []
-
-  // A DSP sink -- a speaker tuning, or EasyEffects -- can be the selected output
-  // without being where loudness lives: changing its volume alters the level going
-  // *into* the processing, so the slider would move while the speakers did not,
-  // and on a chain with a limiter it would change the tone as well.
-  //
-  // karchy-audio-output-sink resolves the *current* default output through any
-  // such sink to the physical one, which is the same definition the volume keys
-  // and the output switcher use. Resolving the default (rather than "whatever a
-  // tuning fronts") is what keeps this correct when headphones or HDMI are
-  // selected while a tuning still exists.
-  property string volumeSinkName: ""
+  // Rows of primitives (AudioControl explains why), kept only while a view
+  // watches: this panel while it is open.
+  readonly property string watchKey: "audio-panel-" + Math.random().toString(36).slice(2)
+  readonly property var displayAudioSinks: AudioControl.sinkRows
+  readonly property var displayAudioSources: AudioControl.sourceRows
+  readonly property var displayAudioStreams: AudioControl.streamRows
+  onDisplayAudioSinksChanged: clampCursor()
+  onDisplayAudioSourcesChanged: clampCursor()
+  onDisplayAudioStreamsChanged: clampCursor()
+  Component.onDestruction: AudioControl.unwatch(watchKey)
 
   // Carry sub-notch touchpad deltas between wheel events.
   property real wheelAccumulator: 0
 
-  readonly property var volumeSink: {
-    if (volumeSinkName === "" || !sink) return sink
-    if (volumeSinkName === String(sink.name)) return sink
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i]
-      if (n && n.isSink && !n.isStream && String(n.name) === volumeSinkName && n.audio)
-        return n
-    }
-    return sink
-  }
-
-  // Re-resolve whenever the selected output changes, and when nodes or links
-  // come and go: a tuning being applied or removed underneath us, or a DSP sink
-  // rerouted to another output, shows up as exactly that.
-  onSinkChanged: resolveVolumeSink()
-  onNodesChanged: volumeSinkResolveTimer.restart()
-
-  Connections {
-    target: Pipewire.linkGroups
-    function onValuesChanged() { volumeSinkResolveTimer.restart() }
-  }
-
-  property bool volumeSinkStale: false
-  // Bumped by every resolve, so a script read still running from before cannot
-  // overwrite a newer answer, the hardware fast path's included.
-  property int volumeSinkGeneration: 0
-  property int volumeSinkRequest: -1
-
-  function resolveVolumeSink() {
-    volumeSinkGeneration++
-    // A hardware output is its own volume sink, as karchy-audio-output-sink
-    // reports without looking further, so only a DSP sink needs the script.
-    if (sink && String(sink.name).indexOf("alsa_output.") === 0) {
-      volumeSinkName = String(sink.name)
-      return
-    }
-    if (volumeSinkProc.running) {
-      volumeSinkStale = true
-      return
-    }
-    volumeSinkRequest = volumeSinkGeneration
-    volumeSinkProc.running = true
-  }
-
-  // An idle EasyEffects is resolved through its configured output device, which
-  // changes without touching the Pipewire graph.
-  FileView {
-    path: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/easyeffects/db/easyeffectsrc"
-    watchChanges: true
-    printErrors: false
-    onFileChanged: volumeSinkResolveTimer.restart()
-  }
-
-  readonly property real outputVolume: volumeSink && volumeSink.audio ? volumeSink.audio.volume : 0
-  readonly property bool outputMuted: volumeSink && volumeSink.audio ? volumeSink.audio.muted : false
-  // A virtual source is untyped in Quickshell (see Model.isUntypedSource), so
-  // its volume and mute go through wpctl (UntypedInput), and the panel shows no
-  // level meter for it: Quickshell's peak monitor takes typed nodes only.
-  readonly property bool inputViaWpctl: UntypedInput.active
-  readonly property bool inputLevelKnown: !inputViaWpctl || UntypedInput.known
-  readonly property real inputVolume: inputViaWpctl ? UntypedInput.volume : (source && source.audio ? source.audio.volume : 0)
-  readonly property bool inputMuted: inputViaWpctl ? UntypedInput.muted : (source && source.audio ? source.audio.muted : false)
-  readonly property var inputPeakNode: inputViaWpctl ? null : source
-  readonly property bool inputLevelShown: !!inputPeakNode
-
-  onRawAudioSinksChanged: if (rawAudioSinks.length > 0) cachedAudioSinks = rawAudioSinks
-  onRawAudioSourcesChanged: if (rawAudioSources.length > 0) cachedAudioSources = rawAudioSources
+  readonly property real outputVolume: AudioControl.outputVolume
+  readonly property bool outputMuted: AudioControl.outputMuted
+  readonly property bool inputLevelKnown: AudioControl.inputLevelKnown
+  readonly property real inputVolume: AudioControl.inputVolume
+  readonly property bool inputMuted: AudioControl.inputMuted
+  readonly property bool inputLevelShown: AudioControl.inputLevelShown
 
   // Single cursor model shared by keyboard and mouse. Sections:
   //   "output"  — output slider + sink device list
@@ -228,12 +62,9 @@ Panel {
   // "header" is a virtual section for the hero output mute toggle; it sits
   // above the output section so the speaker can be muted from the keyboard.
   readonly property bool headerHasCursor: cursorActive && focusSection === "header"
-  // Only channels that actually exist get a vote. A box with no default source
-  // would otherwise report "input unmuted" forever, leaving the hero switch
-  // able to mute but never to unmute.
-  readonly property bool hasOutput: !!(volumeSink && volumeSink.audio)
-  readonly property bool hasInput: !!(source && source.audio) || (inputViaWpctl && UntypedInput.known)
-  readonly property bool anyAudible: (hasOutput && !outputMuted) || (hasInput && !inputMuted)
+  readonly property bool hasOutput: AudioControl.hasOutput
+  readonly property bool hasInput: AudioControl.hasInput
+  readonly property bool anyAudible: AudioControl.anyAudible
   readonly property string toggleHint: anyAudible ? Commons.I18n.t("audio.mute") : Commons.I18n.t("audio.unmute")
 
   readonly property color hoverFill: bar
@@ -342,7 +173,7 @@ Panel {
     }
     if (focusSection === "streams" && selectedIndex >= 0 && selectedIndex < displayAudioStreams.length) {
       var s = nodeFor(displayAudioStreams[selectedIndex])
-      if (s && s.audio) s.audio.volume = Math.max(0, Math.min(1.5, s.audio.volume + delta))
+      if (s && s.audio) AudioControl.setStreamVolume(s, s.audio.volume + delta)
     }
   }
 
@@ -362,62 +193,24 @@ Panel {
       return
     }
     if (focusSection === "streams" && selectedIndex >= 0) {
-      var st = nodeFor(displayAudioStreams[selectedIndex])
-      if (st && st.audio) st.audio.muted = !st.audio.muted
+      AudioControl.toggleStreamMute(nodeFor(displayAudioStreams[selectedIndex]))
     }
   }
 
   onOpenedChanged: {
     if (opened) {
-      refreshDisplayAudioModels()
+      AudioControl.watch(watchKey)
       focusSection = "output"
       selectedIndex = -1  // first keyboard cursor reveal starts on the output slider
       cursorActive = false
       Qt.callLater(resetScroll)
     } else {
-      clearDisplayAudioModels()
+      AudioControl.unwatch(watchKey)
     }
   }
 
-  // Clamp / repair the cursor whenever any list refreshes underneath us.
-  onAudioSinksChanged: scheduleDisplayAudioModelRefresh()
-  onAudioSourcesChanged: scheduleDisplayAudioModelRefresh()
-  onAudioStreamsChanged: scheduleDisplayAudioModelRefresh()
-
-  function rowSnapshot(list) {
-    return Model.rowSnapshot(list)
-  }
-
-  // A row that outlives its node resolves to null, or to a node PipeWire recreated
-  // under the same id and name; every binding below guards for null, and a row
-  // that never held the node cannot dangle.
   function nodeFor(row) {
-    if (!row) return null
-    for (var i = 0; i < nodes.length; i++) {
-      var n = nodes[i]
-      if (n && n.id === row.id && String(n.name || "") === row.name) return n
-    }
-    return null
-  }
-
-  function refreshDisplayAudioModels() {
-    if (!opened) return
-    displayAudioSinks = rowSnapshot(audioSinks)
-    displayAudioSources = rowSnapshot(audioSources)
-    displayAudioStreams = rowSnapshot(audioStreams)
-    clampCursor()
-  }
-
-  function scheduleDisplayAudioModelRefresh() {
-    if (!opened) return
-    audioModelRefreshTimer.restart()
-  }
-
-  function clearDisplayAudioModels() {
-    audioModelRefreshTimer.stop()
-    displayAudioSinks = []
-    displayAudioSources = []
-    displayAudioStreams = []
+    return AudioControl.nodeFor(row)
   }
 
   // Keep the keyboard-focused row inside the visible viewport of the
@@ -475,14 +268,7 @@ Panel {
   // The output icon's name in default/karchy/icons.json; the OSD takes the
   // name, the bar and hero draw outputIcon().
   function outputIconName(volume) {
-    if (!sink || !sink.audio) return "audio.volume.muted"
-    if (isHeadphones(sink)) return "audio.headphones"
-    if (outputMuted) return "audio.volume.muted"
-    var v = volume === undefined ? outputVolume : volume
-    if (v >= 0.67) return "audio.volume.high"
-    if (v >= 0.34) return "audio.volume.medium"
-    if (v > 0) return "audio.volume.low"
-    return "audio.volume.muted"
+    return AudioControl.outputIconName(volume)
   }
 
   function outputIcon(volume) {
@@ -493,18 +279,12 @@ Panel {
     return Icons.glyph(hasInput && !inputMuted ? "audio.mic" : "audio.mic.muted")
   }
 
-  // Playful mood-name for a given output volume. Mirrors the brightness
-  // panel's brightnessName ladder; bands are wide enough that small
-  // tweaks don't rename the room you're in.
   function outputVolumeText(volume, muted) {
     return Model.outputVolumeText(volume, muted, Commons.I18n.t, Commons.I18n.formatNumber)
   }
 
   function setOutputVolume(v) {
-    if (!volumeSink || !volumeSink.audio) return outputVolume
-    var volume = Math.max(0, Math.min(1, v))
-    volumeSink.audio.volume = volume
-    return volume
+    return AudioControl.setOutputVolume(v)
   }
 
   function showVolumeOsd(volume) {
@@ -515,86 +295,17 @@ Panel {
     }))
   }
 
-  function setInputVolume(v) {
-    if (inputViaWpctl) {
-      UntypedInput.setVolume(v)
-      return
-    }
-    if (!source || !source.audio) return
-    source.audio.volume = Math.max(0, Math.min(1, v))
-  }
-
-  function toggleOutputMute() {
-    if (volumeSink && volumeSink.audio) volumeSink.audio.muted = !volumeSink.audio.muted
-  }
-
-  function toggleInputMute() {
-    if (inputViaWpctl) {
-      if (UntypedInput.known) UntypedInput.setMuted(!UntypedInput.muted)
-    }
-    else if (source && source.audio) source.audio.muted = !source.audio.muted
-  }
-
+  function setInputVolume(v) { AudioControl.setInputVolume(v) }
+  function toggleOutputMute() { AudioControl.toggleOutputMute() }
+  function toggleInputMute() { AudioControl.toggleInputMute() }
   // The hero switch is the whole panel's on/off, so it carries both channels
-  // at once. It reads as on while anything is still audible, which keeps
-  // muting a single channel from the row below flipping the master switch.
-  function toggleAllMuted() {
-    var mute = anyAudible
-    if (hasOutput) volumeSink.audio.muted = mute
-    if (hasInput && inputViaWpctl) UntypedInput.setMuted(mute)
-    else if (hasInput) source.audio.muted = mute
-  }
-
-  function setDefaultSink(node) {
-    if (!node) return
-    Pipewire.preferredDefaultAudioSink = node
-    if (node.id !== undefined && node.name) {
-      Quickshell.execDetached([
-        "karchy-audio-output-set-default",
-        String(node.id),
-        String(node.name)
-      ])
-    }
-  }
-
-  function setDefaultSource(node) {
-    if (!node) return
-    // Quickshell refuses an untyped node; the command below still selects it.
-    if (node.audio) Pipewire.preferredDefaultAudioSource = node
-    if (node.id !== undefined && node.name) {
-      Quickshell.execDetached([
-        "karchy-audio-input-set-default",
-        String(node.id),
-        String(node.name)
-      ])
-    }
-  }
-
-  function sinkAvailable(node) {
-    if (!node || !node.name || !sinkAvailabilityLoaded) return true
-    var name = String(node.name)
-    return sinkAvailability[name] !== false
-  }
-
-  function updateSinkAvailability(raw) {
-    sinkAvailability = Model.parseSinkAvailability(raw)
-    sinkAvailabilityLoaded = true
-  }
-
-  function friendlyDeviceLabel(text) {
-    return Model.friendlyDeviceLabel(text)
-  }
+  // at once.
+  function toggleAllMuted() { AudioControl.toggleAllMuted() }
+  function setDefaultSink(node) { AudioControl.setDefaultSink(node) }
+  function setDefaultSource(node) { AudioControl.setDefaultSource(node) }
 
   function nodeLabel(node) {
-    return Model.nodeLabel(node, Commons.I18n.t)
-  }
-
-  function nodeProps(node) {
-    return Model.nodeProps(node)
-  }
-
-  function isHeadphones(node) {
-    return Model.isHeadphones(node)
+    return AudioControl.nodeLabel(node)
   }
 
   function sinkGlyph(node) {
@@ -605,52 +316,9 @@ Panel {
     return Icons.glyph(Model.sourceGlyph(node))
   }
 
-  function friendlyStreamLabel(label) {
-    return Model.friendlyStreamLabel(label)
-  }
-
-  function streamLabelKey(label) {
-    return Model.streamLabelKey(label)
-  }
-
-  function streamLabelIsGeneric(label) {
-    return Model.streamLabelIsGeneric(label)
-  }
-
-  function rawStreamLabel(node) {
-    return Model.rawStreamLabel(node)
-  }
-
-  function mprisPlayerLabel(player) {
-    return Model.mprisPlayerLabel(player)
-  }
-
-  function mprisPlayerIsProxy(player) {
-    return Model.mprisPlayerIsProxy(player)
-  }
-
-  function streamRepresentsMprisPlayer(streamLabel, playerLabel) {
-    return Model.streamRepresentsMprisPlayer(streamLabel, playerLabel)
-  }
-
-  function mprisLabelsFor(predicate) {
-    return Model.mprisLabelsFor(mprisPlayers, predicate)
-  }
-
-  function matchingMprisStreamLabel(label) {
-    return Model.matchingMprisStreamLabel(label, mprisPlayers)
-  }
-
-  function unmatchedMprisStreamLabel(label) {
-    // Spotify exposes its PipeWire stream as "audio-src". For generic stream
-    // names, use the one MPRIS player not already represented by another audio
-    // stream (e.g. Chromium, or ALSA apps like cliamp).
-    return Model.unmatchedMprisStreamLabel(label, mprisPlayers, audioStreams)
-  }
-
-  // These read the other streams' node properties, so they take the live list --
-  // displayAudioStreams carries primitives now, and resolving each row back
-  // would only rebuild what audioStreams already is.
+  // These read the other streams' node properties, so they take the live list:
+  // the rows carry primitives, and resolving each row back would only rebuild
+  // what audioStreams already is.
   function streamLabel(node) {
     return Model.streamLabel(node, mprisPlayers, audioStreams, Commons.I18n.t)
   }
@@ -661,81 +329,6 @@ Panel {
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
-
-  PwObjectTracker { objects: root.candidateSinks }
-  PwObjectTracker { objects: root.candidateSources }
-  PwObjectTracker { objects: root.audioStreams }
-
-  PwNodePeakMonitor {
-    id: inputPeakMonitor
-    node: root.inputPeakNode
-    enabled: root.opened && !!root.inputPeakNode
-  }
-
-  Process {
-    id: sinkAvailabilityProc
-    command: ["karchy-audio-sink-availability"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.updateSinkAvailability(text)
-    }
-  }
-
-  Process {
-    id: sourceAvailabilityProc
-    command: ["karchy-audio-sink-availability", "sources"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.sourceAvailability = Model.parseSinkAvailability(text)
-    }
-  }
-
-  Process {
-    id: volumeSinkProc
-    command: ["karchy-audio-output-sink"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        if (root.volumeSinkRequest === root.volumeSinkGeneration) root.volumeSinkName = String(text).trim()
-      }
-    }
-    onExited: {
-      if (!root.volumeSinkStale) return
-      root.volumeSinkStale = false
-      // Deferred: the process still reports running while it signals exit.
-      Qt.callLater(root.resolveVolumeSink)
-    }
-  }
-
-  Timer {
-    interval: 5000
-    running: root.opened
-    repeat: true
-    triggeredOnStart: true
-    onTriggered: {
-      if (!sinkAvailabilityProc.running) sinkAvailabilityProc.running = true
-      if (!sourceAvailabilityProc.running) sourceAvailabilityProc.running = true
-    }
-  }
-
-  // Runs whether or not the panel is open: the bar shows and scrolls the output
-  // volume too, so an unresolved sink there would read and change the virtual
-  // tuning sink instead of the speakers. Streams starting and stopping also
-  // change the graph, so a burst of changes resolves once.
-  Timer {
-    id: volumeSinkResolveTimer
-    interval: 500
-    onTriggered: root.resolveVolumeSink()
-  }
-
-  Component.onCompleted: root.resolveVolumeSink()
-
-  Timer {
-    id: audioModelRefreshTimer
-    interval: 75
-    repeat: false
-    onTriggered: root.refreshDisplayAudioModels()
-  }
 
   BarIconButton {
     id: button
@@ -787,8 +380,7 @@ Panel {
           if (!root.cursorActive) return
           if (root.focusSection === "streams" && root.selectedIndex >= 0
               && root.selectedIndex < root.displayAudioStreams.length) {
-            var s = root.nodeFor(root.displayAudioStreams[root.selectedIndex])
-            if (s && s.audio) s.audio.muted = !s.audio.muted
+            AudioControl.toggleStreamMute(root.nodeFor(root.displayAudioStreams[root.selectedIndex]))
           } else if (root.focusSection === "input") {
             root.toggleInputMute()
           } else {
@@ -1013,7 +605,7 @@ Panel {
 
                   Rectangle {
                     height: parent.height
-                    width: parent.width * Math.max(0, Math.min(1, inputPeakMonitor.peak))
+                    width: parent.width * Math.max(0, Math.min(1, AudioControl.inputPeak))
                     color: root.panelText
                     Behavior on width { NumberAnimation { duration: Style.duration(70) } }
                   }
@@ -1251,10 +843,7 @@ Panel {
           MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: {
-              if (streamRow.node && streamRow.node.audio)
-                streamRow.node.audio.muted = !streamRow.node.audio.muted
-            }
+            onClicked: AudioControl.toggleStreamMute(streamRow.node)
           }
         }
 
@@ -1294,13 +883,8 @@ Panel {
         value: streamRow.streamVolume
         opacity: streamRow.streamMuted ? 0.5 : 1.0
 
-        onMoved: function(v) {
-          if (streamRow.node && streamRow.node.audio) streamRow.node.audio.volume = v
-        }
-        onRightClicked: {
-          if (streamRow.node && streamRow.node.audio)
-            streamRow.node.audio.muted = !streamRow.node.audio.muted
-        }
+        onMoved: function(v) { AudioControl.setStreamVolume(streamRow.node, v) }
+        onRightClicked: AudioControl.toggleStreamMute(streamRow.node)
       }
     }
 

@@ -1,4 +1,5 @@
 module qs.Commons
+singleton AudioControl 1.0 AudioControl.qml
 singleton AudioNodes 1.0 AudioNodes.qml
 singleton Border 1.0 Border.qml
 singleton Color 1.0 Color.qml
