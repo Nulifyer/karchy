@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# karchy:summary=Read and change the timezone, automatic time and the bar clock's format (Settings › Date & Time)
+# karchy:args=status | timezones | timezone <Area/City> | ntp on|off | sync | clock <format>
+# karchy:hidden=true
+
+# No terminal and no sudo: the system changes go to systemd over D-Bus with
+# interactive authorization, so the shell's password dialog asks (timedatectl
+# and systemctl only allow that from a terminal, hence busctl). The clock's
+# format is the bar widget's own setting in shell.json, through karchy-bar.
+#
+#   status             JSON: timezone, ntp (automatic time is on), synced (the
+#                      clock has been set from the network), lastSync (when a
+#                      time server last answered, in seconds since 1970; 0
+#                      for never), and clock (the bar clock's format, and
+#                      whether the bar is vertical)
+#   timezones          every timezone name, one per line
+#   timezone <name>    set the timezone; the Wi-Fi country follows it
+#   ntp on|off         turn automatic time on or off
+#   sync               set the clock from the network now (restarts
+#                      systemd-timesyncd and waits for a server's answer)
+#   clock <format>     a Qt date format for the bar's clock, such as
+#                      "dddd HH:mm" or "h:mm AP"
+#
+# A change prints the new status. A dismissed password dialog exits 1 with
+# "Canceled." on stderr.
+
+set -uo pipefail
+
+fail() {
+  echo "$*" >&2
+  exit 1
+}
+
+usage() {
+  fail "Usage: karchy-settings-datetime status | timezones | timezone <Area/City> | ntp on|off | sync | clock <format>"
+}
+
+property() { timedatectl show -p "$1" --value 2>/dev/null; }
+
+bar_vertical() {
+  case $(karchy-bar position 2>/dev/null) in left | right) return 0 ;; esac
+  return 1
+}
+
+# When systemd-timesyncd last set the clock from a server, with the fraction.
+sync_stamp() { stat -c %.9Y /run/systemd/timesync/synchronized 2>/dev/null || echo 0; }
+
+clock_key() { bar_vertical && echo verticalFormat || echo format; }
+
+status() {
+  local vertical=false
+  bar_vertical && vertical=true
+  jq -n \
+    --arg timezone "$(property Timezone)" \
+    --arg ntp "$(property NTP)" \
+    --arg synced "$(property NTPSynchronized)" \
+    --arg lastSync "$(sync_stamp)" \
+    --arg format "$(karchy-bar get karchy.clock "$(clock_key)" 2>/dev/null)" \
+    --argjson vertical "$vertical" \
+    '{timezone: $timezone, ntp: ($ntp == "yes"), synced: ($synced == "yes"),
+      lastSync: ($lastSync | tonumber | floor),
+      clock: {format: $format, vertical: $vertical}}'
+}
+
+# One D-Bus call that may ask for the password. polkit's refusals become one
+# plain line; anything else is passed on as systemd said it.
+privileged() {
+  local out
+  if ! out=$(busctl call --allow-interactive-authorization=yes "$@" 2>&1 >/dev/null); then
+    case $out in
+      *"Interactive authentication required"* | *"Access denied"* | *"Permission denied"* | *NotAuthorized* | *"dismissed"*)
+        fail "Canceled." ;;
+      *) fail "${out#Call failed: }" ;;
+    esac
+  fi
+}
+
+timedate() {
+  privileged org.freedesktop.timedate1 /org/freedesktop/timedate1 org.freedesktop.timedate1 "$@"
+}
+
+case "${1:-}" in
+  status)
+    (( $# == 1 )) || usage
+    status
+    ;;
+  timezones)
+    (( $# == 1 )) || usage
+    timedatectl list-timezones
+    ;;
+  timezone)
+    (( $# == 2 )) || usage
+    # Only a name timedated lists goes on: it ends up as /etc/localtime's target.
+    # (Read whole before grep -q can close the pipe on it, which pipefail
+    # would count as a failure.)
+    zones=$(timedatectl list-timezones)
+    grep -qxF -- "$2" <<<"$zones" || fail "\"$2\" is not a timezone. See: karchy-settings-datetime timezones"
+    if [[ $(property Timezone) != "$2" ]]; then
+      timedate SetTimezone sb "$2" true
+      # The Wi-Fi country follows the timezone (karchy-settings). A path unit on
+      # /etc/localtime misses timedated replacing the link, so ask directly; a
+      # polkit rule lets the session start this one unit without a password.
+      systemctl start --no-block karchy-wifi-regdomain.service 2>/dev/null || true
+      karchy-shell -q karchy.clock refresh 2>/dev/null || true
+    fi
+    status
+    ;;
+  ntp)
+    (( $# == 2 )) || usage
+    case $2 in
+      on) timedate SetNTP bb true true ;;
+      off) timedate SetNTP bb false true ;;
+      *) usage ;;
+    esac
+    status
+    ;;
+  sync)
+    (( $# == 1 )) || usage
+    [[ $(property NTP) == yes ]] || fail "Automatic time is off. Turn it on first."
+    before=$(sync_stamp)
+    privileged org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager \
+      RestartUnit ss systemd-timesyncd.service replace
+    # timesyncd touches its stamp each time a server answers; a restart asks
+    # at once, so a new stamp is the clock having been set.
+    synced=0
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+      [[ $(sync_stamp) != "$before" ]] && { synced=1; break; }
+      sleep 0.5
+    done
+    (( synced )) || fail "No time server answered. Check the network connection."
+    karchy-shell -q karchy.clock refresh 2>/dev/null || true
+    status
+    ;;
+  clock)
+    (( $# == 2 )) && [[ -n $2 ]] || usage
+    karchy-bar set karchy.clock "$(clock_key)" "$2" >/dev/null || fail "Couldn't save the clock's format."
+    status
+    ;;
+  *) usage ;;
+esac

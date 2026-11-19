@@ -16,6 +16,8 @@ ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
 
+  // The Settings window (set by its Loader), which a config file link closes.
+  property var settings: null
   readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
 
   // `karchy-font-list --json`.
@@ -149,9 +151,30 @@ ColumnLayout {
     }
   }
 
+  // The default terminal's own config, where a font or size line wins.
+  property string terminalConfig: ""
+  Process {
+    running: true
+    command: ["karchy-default-terminal"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.terminalConfig = ({
+        foot: ".config/foot/foot.ini",
+        kitty: ".config/kitty/kitty.conf",
+        alacritty: ".config/alacritty/alacritty.toml",
+        ghostty: ".config/ghostty/config"
+      })[text.trim()] || ""
+    }
+  }
+
   PageHeader {
     title: "Fonts"
     explanation: "The shell always uses the monospace font. Websites use the fonts they ask for and Brave's own font settings. The boot menu and the disk-password screen always use JetBrains Mono. A font or size line of your own in a terminal's config wins over these."
+    ConfigFileLink {
+      closes: root.settings
+      file: root.terminalConfig
+      label: root.terminalConfig === ".config/ghostty/config" ? "ghostty config" : root.terminalConfig.split("/").pop()
+    }
   }
 
   // The monospace font in use, at the size in use, with the icons a prompt

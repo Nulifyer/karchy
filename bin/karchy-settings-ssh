@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Read and change SSH: the server, who can sign in, your own keys and the agent (Settings › SSH)
+# karchy:summary=Read and change SSH: the server, who can sign in, your own keys and the agent; and show the git identity (Settings › SSH & Git)
 # karchy:args=status | authorized add <public key|GitHub user> | authorized remove <fingerprint> | key copy <name.pub> | key new | agent on|off
 # karchy:hidden=true
 
@@ -13,8 +13,11 @@
 #                               passwords are off, the command to connect
 #                               with), `authorized` (each key in
 #                               ~/.ssh/authorized_keys), `keys` (each
-#                               ~/.ssh/*.pub) and the agent (enabled, and
-#                               whether this session already uses it)
+#                               ~/.ssh/*.pub), the agent (enabled, and
+#                               whether this session already uses it) and
+#                               `git` (the name and email commits are made
+#                               with, and the GitHub account gh is signed in
+#                               to; karchy-setup-git changes them)
 #   authorized add <key|user>   a public key line, or a GitHub user whose
 #                               published keys are all added
 #   authorized remove <fp>      every line with that SHA256 fingerprint
@@ -69,6 +72,14 @@ key_rows() {
   done
 }
 
+# The GitHub account gh is signed in to, read from its own file: running gh
+# to ask would install it where only the lazy shim is present.
+github_user() {
+  local hosts="${GH_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/gh}/hosts.yml"
+  [[ -r $hosts ]] || return 0
+  awk '/^github\.com:/ { found = 1; next } found && /^[^ ]/ { exit } found && $1 == "user:" { print $2; exit }' "$hosts"
+}
+
 status() {
   jq -n \
     --argjson enabled "$(is systemctl -q is-enabled sshd.service)" \
@@ -79,11 +90,15 @@ status() {
     --arg keys "$(key_rows)" \
     --argjson agent "$(is systemctl --user -q is-enabled gcr-ssh-agent.socket)" \
     --argjson inSession "$([[ ${SSH_AUTH_SOCK:-} == "${XDG_RUNTIME_DIR:-}/gcr/ssh" ]] && echo true || echo false)" \
+    --arg gitName "$(git config --global user.name 2>/dev/null || true)" \
+    --arg gitEmail "$(git config --global user.email 2>/dev/null || true)" \
+    --arg github "$(github_user)" \
     'def rows($text): $text | split("\n") | map(select(length > 0) | split("\t"));
      {server: {enabled: $enabled, running: $running, keysOnly: $keysOnly, connect: $connect},
       authorized: [rows($authorized)[] | {fingerprint: .[0], type: .[1], comment: (.[2] // "")}],
       keys: [rows($keys)[] | {name: .[0], private: (.[1] == "true"), fingerprint: .[2], type: .[3], comment: (.[4] // "")}],
-      agent: {enabled: $agent, inSession: $inSession}}'
+      agent: {enabled: $agent, inSession: $inSession},
+      git: {name: $gitName, email: $gitEmail, github: $github}}'
 }
 
 # Appends the keys in $1 (one per line) that aren't authorized yet; prints how

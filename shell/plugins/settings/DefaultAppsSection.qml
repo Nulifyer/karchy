@@ -13,6 +13,8 @@ ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
 
+  // The Settings window (set by its Loader), which a config file link closes.
+  property var settings: null
   property var roles: ({})
   property string error: ""
   readonly property bool wide: width >= Style.space(560)
@@ -50,7 +52,8 @@ ColumnLayout {
 
   PageHeader {
     title: "Default apps"
-    explanation: "What opens links and files. Thunar's \"Set Default Application\" changes the same list."
+    explanation: "What opens links and files. Thunar's \"Set Default Application\" changes the same list, mimeapps.list."
+    ConfigFileLink { closes: root.settings; file: ".config/mimeapps.list" }
   }
 
   InlineMessage {

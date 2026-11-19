@@ -4,6 +4,10 @@
 # karchy:args=<path>
 # karchy:examples=karchy launch config-editor ~/.config/hypr/hyprland.lua
 
+# A file of yours that isn't there yet is made first, so the editor opens on
+# something: karchy's starter for it where there is one (/etc/skel, the files a
+# new account begins with), else an empty file. Nothing existing is replaced.
+
 path="${1-}"
 
 if [[ -z $path ]]; then
@@ -11,5 +15,17 @@ if [[ -z $path ]]; then
   exit 1
 fi
 
-karchy-notification-send -g config -u low "$(karchy-i18n config.editing)" "$path"
+title=$(karchy-i18n config.editing)
+if [[ ! -e $path && $path == "$HOME/"* ]]; then
+  starter="/etc/skel/${path#"$HOME/"}"
+  if mkdir -p -- "$(dirname -- "$path")" 2>/dev/null; then
+    if [[ -f $starter ]] && cp --no-clobber -- "$starter" "$path" 2>/dev/null; then
+      title=$(karchy-i18n config.created)
+    elif : 2>/dev/null >>"$path"; then
+      title=$(karchy-i18n config.createdEmpty)
+    fi
+  fi
+fi
+
+karchy-notification-send -g config -u low "$title" "$path"
 exec karchy-launch-editor "$path"

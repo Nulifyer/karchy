@@ -117,6 +117,8 @@
   "common.enabled": "Enabled",
   "common.no": "No",
   "common.yes": "Yes",
+  "config.created": "Created from karchy's starter",
+  "config.createdEmpty": "Created an empty file",
   "config.editing": "Editing config file",
   "corners.followTheme": "Corners follow the theme",
   "corners.rounded": "Rounded corners for all themes",

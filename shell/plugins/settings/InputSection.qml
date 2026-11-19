@@ -60,7 +60,9 @@ ColumnLayout {
 
   PageHeader {
     title: "Input"
-    explanation: "Settings in ~/.config/hypr/input.lua take priority over these."
+    explanation: "A setting in input.lua wins over the one here. Keybindings are in bindings.lua."
+    ConfigFileLink { closes: root.settings; file: ".config/hypr/input.lua" }
+    ConfigFileLink { closes: root.settings; file: ".config/hypr/bindings.lua" }
   }
 
   InlineMessage {

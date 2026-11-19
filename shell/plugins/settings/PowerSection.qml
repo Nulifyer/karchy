@@ -279,7 +279,8 @@ ColumnLayout {
 
   PageHeader {
     title: "Power"
-    explanation: "Idle times and battery warnings you edit by hand in ~/.config/karchy/shell.json take priority over these. Lid and hibernation are system settings, changed without a password at this computer."
+    explanation: "Idle times and battery warnings you edit by hand in shell.json win over these. Lid and hibernation are system settings, changed without a password at this computer."
+    ConfigFileLink { closes: root.settings; file: ".config/karchy/shell.json" }
   }
 
   GroupError { group: "" }

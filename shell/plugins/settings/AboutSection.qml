@@ -62,6 +62,8 @@ ColumnLayout {
 
   PageHeader {
     title: "About"
+    explanation: "hyprland.lua is the desktop's main config: it loads karchy's defaults, then your own files, which win."
+    ConfigFileLink { closes: root.settings; file: ".config/hypr/hyprland.lua" }
   }
 
   KeyValueGrid {
@@ -91,15 +93,29 @@ ColumnLayout {
     }
   }
 
-  Button {
-    focusable: true
-    variant: "primary"
-    text: "Updates and Channel…"
-    // The Updates window: what's waiting, Install, and the release channel.
-    // Settings floats above it, so Settings steps aside.
-    onClicked: {
-      Quickshell.execDetached(["karchy-updates"])
-      if (root.settings) root.settings.close()
+  RowLayout {
+    spacing: Style.spacing.md
+
+    Button {
+      focusable: true
+      variant: "primary"
+      text: "Updates and Channel…"
+      // The Updates window: what's waiting, Install, and the release channel.
+      // Settings floats above it, so Settings steps aside.
+      onClicked: {
+        Quickshell.execDetached(["karchy-updates"])
+        if (root.settings) root.settings.close()
+      }
+    }
+
+    // fastfetch in its own window: what the list above leaves out (uptime,
+    // packages, disks, the local address, the desktop's parts).
+    Button {
+      focusable: true
+      bordered: true
+      text: "More details…"
+      accessibleName: "More details about this system, from fastfetch"
+      onClicked: Quickshell.execDetached(["karchy-launch-about"])
     }
   }
 }

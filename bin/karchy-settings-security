@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# karchy:summary=Show how this computer is unlocked: fingerprint, FIDO2 key, your password and the drive password (Settings › Security)
+# karchy:args=status
+# karchy:hidden=true
+
+# The page reads this and changes nothing itself. Every change asks for the
+# password, a touch of the reader or a typed secret, so Settings runs these in
+# a terminal and reads the status again when it closes:
+#
+#   fingerprint   karchy-setup-security-fingerprint, karchy-remove-security-fingerprint
+#   FIDO2 key     karchy-setup-security-fido2, karchy-remove-security-fido2
+#   password      passwd
+#   drive         karchy-drive-password
+#
+#   status   JSON, read without root:
+#            fingerprint  reader (one is present), setUp (prompts and the lock
+#                         screen take it), installed (fprintd is installed, so
+#                         there may be prints to remove)
+#            fido2        setUp (a key is registered or sudo asks for one)
+#            password     user, changed (the day it was last changed,
+#                         YYYY-MM-DD, or "")
+#            drive        encrypted (the system disk), device, others (how many
+#                         other encrypted drives there are)
+
+set -uo pipefail
+
+is() { "$@" >/dev/null 2>&1 && echo true || echo false; }
+
+# The LUKS partition beneath /, or nothing: karchy-drive-password's own test.
+root_luks_device() {
+  local root_source
+  root_source=$(findmnt -no SOURCE /) && [[ -n $root_source ]] || return 0
+  lsblk -nsrpo NAME,TYPE,FSTYPE "${root_source%%[*}" 2>/dev/null | awk '$3 == "crypto_LUKS" { print $1; exit }'
+}
+
+status() {
+  local user device luks_count changed
+  user=$(id -un)
+  device=$(root_luks_device)
+  luks_count=$(lsblk -nrpo NAME,FSTYPE 2>/dev/null | awk '$2 == "crypto_LUKS" && !seen[$1]++ { n++ } END { print n + 0 }')
+  # "name P 2026-11-19 …": passwd answers for one's own account without root.
+  changed=$(LC_ALL=C passwd -S 2>/dev/null | awk '$3 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ { print $3 }')
+
+  jq -n \
+    --argjson reader "$(is karchy-hw-fingerprint)" \
+    --argjson fingerprintSetUp "$(is grep -qs pam_fprintd /etc/pam.d/polkit-1 /etc/pam.d/karchy-lock-fingerprint)" \
+    --argjson fprintd "$(is pacman -Qq fprintd)" \
+    --argjson fido2SetUp "$([[ -e /etc/fido2/fido2 ]] || grep -qs pam_u2f /etc/pam.d/sudo && echo true || echo false)" \
+    --arg user "$user" \
+    --arg changed "$changed" \
+    --arg device "$device" \
+    --argjson luksCount "$luks_count" \
+    '{fingerprint: {reader: $reader, setUp: $fingerprintSetUp, installed: $fprintd},
+      fido2: {setUp: $fido2SetUp},
+      password: {user: $user, changed: $changed},
+      drive: {encrypted: ($device != ""), device: $device,
+              others: ([$luksCount - (if $device != "" then 1 else 0 end), 0] | max)}}'
+}
+
+case "${1:-}" in
+  status) (( $# == 1 )) || { echo "Usage: karchy-settings-security status" >&2; exit 1; }; status ;;
+  *)
+    echo "Usage: karchy-settings-security status" >&2
+    echo "To open the page: karchy settings security" >&2
+    exit 1
+    ;;
+esac

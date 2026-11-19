@@ -275,7 +275,8 @@ ColumnLayout {
 
   PageHeader {
     title: "Displays"
-    explanation: "Settings are remembered for each monitor. A rule for the same monitor in ~/.config/hypr/monitors.lua takes priority over these."
+    explanation: "Settings are remembered for each monitor. A rule for the same monitor in monitors.lua wins over these."
+    ConfigFileLink { closes: root.settings; file: ".config/hypr/monitors.lua" }
   }
 
   InlineMessage {

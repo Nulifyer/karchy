@@ -40,7 +40,9 @@ Item {
     { id: "network", label: "Network", iconName: "net.network" },
     { id: "notifications", label: "Notifications", iconName: "notify.bell" },
     { id: "storage", label: "Storage", iconName: "disk" },
-    { id: "ssh", label: "SSH", iconName: "security.ssh" },
+    { id: "security", label: "Security", iconName: "security" },
+    { id: "ssh", label: "SSH & Git", iconName: "security.ssh" },
+    { id: "datetime", label: "Date & Time", iconName: "time" },
     { id: "appearance", label: "Appearance", iconName: "menu.appearance" },
     { id: "fonts", label: "Fonts", iconName: "look.font" },
     { id: "apps", label: "Default apps", iconName: "menu.apps" },
@@ -295,7 +297,9 @@ Item {
               case "network": return "NetworkSection.qml"
               case "notifications": return "NotificationsSection.qml"
               case "storage": return "StorageSection.qml"
+              case "security": return "SecuritySection.qml"
               case "ssh": return "SshSection.qml"
+              case "datetime": return "DateTimeSection.qml"
               case "appearance": return "AppearanceSection.qml"
               case "fonts": return "FontsSection.qml"
               case "apps": return "DefaultAppsSection.qml"

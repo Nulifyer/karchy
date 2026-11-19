@@ -6,10 +6,12 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Settings › SSH: the server and who can sign in to it, your own keys, and the
-// agent, through karchy-settings-ssh. The server is set up and removed in a
-// terminal (a key to authorize, the password), and new keys are made there
-// (a passphrase), so the page follows the system rather than the click.
+// Settings › SSH & Git: the server and who can sign in to it, your own keys,
+// the agent, and the name, email and GitHub account git works with, through
+// karchy-settings-ssh. The server is set up and removed in a terminal (a key
+// to authorize, the password), new keys are made there (a passphrase) and so
+// is the git identity (karchy-setup-git asks for it and signs in to GitHub),
+// so the page follows the system rather than the click.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -19,6 +21,7 @@ ColumnLayout {
   property var agent: ({})
   property var authorized: []
   property var keys: []
+  property var git: ({})
   property string lastStatus: ""
   property string error: ""
   property string errorTitle: ""
@@ -42,6 +45,7 @@ ColumnLayout {
       root.agent = status.agent || {}
       root.authorized = status.authorized || []
       root.keys = status.keys || []
+      root.git = status.git || {}
     } catch (e) {}
   }
 
@@ -118,8 +122,10 @@ ColumnLayout {
   Process { id: terminalProc }
 
   PageHeader {
-    title: "SSH"
-    explanation: "The server lets other computers sign in here with a key. Your keys sign you in to servers and GitHub; the agent remembers their passphrases."
+    title: "SSH & Git"
+    explanation: "The server lets other computers sign in here with a key. Your keys sign you in to servers and GitHub; the agent remembers their passphrases. Git signs your commits with the name and email below."
+    ConfigFileLink { closes: root.settings; file: ".ssh/config"; label: "ssh config" }
+    ConfigFileLink { closes: root.settings; file: ".gitconfig" }
   }
 
   InlineMessage {
@@ -278,5 +284,25 @@ ColumnLayout {
       return ""
     }
     onToggled: root.change(["agent", checked ? "off" : "on"], "Couldn't change the SSH agent.")
+  }
+
+  SettingsHeader { text: "Git" }
+
+  KeyValueGrid {
+    Layout.fillWidth: true
+    placeholder: "Not set"
+    rows: [
+      { label: "Name", value: root.git.name || "" },
+      { label: "Email", value: root.git.email || "" },
+      { label: "GitHub", value: root.git.github ? "Signed in as " + root.git.github : "Not signed in" }
+    ]
+  }
+
+  Button {
+    focusable: true
+    bordered: true
+    text: root.git.name || root.git.email ? "Change…" : "Set up Git…"
+    accessibleName: "Set the git name and email, and sign in to GitHub"
+    onClicked: root.inTerminal("karchy-setup-git")
   }
 }
