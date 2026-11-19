@@ -1,0 +1,54 @@
+// karchy's fastfetch: its mark in place of the Arch logo, and the default
+// rows without Terminal Font. Installed as /etc/xdg/fastfetch/config.jsonc;
+// Settings › About's "More details…" (karchy-launch-about) runs the same
+// plain `fastfetch`. A config.jsonc of your own in ~/.config/fastfetch
+// replaces this one.
+//
+// The mark and the keys are the terminal's yellow, which is the accent of
+// karchy's default theme and follows the theme's palette in the others.
+//
+// No Terminal Font row: fastfetch reads the size from the terminal's own
+// config without following includes, and the size is in a file karchy
+// includes there (D-117), so the row would show the terminal's built-in
+// default (foot: 8pt) whatever the real size is.
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/master/doc/json_schema.json",
+  "logo": {
+    "type": "file",
+    "source": "/usr/lib/karchy/logo-mark.txt",
+    "color": { "1": "yellow" }
+  },
+  "display": {
+    "color": { "keys": "yellow", "title": "yellow" }
+  },
+  "modules": [
+    "title",
+    "separator",
+    "os",
+    "host",
+    "kernel",
+    "uptime",
+    "packages",
+    "shell",
+    "display",
+    "de",
+    "wm",
+    "wmtheme",
+    "theme",
+    "icons",
+    "font",
+    "cursor",
+    "terminal",
+    "cpu",
+    "gpu",
+    "memory",
+    "swap",
+    "disk",
+    "localip",
+    "battery",
+    "poweradapter",
+    "locale",
+    "break",
+    "colors"
+  ]
+}

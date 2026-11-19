@@ -31,6 +31,7 @@ backup=(
   'etc/fish/conf.d/karchy.fish'
   'etc/xdg/xdg-terminals.list'
   'etc/xdg/mimeapps.list'
+  'etc/xdg/fastfetch/config.jsonc'
   'etc/pam.d/karchy-lock-password'
   'etc/pam.d/karchy-login'
 )
@@ -148,6 +149,9 @@ package() {
   install -Dm644 fish/functions/fish_prompt.fish "$pkgdir/usr/share/fish/vendor_functions.d/fish_prompt.fish"
   install -Dm644 xdg/xdg-terminals.list "$pkgdir/etc/xdg/xdg-terminals.list"
   install -Dm644 xdg/mimeapps.list "$pkgdir/etc/xdg/mimeapps.list"
+  # fastfetch with karchy's mark (logo-mark.txt in /usr/lib/karchy, above),
+  # for a terminal and for Settings › About; ~/.config/fastfetch wins.
+  install -Dm644 xdg/fastfetch/config.jsonc "$pkgdir/etc/xdg/fastfetch/config.jsonc"
   # Brave reads its theme color from here; karchy-theme-set-browser writes
   # color.json only into policy folders that exist.
   install -d -m 755 "$pkgdir/etc/brave/policies/managed"

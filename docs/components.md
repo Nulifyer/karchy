@@ -101,7 +101,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | Images | imv | [O] |
 | Media | mpv with hardware decoding config | [O] |
 | Task manager | Mission Center (Ctrl+Shift+Esc); btop in a terminal | [New] + [O] |
-| About | fastfetch | [O] |
+| About | fastfetch, with karchy's config (`/etc/xdg/fastfetch/config.jsonc`: the mark, no Terminal Font row) for a terminal and for Settings › About alike; `~/.config/fastfetch/config.jsonc` replaces it | [O] |
 | Screenshots | Omasnap (screenshot + annotation, `[omarchy]`), plus screen recording | [O] |
 | Calculator | omacalc (`[omarchy]`) | [O] |
 | Notepad | Omawrite (`[omarchy]`); plain text and Markdown files open in it | [O] |

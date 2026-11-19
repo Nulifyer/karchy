@@ -6,10 +6,14 @@
 # and animated a sheen across it. This shows the same facts in the floating
 # About window and waits for a key.
 #
-# The Terminal Font row is left out: fastfetch reads the size from the
-# terminal's own config and doesn't follow includes, and the size is in a file
-# karchy includes there (D-117), so it would show the terminal's built-in
-# default (foot: 8pt) whatever the real size is.
-logo="$KARCHY_PATH/logo-mark.txt"
+# What it shows is karchy's fastfetch config (/etc/xdg/fastfetch/config.jsonc,
+# from system/xdg/fastfetch): the mark, and no Terminal Font row. A plain
+# `fastfetch` in a terminal reads the same file, and a config of the user's
+# own replaces it in both.
+#
+# fastfetch names the process that started it as the shell, so it is started
+# from the user's shell, not from the bash that waits for the key ("Shell:
+# bash" for everyone). The `; true` keeps bash and zsh from replacing
+# themselves with fastfetch, which would make this bash the parent again.
 exec setsid uwsm-app -- xdg-terminal-exec --app-id=org.karchy.about --title=About -e bash -c \
-  "fastfetch --logo '$logo' --logo-type file --logo-color-1 yellow --structure \"\$(fastfetch --print-structure | sed s/:TerminalFont//)\"; read -rsn1"
+  '"${SHELL:-bash}" -c "fastfetch; true" || fastfetch; read -rsn1'

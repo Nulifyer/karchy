@@ -117,7 +117,7 @@ The rest are tuning choices, all decided (the remaining skips accepted by the us
 | `sudoers.d/*-tzupdate` | Set the timezone from the menu without a password | One password prompt when changing timezone | Skip |
 | `sudoers.d/*-locale-generate` | Generate a new language's locale without a password | — (English only, D-49) | Skip |
 | `tmpfiles.d/*-zswap.conf` | Turns zswap off (Omarchy uses zram) | — (karchy uses zswap, D-10) | Skip |
-| `fastfetch/config.jsonc` | About screen layout | — (`karchy-launch-about` passes its own logo) | Skip |
+| `fastfetch/config.jsonc` | About screen layout | karchy's own, `/etc/xdg/fastfetch/config.jsonc` (the mark, no Terminal Font row); `karchy-launch-about` and a plain `fastfetch` both read it | Skip |
 | `mkinitcpio.conf.d/i2c_hid_of_module.conf` | Keyboard at the disk prompt on Snapdragon laptops | — (no ARM target) | Skip |
 | `plocate-updatedb.service.d/ac-only.conf` | plocate only indexes on AC | — (plocate not installed) | Skip |
 | cups, docker, mise, sddm, plymouth, limine-entry-tool, Omarchy's mkinitcpio hooks, kitty, `nopasswd-sudo`, `dns` sudoers | Features karchy dropped or replaced | — | Skip (cups returns with the Printers optional feature, D-38) |
