@@ -79,7 +79,9 @@ Row {
     // The chips draw the panel-cursor ring, which follows InputMode; Tab
     // focus is the keyboard's, a click the pointer's.
     if (activeFocus) {
-      if (focusReason === Qt.MouseFocusReason) InputMode.pointerMoved()
+      // Through `root`: this Qt has no focusReason on a Row, and the bare
+      // name threw, which left the group with no chip marked under Tab.
+      if (root.focusReason === Qt.MouseFocusReason) InputMode.pointerMoved()
       else InputMode.keyPressed()
       var idx = selectedOptionIndex()
       _focusedIndex = idx < 0 ? 0 : idx
