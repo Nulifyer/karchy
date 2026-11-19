@@ -70,6 +70,9 @@ assert.strictEqual(sys[0].app, "system")
 // A browser's notification is grouped, named and ruled by its site.
 assert.deepStrictEqual(M.groupOf({ app: "Firefox", groupKey: "web:mail.example.org" }), { id: "web:mail.example.org", label: "mail.example.org", system: false })
 assert.strictEqual(M.rows([e("s", "Signal", 1)], {}, {})[0].app, "app:signal")
+// An app with an internal name is listed under the name karchy uses; its rule key is still its own.
+assert.deepStrictEqual(M.groupOf({ app: "omasnap", groupKey: "app:omasnap" }), { id: "app:omasnap", label: "Screenshot", system: false })
+assert.strictEqual(M.appLabel("Signal"), "Signal")
 // The same key closed twice is two rows.
 const twice = M.historyRows([e("k", "Chat", 1, { waiting: false }), e("k", "Chat", 1, { waiting: false, closed_ts: 50 })])
 assert.notStrictEqual(twice[0].id, twice[1].id)

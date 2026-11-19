@@ -4,6 +4,17 @@
 // newest and opens to show them all. Pure functions over history entries
 // (Store.closedEntry); Service.qml says which are waiting and ongoing.
 
+// The name an app's notifications are listed under, where the name it gives
+// itself is an internal one. Omasnap is the program behind Print and
+// Super+Shift+S, which karchy calls a screenshot everywhere else. Keyed by the
+// app's name in lower case; the rule key (`app:<name>`) stays the app's own.
+var APP_LABELS = { "omasnap": "Screenshot" }
+
+function appLabel(app) {
+  var name = String(app || "")
+  return APP_LABELS[name.toLowerCase()] || name
+}
+
 // Who it is from, as the toast decides it (Markup.regroup): the site for a
 // browser's notification, otherwise the app. `id` is the key a per-app rule
 // is kept under; Karchy's own toasts and bare notify-send have no app to
@@ -14,7 +25,7 @@ function groupOf(entry) {
   if (key.indexOf("web:") === 0) return { id: key, label: key.slice(4), system: false }
   if (key.indexOf("app:") !== 0 || key === "app:" || app === "karchy-action" || app === "notify-send")
     return { id: "system", label: "", system: true }
-  return { id: key, label: app, system: false }
+  return { id: key, label: appLabel(app), system: false }
 }
 
 function entryId(entry) {
@@ -140,6 +151,7 @@ function age(ts, now, midnight) {
 
 if (typeof module !== "undefined") {
   module.exports = {
+    appLabel: appLabel,
     groupOf: groupOf,
     entryId: entryId,
     byArrival: byArrival,

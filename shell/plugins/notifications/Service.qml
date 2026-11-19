@@ -18,6 +18,7 @@ import "Security.js" as Security
 import "Layout.js" as Layout
 import "Markup.js" as Markup
 import "Delivery.js" as Delivery
+import "PanelModel.js" as PanelModel
 import "Icons.js" as AppIcons
 
 Item {
@@ -1307,7 +1308,7 @@ Item {
 
   function noteSender(row) {
     var key = String(row.groupKey || "")
-    var name = key.indexOf("web:") === 0 ? key.slice(4) : String(row.app || "")
+    var name = key.indexOf("web:") === 0 ? key.slice(4) : PanelModel.appLabel(row.app)
     var next = Store.noteSender(senders, key, name, Date.now() / 1000)
     if (next === senders) return
     senders = next
