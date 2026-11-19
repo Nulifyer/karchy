@@ -67,7 +67,9 @@ mkdir -p "$pkg"
 check "skel marks" "$(ls "$pkg/etc/skel/.local/state/karchy/migrations" | wc -l)" "5"
 grep -q 'etc/skel/.local/state/karchy/migrations' "$root/packaging/pkgbuilds/karchy/PKGBUILD"
 check "PKGBUILD writes skel marks" "$?" "0"
-grep -q 'karchy-migrate baseline' "$root/install/setup.sh"
+# The baseline is in the one program that sets up any new account's home
+# (D-139), which the installer runs for the first user.
+grep -q 'karchy-migrate baseline' "$root/system/users/user-setup" && grep -q 'user-setup' "$root/install/setup.sh"
 check "installer baselines the first user" "$?" "0"
 
 echo "migrations: $pass passed, $failures failed"
