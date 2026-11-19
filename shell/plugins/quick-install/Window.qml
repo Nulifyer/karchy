@@ -744,7 +744,9 @@ Item {
       opened: root.pendingRemove !== null
       onOpenedChanged: if (opened) returnFocus = frame.Window.activeFocusItem
       message: root.pendingRemove
-        ? "Remove " + Model.namesText(root.pendingRemove.names) + "? Their packages are uninstalled; what they saved in your home folder is kept. You can install them again later."
+        ? "Remove " + Model.namesText(root.pendingRemove.names) + (root.pendingRemove.names.length === 1
+            ? "? It is uninstalled; what it saved in your home folder is kept. You can install it again later."
+            : "? They are uninstalled; what they saved in your home folder is kept. You can install them again later.")
         : ""
       confirmText: "Remove"
       onCanceled: {
