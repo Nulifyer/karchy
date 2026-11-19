@@ -30,9 +30,11 @@ import "Search.js" as Search
 //
 // Keyboard: typing goes to the search, which spans every category; Up/Down
 // (and j/k outside the search field) move through the list; Enter installs
-// or opens the focused app; Tab walks the search, the category list (one
-// stop, j/k or the arrows to choose) and the focused row's buttons; Escape
-// clears the search, then closes.
+// or opens the focused app; Space picks it, except in the middle of typing
+// a search, where it is a space and Ctrl+Space picks (`spacePicks`); Tab
+// walks the search, the category list (one stop, j/k or the arrows to
+// choose) and the focused row's buttons; Escape clears the search, then
+// closes.
 Item {
   id: root
 
@@ -71,6 +73,14 @@ Item {
 
   readonly property var apps: catalog.apps || []
   readonly property bool searching: query.trim() !== ""
+  // Space picks the highlighted app (D-109) wherever it can't be part of a
+  // search: outside the search field, in an empty one, and once the arrows
+  // have moved the highlight (`browsing`, until the text is edited again).
+  // So "visual studio" types as it reads, and Down, Space, Down, Space picks
+  // two results. The footer names the key that picks right now.
+  property bool browsing: false
+  property bool searchFocused: true
+  readonly property bool spacePicks: !searchFocused || !searching || browsing
   readonly property var categoryRows: Model.categories(catalog, installed)
   readonly property var results: searching
     ? Search.search(apps, query)
@@ -215,6 +225,7 @@ Item {
 
   function setCategory(id) {
     root.category = id
+    root.browsing = false
     searchField.text = ""
     root.currentId = ""
     root.pickFirst()
@@ -388,6 +399,19 @@ Item {
       sequence: "Ctrl+F"
       enabled: root.opened && !confirmDialog.opened
       onActivated: searchField.forceActiveFocus(Qt.ShortcutFocusReason)
+    }
+    // Picking from anywhere (`spacePicks`). The search field handles its own
+    // Space, as a text field keeps plain keys from shortcuts; on a row's
+    // button or the category list this comes before the control's Space.
+    Shortcut {
+      sequence: "Ctrl+Space"
+      enabled: root.opened && !confirmDialog.opened
+      onActivated: root.toggleSelected(root.current)
+    }
+    Shortcut {
+      sequence: "Space"
+      enabled: root.opened && !confirmDialog.opened && !root.searchFocused
+      onActivated: root.toggleSelected(root.current)
     }
     Shortcut {
       sequence: "F5"
@@ -567,16 +591,29 @@ Item {
             placeholderText: "Search " + root.apps.length + " apps"
             onTextChanged: {
               root.query = text
+              root.browsing = false
               root.currentId = ""
               root.pickFirst()
             }
-            Keys.onUpPressed: root.step(-1)
-            Keys.onDownPressed: root.step(1)
+            onActiveFocusChanged: root.searchFocused = activeFocus
+            // Moving the text cursor is editing again.
+            onCursorPositionChanged: root.browsing = false
+            function browse(dy) {
+              root.step(dy)
+              root.browsing = true
+            }
+            Keys.onUpPressed: browse(-1)
+            Keys.onDownPressed: browse(1)
             Keys.onPressed: function(event) {
-              if (event.key === Qt.Key_PageDown) { root.step(8); event.accepted = true }
-              else if (event.key === Qt.Key_PageUp) { root.step(-8); event.accepted = true }
+              if (event.key === Qt.Key_PageDown) { browse(8); event.accepted = true }
+              else if (event.key === Qt.Key_PageUp) { browse(-8); event.accepted = true }
               else if (event.key === Qt.Key_Tab) { categoryList.forceActiveFocus(Qt.TabFocusReason); event.accepted = true }
               else if (event.key === Qt.Key_Backtab) { root.focusActions(false); event.accepted = true }
+              else if (event.key === Qt.Key_Space && root.spacePicks
+                       && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
+                root.toggleSelected(root.current)
+                event.accepted = true
+              }
             }
             onAccepted: root.activate(root.current)
           }
@@ -600,13 +637,9 @@ Item {
           ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
           // Row buttons hand Up/Down and j/k to the list; the keyboard stays
-          // on the focused row's first button.
+          // on the focused row's first button. Space is the window's
+          // shortcut above, which comes before a button's own Space.
           Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_Space) {
-              root.toggleSelected(root.current)
-              event.accepted = true
-              return
-            }
             var dy = event.key === Qt.Key_Down || event.text === "j" ? 1
               : event.key === Qt.Key_Up || event.text === "k" ? -1
               : event.key === Qt.Key_PageDown ? 8 : event.key === Qt.Key_PageUp ? -8 : 0
@@ -729,8 +762,8 @@ Item {
               : root.applying ? "install, once this is done"
               : "install"
           }
-          KeyHint { keys: "Space"; label: "pick" }
-          KeyHint { keys: "Tab"; label: "categories and buttons" }
+          KeyHint { keys: root.spacePicks ? "Space" : "Ctrl+Space"; label: "pick" }
+          KeyHint { keys: "Tab"; label: "categories, buttons" }
           KeyHint { keys: "Esc"; label: root.searching ? "clear search" : "close" }
         }
       }
