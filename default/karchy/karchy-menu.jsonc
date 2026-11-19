@@ -41,7 +41,7 @@
   "record.silent": {"iconName":"record.silent","label":"No Audio","aliases":["without audio"],"action":"karchy-capture-screenrecording"},
   "record.desktop": {"iconName":"audio.speaker","label":"Desktop Audio","action":"karchy-capture-screenrecording --with-desktop-audio"},
   "record.microphone": {"iconName":"audio.mic","label":"Desktop + Microphone","aliases":["mic"],"action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio"},
-  "record.webcam": {"iconName":"audio.camera","label":"Desktop + Microphone + Webcam","aliases":["camera"],"when":"[[ -n $(karchy-capture-webcam-list) ]]","action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio --with-webcam"},
+  "record.webcam": {"iconName":"audio.camera","label":"Desktop + Microphone + Webcam","aliases":["camera"],"when":"command -v mpv >/dev/null && [[ -n $(karchy-capture-webcam-list) ]]","action":"karchy-capture-screenrecording --with-desktop-audio --with-microphone-audio --with-webcam"},
 
   // Packages (D-18: install, AUR, remove, web apps; Quick Install, D-70)
   "packages.quick-install": {"iconName":"quick-install","label":"Quick Install","aliases":["quick-install","features","store"],"action":"karchy-quick-install"},

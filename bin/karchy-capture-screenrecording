@@ -94,6 +94,12 @@ fi
 start_webcam_overlay() {
   cleanup_webcam
 
+  # mpv draws the overlay; it is a shipped app the user may have removed.
+  if ! command -v mpv >/dev/null; then
+    karchy-notification-send -g audio.camera -u critical -t 5000 "$(karchy-i18n capture.webcamNeedsMpv)"
+    return 1
+  fi
+
   # Auto-detect first available webcam if none specified
   if [[ -z $WEBCAM_DEVICE ]]; then
     WEBCAM_DEVICE=$(karchy-capture-webcam-list | sed -n '1s/[[:space:]].*//p')
@@ -480,12 +486,14 @@ stop_screenrecording() {
     fi
     echo "$filename"
 
-    local image_args=()
+    local image_args=() open_with=(mpv --)
     [[ -s $preview ]] && image_args=(--image "$preview")
+    # mpv is a shipped app that may have been removed.
+    command -v mpv >/dev/null || open_with=(xdg-open)
 
     karchy-notification-send -g record "$(karchy-i18n capture.recordingSaved)" "$(recording_details "$filename")" \
       -t 10000 "${image_args[@]}" \
-      --action "$(karchy-i18n capture.recordingOpen)" mpv -- \
+      --action "$(karchy-i18n capture.recordingOpen)" "${open_with[@]}" \
       --action "$(karchy-i18n capture.recordingCut)" omacut \
       --with "$filename"
 

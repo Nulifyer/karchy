@@ -89,6 +89,7 @@
   "capture.audioNotAdded": "The %1 audio could not be added to this recording.",
   "capture.noRecordingDir": "Screen recording directory does not exist: %1",
   "capture.noWebcam": "No webcam devices found",
+  "capture.webcamNeedsMpv": "The webcam overlay needs mpv. Install it from Quick install.",
   "capture.qrCopied": "QR code copied to clipboard",
   "capture.qrHelp": "Select a region containing a QR code",
   "capture.qrNone": "No QR code found",

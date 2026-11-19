@@ -75,7 +75,9 @@ o.bind("SUPER + CTRL + R", "Set reminder", "karchy-reminder -i")
 o.bind("SUPER + comma", "Dismiss last notification", { ipc = "notifications.dismissOne" })
 o.bind("SUPER + SHIFT + comma", "Dismiss all notifications", { ipc = "notifications.dismissAll" })
 o.bind("SUPER + SHIFT + ALT + comma", "Open notification history", { ipc = "notifications.showHistory" })
-o.bind("CTRL + SHIFT + ESCAPE", "Task manager", "karchy-launch-or-focus io.missioncenter.MissionCenter missioncenter")
+-- Mission Center is a shipped app that may have been removed; btop is core.
+o.bind("CTRL + SHIFT + ESCAPE", "Task manager",
+  "command -v missioncenter >/dev/null && karchy-launch-or-focus io.missioncenter.MissionCenter missioncenter || karchy-launch-or-focus-tui btop")
 
 -- Apps
 o.bind("SUPER + RETURN", "Terminal", o.launch_terminal())
