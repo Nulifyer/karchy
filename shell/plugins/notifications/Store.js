@@ -45,6 +45,8 @@ function snapshot(n, key, urgencyEnum) {
     execActions: actions ? JSON.stringify(actions) : "",
     glyph: hints["karchy-glyph"],
     transient: hints["transient"] === true || hints["transient"] === 1,
+    // "Stays until its sender takes it back": the panel lists it as ongoing.
+    resident: n.resident === true || hints["resident"] === true || hints["resident"] === 1,
     app: raw.app,
     // Else the desktop-entry hint, which names the app's .desktop file and so,
     // usually, its icon. normalise() drops it when it is a path (Chrome's).
@@ -65,7 +67,7 @@ function snapshot(n, key, urgencyEnum) {
 }
 
 // The fields an in-place update (replaces_id) must write through to the row.
-var ROLES = ["originalId", "senderPid", "execArgv", "execActions", "glyph", "transient", "app", "appIcon", "summary", "body", "rawBody", "bodyRich",
+var ROLES = ["originalId", "senderPid", "execArgv", "execActions", "glyph", "transient", "resident", "app", "appIcon", "summary", "body", "rawBody", "bodyRich",
              "bodyLine", "source", "groupKey", "image", "urgency",
              "expireTimeout", "duration", "ts",
              "code", "codes", "link"]
@@ -103,7 +105,7 @@ var RESTORE_GRACE = 20000
 // from the first row it sees and silently drops keys that row lacked, so every
 // row goes through normalise() and carries every field.
 var SHAPE = {
-  key: "", originalId: 0, senderPid: 0, execArgv: "", execActions: "", glyph: "", transient: false, app: "", appIcon: "", summary: "", body: "",
+  key: "", originalId: 0, senderPid: 0, execArgv: "", execActions: "", glyph: "", transient: false, resident: false, app: "", appIcon: "", summary: "", body: "",
   bodyRich: "", bodyLine: "", rawBody: "", source: "", groupKey: "", image: "",
   code: "", codes: "", link: "",
   urgency: 1, expireTimeout: 0, duration: 0, ts: 0,
@@ -170,12 +172,11 @@ var RETENTION_HOURS = 24
 // come back as a short card, so its text is cut much shorter.
 var LIVE_ROW_CHARS = 16384
 var HISTORY_ROW_CHARS = 4096
-// The closing reasons that mean "this never reached the screen".
 
 // What a stored row keeps. Derived text is recomputed on restore; codes,
 // links and images never persist, so a stored row cannot assert a
 // capability.
-var STORED = ["key", "originalId", "senderPid", "execArgv", "execActions", "glyph", "app", "appIcon", "summary", "body",
+var STORED = ["key", "originalId", "senderPid", "execArgv", "execActions", "glyph", "resident", "app", "appIcon", "summary", "body",
               "rawBody", "source", "groupKey", "urgency", "expireTimeout", "duration", "ts"]
 
 function storedSize(row) { return JSON.stringify(row).length }
@@ -197,12 +198,61 @@ function persistable(row, limit) {
   return out
 }
 
-// A closed row for history, stamped with when and why it closed.
-function closedEntry(row, reason, now) {
+// A closed row for history, stamped with when and why it closed. `flags`
+// say where the notifications panel puts it (Delivery.js decides them):
+//   waiting  nobody answered it, so the panel lists it until it is dismissed
+//   silent   it came without a popup by choice (a low urgency, an app set to
+//            Silent), so it sits in the panel's Silent section
+//   seen     the panel has shown it; the bar's bell counts the unseen ones
+function closedEntry(row, reason, now, flags) {
   var out = persistable(row, HISTORY_ROW_CHARS)
   out.closed_ts = now
   out.closed_reason = /^[a-z]{1,32}$/.test(String(reason)) ? String(reason) : ""
+  out.waiting = !!(flags && flags.waiting === true)
+  out.silent = !!(flags && flags.silent === true)
+  out.seen = !(flags && flags.seen === false)
   return out
+}
+
+// What the bell's dot counts: waiting, not silent, not yet shown in the panel.
+function unseenCount(entries) {
+  var n = 0
+  for (var i = 0; i < entries.length; i++)
+    if (entries[i].waiting && !entries[i].silent && entries[i].seen === false) n++
+  return n
+}
+
+// A copy of the list with `patch` written into the entries `match` picks, or
+// the same list when nothing changes, so the caller can tell.
+function patchHistory(entries, match, patch) {
+  var changed = false
+  var out = entries.map(function(entry) {
+    if (!match(entry)) return entry
+    var next = {}, differs = false
+    for (var k in entry) next[k] = entry[k]
+    for (var p in patch) {
+      if (next[p] !== patch[p]) differs = true
+      next[p] = patch[p]
+    }
+    if (differs) changed = true
+    return differs ? next : entry
+  })
+  return changed ? out : entries
+}
+
+function markSeen(entries) {
+  return patchHistory(entries, function(entry) { return entry.seen === false }, { seen: true })
+}
+
+// One history entry is named by its key and when it closed.
+function sameEntry(entry, key, closedTs) {
+  return entry.key === key && entry.closed_ts === closedTs
+}
+
+function waitingKeys(entries) {
+  var keys = {}
+  for (var i = 0; i < entries.length; i++) if (entries[i].waiting) keys[entries[i].key] = true
+  return keys
 }
 
 // Every entry is somebody's message, so history keeps only the recent past:
@@ -263,7 +313,8 @@ function parseStored(text, limit, rowChars, history) {
     if (typeof entry.key !== "string" || !KEY.test(entry.key)) continue
     if (history) {
       if (typeof entry.closed_ts !== "number" || !isFinite(entry.closed_ts)) continue
-      out.push(closedEntry(entry, entry.closed_reason, entry.closed_ts))
+      out.push(closedEntry(entry, entry.closed_reason, entry.closed_ts,
+                           { waiting: entry.waiting === true, silent: entry.silent === true, seen: entry.seen !== false }))
     } else if (!seen[entry.key]) {
       seen[entry.key] = true
       out.push(persistable(entry, rowChars))
@@ -291,6 +342,58 @@ function parseQuiet(text) {
 function serialiseQuiet(state) {
   return JSON.stringify({ dnd: !!state.dnd }) + "\n"
 }
+
+// ~/.config/karchy/notifications.json, which karchy-settings-notifications
+// writes: { "apps": { "<group key>": { "mode": "silent" | "off", "name": … } } }.
+// Returns group key -> mode; anything else in the file is Allow.
+var GROUP_KEY = /^(app|web):[a-z0-9.-]{1,200}$/
+function parseRules(text) {
+  var raw = String(text || ""), out = {}
+  if (!raw.trim() || raw.length > 262144) return out
+  var read
+  try { read = JSON.parse(raw) } catch (e) { return out }
+  var apps = read && typeof read === "object" && !Array.isArray(read) ? read.apps : null
+  if (!apps || typeof apps !== "object" || Array.isArray(apps)) return out
+  for (var key in apps) {
+    var mode = apps[key] && apps[key].mode
+    if (GROUP_KEY.test(key) && (mode === "silent" || mode === "off")) out[key] = mode
+  }
+  return out
+}
+
+// senders.json: the apps and sites that have sent a notification, so
+// Settings can list them: { "<group key>": { "name": …, "ts": … } }, the
+// most recent SENDER_LIMIT of them.
+var SENDER_LIMIT = 200
+function parseSenders(text) {
+  var raw = String(text || ""), out = {}
+  if (!raw.trim() || raw.length > 262144) return out
+  var read
+  try { read = JSON.parse(raw) } catch (e) { return out }
+  if (!read || typeof read !== "object" || Array.isArray(read)) return out
+  for (var key in read) {
+    var entry = read[key]
+    if (!GROUP_KEY.test(key) || !entry || typeof entry !== "object") continue
+    out[key] = { name: Security.bounded(entry.name, Security.MAX_APP_NAME),
+                 ts: typeof entry.ts === "number" && isFinite(entry.ts) ? entry.ts : 0 }
+  }
+  return out
+}
+
+// The same map when the sender is already known by that name.
+function noteSender(senders, key, name, now) {
+  if (!GROUP_KEY.test(String(key))) return senders
+  name = Security.bounded(name, Security.MAX_APP_NAME)
+  if (senders[key] && senders[key].name === name) return senders
+  var keys = Object.keys(senders).filter(function(k) { return k !== key })
+  keys.sort(function(a, b) { return senders[b].ts - senders[a].ts })
+  var out = {}
+  out[key] = { name: name, ts: now }
+  for (var i = 0; i < keys.length && i < SENDER_LIMIT - 1; i++) out[keys[i]] = senders[keys[i]]
+  return out
+}
+
+function serialiseSenders(senders) { return JSON.stringify(senders) + "\n" }
 
 // What a redacted row says, stored in English like any stored value and
 // translated where it is shown.

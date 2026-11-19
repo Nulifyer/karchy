@@ -1,0 +1,123 @@
+#!/usr/bin/env python3
+# karchy:summary=Read and set notification settings (Settings › Notifications)
+# karchy:args=status | set <app> <allow|silent|off> [name] | dnd <on|off>
+# karchy:hidden=true
+"""Notification settings for karchy Settings and the notifications panel (D-112).
+
+What each app's notifications do is kept in ~/.config/karchy/notifications.json,
+which the notification service reads and watches:
+
+  { "apps": { "app:signal": { "mode": "silent", "name": "Signal" } } }
+
+Only Silent and Off are written; an app that isn't listed is on Allow. An app
+is named by the key the service groups it under: "app:<name>" for an app,
+"web:<host>" for a site notifying through a browser. The service lists who
+has sent a notification in ~/.local/state/karchy/notifications/senders.json.
+
+  status                    JSON: Do Not Disturb, and every app that has sent
+                            a notification or has a setting, with its mode
+  set <app> <mode> [name]   allow (popup and panel), silent (panel only, no
+                            popup) or off (dropped); name is what to call it
+  dnd <on|off>              Do Not Disturb
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+HOME = Path.home()
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config") / "karchy/notifications.json"
+STATE = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local/state") / "karchy/notifications"
+KEY = re.compile(r"^(app|web):[a-z0-9.-]{1,200}$")
+MODES = ("allow", "silent", "off")
+
+
+def read_json(path):
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def rules():
+    """{key: {mode, name}} for the apps set to Silent or Off."""
+    apps = read_json(CONFIG).get("apps")
+    out = {}
+    if isinstance(apps, dict):
+        for key, rule in apps.items():
+            if KEY.match(key) and isinstance(rule, dict) and rule.get("mode") in ("silent", "off"):
+                out[key] = {"mode": rule["mode"], "name": str(rule.get("name") or "")[:128]}
+    return out
+
+
+def fallback_name(key):
+    return key.split(":", 1)[1]
+
+
+def dnd():
+    return read_json(STATE / "quiet.json").get("dnd") is True
+
+
+def status():
+    chosen = rules()
+    senders = read_json(STATE / "senders.json")
+    apps = {}
+    for key, sender in senders.items():
+        if KEY.match(key) and isinstance(sender, dict):
+            apps[key] = {"id": key, "name": str(sender.get("name") or "")[:128] or fallback_name(key), "mode": "allow"}
+    for key, rule in chosen.items():
+        known = apps.get(key, {})
+        apps[key] = {"id": key, "name": known.get("name") or rule["name"] or fallback_name(key), "mode": rule["mode"]}
+    ordered = sorted(apps.values(), key=lambda app: (app["name"].casefold(), app["id"]))
+    print(json.dumps({"dnd": dnd(), "apps": ordered}))
+
+
+def set_mode(key, mode, name):
+    if not KEY.match(key):
+        sys.exit(f"Not an app the notification service names: '{key}'")
+    if mode not in MODES:
+        sys.exit(f"Mode is one of {', '.join(MODES)}; got '{mode}'")
+    chosen = rules()
+    if mode == "allow":
+        chosen.pop(key, None)
+    else:
+        chosen[key] = {"mode": mode, "name": (name or chosen.get(key, {}).get("name") or fallback_name(key))[:128]}
+    whole = read_json(CONFIG)
+    whole["apps"] = chosen
+    CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    # Written beside the file and moved over it, so the service never reads half.
+    with tempfile.NamedTemporaryFile("w", dir=CONFIG.parent, prefix=".notifications.", delete=False, encoding="utf-8") as tmp:
+        json.dump(whole, tmp, indent=2, sort_keys=True)
+        tmp.write("\n")
+    os.replace(tmp.name, CONFIG)
+    status()
+
+
+def set_dnd(value):
+    if value not in ("on", "off"):
+        sys.exit("dnd takes on or off")
+    done = subprocess.run(["karchy-shell", "notifications", "setDnd", value], capture_output=True, text=True)
+    if done.returncode != 0:
+        sys.exit(done.stderr.strip() or "The notification service did not answer.")
+    print(json.dumps({"dnd": done.stdout.strip() == "on"}))
+
+
+def main(argv):
+    if len(argv) == 2 and argv[1] == "status":
+        status()
+    elif len(argv) in (4, 5) and argv[1] == "set":
+        set_mode(argv[2], argv[3], argv[4] if len(argv) == 5 else "")
+    elif len(argv) == 3 and argv[1] == "dnd":
+        set_dnd(argv[2])
+    else:
+        print(__doc__.strip(), file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

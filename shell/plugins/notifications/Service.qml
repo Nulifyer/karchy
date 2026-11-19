@@ -591,7 +591,7 @@ Item {
   // ------------------------------------------------------------- arrival
   function handleNotification(notification) {
     // Replacements reuse the same slot, including before its first insertion.
-    var known = keyForOriginal(notification.id)
+    var known = keyForOriginal(notification.id) || parkedKeyFor(notification)
     var row = Store.snapshot(notification, known, NotificationUrgency)
     // So does an identical copy under a new id: it takes over the card it
     // repeats, and the copy it supersedes is closed at its sender.
@@ -618,11 +618,19 @@ Item {
       try { previous.tracked = false } catch (e) {}
     }
 
-    // Quiet still records it (unless ephemeral), straight to history.
-    var muted = Delivery.quietReason(row, doNotDisturb)
+    // An update to one waiting in the panel takes that entry's place.
+    if (parked[key]) unpark(key, true)
+    noteSender(row)
+
+    // No popup: it goes straight to history (unless nobody looks back at it),
+    // and waits in the panel with its sender still listening when it is one
+    // to answer. A blocked app's is dropped.
+    var muted = Delivery.verdict(row, doNotDisturb, appRules[row.groupKey])
     if (muted) {
-      if (!Delivery.isEphemeral(row)) storeRecord(row, muted)
-      release(key)
+      var recorded = muted !== "blocked" && !Delivery.isEphemeral(row)
+      if (recorded && rowIndexFor(key) < 0 && Delivery.waits(row, muted)) parked[key] = true
+      if (recorded) storeRecord(row, muted)
+      if (!parked[key]) release(key)
       // A replacement for a card already on screen leaves that card as it was;
       // one still waiting to be shown is gone, and so is its saved row.
       if (rowIndexFor(key) < 0) {
@@ -651,11 +659,12 @@ Item {
   }
 
   function watchNotification(notification, key) {
-    var reservation = liveKeys[key]
     notification.closed.connect(function() {
       if (service.refs[key] !== notification) return
       delete service.refs[key]
       service.refsRevision += 1
+      // Its sender took back one that was waiting in the panel.
+      if (service.parked[key]) { service.unpark(key, false); return }
       // Visible snapshots outlive their sender; pending rows must not appear
       // after the sender withdraws them.
       if (service.rowIndexFor(key) < 0) service.finishClose(key, "closed")
@@ -663,18 +672,22 @@ Item {
     // NotificationServer emits onNotification only for new objects. A
     // replaces_id update mutates this QObject and emits its property signals,
     // so snapshot once after the whole update rather than once per field.
+    // A notification waiting in the panel has no reservation, and gets a
+    // new one when its sender updates it, so the current one is looked up.
     var queued = false
     var refresh = function() {
       if (!queued) return
       queued = false
-      if (reservation.refresh === refresh) reservation.refresh = null
-      if (service.liveKeys[key] !== reservation || service.refs[key] !== notification) return
+      var held = service.liveKeys[key]
+      if (held && held.refresh === refresh) held.refresh = null
+      if (service.refs[key] !== notification || (!held && !service.parked[key])) return
       service.handleNotification(notification)
     }
     var schedule = function() {
-      if (queued || service.liveKeys[key] !== reservation || service.refs[key] !== notification) return
+      var held = service.liveKeys[key]
+      if (queued || service.refs[key] !== notification || (!held && !service.parked[key])) return
       queued = true
-      reservation.refresh = refresh
+      if (held) held.refresh = refresh
       Qt.callLater(refresh)
     }
     var signals = [notification.summaryChanged, notification.bodyChanged,
@@ -840,7 +853,11 @@ Item {
     var at = rowIndexFor(key)
     if (!liveKeys[key]) return
     releaseLive(key)
-    release(key, reason)
+    // One whose popup timed out waits in the panel, its sender still
+    // listening, so its buttons work there.
+    var live = Store.liveEntry(liveEntries, key)
+    if (reason === "expired" && refs[key] && live && Delivery.waits(live, reason)) parked[key] = true
+    else release(key, reason)
     if (at >= 0) toasts.remove(at)
     delete heights[key]
     delete fresh[key]
@@ -1102,17 +1119,177 @@ Item {
     }
 
     var handled = invokeSenderAction(key, "default")
-    if (!handled && row) {
-      // Source first, link last: a Slack message quoting a link is still a
-      // Slack notification, and that link is clickable in its text.
-      var win = windowForPid(row.senderPid) || windowForSource(row.source)
-      if (win) focusWindow(win)
-      else if (Markup.hostname(row.source))
-        Security.openExternalUrl("https://" + Markup.hostname(row.source) + "/")
-      else if (String(row.link || "")) Security.openExternalUrl(String(row.link))
-      else if (String(row.app || "")) Util.execArgv(["karchy-hyprland-focus-app", String(row.app)])
-    }
+    if (!handled && row) openSource(row)
     closeToast(key, "activated", instant)
+  }
+
+  // Where a notification came from, with no sender left to ask: its window,
+  // then its site, then a link in its text, then the app by name.
+  function openSource(row) {
+    // Source first, link last: a Slack message quoting a link is still a
+    // Slack notification, and that link is clickable in its text.
+    var win = windowForPid(row.senderPid) || windowForSource(row.source)
+    if (win) focusWindow(win)
+    else if (Markup.hostname(row.source))
+      Security.openExternalUrl("https://" + Markup.hostname(row.source) + "/")
+    else if (String(row.link || "")) Security.openExternalUrl(String(row.link))
+    else if (String(row.app || "")) Util.execArgv(["karchy-hyprland-focus-app", String(row.app)])
+  }
+
+  // ------------------------------------------------------------- panel
+  //
+  // What the notifications panel (Panel.qml) lists and changes. A history
+  // entry marked `waiting` is one nobody answered: the panel lists it until
+  // it is dismissed, opened or cleared, and it stays in history after that.
+  // While the shell that received it runs, its sender is kept (`parked`), so
+  // its buttons and its click still reach the app; after a restart it can do
+  // what a restored card can: Karchy's click command, its window, its site.
+  //
+  // Invariant: parked[key] means refs[key] is alive, the key is not on
+  // screen, and history holds a waiting entry with that key. setHistory()
+  // lets go of a sender whose entry stopped waiting.
+  property var parked: ({})
+  readonly property int unseenCount: Store.unseenCount(historyEntries)
+
+  function setHistory(next, releaseReason) {
+    if (next !== historyEntries) {
+      historyEntries = next
+      saveSoon("history")
+    }
+    var waiting = Store.waitingKeys(historyEntries)
+    for (var key in parked) {
+      if (waiting[key]) continue
+      delete parked[key]
+      release(key, releaseReason || "dismissed")
+    }
+  }
+
+  function parkedKeyFor(notification) {
+    for (var key in parked) if (refs[key] === notification) return key
+    return ""
+  }
+
+  // Its entry stops waiting (its sender took it back), or goes altogether
+  // (it is coming back on screen). The sender is kept either way: it is
+  // gone already, or about to be shown.
+  function unpark(key, drop) {
+    delete parked[key]
+    var mine = function(entry) { return entry.waiting && entry.key === key }
+    setHistory(drop ? historyEntries.filter(function(entry) { return !mine(entry) })
+                    : Store.patchHistory(historyEntries, mine, { waiting: false }))
+  }
+
+  function markHistorySeen() {
+    setHistory(Store.markSeen(historyEntries))
+  }
+
+  // Ongoing: its sender marked it resident ("stays until I take it back")
+  // and is still there to do so. Clear all leaves these.
+  function isOngoing(entry, revision) {
+    return !!entry && entry.resident === true && !!parked[entry.key] && !!refs[entry.key]
+  }
+
+  // The buttons it still has: Karchy's --action commands, and its sender's
+  // own while the sender is there. Codes are never stored, so none of those.
+  function entryDeeds(entry, revision) {
+    var all = Delivery.deeds(entry, parked[entry.key] ? senderActions(refs[entry.key]) : [])
+    return all.filter(function(deed) { return deed.kind !== "code" })
+  }
+
+  // Answered: it leaves the panel, unless it is ongoing.
+  function settleEntry(entry, reason) {
+    if (isOngoing(entry)) return
+    setHistory(Store.patchHistory(historyEntries, function(e) {
+      return Store.sameEntry(e, entry.key, entry.closed_ts)
+    }, { waiting: false, seen: true }), reason)
+  }
+
+  function runEntryDeed(entry, deed) {
+    if (!entry || !deed) return
+    if (deed.kind === "exec") {
+      var actions = Security.parseExecActions(entry.execActions)
+      if (!actions || deed.value < 0 || deed.value >= actions.length) return
+      Util.execArgv(actions[deed.value].argv)
+    } else if (deed.kind === "action") {
+      if (!parked[entry.key] || !invokeSenderAction(entry.key, String(deed.value))) return
+    } else return
+    settleEntry(entry, "activated")
+  }
+
+  // Whether a click does something of its own, as clickable() asks of a card.
+  function entryOpens(entry, revision) {
+    var row = Store.restored(entry)
+    if (!row) return false
+    if (Security.parseExecArgv(row.execArgv)) return true
+    if (parked[entry.key]) {
+      var actions = (refs[entry.key] && refs[entry.key].actions) || []
+      for (var i = 0; i < Math.min(actions.length, Security.MAX_ACTIONS); i++)
+        if (String(actions[i].identifier) === "default") return true
+    }
+    return !!(windowForPid(row.senderPid) || windowForSource(row.source)
+              || Markup.hostname(row.source) || String(row.link || ""))
+  }
+
+  // A click: as activate() does for a card.
+  function openEntry(entry) {
+    var row = Store.restored(entry)
+    if (!row) return
+    var argv = Security.parseExecArgv(row.execArgv)
+    if (argv) Util.execArgv(argv)
+    else if (!(parked[entry.key] && invokeSenderAction(entry.key, "default"))) openSource(row)
+    settleEntry(entry, "activated")
+  }
+
+  function dismissEntry(key, closedTs) {
+    setHistory(Store.patchHistory(historyEntries, function(entry) {
+      return Store.sameEntry(entry, String(key), Number(closedTs))
+    }, { waiting: false, seen: true }))
+  }
+
+  // Everything but the ongoing ones.
+  function clearWaiting() {
+    setHistory(Store.patchHistory(historyEntries, function(entry) {
+      return entry.waiting && !service.isOngoing(entry)
+    }, { waiting: false, seen: true }))
+  }
+
+  // What is no longer waiting; the rest is still in the panel.
+  function clearHistory() {
+    setHistory(historyEntries.filter(function(entry) { return entry.waiting }))
+  }
+
+  // ------------------------------------------------------------- per app
+  //
+  // Allow, Silent or Off for an app or a site, by its group key. The file is
+  // karchy-settings-notifications' (D-56): this reads it and asks that
+  // command to change it. `senders` is who has sent anything, for Settings.
+  property var appRules: ({})
+  property var senders: ({})
+  property bool sendersLoaded: false
+
+  // What already waits follows the choice: Silent moves an app's to the
+  // Silent section, Off takes them out of the panel.
+  onAppRulesChanged: {
+    var rules = appRules
+    var next = Store.patchHistory(historyEntries, function(entry) {
+      return entry.waiting && rules[entry.groupKey] === "silent"
+    }, { silent: true, seen: true })
+    setHistory(Store.patchHistory(next, function(entry) {
+      return entry.waiting && rules[entry.groupKey] === "off"
+    }, { waiting: false, seen: true }))
+  }
+
+  function setAppMode(groupKey, name, mode) {
+    Quickshell.execDetached(["karchy-settings-notifications", "set", String(groupKey), String(mode), String(name || "")])
+  }
+
+  function noteSender(row) {
+    var key = String(row.groupKey || "")
+    var name = key.indexOf("web:") === 0 ? key.slice(4) : String(row.app || "")
+    var next = Store.noteSender(senders, key, name, Date.now() / 1000)
+    if (next === senders) return
+    senders = next
+    saveSoon("senders")
   }
 
   // -------------------------------------------------------------- codes
@@ -1184,7 +1361,7 @@ Item {
   // ------------------------------------------------------------- store
   //
   // State, not cache, in ~/.local/state/karchy/notifications/: live.json (on
-  // screen), history.json and quiet.json, formats in Store.js. Each file is
+  // screen), history.json, quiet.json and senders.json, formats in Store.js. Each file is
   // read once at startup and rewritten whole a moment after it changes, so a
   // burst of arrivals writes it once.
   readonly property string stateDir: Quickshell.env("HOME") + "/.local/state/karchy/notifications"
@@ -1227,17 +1404,17 @@ Item {
   // Straight to history: a row that closed, or one quiet kept off the screen.
   function storeRecord(row, reason) {
     var now = Date.now() / 1000
-    historyEntries = Store.addHistory(historyEntries, Store.closedEntry(row, reason, now), now)
-    saveSoon("history")
+    var waiting = Delivery.waits(row, reason), silent = Delivery.silent(reason)
+    var entry = Store.closedEntry(row, reason, now, { waiting: waiting, silent: silent, seen: !waiting || silent })
+    // One key waits once: an update replaces what it updates.
+    var rest = waiting ? historyEntries.filter(function(e) { return !(e.waiting && e.key === entry.key) }) : historyEntries
+    setHistory(Store.addHistory(rest, entry, now), "expired")
   }
 
   // History as of now: rows past their retention go, from disk too.
   function currentHistory() {
     var kept = Store.retain(historyEntries, Date.now() / 1000)
-    if (kept.length !== historyEntries.length) {
-      historyEntries = kept
-      saveSoon("history")
-    }
+    if (kept.length !== historyEntries.length) setHistory(kept, "expired")
     return kept
   }
 
@@ -1267,6 +1444,10 @@ Item {
     if (unsaved.quiet && quietLoaded) {
       delete unsaved.quiet
       quietFile.setText(Store.serialiseQuiet({ dnd: doNotDisturb }))
+    }
+    if (unsaved.senders && sendersLoaded) {
+      delete unsaved.senders
+      sendersFile.setText(Store.serialiseSenders(senders))
     }
   }
 
@@ -1331,6 +1512,34 @@ Item {
     onLoadFailed: service.loadQuiet("")
   }
 
+  FileView {
+    id: sendersFile
+    path: service.storeReady ? service.stateDir + "/senders.json" : ""
+    atomicWrites: true
+    printErrors: false
+    function take(text) {
+      if (service.sendersLoaded) return
+      // Senders seen while the file was being read are newer.
+      var read = Store.parseSenders(text), now = service.senders
+      for (var key in now) read = Store.noteSender(read, key, now[key].name, now[key].ts)
+      service.senders = read
+      service.sendersLoaded = true
+      if (service.unsaved.senders) service.saveSoon("senders")
+    }
+    onLoaded: take(text())
+    onLoadFailed: take("")
+  }
+
+  // The user's per-app choices; karchy-settings-notifications writes it.
+  FileView {
+    path: Quickshell.env("HOME") + "/.config/karchy/notifications.json"
+    watchChanges: true
+    printErrors: false
+    onFileChanged: reload()
+    onLoaded: service.appRules = Store.parseRules(text())
+    onLoadFailed: service.appRules = ({})
+  }
+
   // Once at startup: the private directory and its files. Older layouts'
   // leftovers are removed by a migration.
   Process {
@@ -1339,7 +1548,7 @@ Item {
       "umask 077\n" +
       "dir=$1\n" +
       "mkdir -p -- \"$dir\" && chmod 700 -- \"$dir\" || exit 1\n" +
-      "for name in live.json history.json quiet.json; do\n" +
+      "for name in live.json history.json quiet.json senders.json; do\n" +
       "  file=$dir/$name\n" +
       "  if [[ -L $file ]]; then rm -f -- \"$file\"; fi\n" +
       "  if [[ -f $file ]]; then chmod 600 -- \"$file\"; elif [[ ! -e $file ]]; then : >\"$file\"; fi\n" +

@@ -40,13 +40,50 @@ function isEphemeral(row) {
   return app === "notify-send" || app === "karchy-action"
 }
 
-// "silenced", or "" when the row shows. A verification code always passes: it
-// was asked for a moment ago and expires in minutes.
-function quietReason(row, doNotDisturb) {
-  if (!doNotDisturb) return ""
-  if (bypassesQuiet(row)) return ""
+var LOW = 0
+
+// Karchy's own toasts and bare notify-send: no app to name or to set a rule for.
+function isSystem(row) {
+  var app = String((row && row.app) || "")
+  return app === "" || app === "notify-send" || app === "karchy-action"
+}
+
+// Why a notification gets no popup, or "" when it gets one. `mode` is the
+// sender's setting: "silent", "off", or anything else for Allow.
+//   blocked   its app is turned off: it is dropped
+//   silenced  Do Not Disturb is on
+//   muted     its app is set to Silent
+//   low       it came with a low urgency (an app's own "no need to look")
+// A verification code always shows: it was asked for a moment ago and expires
+// in minutes. Critical gets past an app's Silent setting and its own low
+// urgency, but not past Do Not Disturb: chat apps send critical to force
+// visibility (bypassesQuiet has the ones that do pass).
+function verdict(row, doNotDisturb, mode) {
+  if (mode === "off") return "blocked"
   if (String((row && row.code) || "")) return ""
-  return "silenced"
+  if (bypassesQuiet(row)) return ""
+  if (doNotDisturb) return "silenced"
+  if (Number(row && row.urgency) === CRITICAL) return ""
+  if (mode === "silent") return "muted"
+  // Karchy's own low-urgency toasts are feedback for something just done.
+  if (Number(row && row.urgency) === LOW && !isSystem(row)) return "low"
+  return ""
+}
+
+// Whether a notification that closed for `reason` waits in the notifications
+// panel: nobody answered it (its popup timed out, or it got none), and it is
+// worth looking back at.
+var UNANSWERED = ["expired", "silenced", "muted", "low"]
+function waits(row, reason) {
+  if (UNANSWERED.indexOf(String(reason)) < 0) return false
+  if (!row || row.transient === true) return false
+  if (isSystem(row) && Number(row.urgency) === LOW) return false
+  return true
+}
+
+// The panel's Silent section: no popup by the app's choice or the user's.
+function silent(reason) {
+  return reason === "muted" || reason === "low"
 }
 
 // A summary that opens with its own glyph (one code point, then two spaces,
