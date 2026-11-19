@@ -59,7 +59,8 @@ Example `shell.json` (bar subtree only shown):
 |---|---|---|
 | `karchy.menu` | Karchy menu launcher | left = menu · right = terminal |
 | `karchy.workspaces` | Hyprland workspace switcher; the focused workspace shows its layout, and one holding a window that asked for focus and was not given it takes the urgent color | left = focus workspace, or cycle the focused one's layout |
-| `karchy.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping | left = popup · right = cycle label format · middle = timezone selector |
+| `karchy.clock` | Date/time label + popup with a month grid, ISO week numbers, and month stepping (clock and calendar only) | left = popup · right = cycle label format · middle = timezone selector |
+| `karchy.notifications` | Bell with a dot while notifications wait unseen (the Do Not Disturb glyph while that is on) + popup listing the notifications nobody answered: ongoing, then the rest, then Silent; grouped by app; each with its buttons, dismiss and a ⋯ menu for its app (Allow, Silent, Off, Settings); Clear all, History (last 24 hours) and the Do Not Disturb switch | left = popup · right = Do Not Disturb |
 | `karchy.media` | MPRIS now-playing — scrolling track + artist, cover-art popup | left = play/pause · middle = next · scroll = prev/next · right = popup |
 | `karchy.indicators` | Manual state indicators | left = indicator action |
 | `karchy.system-update` | Available update indicator | left = update |

@@ -30,6 +30,9 @@
       "centerBegin": [
         {
           "id": "karchy.indicators"
+        },
+        {
+          "id": "karchy.notifications"
         }
       ],
       "center": [

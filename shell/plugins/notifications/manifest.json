@@ -2,14 +2,22 @@
   "schemaVersion": 1,
   "id": "karchy.notifications",
   "name": "Notifications",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "Karchy",
-  "description": "Notification daemon: grouped stacks, inline actions, Do Not Disturb, and history",
+  "description": "Notification daemon: grouped stacks, inline actions, Do Not Disturb, and history, with a bar bell and panel",
   "kinds": [
-    "service"
+    "service",
+    "bar-widget"
   ],
   "keepLoaded": true,
   "entryPoints": {
-    "service": "Service.qml"
+    "service": "Service.qml",
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Notifications",
+    "description": "Bell with a dot for missed notifications; history and Do Not Disturb",
+    "category": "System",
+    "allowMultiple": false
   }
 }

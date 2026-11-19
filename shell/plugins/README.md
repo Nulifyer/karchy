@@ -18,7 +18,7 @@ startup; other panels, overlays, and menus are loaded on demand.
 | Image picker | `karchy.image-picker` | `overlay` | `image-picker/ImagePicker.qml` |
 | Lock Screen | `karchy.lock` | `service` | `lock/Service.qml` |
 | Menu (bar: Menu button) | `karchy.menu` | `menu`, `bar-widget` | `menu/Menu.qml`, `menu/BarWidget.qml` |
-| Notifications | `karchy.notifications` | `service` | `notifications/Service.qml` |
+| Notifications (bar: bell and panel) | `karchy.notifications` | `service`, `bar-widget` | `notifications/Service.qml`, `notifications/Panel.qml` |
 | On-screen display | `karchy.osd` | `panel` | `osd/Osd.qml` |
 | Audio | `karchy.audio` | `bar-widget` | `panels/audio/Panel.qml` |
 | Bluetooth | `karchy.bluetooth` | `bar-widget` | `panels/bluetooth/Panel.qml` |
