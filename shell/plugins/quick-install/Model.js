@@ -67,6 +67,7 @@ function inCategory(apps, category, installed) {
 function categoryName(catalog, id) {
   if (id === "all") return "All"
   if (id === "installed") return "Installed"
+  if (id === "picked") return "Picked"
   var cats = (catalog && catalog.categories) || []
   for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return cats[i].name
   return id
@@ -161,3 +162,37 @@ if (typeof module !== "undefined") {
     tileKeys: tileKeys
   }
 }
+
+// "Firefox", "Firefox and mpv", "Firefox, mpv and GIMP".
+function namesText(names) {
+  var n = (names || []).length
+  if (n === 0) return ""
+  if (n === 1) return names[0]
+  return names.slice(0, n - 1).join(", ") + " and " + names[n - 1]
+}
+
+function plural(n, one, many) {
+  return n + " " + (n === 1 ? one : many)
+}
+
+// One app's line in the list while it installs or after (D-109).
+function progressText(p, verb) {
+  switch (p.state) {
+    case "queued": return "Waiting…"
+    case "working": return verb === "remove" ? "Removing…" : "Installing…"
+    case "done": return verb === "remove" ? "Removed" : "Installed"
+    case "terminal": return "Continues in a terminal" + (verb === "remove" ? "" : ": it builds from the AUR or runs karchy's setup there")
+    case "failed": return "Failed: " + (p.reason || "see the log")
+  }
+  return ""
+}
+
+// The selection bar's words.
+function selectionText(count, inTerminal, applying, verb) {
+  if (applying) return verb === "remove" ? "Removing…" : "Installing… the password prompt comes first."
+  if (count === 0) return "Done. The log has every step."
+  var text = plural(count, "app", "apps") + " picked."
+  if (inTerminal > 0) text += " " + (inTerminal === 1 ? "One" : inTerminal) + " of them " + (inTerminal === 1 ? "opens" : "open") + " in a terminal after the rest, to show the AUR's build files or karchy's setup."
+  return text
+}
+

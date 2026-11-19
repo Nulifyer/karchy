@@ -56,8 +56,16 @@ Item {
   property var infos: ({})
   // The app whose install or removal runs in the terminal. One at a time:
   // pacman holds one lock, so the other Install and Remove buttons wait.
-  property string runningId: ""
-  property string runningAction: ""
+  // Picked apps (D-109): id -> true. Install or remove them in one go; a
+  // failed one stays picked, so trying again is one click.
+  property var selected: ({})
+  // What `karchy-quick-install apply` reported: id -> { state, reason }, with
+  // state queued, working, done, failed or terminal (AUR apps and karchy's
+  // features, which continue in a terminal).
+  property var progress: ({})
+  property bool applying: false
+  property string applyVerb: ""
+  property string logPath: ""
   property bool multilibOn: false
   property var pendingRemove: null
 
@@ -66,6 +74,7 @@ Item {
   readonly property var categoryRows: Model.categories(catalog, installed)
   readonly property var results: searching
     ? Search.search(apps, query)
+    : category === "picked" ? root.apps.filter(function(a) { return root.selected[a.id] === true }).map(function(a) { return { app: a, positions: [] } })
     : Model.inCategory(apps, category, installed).map(function(a) { return { app: a, positions: [] } })
   readonly property int currentIndex: {
     for (var i = 0; i < results.length; i++) if (results[i].app.id === currentId) return i
@@ -108,7 +117,7 @@ Item {
   }
 
   function knownCategory(id) {
-    if (id === "all" || id === "installed") return true
+    if (id === "all" || id === "installed" || id === "picked") return true
     var cats = root.catalog.categories || []
     for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return true
     return false
@@ -118,9 +127,72 @@ Item {
   // before the terminal waits for a key, so the row and the other buttons
   // don't wait for the terminal to close.
   function finished() {
-    root.runningId = ""
-    root.runningAction = ""
     root.refresh()
+  }
+
+  function isBusy(id) {
+    var p = root.progress[id]
+    return !!p && (p.state === "queued" || p.state === "working")
+  }
+
+  function isSelected(id) {
+    return root.selected[id] === true
+  }
+
+  function toggleSelected(app) {
+    if (!app || root.applying || app.required) return
+    var next = Object.assign({}, root.selected)
+    if (next[app.id]) delete next[app.id]
+    else next[app.id] = true
+    root.selected = next
+  }
+
+  function clearSelected() {
+    root.selected = ({})
+  }
+
+  readonly property var selectedApps: root.apps.filter(function(a) { return root.selected[a.id] === true })
+  readonly property var selectedToInstall: root.selectedApps.filter(function(a) { return !root.isInstalled(a) })
+  readonly property var selectedToRemove: root.selectedApps.filter(function(a) { return root.isInstalled(a) && !a.required })
+  readonly property int selectedInTerminal: root.selectedToInstall.filter(function(a) { return a.source === "aur" || !!a.feature }).length
+
+  // Installs or removes the apps in one run of `karchy-quick-install apply`,
+  // which reports each one's progress here, line by line.
+  function applyIds(verb, ids) {
+    if (root.applying || ids.length === 0) return
+    var next = Object.assign({}, root.progress)
+    ids.forEach(function(id) { next[id] = { state: "queued", reason: "", verb: verb } })
+    root.progress = next
+    root.applying = true
+    root.applyVerb = verb
+    applyComponent.createObject(root, {
+      command: ["karchy-quick-install", "apply", verb].concat(ids)
+    }).running = true
+  }
+
+  function applyLine(line) {
+    var m = String(line).match(/^(\S+)(?: (\S+))?(?: (.*))?$/)
+    if (!m) return
+    if (m[1] === "log") { root.logPath = m[2] || ""; return }
+    if (m[1] === "finished") return
+    if (["queued", "working", "done", "failed", "terminal"].indexOf(m[1]) < 0 || !m[2]) return
+    var next = Object.assign({}, root.progress)
+    next[m[2]] = { state: m[1], reason: m[3] || "", verb: root.applyVerb }
+    root.progress = next
+    // Done (or handed to the terminal) leaves the selection; a failure stays.
+    if ((m[1] === "done" || m[1] === "terminal") && root.selected[m[2]]) {
+      var sel = Object.assign({}, root.selected)
+      delete sel[m[2]]
+      root.selected = sel
+    }
+  }
+
+  function installSelected() {
+    root.applyIds("install", root.selectedToInstall.map(function(a) { return a.id }))
+  }
+
+  function showLog() {
+    if (root.logPath !== "") Quickshell.execDetached(["xdg-terminal-exec", "--app-id=org.karchy.terminal", "less", "+G", root.logPath])
   }
 
   // The first row becomes the focused one when the list changes under it.
@@ -163,10 +235,10 @@ Item {
   // Enter on the focused row: open what is installed, install what isn't.
   function activate(app) {
     // Until status answers, an installed app would look installable.
-    if (!app || root.runningId === app.id || !root.statusLoaded) return
+    if (!app || root.isBusy(app.id) || !root.statusLoaded) return
     if (root.isInstalled(app)) {
       if (root.installed[app.id] !== "") root.openApp(app)
-    } else if (root.runningId === "") {
+    } else if (!root.applying) {
       root.run(app, "install")
     }
   }
@@ -179,20 +251,18 @@ Item {
   // window (which unloads the plugin and kills its processes) leaves a
   // running install alone.
   function run(app, action) {
-    if (root.runningId !== "") return
-    root.runningId = app.id
-    root.runningAction = action
-    runComponent.createObject(root, {
-      appId: app.id,
-      command: ["bash", "-c",
-        "karchy-launch-floating-terminal-with-presentation karchy-quick-install \"$1\" \"$2\"; code=$?; exit $code",
-        "quick-install", action, app.id]
-    }).running = true
+    root.applyIds(action, [app.id])
   }
 
   function askRemove(app) {
-    if (!app || root.runningId !== "") return
-    root.pendingRemove = { id: app.id, name: app.name }
+    if (!app || root.applying) return
+    root.pendingRemove = { ids: [app.id], names: [app.name] }
+  }
+
+  function askRemoveSelected() {
+    var apps = root.selectedToRemove
+    if (apps.length === 0 || root.applying) return
+    root.pendingRemove = { ids: apps.map(function(a) { return a.id }), names: apps.map(function(a) { return a.name }) }
   }
 
   onResultsChanged: root.pickFirst()
@@ -232,20 +302,28 @@ Item {
     }
   }
 
-  // One per install or removal. Its terminal can outlive `finished()`, so
-  // it clears only its own run, not one started since.
+  // One per install or removal. A terminal it opens for AUR apps and
+  // features runs on its own (setsid), so this ends when the window's part
+  // is done. Closing the window kills it; the root helper it started keeps
+  // going (pkexec runs it apart), and the next status shows the result.
   Component {
-    id: runComponent
+    id: applyComponent
     Process {
-      id: runProc
-      property string appId: ""
+      id: applyProc
+      stdout: SplitParser { onRead: function(line) { root.applyLine(line) } }
       onExited: {
-        if (root.runningId === runProc.appId) {
-          root.runningId = ""
-          root.runningAction = ""
+        root.applying = false
+        // A run that ended without a word for an app leaves nothing hanging.
+        var next = Object.assign({}, root.progress), changed = false
+        for (var id in next) {
+          if (next[id].state === "queued" || next[id].state === "working") {
+            next[id] = { state: "failed", reason: "It stopped before this app; see the log", verb: next[id].verb }
+            changed = true
+          }
         }
+        if (changed) root.progress = next
         root.refresh()
-        runProc.destroy()
+        applyProc.destroy()
       }
     }
   }
@@ -524,6 +602,11 @@ Item {
           // Row buttons hand Up/Down and j/k to the list; the keyboard stays
           // on the focused row's first button.
           Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Space) {
+              root.toggleSelected(root.current)
+              event.accepted = true
+              return
+            }
             var dy = event.key === Qt.Key_Down || event.text === "j" ? 1
               : event.key === Qt.Key_Up || event.text === "k" ? -1
               : event.key === Qt.Key_PageDown ? 8 : event.key === Qt.Key_PageUp ? -8 : 0
@@ -568,6 +651,70 @@ Item {
           }
         }
 
+        // The picked apps and what to do with them (D-109).
+        BorderSurface {
+          Layout.fillWidth: true
+          visible: root.selectedApps.length > 0 || root.logPath !== ""
+          implicitHeight: selectionRow.implicitHeight + Style.spacing.md * 2
+          radius: Style.radius.surface
+          color: Style.selectedFill
+          borderSpec: Border.flat(Style.normalBorderColor, Style.border.control)
+
+          RowLayout {
+            id: selectionRow
+            anchors.fill: parent
+            anchors.margins: Style.spacing.md
+            anchors.leftMargin: Style.spacing.rowPaddingX
+            spacing: Style.spacing.lg
+
+            Text {
+              Layout.fillWidth: true
+              textFormat: Text.PlainText
+              text: Model.selectionText(root.selectedApps.length, root.selectedInTerminal, root.applying, root.applyVerb)
+              color: Commons.Color.foreground
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              wrapMode: Text.Wrap
+            }
+            Button {
+              visible: root.logPath !== ""
+              bordered: true
+              text: "Show log"
+              onClicked: root.showLog()
+            }
+            Button {
+              visible: root.selectedApps.length > 0 && root.category !== "picked"
+              bordered: true
+              text: "Review"
+              onClicked: root.setCategory("picked")
+            }
+            Button {
+              visible: root.selectedApps.length > 0
+              enabled: !root.applying
+              bordered: true
+              text: "Clear"
+              onClicked: root.clearSelected()
+            }
+            Button {
+              visible: root.selectedToRemove.length > 0
+              enabled: !root.applying
+              bordered: true
+              variant: "destructive"
+              text: "Remove " + root.selectedToRemove.length
+              onClicked: root.askRemoveSelected()
+            }
+            Button {
+              visible: root.selectedToInstall.length > 0
+              enabled: !root.applying
+              busy: root.applying && root.applyVerb === "install"
+              bordered: true
+              variant: "primary"
+              text: "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
+              onClicked: root.installSelected()
+            }
+          }
+        }
+
         // The keys, as in the menu's footer.
         Flow {
           Layout.fillWidth: true
@@ -577,11 +724,12 @@ Item {
           KeyHint {
             keys: "Enter"
             label: !root.current ? "install or open"
-              : root.runningId === root.current.id ? (root.runningAction === "remove" ? "removing…" : "installing…")
+              : root.isBusy(root.current.id) ? (root.applyVerb === "remove" ? "removing…" : "installing…")
               : root.isInstalled(root.current) ? (root.installed[root.current.id] !== "" ? "open" : "installed")
-              : root.runningId !== "" ? "install, once the terminal is done"
+              : root.applying ? "install, once this is done"
               : "install"
           }
+          KeyHint { keys: "Space"; label: "pick" }
           KeyHint { keys: "Tab"; label: "categories and buttons" }
           KeyHint { keys: "Esc"; label: root.searching ? "clear search" : "close" }
         }
@@ -596,7 +744,7 @@ Item {
       opened: root.pendingRemove !== null
       onOpenedChanged: if (opened) returnFocus = frame.Window.activeFocusItem
       message: root.pendingRemove
-        ? "Remove " + root.pendingRemove.name + "? Its packages are uninstalled; what it saved in your home folder is kept. You can install it again later."
+        ? "Remove " + Model.namesText(root.pendingRemove.names) + "? Their packages are uninstalled; what they saved in your home folder is kept. You can install them again later."
         : ""
       confirmText: "Remove"
       onCanceled: {
@@ -607,8 +755,7 @@ Item {
         var pending = root.pendingRemove
         root.pendingRemove = null
         if (returnFocus) returnFocus.forceActiveFocus()
-        var app = pending ? Model.find(root.apps, pending.id) : null
-        if (app) root.run(app, "remove")
+        if (pending) root.applyIds("remove", pending.ids)
       }
     }
   }
@@ -635,8 +782,10 @@ Item {
     readonly property bool current: root.currentId === app.id
     readonly property bool installedHere: root.installed[app.id] !== undefined
     readonly property bool hasWindow: installedHere && root.installed[app.id] !== ""
-    readonly property bool running: root.runningId === app.id
-    readonly property bool otherRunning: root.runningId !== "" && !running
+    readonly property bool running: root.isBusy(app.id)
+    readonly property bool otherRunning: root.applying && !running
+    readonly property var progressState: root.progress[app.id]
+    readonly property bool picked: root.isSelected(app.id)
     readonly property var info: root.infos[app.id]
 
     function actionButtons() {
@@ -683,6 +832,16 @@ Item {
         Layout.fillWidth: true
         spacing: Style.spacing.xxl
 
+        // Pick it for "Install N apps" (or Remove); Space does the same.
+        PickBox {
+          picked: row.picked
+          enabled: !root.applying && !row.app.required
+          onToggled: {
+            root.select(row.app.id)
+            root.toggleSelected(row.app)
+          }
+        }
+
         AppIcon { app: row.app }
 
         ColumnLayout {
@@ -724,6 +883,23 @@ Item {
             elide: Text.ElideRight
             maximumLineCount: 1
           }
+
+          // This app's part of the last install or removal.
+          Text {
+            Layout.fillWidth: true
+            visible: !!row.progressState
+            textFormat: Text.PlainText
+            text: row.progressState ? Model.progressText(row.progressState, row.progressState.verb) : ""
+            color: !row.progressState ? Commons.Color.textSecondary
+              : row.progressState.state === "failed" ? Commons.Color.status.error
+              : row.progressState.state === "done" ? Commons.Color.status.success
+              : Commons.Color.textSecondary
+            font.family: Style.font.family
+            font.pixelSize: Style.font.bodySmall
+            wrapMode: Text.Wrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
+          }
         }
 
         // Installed with no window: a quiet word instead of a button.
@@ -751,9 +927,9 @@ Item {
           bordered: true
           variant: row.current && !row.running ? "primary" : "neutral"
           busy: row.running
-          text: row.running ? (root.runningAction === "remove" ? "Removing…" : "Installing…")
+          text: row.running ? (root.applyVerb === "remove" ? "Removing…" : "Installing…")
             : row.installedHere ? "Open" : "Install"
-          tooltipText: row.running ? "Running in the terminal" : ""
+          tooltipText: ""
           enabled: row.installedHere || !row.otherRunning
           Keys.onTabPressed: function(event) { row.tabFrom(actionButton, event) }
           Keys.onBacktabPressed: function(event) { row.tabFrom(actionButton, event) }
@@ -776,7 +952,7 @@ Item {
           app: row.app
           info: row.info
           installedHere: row.installedHere
-          removeEnabled: root.runningId === ""
+          removeEnabled: !root.applying
           onRemove: root.askRemove(row.app)
           onTabOut: function(button, event) { row.tabFrom(button, event) }
         }
@@ -856,6 +1032,29 @@ Item {
 
   // The app's own icon from the icon theme (Papirus), or its first letter
   // on a tile tinted from the theme's palette.
+  // A checkbox: the theme's border and fill, a check glyph when picked.
+  component PickBox: BorderSurface {
+    id: box
+    property bool picked: false
+    signal toggled()
+    implicitWidth: Style.space(18)
+    implicitHeight: Style.space(18)
+    radius: Style.radius.control
+    opacity: enabled ? 1 : 0.4
+    color: picked ? Commons.Color.focus : "transparent"
+    borderSpec: Border.flat(picked ? Commons.Color.focus : Style.normalBorderColor, Style.border.control)
+    Text {
+      anchors.centerIn: parent
+      visible: box.picked
+      text: Icons.glyph("ui.check")
+      color: Commons.Color.background
+      font.family: Icons.family
+      font.pixelSize: Style.font.iconSmall
+    }
+    TapHandler { enabled: box.enabled; onTapped: box.toggled() }
+    HoverHandler { cursorShape: Qt.PointingHandCursor }
+  }
+
   component AppIcon: Item {
     id: icon
     property var app: ({})

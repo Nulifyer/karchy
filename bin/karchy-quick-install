@@ -1,21 +1,31 @@
 #!/bin/bash
 
 # karchy:summary=Install or remove an app from the Quick install list
-# karchy:args=[search] | window [search] | status | info <id> | install <id> | remove <id> | open <id>
+# karchy:args=[search] | window [search] | status | info <id> | apply install|remove <id>... | install <id> | remove <id> | open <id>
 # karchy:examples=karchy quick-install install firefox | karchy quick-install status
 
 # The list is default/karchy/quick-install.json (D-70): apps from Arch's
 # repos, [cachyos], [omarchy], and well-kept AUR packages, plus karchy's own
 # features, whose scripts answer status, install and remove themselves.
-# The Quick install window (shell plugin karchy.quick-install) runs install
-# and remove in a floating terminal, so pacman's output, paru's prompts and build, and the
-# password prompt are visible; status, info and open answer it directly.
+# The Quick install window (shell plugin karchy.quick-install) installs and
+# removes through `apply` (D-109): apps from the signed repositories go
+# through karchy's root helper (/usr/lib/karchy/app-packages, by catalog id,
+# with the password in the shell's own prompt) and report their progress to
+# the window; AUR apps and karchy's features then open in a floating
+# terminal, where paru's review and build or the feature's own steps are
+# visible. install and remove are those terminal steps, one app each.
 #
 #   [search], window [search]
 #                 open the Quick install window (the default), searching for
 #                 the given text, or at a category with `window @<category>`
 #   status        {"installed": {"<id>": "<desktop file or empty>"}}
 #   info <id>     {"download": "98 MiB", "installed": "290 MiB"} for repo apps
+#   apply install|remove <id>...
+#                 the window's action for several apps at once. Prints, one
+#                 line each: "log <file>", "terminal <id>" for each app the
+#                 terminal takes, then the root helper's "queued|working|
+#                 done|failed <id> [reason]" lines for the rest (an install
+#                 is done once its user-level setup ran too), and "finished"
 #   install <id>  install the packages and apply the entry's setup:
 #                 multilib    turn on Arch's 32-bit repository first
 #                 gpu32       add the 32-bit graphics driver this machine needs
@@ -357,6 +367,66 @@ open_app() {
 
 [[ -r $CATALOG ]] || die "The Quick install list is missing: $CATALOG"
 
+# The user-level part of an app's setup: user services and commands run as
+# you. Prints what failed, one item per line.
+user_setup() {
+  local app=$1 unit cmd
+  while read -r unit; do
+    [[ -z $unit ]] || systemctl --user enable --now "$unit" >&2 || echo "turning on $unit for you"
+  done < <(field "$app" '.setup.userServices[]? // empty')
+  while read -r cmd; do
+    [[ -z $cmd ]] || bash -c "$cmd" >&2 || echo "running $cmd"
+  done < <(field "$app" '.setup.run[]? // empty')
+}
+
+# The window's install or removal of several apps (D-109).
+apply() {
+  local verb=$1 id app repo=() term=() state rest problems log
+  shift
+  [[ $verb == install || $verb == remove ]] || die "Usage: karchy-quick-install apply install|remove <id>..."
+  log="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/quick-install.log"
+  mkdir -p "${log%/*}"
+  printf '%s %s: %s\n' "$(date '+%F %T')" "$verb" "$*" >"$log"
+  echo "log $log"
+  for id in "$@"; do
+    app=$(entry "$id" 2>/dev/null) || { echo "failed $id It isn't in the Quick install list"; continue; }
+    if [[ $(field "$app" .source) == aur || -n $(field "$app" '.feature // empty') ]]; then
+      term+=("$id")
+      echo "terminal $id"
+    else
+      repo+=("$id")
+    fi
+  done
+
+  if ((${#repo[@]})); then
+    declare -A final=()
+    while read -r state id rest; do
+      [[ -n $id ]] || continue
+      if [[ $state == "done" && $verb == install ]]; then
+        app=$(entry "$id")
+        problems=$(user_setup "$app" 2>>"$log" | paste -sd, - | sed 's/,/, /g')
+        [[ -z $problems ]] || { state=failed rest="Installed, but $problems didn't work"; }
+      fi
+      [[ $state == "done" || $state == failed ]] && final[$id]=1
+      echo "$state $id${rest:+ $rest}"
+    done < <(pkexec /usr/lib/karchy/app-packages "$verb" "${repo[@]}" 2>>"$log")
+    # The password prompt closed, or the helper stopped early: say so for
+    # every app it never got to.
+    for id in "${repo[@]}"; do
+      [[ -n ${final[$id]:-} ]] || echo "failed $id Nothing was changed: the password wasn't given, or the install stopped (see the log)"
+    done
+    refresh_window >/dev/null 2>&1
+  fi
+
+  if ((${#term[@]})); then
+    # Ids are catalog ids ([a-z0-9.+-]), so the command line needs no quoting.
+    setsid karchy-launch-floating-terminal-with-presentation \
+      "for id in ${term[*]}; do karchy-quick-install $verb \"\$id\" || failed=1; done; exit \${failed:-0}" \
+      >/dev/null 2>&1 </dev/null &
+  fi
+  echo "finished"
+}
+
 case "${1:-window}" in
   window)
     query=${2:-}
@@ -369,6 +439,7 @@ case "${1:-window}" in
     ;;
   status) status ;;
   info) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install info <id>"; info "$2" ;;
+  apply) shift; (($# >= 2)) || die "Usage: karchy-quick-install apply install|remove <id>..."; apply "$@" ;;
   install) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install install <id>"; install_app "$2" ;;
   remove) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install remove <id>"; remove_app "$2" ;;
   open) [[ -n ${2:-} ]] || die "Usage: karchy-quick-install open <id>"; open_app "$2" ;;
