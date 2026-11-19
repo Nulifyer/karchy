@@ -212,6 +212,14 @@ package() {
   install -Dm644 polkit/rules.d/50-karchy-storage-settings.rules \
     "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-storage-settings.rules"
 
+  # Settings › Users (D-139): the root helper that owns what an account is
+  # and when the computer logs in by itself, with its polkit action (an
+  # administrator's password for every change). The installer makes the first
+  # account with it, so it comes with the base.
+  install -Dm755 users/users-settings "$pkgdir/usr/lib/karchy/users-settings"
+  install -Dm644 polkit/actions/org.karchy.users-settings.policy \
+    "$pkgdir/usr/share/polkit-1/actions/org.karchy.users-settings.policy"
+
   install -Dm755 keyring/keyring-key "$pkgdir/usr/lib/karchy/keyring-key"
   install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"
   install -Dm644 systemd/system/user@.service.d/karchy-keyring.conf \

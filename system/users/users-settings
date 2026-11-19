@@ -1,0 +1,521 @@
+#!/bin/bash
+
+# karchy: the accounts of the people who use this computer, and automatic
+# login (D-139). Installed as /usr/lib/karchy/users-settings. Changes run
+# only as root: Settings › Users goes through karchy-settings-users, which
+# runs
+#   pkexec /usr/lib/karchy/users-settings <verb> ...
+# (polkit action org.karchy.users-settings), and the installer runs `add` in
+# the new system for the first account. This file is the one owner of what a
+# person's account is, what its name may be, which change is refused and why,
+# and when the computer may log someone in by itself.
+#
+#   status                               JSON for the page; needs no root
+#   check <verb> ...                     Judge a change without making it;
+#                                        needs no root. Exit 0, or the
+#                                        refusal a real call would give
+#   add <name> admin|standard [full name]
+#                                        A new account. Its password is one
+#                                        line on stdin
+#   remove <name> keep-home|delete-home  Remove an account
+#   full-name <name> [full name]         The name shown at the login screen
+#   role <name> admin|standard           Administrator (group wheel) or not
+#   reset-password <name>                Another person's password: one line
+#                                        on stdin
+#   autologin on|off                     Whether the computer logs its one
+#                                        person in after the disk password
+#
+# Exit status: 0 done; 64 not a request this takes; 65 a request it refuses,
+# with one sentence for a person on stderr; 77 not root; 1 it failed part
+# way, with what was and wasn't done on stderr.
+#
+# A person is an account in /etc/passwd with a user number from 1000 to
+# 59999 and a login shell: the accounts karchy's login screen offers
+# (shell/greeter.qml reads the same). An administrator is a person in the
+# group wheel (karchy's sudo and polkit policy).
+#
+# What `add` makes: the account with its home (from /etc/skel: karchy's
+# starter configs and migration marks), fish as its shell, wheel for an
+# administrator, the password, the home closed to everyone else (0700), the
+# login keyring's key on an encrypted install (/usr/lib/karchy/keyring-key,
+# D-57; without disk encryption the keyring opens with the login password,
+# D-131, and no key is made), and the desktop's files that are made rather
+# than copied (/usr/lib/karchy/user-setup, run as the new account, where the
+# desktop is installed). If a step fails the account is taken away again, so
+# nothing half-made is left.
+#
+# Automatic login (D-13) is only for an encrypted computer with one person:
+# the disk password stands in for theirs. `add` turns it off when a second
+# person is added, and says so with the line "autologin=off" on stdout;
+# `autologin on` is refused with more than one person, and without disk
+# encryption (no karchy computer starts into a desktop without a password,
+# D-130). Only the [initial_session] part of /etc/greetd/config.toml is
+# written; it applies the next time the computer starts.
+#
+# Threat reasoning. polkit asks for an administrator's password for every
+# changing call (auth_admin, not kept; no rule waives it): an account is who
+# may use the machine. Assume the caller is any program in a user's session.
+# - What it can reach with that password: making an account (and so an
+#   administrator), removing one with or without its files, a person's shown
+#   name, role and password, and automatic login. That is the whole purpose,
+#   and equal to what sudo already gives the same administrator.
+# - What it refuses whoever asks: removing the account that is asking, a
+#   person who is signed in, the only administrator or the only person;
+#   changing your own role or taking the last administrator's; resetting
+#   your own password here (passwd asks for the current one, and changes
+#   the keyring's with it); a name that isn't a person's (root and the
+#   system's accounts can't be removed, renamed or given a password);
+#   automatic login where the rules above forbid it.
+# - Input is argv plus, for add and reset-password, one line on stdin. A
+#   verb from the fixed list; an account name matching the installer's rule
+#   (^[a-z_][a-z0-9_-]{0,31}$); a role and a home choice from fixed lists; a
+#   full name of up to 80 characters without ":" "," "=" or control
+#   characters (the passwd file's separators). Everything is checked before
+#   anything is changed, and before who is asking, so a bad request is
+#   turned away the same for everyone. Names reach useradd, usermod and
+#   userdel after "--", never as options or parts of a command.
+# - Passwords are read from stdin, kept in a shell variable, and handed to
+#   chpasswd on its stdin by a builtin: never in argv, the environment, a
+#   file or a log. Nothing here traces (`set -x`) or prints them.
+# - Nothing is read from the caller's files or environment except
+#   PKEXEC_UID, which pkexec sets, to know who is asking. Nothing of the
+#   caller's is sourced or evaluated.
+# - Files written: the account databases through shadow's own tools;
+#   /etc/greetd/config.toml, only when it is a regular file owned by root,
+#   by a temporary file and a rename; keys in /etc/credstore (root only).
+#   A kept home is handed to root and closed (0700), so a later account
+#   that gets the same user number doesn't own it.
+# - user-setup runs as the new account, never as root, with a fresh
+#   environment. Only packaged, root-owned programs are run, from a fixed
+#   PATH.
+
+set -uo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 022
+IFS=$' \t\n'
+cd / || exit 1
+
+PASSWD=/etc/passwd
+GREETD_CONF=/etc/greetd/config.toml
+SESSION=/usr/lib/karchy/session
+KEY_MAKER=/usr/lib/karchy/keyring-key
+KEY_STORE=/etc/credstore
+USER_SETUP=/usr/lib/karchy/user-setup
+LOGIN_SHELL=/usr/bin/fish
+ADMIN_GROUP=wheel
+UID_FIRST=1000
+UID_LAST=59999
+LOCK=/run/karchy-users-settings.lock
+
+fail() {
+  echo "users-settings: $1" >&2
+  exit "${2:-1}"
+}
+
+refuse() { fail "$1" 65; }
+
+usage() {
+  fail "usage: users-settings status | [check] add <name> admin|standard [full name] | remove <name> keep-home|delete-home | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off" 64
+}
+
+# ---- what is on this computer ----
+
+# The people, in the order of the passwd file: name, user number, full
+# name and home, separated by colons as there (an empty full name stays an
+# empty field).
+people() {
+  awk -F: -v first="$UID_FIRST" -v last="$UID_LAST" '
+    NF >= 7 && $3 ~ /^[0-9]+$/ && $3 + 0 >= first && $3 + 0 <= last && $7 !~ /(nologin|false)$/ {
+      full = $5; sub(/,.*/, "", full)
+      printf "%s:%s:%s:%s\n", $1, $3, full, $6
+    }' "$PASSWD" 2>/dev/null
+}
+
+person_field() { people | awk -F: -v name="$1" -v field="$2" '$1 == name { print $field; exit }'; }
+is_person() { [[ -n $(person_field "$1" 1) ]]; }
+people_count() { people | wc -l; }
+
+is_admin() {
+  local groups
+  groups=$(id -nG -- "$1" 2>/dev/null) || true
+  [[ " $groups " == *" $ADMIN_GROUP "* ]]
+}
+
+# How many administrators there are besides $1.
+other_admins() {
+  local name count=0
+  while IFS=: read -r name _; do
+    [[ $name != "$1" ]] && is_admin "$name" && count=$((count + 1))
+  done < <(people)
+  echo "$count"
+}
+
+# Signed in: logind knows a session of theirs. (None in the installer.)
+signed_in() { [[ -n $(loginctl show-user "$1" -p Sessions --value 2>/dev/null) ]]; }
+
+# The system disk is encrypted: a LUKS volume lies beneath /.
+encrypted() {
+  local source
+  source=$(findmnt -no SOURCE / 2>/dev/null) && [[ -n $source ]] || return 1
+  lsblk -nsro FSTYPE "${source%%[*}" 2>/dev/null | grep -qxF crypto_LUKS
+}
+
+# Who greetd logs in by itself: the user of [initial_session], or nothing.
+autologin_user() {
+  [[ -f $GREETD_CONF && -r $GREETD_CONF ]] || return 0
+  awk '
+    /^[[:space:]]*\[/ { section = $0; gsub(/[[:space:]]/, "", section) }
+    section == "[initial_session]" && /^[[:space:]]*user[[:space:]]*=/ {
+      value = $0
+      sub(/^[^=]*=[[:space:]]*/, "", value)
+      sub(/[[:space:]]*(#.*)?$/, "", value)
+      gsub(/^["\047]|["\047]$/, "", value)
+      print value
+      exit
+    }' "$GREETD_CONF"
+}
+
+# Who is asking: the person behind pkexec, or whoever runs this without
+# root. Root itself (the installer, a root shell) is nobody here.
+asker() {
+  if ((EUID != 0)); then
+    id -un
+  elif [[ ${PKEXEC_UID:-} =~ ^[0-9]+$ ]]; then
+    getent passwd "$PKEXEC_UID" | cut -d: -f1
+  fi
+}
+
+# ---- the rules: each prints why not, or nothing ----
+
+# A name for a new account (the installer's form asks this too).
+name_refusal() {
+  local name=$1
+  if ! [[ $name =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; then
+    echo "Use lowercase letters, digits, - or _, starting with a letter."
+  elif is_person "$name"; then
+    echo "$name already has an account."
+  elif getent passwd "$name" >/dev/null || getent group "$name" >/dev/null || reserved_name "$name"; then
+    echo "$name is a name the system uses itself. Pick another."
+  elif [[ -e /home/$name || -L /home/$name ]]; then
+    echo "/home/$name is already there (kept from a removed account, perhaps). Move or delete it first, or pick another name."
+  fi
+}
+
+# Names the installed system makes for itself. On an installed computer
+# getent finds them; the installer asks from the live system, which doesn't
+# have them all yet.
+reserved_name() {
+  case $1 in
+    root | bin | daemon | mail | ftp | http | nobody | dbus | git | avahi | polkitd | greeter | rtkit | \
+      colord | geoclue | usbmux | uuidd | tss | alpm | cups | wheel | adm | sys | users | input | video | \
+      audio | storage | optical | lp | kvm | render | docker | libvirt | systemd-* | nm-openvpn | flatpak) return 0 ;;
+  esac
+  return 1
+}
+
+remove_refusal() {
+  local name=$1 who=$2
+  if [[ $name == "$who" ]]; then
+    echo "You can't remove the account you're signed in with. Another administrator can."
+  elif (($(people_count) <= 1)); then
+    echo "$name is the only account on this computer."
+  elif is_admin "$name" && (($(other_admins "$name") == 0)); then
+    echo "$name is the only administrator. Make someone else an administrator first."
+  elif signed_in "$name"; then
+    echo "$name is signed in. They have to log out first."
+  fi
+}
+
+# $3 is the role asked for, or nothing to ask whether it can change at all.
+role_refusal() {
+  local name=$1 who=$2 role=${3:-}
+  if [[ $name == "$who" ]]; then
+    echo "You can't change your own role. Another administrator can."
+  elif [[ $role != admin ]] && is_admin "$name" && (($(other_admins "$name") == 0)); then
+    echo "$name is the only administrator. Make someone else an administrator first."
+  fi
+}
+
+reset_refusal() {
+  [[ $1 != "$2" ]] || echo "Change your own password in Settings › Security: it asks for the current one."
+}
+
+# Why automatic login can't be turned on, or nothing.
+autologin_refusal() {
+  if ! encrypted; then
+    echo "The disk isn't encrypted, so the login screen always asks for a password."
+  elif (($(people_count) > 1)); then
+    echo "Off while more than one person uses this computer: each signs in as themselves."
+  elif (($(people_count) == 0)); then
+    echo "There is no account to log in."
+  fi
+}
+
+# ---- status ----
+
+status() {
+  local who auto can_auto name uid full home rows=""
+  who=$(asker)
+  auto=$(autologin_user)
+  can_auto=$(autologin_refusal)
+  while IFS=: read -r name uid full home; do
+    rows+=$(jq -cn --arg name "$name" --argjson uid "$uid" --arg full "$full" --arg home "$home" \
+      --argjson admin "$(is_admin "$name" && echo true || echo false)" \
+      --argjson you "$([[ $name == "$who" ]] && echo true || echo false)" \
+      --argjson signedIn "$(signed_in "$name" && echo true || echo false)" \
+      --arg remove "$(remove_refusal "$name" "$who")" \
+      --arg role "$(role_refusal "$name" "$who")" \
+      '{name: $name, uid: $uid, fullName: $full, home: $home, admin: $admin, you: $you,
+        signedIn: $signedIn, cannotRemove: $remove, cannotChangeRole: $role}')$'\n'
+  done < <(people)
+  jq -cn --arg who "$who" \
+    --argjson admin "$([[ -n $who ]] && is_admin "$who" && echo true || echo false)" \
+    --argjson encrypted "$(encrypted && echo true || echo false)" \
+    --arg auto "$auto" --arg cannotAuto "$can_auto" \
+    --argjson users "$(jq -cs . <<<"$rows")" \
+    '{you: $who, admin: $admin, encrypted: $encrypted,
+      autologin: {on: ($auto != ""), user: $auto, cannotTurnOn: $cannotAuto},
+      users: $users}'
+}
+
+# ---- the request, judged before anything is touched ----
+
+(($# >= 1)) || usage
+if [[ $1 == status ]]; then
+  (($# == 1)) || usage
+  status
+  exit
+fi
+
+check_only=false
+if [[ $1 == check ]]; then
+  check_only=true
+  shift
+fi
+(($# >= 2 && $# <= 4)) || usage
+verb=$1
+name=$2
+full=""
+choice=""
+
+valid_account_name() { [[ $1 =~ ^[a-z_][a-z0-9_-]{0,31}$ ]]; }
+valid_full_name() { ((${#1} <= 80)) && [[ $1 != *[:,=[:cntrl:]]* ]]; }
+existing_person() {
+  valid_account_name "$1" || usage
+  is_person "$1" || refuse "$1 is not a person's account on this computer."
+}
+full_name_arg() {
+  valid_full_name "$1" || refuse "A full name can't contain : , or =, and is 80 characters at most."
+}
+
+# The whole judgement of a request. It runs before who is asking, and once
+# more as root with the lock held, so two changes made at the same moment
+# can't each pass a rule the other one breaks (the last administrator).
+judge() {
+  case $verb in
+    add)
+      (($# == 3 || $# == 4)) || usage
+      choice=$3
+      [[ $choice == admin || $choice == standard ]] || usage
+      full=${4:-}
+      reason=$(name_refusal "$name")
+      [[ -z $reason ]] || refuse "$reason"
+      full_name_arg "$full"
+      ;;
+    remove)
+      (($# == 3)) || usage
+      choice=$3
+      [[ $choice == keep-home || $choice == delete-home ]] || usage
+      existing_person "$name"
+      reason=$(remove_refusal "$name" "$(asker)")
+      [[ -z $reason ]] || refuse "$reason"
+      ;;
+    full-name)
+      (($# == 2 || $# == 3)) || usage
+      full=${3:-}
+      existing_person "$name"
+      full_name_arg "$full"
+      ;;
+    role)
+      (($# == 3)) || usage
+      choice=$3
+      [[ $choice == admin || $choice == standard ]] || usage
+      existing_person "$name"
+      reason=$(role_refusal "$name" "$(asker)" "$choice")
+      [[ -z $reason ]] || refuse "$reason"
+      ;;
+    reset-password)
+      (($# == 2)) || usage
+      existing_person "$name"
+      reason=$(reset_refusal "$name" "$(asker)")
+      [[ -z $reason ]] || refuse "$reason"
+      ;;
+    autologin)
+      (($# == 2)) || usage
+      choice=$2
+      [[ $choice == on || $choice == off ]] || usage
+      if [[ $choice == on ]]; then
+        reason=$(autologin_refusal)
+        [[ -z $reason ]] || refuse "$reason"
+      fi
+      ;;
+    *) usage ;;
+  esac
+}
+judge "$@"
+
+$check_only && exit 0
+((EUID == 0)) || fail "This must run as root, through pkexec." 77
+
+# ---- the change ----
+
+tmp=""
+trap '[[ -z $tmp ]] || rm -f -- "$tmp"' EXIT
+
+password=""
+# One line from stdin. At a terminal it is asked for twice, without echo.
+read_password() {
+  local again=""
+  if [[ -t 0 ]]; then
+    IFS= read -rs -p "Password for $name: " password || true
+    echo >&2
+    IFS= read -rs -p "Again: " again || true
+    echo >&2
+    [[ $password == "$again" ]] || refuse "The passwords don't match."
+  else
+    IFS= read -r password || true
+  fi
+  [[ -n $password ]] || refuse "A password is needed."
+  # What a login prompt takes (PAM's limit).
+  ((${#password} <= 512)) || refuse "A password is 512 characters at most."
+}
+
+set_password() { printf '%s:%s\n' "$name" "$password" | chpasswd; }
+
+# /etc/greetd/config.toml without its [initial_session] part, plus one for
+# $1 when given. Comments and every other part stay as they are.
+write_autologin() {
+  local user=$1
+  [[ -f $GREETD_CONF && ! -L $GREETD_CONF && $(stat -c %u "$GREETD_CONF") == 0 ]] ||
+    fail "Automatic login was not changed: $GREETD_CONF is not a regular file owned by root."
+  grep -Eq '^[[:space:]]*\[default_session\]' "$GREETD_CONF" ||
+    fail "Automatic login was not changed: $GREETD_CONF names no login screen ([default_session])."
+  tmp=$(mktemp "${GREETD_CONF%/*}/.config.toml.XXXXXX") || fail "Automatic login was not changed: ${GREETD_CONF%/*} can't be written."
+  awk -v user="$user" -v session="$SESSION" '
+    /^[[:space:]]*\[/ { section = $0; gsub(/[[:space:]]/, "", section); skipping = (section == "[initial_session]") }
+    skipping && $0 !~ /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { blank++; next }
+    { while (blank > 0) { print ""; blank-- } print }
+    END {
+      if (user != "") {
+        print ""
+        print "[initial_session]"
+        print "command = \"" session "\""
+        print "user = \"" user "\""
+      }
+    }' "$GREETD_CONF" >"$tmp" || fail "Automatic login was not changed."
+  chmod 644 "$tmp"
+  mv -f -- "$tmp" "$GREETD_CONF" || fail "Automatic login was not changed."
+  tmp=""
+}
+
+# Take a half-made account away again, and say why it wasn't added.
+undo_add() {
+  local uid=$1 why=$2
+  userdel --remove -- "$name" >/dev/null 2>&1
+  [[ -z $uid ]] || rm -f -- "$KEY_STORE/karchy.keyring.$uid"
+  fail "Couldn't add $name: $why."
+}
+
+add() {
+  local uid home out
+  local -a options=(--create-home --shell "$LOGIN_SHELL")
+  [[ -x $LOGIN_SHELL ]] || fail "Couldn't add $name: $LOGIN_SHELL is not installed."
+  [[ $choice != admin ]] || options+=(--groups "$ADMIN_GROUP")
+  [[ -z $full ]] || options+=(--comment "$full")
+  out=$(useradd "${options[@]}" -- "$name" 2>&1) || fail "Couldn't add $name: ${out##*$'\n'}"
+  uid=$(id -u -- "$name") && home=$(person_field "$name" 4) && [[ -d $home ]] ||
+    undo_add "" "the account was made without a home folder"
+  # Each person's files are their own: nobody else opens the folder.
+  chmod 0700 -- "$home" || undo_add "$uid" "its home folder couldn't be closed to others"
+  out=$(set_password 2>&1) || undo_add "$uid" "the password wasn't accepted (${out##*$'\n'})"
+  # The login keyring's key, before the first login and the next snapshot.
+  # On an install without disk encryption this makes none (D-131).
+  [[ ! -x $KEY_MAKER ]] || "$KEY_MAKER" "$uid" || undo_add "$uid" "its keyring key couldn't be made"
+  # The desktop's made files (the theme), as the new account. Absent while
+  # the installer makes the first account, before the desktop is installed:
+  # it runs the same program for that account afterwards.
+  if [[ -x $USER_SETUP ]]; then
+    out=$(runuser -u "$name" -- env -i HOME="$home" USER="$name" LOGNAME="$name" SHELL="$LOGIN_SHELL" \
+      PATH=/usr/local/bin:/usr/bin LANG="${LANG:-C.UTF-8}" "$USER_SETUP" 2>&1) ||
+      undo_add "$uid" "its desktop couldn't be set up (${out##*$'\n'})"
+  fi
+  # A second person: everyone signs in as themselves from now on.
+  if (($(people_count) > 1)) && [[ -n $(autologin_user) ]]; then
+    write_autologin ""
+    echo "autologin=off"
+  fi
+}
+
+remove() {
+  local uid home key
+  uid=$(person_field "$name" 2)
+  home=$(person_field "$name" 4)
+  key=$KEY_STORE/karchy.keyring.$uid
+  # What is left of an ended session: their user manager and its services.
+  loginctl disable-linger -- "$name" >/dev/null 2>&1
+  loginctl terminate-user -- "$name" >/dev/null 2>&1
+  pkill -KILL -U "$uid" >/dev/null 2>&1 && sleep 1
+  if [[ $choice == delete-home ]]; then
+    userdel --remove -- "$name" >&2 || fail "Couldn't remove $name."
+    rm -f -- "$key" "$key.before-import"
+    return 0
+  fi
+  userdel -- "$name" >&2 || fail "Couldn't remove $name."
+  # The kept folder is root's now and closed, so a later account given the
+  # same user number doesn't own these files; its keyring's key stays with
+  # it under a name no login reads.
+  if [[ $home == /home/* && -d $home && ! -L $home ]]; then
+    if ! { chown root:root -- "$home" && chmod 0700 -- "$home"; }; then
+      fail "$name was removed, but $home could not be closed to others."
+    fi
+  fi
+  rm -f -- "$key.before-import"
+  [[ ! -f $key ]] || mv -f -- "$key" "$KEY_STORE/karchy.keyring.kept.$name" ||
+    fail "$name was removed, but the key of its keyring could not be set aside."
+}
+
+case $verb in add | reset-password) read_password ;; esac
+
+exec 9>"$LOCK" || fail "Couldn't take $LOCK."
+flock 9
+judge "$verb" "${@:2}"
+
+case $verb in
+  add) add ;;
+  remove) remove ;;
+  full-name)
+    usermod --comment "$full" -- "$name" >&2 || fail "Couldn't change the name of $name."
+    ;;
+  role)
+    if [[ $choice == admin ]]; then
+      usermod --append --groups "$ADMIN_GROUP" -- "$name" >&2 || fail "Couldn't make $name an administrator."
+    elif is_admin "$name"; then
+      gpasswd --delete "$name" "$ADMIN_GROUP" >/dev/null || fail "Couldn't take the administrator role from $name."
+    fi
+    ;;
+  reset-password)
+    out=$(set_password 2>&1) || fail "Couldn't change the password of $name (${out##*$'\n'})."
+    # A reset is also the way back in after too many wrong tries.
+    faillock --user "$name" --reset >/dev/null 2>&1
+    ;;
+  autologin)
+    if [[ $choice == on ]]; then
+      write_autologin "$(people | head -n 1 | cut -d: -f1)"
+    else
+      write_autologin ""
+    fi
+    ;;
+esac
+exit 0

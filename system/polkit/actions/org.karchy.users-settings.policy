@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  Settings › Users' changes (D-139): adding and removing an account, a
+  person's name, role and password, and automatic login. karchy-settings-users
+  runs /usr/lib/karchy/users-settings through pkexec, which picks this action
+  by the exec.path below. Who may use the computer is a system change, so
+  every call asks for an administrator's password, and the answer is not kept
+  for the next one; no rule waives it.
+-->
+<policyconfig>
+  <vendor>karchy</vendor>
+  <vendor_url>https://github.com/Nulifyer/karchy</vendor_url>
+
+  <action id="org.karchy.users-settings">
+    <description>Add, change or remove user accounts and set automatic login</description>
+    <message>Change who can use this computer: an account, its password or role, or automatic login.</message>
+    <icon_name>system-users</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/karchy/users-settings</annotate>
+  </action>
+</policyconfig>

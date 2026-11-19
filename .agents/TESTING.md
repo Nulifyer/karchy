@@ -30,6 +30,8 @@ python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, 
 bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
 bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, en/menu.json agrees
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
+tests/users-settings.sh system/users/users-settings   # Settings › Users' root helper as a user: what it turns away, and, in a user namespace with a made-up /etc, the rules between several people and the greetd file automatic login writes
+podman run --rm --user 0 -v "$PWD":/repo:ro localhost/karchy-build:<hash> bash /repo/tests/users-accounts.sh   # the same helper making real accounts, as root in a throwaway container (it refuses to run anywhere else)
 ```
 
 ## Full checks
