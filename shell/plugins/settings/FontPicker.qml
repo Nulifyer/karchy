@@ -109,6 +109,9 @@ SearchableDropdown {
       layer.effect: MultiEffect {
         maskEnabled: true
         maskSource: picture
+        // The picture's own soft edges, not a hard cut at any ink.
+        maskThresholdMin: 0.5
+        maskSpreadAtMin: 1.0
       }
     }
 
