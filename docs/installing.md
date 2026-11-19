@@ -37,6 +37,8 @@ The installer's screens use karchy's default theme and its console font. On the 
 
 The Wi-Fi networks the install media joined (WPA2/WPA3 personal and open ones) become NetworkManager profiles on the installed system, with the password. Enterprise (802.1X) networks are not copied: connect to those again from the network panel.
 
+If a step that downloads packages fails ("Install the base system", "Install the desktop"), nothing is lost: run `karchy-install` again; it starts over. The usual cause is a package mirror in the middle of an update. The installer gets round one by itself: it puts the mirror that failed last, fetches the package lists again and repeats the step, up to ten times, and the log (`/var/log/karchy-install.log`) says "Trying again with those mirrors last" when it did.
+
 If the installed system does not boot, see [When karchy does not boot](recovery.md): snapshots, the LTS kernel, getting in from the install media, and the LUKS header backup to make on the first day.
 
 ## From the karchy ISO

@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# karchy:summary=Move mirrors that just failed a download to the end of pacman's mirror lists
+# karchy:args=--in-place [--root <dir>] | --config   (pacman's output on standard input)
+# karchy:hidden=true
+
+# Why: pacman tries the next mirror when one doesn't have a package, but it
+# asks for a package's signature only from the mirror the package came from.
+# A mirror that is in the middle of a sync can hold the package and not yet
+# (or no longer) its .sig, and then the whole transaction fails with
+#   error: failed retrieving file '<package>.sig' from <mirror> : ... 404
+# however many good mirrors follow in the list (pacman 7.1, reproduced with
+# three test mirrors; D-124). CachyOS's mirrors lag each other by hours after
+# a large rebuild, so this happens on real installs and updates.
+#
+# What it does: reads pacman's output, takes the host of every "failed
+# retrieving file" line, and puts that host's Server lines last in each mirror
+# list, in their old order. The caller then refreshes the databases and tries
+# again, so the database and the files come from the next mirror.
+#
+#   --in-place [--root DIR]  rewrite DIR/etc/pacman.d/*mirrorlist (root; the
+#                            installer, for the live system and the target)
+#   --config                 leave /etc alone: write a copy of pacman.conf
+#                            whose Include lines point at reordered copies,
+#                            and print its path (karchy update, which passes
+#                            it to pacman --config for that one run)
+#
+# Prints "demoted <host>" on standard error for each host moved. Exits 0 when
+# an order changed, 1 when there was nothing to move (no such line, or the
+# host is already last): the caller stops retrying then.
+
+set -euo pipefail
+
+mode="" root=""
+while (($# > 0)); do
+  case $1 in
+    --in-place | --config) mode=$1 ;;
+    --root) root=${2:?--root needs a folder}; shift ;;
+    *) echo "Usage: karchy-mirrors-demote --in-place [--root <dir>] | --config" >&2; exit 2 ;;
+  esac
+  shift
+done
+[[ -n $mode ]] || { echo "Usage: karchy-mirrors-demote --in-place [--root <dir>] | --config" >&2; exit 2; }
+
+# The hosts, as pacman names them ("cdn77.cachyos.org", "10.0.2.2:8090").
+mapfile -t hosts < <(sed -n "s/.*failed retrieving file '[^']*' from \([^ ]*\) : .*/\1/p" | sort -u)
+((${#hosts[@]} > 0)) || exit 1
+
+# The list $1 with the failed hosts' servers last.
+reordered() {
+  HOSTS="${hosts[*]}" awk '
+    BEGIN { n = split(ENVIRON["HOSTS"], list, " "); for (i = 1; i <= n; i++) bad[list[i]] = 1 }
+    /^[[:space:]]*Server[[:space:]]*=/ {
+      url = $0
+      sub(/^[^=]*=[[:space:]]*[a-z]+:\/\//, "", url)
+      sub(/\/.*/, "", url)
+      if (url in bad) { held[++count] = $0; next }
+    }
+    { print }
+    END { for (i = 1; i <= count; i++) print held[i] }
+  ' "$1"
+}
+
+changed=0
+case $mode in
+  --in-place)
+    for list in "$root"/etc/pacman.d/*mirrorlist; do
+      [[ -f $list && ! -L $list ]] || continue
+      new=$(reordered "$list")
+      [[ $new != "$(<"$list")" ]] || continue
+      printf '%s\n' "$new" >"$list.karchy-new"
+      chmod --reference="$list" "$list.karchy-new"
+      mv -f "$list.karchy-new" "$list"
+      changed=1
+    done
+    ;;
+  --config)
+    dir=$(mktemp -d "${TMPDIR:-/tmp}/karchy-mirrors.XXXXXX")
+    chmod 755 "$dir"
+    cp /etc/pacman.conf "$dir/pacman.conf"
+    while IFS= read -r list; do
+      [[ -f $list ]] || continue
+      new=$(reordered "$list")
+      [[ $new != "$(<"$list")" ]] || continue
+      copy=$dir/$(basename "$list")
+      printf '%s\n' "$new" >"$copy"
+      # The path as a literal: | can't be in it, having matched [^[:space:]|].
+      sed -i -E "s|^([[:space:]]*Include[[:space:]]*=[[:space:]]*)${list//./\\.}[[:space:]]*\$|\1$copy|" "$dir/pacman.conf"
+      changed=1
+    done < <(sed -n -E 's/^[[:space:]]*Include[[:space:]]*=[[:space:]]*(\/[^[:space:]|]+)[[:space:]]*$/\1/p' /etc/pacman.conf | sort -u)
+    if ((changed)); then echo "$dir/pacman.conf"; else rm -rf "$dir"; fi
+    ;;
+esac
+
+((changed)) || exit 1
+printf 'demoted %s\n' "${hosts[@]}" >&2

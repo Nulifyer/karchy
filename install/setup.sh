@@ -42,8 +42,8 @@ setup_packages() {
   # (jack2, which conflicts with pipewire-jack; Afrikaans OCR data). Install
   # karchy's choices first, as dependencies, so the meta-packages find them.
   # -Syu, never -Sy alone: a refresh without the upgrade is a partial upgrade.
-  in_target pacman -Syu --needed --noconfirm --asdeps pipewire-jack qt6-multimedia-ffmpeg tesseract-data-eng
-  in_target pacman -S --needed --noconfirm "${packages[@]}"
+  with_mirrors in_target pacman -Syu --needed --noconfirm --asdeps pipewire-jack qt6-multimedia-ffmpeg tesseract-data-eng
+  with_mirrors in_target pacman -S --needed --noconfirm "${packages[@]}"
   # The apps karchy ships, installed as the user's own (explicitly), so each
   # can be removed in Quick install (D-71). The list is the installed
   # catalog's default entries; the ones karchy needs are dependencies above.
@@ -51,10 +51,10 @@ setup_packages() {
   mapfile -t apps < <(jq -r '.apps[] | select(.default and (.required | not)) | .packages[]' \
     "$KARCHY_MNT/usr/share/karchy/default/karchy/quick-install.json")
   ((${#apps[@]})) || die "The list of apps karchy ships couldn't be read from the installed karchy package."
-  in_target pacman -S --needed --noconfirm "${apps[@]}"
+  with_mirrors in_target pacman -S --needed --noconfirm "${apps[@]}"
   # The signing key as a package keeps it current (rotation, revocation).
   if in_target pacman -Si karchy-keyring >/dev/null 2>&1; then
-    in_target pacman -S --needed --noconfirm karchy-keyring
+    with_mirrors in_target pacman -S --needed --noconfirm karchy-keyring
   fi
 }
 

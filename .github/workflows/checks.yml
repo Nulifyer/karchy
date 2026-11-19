@@ -31,6 +31,13 @@ jobs:
       - name: Agent skills are linked safely and each one is packaged once (D-115)
         run: tests/agent-skills.sh
 
+  mirrors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mirrors that fail a download go last, and nothing else is touched (D-124)
+        run: tests/mirrors-demote.sh
+
   fonts:
     runs-on: ubuntu-latest
     steps:

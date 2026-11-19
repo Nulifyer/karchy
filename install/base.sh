@@ -100,14 +100,21 @@ base_repos_live() {
   # Bootstrap mirrors: CachyOS's own list, shipped with the installer
   # (install/cachyos-mirrorlist). All of its mirrors, because a mirror can
   # list a package in its database before it holds the file, and pacman then
-  # tries the next server.
+  # tries the next server. Last of all, CachyOS's origin, which the mirrors
+  # copy from and which is never behind: its list leaves cdn.cachyos.org and
+  # mirror.cachyos.org out to spare them, and an install only reaches them
+  # when the mirrors before them failed (with_mirrors moves those to the end).
   # The servers of the mirror list $1, with $arch spelled out as the
   # directory $2.
   cachyos_mirrors() {
-    local line
+    local line origin
     while IFS= read -r line; do
       [[ $line == "Server = "* ]] && printf '%s\n' "${line//\$arch/$2}"
     done <"$1"
+    for origin in cdn.cachyos.org mirror.cachyos.org; do
+      # shellcheck disable=SC2016  # pacman expands $repo
+      grep -q "^Server = https://$origin/" "$1" || printf 'Server = https://%s/repo/%s/$repo\n' "$origin" "$2"
+    done
   }
   # The tuned repos' lists, with the architecture spelled out: the packaged
   # lists use $arch_v3/$arch_v4, which only CachyOS's pacman expands.
@@ -123,17 +130,22 @@ base_repos_live() {
   fi
   cachyos_tuned_mirrors /etc/pacman.d/cachyos-mirrorlist
   base_add_repos /etc/pacman.conf
-  pacman -Sy
+  with_mirrors pacman -Sy
   # Arch's keyring first, so an install medium built months ago knows the
   # packagers who signed today's packages. Then CachyOS's and Omarchy's
   # keyrings and CachyOS's mirror list, which takes the bootstrap list's
   # place; the tuned repos' lists are written again from it.
-  pacman -S --noconfirm --needed archlinux-keyring
-  pacman -S --noconfirm --needed --overwrite etc/pacman.d/cachyos-mirrorlist \
+  with_mirrors pacman -S --noconfirm --needed archlinux-keyring
+  with_mirrors pacman -S --noconfirm --needed --overwrite etc/pacman.d/cachyos-mirrorlist \
     cachyos-keyring omarchy-keyring cachyos-mirrorlist
+  # The packaged list, with the origin last again (the live system's copy
+  # only; the installed system keeps the package's file as it is).
+  # shellcheck disable=SC2016  # pacman expands $arch and $repo
+  cachyos_mirrors /etc/pacman.d/cachyos-mirrorlist '$arch' >/etc/pacman.d/cachyos-mirrorlist.karchy
+  mv /etc/pacman.d/cachyos-mirrorlist.karchy /etc/pacman.d/cachyos-mirrorlist
   cachyos_tuned_mirrors /etc/pacman.d/cachyos-mirrorlist
   # karchy-disk-fstab (data disks) reads lsblk's JSON with jq.
-  pacman -S --noconfirm --needed jq
+  with_mirrors pacman -S --noconfirm --needed jq
 }
 
 base_packages() {
@@ -162,7 +174,7 @@ base_pacstrap() {
   mapfile -t packages < <(base_packages)
   hooks=$(mktemp -d)
   ln -s /dev/null "$hooks/90-mkinitcpio-install.hook"
-  pacstrap "$KARCHY_MNT" --noconfirm --hookdir="$hooks" "${packages[@]}"
+  with_mirrors pacstrap "$KARCHY_MNT" --noconfirm --hookdir="$hooks" "${packages[@]}"
   rm -rf "$hooks"
 }
 

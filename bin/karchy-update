@@ -64,7 +64,8 @@ warn() { printf '      %s!%s %s\n' "$yellow" "$reset" "$*"; }
 fail() { printf '\n%s✗ %s%s\n' "$red$bold" "$*" "$reset" >&2; }
 
 # Names the step that failed, since an early one may print nothing itself.
-trap 'fail "The update stopped: this step failed: $BASH_COMMAND. Fix the cause and run karchy update again. Snapshots from before the update are in the boot menu."' ERR
+failed_command=""
+trap 'fail "The update stopped: this step failed: ${failed_command:-$BASH_COMMAND}. Fix the cause and run karchy update again. Snapshots from before the update are in the boot menu."' ERR
 
 # ---------------------------------------------------------------------- lock
 # /run/lock/karchy-update is created world-writable at boot (tmpfiles.d) and
@@ -359,11 +360,42 @@ fi
 keepalive=$!
 trap 'kill "$keepalive" 2>/dev/null || true' EXIT
 
+# pacman for the two steps that download, with a way round a mirror caught in
+# the middle of a sync. pacman tries the next mirror when one lacks a package,
+# but asks for its signature only where the package came from, so one such
+# mirror fails the whole update (karchy-mirrors-demote says more). The first
+# run is pacman as it is. Only when it fails: the downloads are asked for once
+# more without a terminal, to read which mirrors failed; those go last in
+# copies of the mirror lists (/etc stays as it is), and pacman runs again with
+# that copy of its configuration. Up to five such tries.
+pacman_sync() {
+  local out conf try
+  sudo pacman --color auto "$@" && return 0
+  out=$(mktemp)
+  conf=""
+  for ((try = 1; try <= 5; try++)); do
+    # Download only: what is already in the cache is not fetched again.
+    sudo env LC_ALL=C pacman ${conf:+--config "$conf"} --color never --noprogressbar -w "$@" >"$out" 2>&1 || true
+    [[ -z $conf ]] || rm -rf "${conf%/*}"
+    conf=$(karchy-mirrors-demote --config <"$out" 2>/dev/null) || { conf=""; break; }
+    warn "A mirror could not serve a package; trying the next ones"
+    if sudo pacman --config "$conf" --color auto "$@"; then
+      rm -rf "$out" "${conf%/*}"
+      return 0
+    fi
+  done
+  [[ -z $conf ]] || rm -rf "${conf%/*}"
+  rm -f "$out"
+  # For the message of the trap above, which would name "return 1".
+  failed_command="sudo pacman $*"
+  return 1
+}
+
 # ----------------------------------------------------------------- 3. keyrings
 step 2 "Signing keys"
 mapfile -t keyrings < <(awk '{ print $1 }' <<<"$repo_updates" | grep -E '^(archlinux|cachyos|omarchy|karchy)-keyring$' || true)
 if ((${#keyrings[@]} > 0)); then
-  sudo pacman --color auto -Sy --needed --noconfirm "${keyrings[@]}"
+  pacman_sync -Sy --needed --noconfirm "${keyrings[@]}"
   good "Updated ${keyrings[*]}"
 else
   good "Already current"
@@ -374,7 +406,7 @@ step 3 "System packages"
 if [[ -n $repo_updates ]]; then
   note "snapper takes a snapshot before and after; both appear in the boot menu"
   log_lines=$(wc -l </var/log/pacman.log 2>/dev/null || echo 0)
-  sudo pacman --color auto -Syu --noconfirm
+  pacman_sync -Syu --noconfirm
   good "System packages updated"
   # What packages printed while installing (manual steps, changed defaults)
   # scrolls past above; repeat it where it can be read. Hooks' output (the
