@@ -117,7 +117,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 
 karchy tells AI coding agents (Claude Code, Codex, Gemini CLI and others) how this system works, so you can ask one to change a setting, add a keybinding or find a fault, and it uses karchy's own commands instead of guessing.
 
-- The skills are `karchy` (customizing and running the system), `karchy-troubleshoot` (logs, crashes, boot problems, bug reports) and one for each of Virtual machines, Containers and the VPN while that feature is installed.
+- The skills are `karchy` (customizing and running the system), `karchy-troubleshoot` (logs, crashes, boot problems, bug reports) and one for each of Virtual machines and Containers while that feature is installed. Agents are told to leave the VPN alone; you change it in its panel or in Settings › Network › VPN.
 - `~/.agents/skills` is the one skills folder for every agent. Most agents read it themselves. For the ones that don't (Claude Code's `~/.claude/skills`, Antigravity, Kiro), karchy makes their skills folder a link to it, so a skill you put in `~/.agents/skills` reaches every agent. Run `karchy agent skills status` to see the links.
 - If an agent's skills folder already exists as a real folder (you used Claude Code before), karchy leaves it and links its own skills into it. `karchy agent skills --adopt` moves what that folder holds into `~/.agents/skills`, overwriting nothing, and makes it the link.
 - The skills ask an agent to make a small change (a setting, a keybinding, a theme) directly and tell you how to undo it, and to plan a large one (many packages, `/etc`, services, disks, the VPN) with you and take a snapshot first.
