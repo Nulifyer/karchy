@@ -25,6 +25,7 @@ NumberField 1.0 NumberField.qml
 OpticalGlyph 1.0 OpticalGlyph.qml
 OverlayWindow 1.0 OverlayWindow.qml
 PageHeader 1.0 PageHeader.qml
+PasswordInput 1.0 PasswordInput.qml
 Panel 1.0 Panel.qml
 PanelActionButton 1.0 PanelActionButton.qml
 PanelController 1.0 PanelController.qml
