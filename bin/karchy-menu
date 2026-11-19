@@ -2,7 +2,7 @@
 
 # karchy:summary=Control the Karchy menu (toggle / summon / close / refresh)
 # karchy:args=[toggle|summon|close|refresh|ping] [route]
-# karchy:examples=karchy menu | karchy menu toggle system | karchy menu summon appearance.theme | karchy menu refresh
+# karchy:examples=karchy menu | karchy menu toggle system | karchy menu summon restart | karchy menu refresh
 
 # Thin wrapper around the standard plugin IPC surface. The menu is the
 # first-party `karchy.menu` plugin; routes are passed as JSON payload.
@@ -40,7 +40,7 @@ Verbs:
   refresh          Re-parse the menu JSONC files.
   ping             Health check.
 
-Route is an item id (e.g. setup.power) or alias (e.g. power). Defaults to
+Route is an item id (e.g. restart.shell) or alias (e.g. power-menu). Defaults to
 "root", which opens the top-level menu.
 USAGE
     exit 0

@@ -88,4 +88,4 @@ This is Omarchy's full set [O]:
 
 ## Deliberately unbound
 
-Window groups, panel keys, the tiling/floating workspace toggle (menu only), style toggles, browser and editor launch keys, input-method switching, zoom, the time/battery notices, dictation, the scratchpad, and the extra resize steps.
+Window groups, panel keys, the tiling/floating workspace toggle (Settings › Appearance only), style toggles, browser and editor launch keys, input-method switching, zoom, the time/battery notices, dictation, the scratchpad, and the extra resize steps.

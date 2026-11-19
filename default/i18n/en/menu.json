@@ -11,44 +11,68 @@
   "record": {
     "label": "Record Screen"
   },
-  "appearance": {
-    "label": "Appearance"
+  "theme": {
+    "label": "Theme"
+  },
+  "background": {
+    "label": "Background"
   },
   "settings": {
     "label": "Settings"
   },
-  "setup": {
-    "label": "Setup"
-  },
   "update": {
-    "label": "Update"
+    "label": "Update System"
   },
-  "about": {
-    "label": "System Info"
+  "keybindings": {
+    "label": "Keybindings"
+  },
+  "restart": {
+    "label": "Restart"
   },
   "system": {
     "label": "Power"
   },
   "settings.displays": {
-    "label": "Display Settings"
+    "label": "Settings › Displays"
   },
   "settings.input": {
-    "label": "Input Settings"
+    "label": "Settings › Input"
+  },
+  "settings.power": {
+    "label": "Settings › Power"
   },
   "settings.network": {
-    "label": "Network Settings"
+    "label": "Settings › Network"
+  },
+  "settings.notifications": {
+    "label": "Settings › Notifications"
+  },
+  "settings.storage": {
+    "label": "Settings › Storage"
+  },
+  "settings.security": {
+    "label": "Settings › Security"
   },
   "settings.ssh": {
-    "label": "SSH Settings"
+    "label": "Settings › SSH & Git"
+  },
+  "settings.datetime": {
+    "label": "Settings › Date & Time"
   },
   "settings.appearance": {
-    "label": "Appearance Settings"
+    "label": "Settings › Appearance"
   },
   "settings.fonts": {
-    "label": "Font Settings"
+    "label": "Settings › Fonts"
   },
   "settings.apps": {
-    "label": "Default Apps"
+    "label": "Settings › Default Apps"
+  },
+  "settings.about": {
+    "label": "Settings › About"
+  },
+  "update.firmware": {
+    "label": "Update System › Firmware"
   },
   "system.lock": {
     "label": "Lock"
@@ -101,106 +125,22 @@
   "packages.webapp-remove": {
     "label": "Remove Web App"
   },
-  "appearance.theme": {
-    "label": "Theme"
-  },
-  "appearance.background": {
-    "label": "Background"
-  },
-  "appearance.font": {
-    "label": "Font"
-  },
-  "appearance.workspace-layout": {
-    "label": "Workspace Layout"
-  },
-  "appearance.workspace-layout.dwindle": {
-    "label": "Tiling"
-  },
-  "appearance.workspace-layout.floating": {
-    "label": "Floating"
-  },
-  "setup.security": {
-    "label": "Security"
-  },
-  "setup.security.fingerprint": {
-    "label": "Set Up Fingerprint"
-  },
-  "setup.security.fido2": {
-    "label": "Set Up FIDO2 Key"
-  },
-  "setup.security.remove-fingerprint": {
-    "label": "Remove Fingerprint"
-  },
-  "setup.security.remove-fido2": {
-    "label": "Remove FIDO2 Key"
-  },
-  "setup.shares": {
-    "label": "Network Shares"
-  },
-  "setup.shares.keep": {
-    "label": "Keep a Share Mounted"
-  },
-  "setup.shares.remove": {
-    "label": "Remove a Kept Share"
-  },
-  "setup.git": {
-    "label": "Set Up Git"
-  },
-  "setup.keybindings": {
-    "label": "Keybindings"
-  },
-  "setup.config": {
-    "label": "Config Files"
-  },
-  "setup.config.hyprland": {
-    "label": "Edit Hyprland Config"
-  },
-  "setup.config.keybindings": {
-    "label": "Edit Keybindings"
-  },
-  "setup.config.input": {
-    "label": "Edit Input Config"
-  },
-  "update.system": {
-    "label": "Update System"
-  },
-  "update.firmware": {
-    "label": "Update Firmware"
-  },
-  "update.restart": {
-    "label": "Restart"
-  },
-  "update.restart.shell": {
+  "restart.shell": {
     "label": "Restart Shell"
   },
-  "update.restart.hyprland": {
+  "restart.hyprland": {
     "label": "Reload Hyprland"
   },
-  "update.restart.audio": {
+  "restart.audio": {
     "label": "Restart Audio"
   },
-  "update.restart.wifi": {
+  "restart.wifi": {
     "label": "Restart Wi-Fi"
   },
-  "update.restart.bluetooth": {
+  "restart.bluetooth": {
     "label": "Restart Bluetooth"
   },
-  "update.restart.trackpad": {
+  "restart.trackpad": {
     "label": "Restart Trackpad"
-  },
-  "update.password": {
-    "label": "Passwords"
-  },
-  "update.password.user": {
-    "label": "Change User Password"
-  },
-  "update.password.drive": {
-    "label": "Change Drive Password"
-  },
-  "update.timezone": {
-    "label": "Set Timezone"
-  },
-  "update.time": {
-    "label": "Sync Clock"
   }
 }

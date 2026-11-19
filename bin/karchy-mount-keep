@@ -4,7 +4,7 @@
 # karchy:args=[smb://server/share | folder on an open share] | --remove [--yes] [kept mount folder]
 # karchy:hidden=true
 
-# The menu's Setup › Network Shares runs this in a floating terminal. With no
+# Settings › Storage runs this in a floating terminal. With no
 # share named, it offers the shares open in the file manager or asks for an
 # address; --remove with no folder offers the kept ones, and --remove --yes
 # skips its question for a caller that has asked already (Settings › Storage).
@@ -27,7 +27,7 @@ FSTAB=/etc/fstab
 CRED_DIR=/etc/karchy/smb
 MARKER="# karchy-kept-mount"
 
-# The menu's floating terminal shows Failed and waits for a key.
+# The floating terminal shows Failed and waits for a key.
 die() {
   echo "$*" >&2
   exit 1

@@ -23,7 +23,7 @@ case "$action" in
     # The background is a link to its file, so a picture from anywhere is
     # copied into the theme's own backgrounds folder first: deleting or moving
     # the original then leaves the background as it is, and it shows in
-    # Appearance › Background with the theme's.
+    # Background (the menu, or Settings › Appearance) with the theme's.
     theme=$(cat "$HOME/.local/state/karchy/current/theme.name" 2>/dev/null)
     dir="$HOME/.config/karchy/backgrounds/${theme:-default}"
     source=$(realpath -- "$1")

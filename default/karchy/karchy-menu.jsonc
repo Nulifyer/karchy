@@ -4,30 +4,42 @@
   // v4.5.0's default/karchy/karchy-menu.jsonc; the format is described there
   // and in docs/menu.md of the Omarchy repository.
 
-  // Root. Layout from the menu audit (user 2026-11-15): labels say what a row
-  // does, so search results read on their own; Record Screen sits with the
-  // other things you do; Update starts with the update itself.
+  // Root (D-133, user 2026-11-19): the menu is for what you do now: launch
+  // an app, run an action, restart something, open a window. What you set and
+  // leave is in Settings, and every Settings page is found by searching here.
+  // Theme and Background are the two pickers kept for quick access.
   "apps": {"iconName":"menu.apps","label":"Apps","aliases":["app","applications"],"provider":"apps"},
   "packages": {"iconName":"menu.packages","label":"Packages","aliases":["install","remove"]},
   "record": {"iconName":"record","label":"Record Screen","aliases":["screenrecord","screen-record","recording","capture"]},
-  "appearance": {"iconName":"menu.appearance","label":"Appearance","aliases":["style"]},
+  "theme": {"iconName":"look.theme","label":"Theme","aliases":["themes"],"action":"karchy-shell shell summon karchy.image-picker '{\"source\":\"themes\"}'"},
+  "background": {"iconName":"look.background","label":"Background","aliases":["wallpaper"],"action":"background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\""},
   "settings": {"iconName":"settings","label":"Settings","aliases":["preferences","control panel"],"action":"karchy-settings"},
-  "setup": {"iconName":"menu.setup","label":"Setup"},
-  "update": {"iconName":"update","label":"Update","aliases":["upgrade","restart","refresh"]},
-  "about": {"iconName":"info","label":"System Info","aliases":["about","fastfetch"],"action":"karchy-launch-about"},
+  "update": {"iconName":"update.system","label":"Update System","aliases":["upgrade","updates","karchy update","channel"],"action":"karchy-updates"},
+  "keybindings": {"iconName":"input.keyboard","label":"Keybindings","aliases":["shortcuts","keys"],"searchTerms":["keyboard shortcuts"],"action":"karchy-menu-keybindings"},
+  "restart": {"iconName":"restart","label":"Restart","aliases":["reload"]},
   "system": {"iconName":"system.power","label":"Power","aliases":["power-menu","system"]},
 
-  // Settings' pages, found by search only (user 2026-11-15): Settings is a row
-  // that opens the window, so its children never list, but searching "wifi"
-  // or "keyboard" offers the page itself.
-  "settings.displays": {"iconName":"display","label":"Display Settings","aliases":["displays","monitors","screen","resolution","scale"],"action":"karchy-settings displays"},
-  "settings.input": {"iconName":"input.keyboard","label":"Input Settings","aliases":["keyboard","mouse","touchpad","trackpad","input"],"action":"karchy-settings input"},
-  "settings.network": {"iconName":"net.network","label":"Network Settings","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
-  "settings.notifications": {"iconName":"notify.bell","label":"Notification Settings","aliases":["notifications","do not disturb","dnd","silent"],"action":"karchy-settings notifications"},
-  "settings.ssh": {"iconName":"security.ssh","label":"SSH Settings","aliases":["ssh","sshd","ssh server","ssh agent"],"action":"karchy-settings ssh"},
-  "settings.appearance": {"iconName":"menu.appearance","label":"Appearance Settings","aliases":["bar style","lock screen clock"],"action":"karchy-settings appearance"},
-  "settings.fonts": {"iconName":"look.font","label":"Font Settings","aliases":["text size","monospace font","app font","terminal font"],"action":"karchy-settings fonts"},
-  "settings.apps": {"iconName":"menu.apps","label":"Default Apps","aliases":["default apps","default browser","file associations"],"searchTerms":["settings"],"action":"karchy-settings apps"},
+  // Settings' pages, found by search only: Settings is a row that opens the
+  // window, so its children never list, but searching "wifi" or "fingerprint"
+  // offers the page itself. Each reads as where it goes ("Settings › Network");
+  // the aliases are the words people type for what the page holds, including
+  // the rows that used to be in the menu (password, timezone, git, shares).
+  "settings.displays": {"iconName":"display","label":"Settings › Displays","aliases":["displays","monitors","screen","resolution","scale","night light"],"action":"karchy-settings displays"},
+  "settings.input": {"iconName":"input.keyboard","label":"Settings › Input","aliases":["keyboard","mouse","touchpad","trackpad","input","input config","edit input config","edit keybindings"],"action":"karchy-settings input"},
+  "settings.power": {"iconName":"system.power","label":"Settings › Power","aliases":["power","battery","sleep","lid","idle","suspend","hibernate"],"action":"karchy-settings power"},
+  "settings.network": {"iconName":"net.network","label":"Settings › Network","aliases":["network","wifi","wi-fi","ethernet","vpn","dns"],"action":"karchy-settings network"},
+  "settings.notifications": {"iconName":"notify.bell","label":"Settings › Notifications","aliases":["notifications","do not disturb","dnd","silent"],"action":"karchy-settings notifications"},
+  "settings.storage": {"iconName":"disk","label":"Settings › Storage","aliases":["disk","storage","space","bees","smart","nas","smb","samba","share","network shares","mount"],"action":"karchy-settings storage"},
+  "settings.security": {"iconName":"security","label":"Settings › Security","aliases":["security","fingerprint","fido2","yubikey","security key","password","passwd","change password","drive password","luks","encryption"],"action":"karchy-settings security"},
+  "settings.ssh": {"iconName":"security.ssh","label":"Settings › SSH & Git","aliases":["ssh","sshd","ssh server","ssh agent","git","github"],"action":"karchy-settings ssh"},
+  "settings.datetime": {"iconName":"time","label":"Settings › Date & Time","aliases":["timezone","time","clock","date","ntp"],"action":"karchy-settings datetime"},
+  "settings.appearance": {"iconName":"menu.appearance","label":"Settings › Appearance","aliases":["appearance","style","bar style","lock screen clock","workspace layout","tiling","floating","looknfeel"],"action":"karchy-settings appearance"},
+  "settings.fonts": {"iconName":"look.font","label":"Settings › Fonts","aliases":["font","fonts","text size","monospace font","app font","terminal font"],"action":"karchy-settings fonts"},
+  "settings.apps": {"iconName":"menu.apps","label":"Settings › Default Apps","aliases":["default apps","default browser","file associations"],"action":"karchy-settings apps"},
+  "settings.about": {"iconName":"info","label":"Settings › About","aliases":["about","version","system info","fastfetch","hyprland config","edit hyprland config"],"action":"karchy-settings about"},
+
+  // The Updates window's firmware part, found by search only, as above.
+  "update.firmware": {"iconName":"firmware","label":"Update System › Firmware","aliases":["firmware","fwupd","bios"],"when":"[[ -d /sys/firmware/efi ]] || command -v fwupdmgr","action":"karchy-updates firmware"},
 
   // Power (the id stays "system": Super+Escape and the power key open it)
   "system.lock": {"iconName":"system.lock","label":"Lock","action":"karchy-system-lock"},
@@ -53,47 +65,12 @@
   "packages.webapp": {"iconName":"webapp","label":"Install Web App","action":"karchy-launch-floating-terminal-with-presentation karchy-webapp-install"},
   "packages.webapp-remove": {"iconName":"webapp.remove","label":"Remove Web App","when":"grep -qE '^Exec=.*(karchy-launch-webapp|karchy-webapp-handler)' $HOME/.local/share/applications/*.desktop","action":"karchy-webapp-remove"},
 
-  // Appearance
-  "appearance.theme": {"iconName":"look.theme","label":"Theme","aliases":["theme","themes"],"action":"karchy-shell shell summon karchy.image-picker '{\"source\":\"themes\"}'"},
-  "appearance.background": {"iconName":"look.background","label":"Background","aliases":["background","wallpaper"],"action":"background=$(karchy-theme-bg-switcher); [[ -n $background ]] && karchy-theme-bg-set \"$background\""},
-  "appearance.font": {"iconName":"look.font","label":"Font","provider":"fonts"},
-  "appearance.workspace-layout": {"iconName":"look.layout","label":"Workspace Layout","aliases":["default workspace layout"]},
-  "appearance.workspace-layout.dwindle": {"iconName":"menu.layout.tiling","label":"Tiling","checked":"[[ $(karchy-hyprland-workspace-layout-default) == \"dwindle\" ]]","action":"karchy-hyprland-workspace-layout-default dwindle"},
-  "appearance.workspace-layout.floating": {"iconName":"menu.layout.floating","label":"Floating","checked":"[[ $(karchy-hyprland-workspace-layout-default) == \"floating\" ]]","action":"karchy-hyprland-workspace-layout-default floating"},
-
-  // Setup
-  // Security: each Remove row shows only once its feature is set up.
-  "setup.security": {"iconName":"security","label":"Security"},
-  "setup.security.fingerprint": {"iconName":"security.fingerprint","label":"Set Up Fingerprint","when":"karchy-hw-fingerprint","action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-fingerprint"},
-  "setup.security.fido2": {"iconName":"security.fido2","label":"Set Up FIDO2 Key","aliases":["yubikey","security key"],"action":"karchy-launch-floating-terminal-with-presentation karchy-setup-security-fido2"},
-  "setup.security.remove-fingerprint": {"iconName":"security.fingerprint.remove","label":"Remove Fingerprint","when":"karchy-pkg-present fprintd","action":"karchy-launch-floating-terminal-with-presentation karchy-remove-security-fingerprint"},
-  "setup.security.remove-fido2": {"iconName":"ui.delete","label":"Remove FIDO2 Key","when":"[[ -e /etc/fido2/fido2 ]] || grep -qs pam_u2f /etc/pam.d/sudo","action":"karchy-launch-floating-terminal-with-presentation karchy-remove-security-fido2"},
-  // Network Shares (D-24): keep a NAS share mounted at /mnt.
-  "setup.shares": {"iconName":"menu.shares","label":"Network Shares","aliases":["nas","smb","samba","mount"]},
-  "setup.shares.keep": {"iconName":"share.keep","label":"Keep a Share Mounted","action":"karchy-launch-floating-terminal-with-presentation karchy-mount-keep"},
-  "setup.shares.remove": {"iconName":"share.remove","label":"Remove a Kept Share","when":"grep -qF '# karchy-kept-mount' /etc/fstab","action":"karchy-launch-floating-terminal-with-presentation 'karchy-mount-keep --remove'"},
-  "setup.git": {"iconName":"config.git","label":"Set Up Git","aliases":["github"],"action":"karchy-launch-floating-terminal-with-presentation karchy-setup-git"},
-  "setup.keybindings": {"iconName":"input.keyboard","label":"Keybindings","aliases":["shortcuts","keys"],"searchTerms":["keyboard shortcuts"],"action":"karchy-menu-keybindings"},
-  // The config files, opened in the editor; Settings has the same choices as controls.
-  "setup.config": {"iconName":"config","label":"Config Files","aliases":["config"]},
-  "setup.config.hyprland": {"iconName":"brand.hyprland","label":"Edit Hyprland Config","action":"karchy-launch-config-editor \"$HOME/.config/hypr/hyprland.lua\""},
-  "setup.config.keybindings": {"iconName":"config.keybindings","label":"Edit Keybindings","when":"[[ -f ~/.config/hypr/bindings.lua ]]","action":"karchy-launch-config-editor \"$HOME/.config/hypr/bindings.lua\""},
-  "setup.config.input": {"iconName":"input.mouse","label":"Edit Input Config","when":"[[ -f ~/.config/hypr/input.lua ]]","action":"karchy-launch-config-editor \"$HOME/.config/hypr/input.lua\""},
-
-  // Update
-  "update.system": {"iconName":"update.system","label":"Update System","aliases":["upgrade","karchy update","updates","channel"],"action":"karchy-updates"},
-  "update.firmware": {"iconName":"firmware","label":"Update Firmware","aliases":["fwupd","bios"],"action":"karchy-launch-floating-terminal-with-presentation karchy-update-firmware"},
-  "update.restart": {"iconName":"restart","label":"Restart","aliases":["reload"]},
-  "update.restart.shell": {"iconName":"restart.shell","label":"Restart Shell","aliases":["bar","quickshell"],"action":"karchy-restart-shell"},
-  "update.restart.hyprland": {"iconName":"brand.hyprland","label":"Reload Hyprland","action":"hyprctl reload"},
-  "update.restart.audio": {"iconName":"audio.speaker","label":"Restart Audio","aliases":["sound","pipewire"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-audio"},
-  "update.restart.wifi": {"iconName":"net.wifi.restart","label":"Restart Wi-Fi","aliases":["wifi","network"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-wifi"},
-  "update.restart.bluetooth": {"iconName":"bluetooth","label":"Restart Bluetooth","when":"compgen -G '/sys/class/bluetooth/hci*'","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-bluetooth"},
-  "update.restart.trackpad": {"iconName":"input.trackpad","label":"Restart Trackpad","aliases":["touchpad"],"when":"grep -qi touchpad /proc/bus/input/devices","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-trackpad"},
-  "update.password": {"iconName":"security.password","label":"Passwords","aliases":["password"]},
-  "update.password.user": {"iconName":"account.user","label":"Change User Password","aliases":["passwd"],"action":"karchy-launch-floating-terminal-with-presentation passwd"},
-  "update.password.drive": {"iconName":"disk","label":"Change Drive Password","aliases":["luks","encryption"],"action":"karchy-launch-floating-terminal-with-presentation karchy-drive-password"},
-  "update.timezone": {"iconName":"timezone","label":"Set Timezone","action":"karchy-menu-timezone"},
-  "update.time": {"iconName":"time","label":"Sync Clock","aliases":["time","ntp"],"action":"karchy-launch-floating-terminal-with-presentation karchy-update-time"}
+  // Restart
+  "restart.shell": {"iconName":"restart.shell","label":"Restart Shell","aliases":["bar","quickshell"],"action":"karchy-restart-shell"},
+  "restart.hyprland": {"iconName":"brand.hyprland","label":"Reload Hyprland","action":"hyprctl reload"},
+  "restart.audio": {"iconName":"audio.speaker","label":"Restart Audio","aliases":["sound","pipewire"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-audio"},
+  "restart.wifi": {"iconName":"net.wifi.restart","label":"Restart Wi-Fi","aliases":["wifi"],"action":"karchy-launch-floating-terminal-with-presentation karchy-restart-wifi"},
+  "restart.bluetooth": {"iconName":"bluetooth","label":"Restart Bluetooth","when":"compgen -G '/sys/class/bluetooth/hci*'","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-bluetooth"},
+  "restart.trackpad": {"iconName":"input.trackpad","label":"Restart Trackpad","aliases":["touchpad"],"when":"grep -qi touchpad /proc/bus/input/devices","action":"karchy-launch-floating-terminal-with-presentation karchy-restart-trackpad"}
 
 }

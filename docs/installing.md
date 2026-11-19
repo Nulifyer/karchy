@@ -58,7 +58,7 @@ With **Encrypted**, the installer then shows each other internal disk (not USB s
 
 Without encryption on the system disk the question isn't asked and the other disks are kept as they are: a key file on a plain disk would protect nothing.
 
-`karchy-drive-password` (Update › Change Drive Password) changes the system disk's password and then offers the new one to each other disk the old one still opens.
+`karchy-drive-password` (Settings › Security › Drive password) changes the system disk's password and then offers the new one to each other disk the old one still opens.
 
 The installer's screens use karchy's default theme and its console font. On the Linux console it loads both itself, so they look the same from the stock Arch ISO and from the karchy ISO. When its output is not a terminal (a pipe, a file) or `KARCHY_UI=plain` is set, it prints one timestamped line per step instead, as the log has them.
 
@@ -185,7 +185,7 @@ Outside Setup Mode the command changes nothing and says how to get there. The ke
 
 `karchy update` updates everything in one pass: karchy's own packages from `[karchy]`, and Arch, CachyOS and AUR packages through paru, with snapper snapshots before and after. It then reloads the desktop and shows the karchy release change with a link to its release notes.
 
-The Updates window (the bar's updates indicator, Update › Update System in the menu, Settings › About, or `karchy updates`) shows what an update would install before it runs, with Arch's news since the last update first, and holds the release channel. Its Install button runs `karchy update` in a terminal.
+The Updates window (the bar's updates indicator, Update System in the menu, Settings › About, or `karchy updates`) shows what an update would install before it runs, with Arch's news since the last update first, and holds the release channel. Its Install button runs `karchy update` in a terminal.
 
 karchy's packages come from one release channel (D-61):
 

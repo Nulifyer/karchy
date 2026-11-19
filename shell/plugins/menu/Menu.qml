@@ -189,14 +189,22 @@ Item {
   // past the frozen top edge once a search has pinned the card in place.
   // Uses panel.cardTop rather than effectiveCardTop: the centered top is
   // derived from the card height, which this value feeds.
-  function availableRowsHeight() {
+  //
+  // `need` is what the rows come to. A list at most one row over the ceiling
+  // is shown whole where the screen has the room: ending the card a few
+  // pixels into its last row hides that row for nothing. The root's ten rows
+  // miss 70% of a 750 px screen (1920×1200 at 1.6) by two pixels, and the
+  // row they would lose is Power (D-133).
+  function availableRowsHeight(need) {
     var top = panel.cardTop >= 0 ? panel.cardTop : Style.gapsOut
     var available = panel.height - top - Style.gapsOut - root.contentMargin * 2 - root.headerHeight - root.contentSpacing
     // The starting menu sets the ceiling along with the offset: drilling into
     // a longer submenu scrolls behind the fold instead of growing the card.
     if (panel.maxRowsHeight >= 0) available = Math.min(available, panel.maxRowsHeight)
     // A card that swallows the whole screen reads as a page, not a menu.
-    return Math.min(available, Math.round(panel.height * 0.7))
+    var ceiling = Math.round(panel.height * 0.7)
+    if (need > ceiling && need <= ceiling + root.baseRowHeight) ceiling = need
+    return Math.min(available, ceiling)
   }
 
   // When every row fits, the list gets its full height. When they don't,
@@ -232,7 +240,7 @@ Item {
       totals.push(total)
     }
 
-    return foldedListHeight(totals, availableRowsHeight())
+    return foldedListHeight(totals, availableRowsHeight(total))
   }
 
   function dmenuRowListHeight(_serial, _count, _filter) {
@@ -326,15 +334,9 @@ Item {
   // Each known provider is a tiny bash one-liner that enumerates a list and
   // emits one tab-delimited row per item: `label\tvalue\tcurrent`. The shell
   // turns those into menu items children of `menuId`. A `volatile` provider
-  // re-runs every time its submenu is entered, so a font installed since the
-  // shell started shows up without restarting it.
+  // re-runs every time its submenu is entered, so what was installed since
+  // the shell started shows up without restarting it.
   readonly property var providers: ({
-    "fonts": {
-      script: "current=$(karchy-font-current 2>/dev/null); karchy-font-list 2>/dev/null | while read -r f; do [[ -z $f ]] && continue; printf '%s\\t%s\\t%s\\n' \"$f\" \"$f\" \"$current\"; done",
-      iconName: "look.font",
-      volatile: true,
-      actionFor: function(value) { return "karchy-font-set " + Util.shellQuote(value) }
-    },
     "power-profiles": {
       script: "current=$(powerprofilesctl get 2>/dev/null); karchy-powerprofiles-list 2>/dev/null | while read -r p; do [[ -z $p ]] && continue; printf '%s\\t%s\\t%s\\n' \"$p\" \"$p\" \"$current\"; done",
       iconName: "power.profile",
@@ -774,8 +776,10 @@ Item {
         if (!root.isDescendantOf(entry.id, active)) continue
         if (!root.matchesQuery(entry, query)) continue
 
-        // Apps need no "Apps" subtitle; every other row shows where it lives.
+        // Apps need no "Apps" subtitle; every other row shows where it lives,
+        // unless its label already says so ("Settings › Network").
         var detail = entry.kind === "app" ? "" : root.parentPathFor(entry.id)
+        if (detail && entry.label.indexOf(detail + " › ") === 0) detail = ""
         var row = root.displayRow(entry, detail, root.searchScore(entry, query))
         if (entry.parent === active) currentRows.push(row)
         else drilldownRows.push(row)
