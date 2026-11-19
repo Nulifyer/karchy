@@ -1,6 +1,6 @@
 # Keybindings
 
-This is the complete default set. Anything not listed is unbound. New bindings need the user's approval (D-17). Tags: [O] same as Omarchy, [New] differs from Omarchy.
+This is the complete default set. Anything not listed is unbound. New default bindings need the user's approval (D-17). People change their own in Settings › Keybindings or in `~/.config/hypr/bindings.lua`: see [Layers and the editor](#layers-and-the-editor) at the end. Tags: [O] same as Omarchy, [New] differs from Omarchy.
 
 ## Windows
 
@@ -46,7 +46,7 @@ This is the complete default set. Anything not listed is unbound. New bindings n
 | Super+Space | Menu / app search | [O] |
 | Super+L | Lock | [New] (Omarchy: Super+Ctrl+L; Omarchy's Super+L layout toggle moves to the menu) |
 | Super+Escape | Power menu | [O] |
-| Super+K | Keybinding viewer | [O] |
+| Super+K | Keybindings: Settings › Keybindings, the list of every binding and its editor (D-134) | [New] (Omarchy: a read-only list) |
 | Super+Ctrl+R | Set reminder | [O] |
 | Super+Comma | Dismiss latest notification | [O] |
 | Super+Shift+Comma | Dismiss all notifications | [O] |
@@ -89,3 +89,42 @@ This is Omarchy's full set [O]:
 ## Deliberately unbound
 
 Window groups, panel keys, the tiling/floating workspace toggle (Settings › Appearance only), style toggles, browser and editor launch keys, input-method switching, zoom, the time/battery notices, dictation, the scratchpad, and the extra resize steps.
+
+## Layers and the editor
+
+Every binding belongs to a layer (D-134). They load in this order, and a later layer can take over what an earlier one bound:
+
+| Layer | What | File |
+|---|---|---|
+| 1 default | karchy's set, the tables above | `karchy/hypr/bindings.lua`; hardware keys and the clipboard in `default/hypr/bindings/` |
+| 2 add-on | an add-on package's bindings | `/usr/share/karchy/hypr.d/<name>.lua` |
+| 3 Settings | changes made in Settings › Keybindings | `~/.config/karchy/keybindings.json`, generated into `~/.local/state/karchy/hypr/keybindings.lua` |
+| 4 yours | your own file, which wins | `~/.config/hypr/bindings.lua` |
+
+`karchy/hypr/init.lua` loads them in that order. `karchy/hypr/keys.lua` watches every bind and unbind, notes the layer from where the calling file lives, and publishes the record when the config has loaded (`$XDG_RUNTIME_DIR/karchy-keybindings.json`). `karchy-settings-keybindings list --json` resolves the record into rows: the action, the keys in effect, the layer that won, and the chain of what it replaced. The Settings page and agents read that one list.
+
+**Settings › Keybindings** (Super+K) works like VS Code's Keyboard Shortcuts:
+
+- Each binding is a row, grouped as the tables above: the action, its keys as key caps, and where it comes from (karchy, the add-on's name, Settings, your bindings.lua). A row that replaced something, or was itself replaced or removed, shows the whole chain under it, lowest layer first, with what lost struck through.
+- Search matches the action, its keys now and before, the source and what it runs. "Record keys" searches by pressing a combination. Filters: All, Changed, Yours, Add-ons, Conflicts.
+- Enter (or a double click) on a row captures new keys; Enter accepts, Escape clears, then cancels. Keys another action has are shown before saving ("Also bound to: Close window") with Replace, Keep both and Cancel. A adds one more binding for the same action, Delete removes the binding, R brings the default back. "Add…" makes a binding of your own: a name, a command and keys. "Reset all…" forgets every change.
+- While keys are captured the window asks Hyprland to hold back its own shortcuts, so Super+T arrives in the page instead of running. That ends with the capture, the window or the shell.
+- A binding set in your own `bindings.lua` shows as yours and is read-only here: it wins, and it is changed in that file (the page's header links it). Mouse bindings are shown and not edited.
+- A change that would leave no key for the menu, a terminal or this page is refused.
+
+What a change writes follows VS Code: a rule of your own wins over a default; taking a default away is a rule of its own (`{"unbind": keys, "action": name}`); moving a default writes that removal and an addition (`{"bind": keys, "action": name, "replaces": old keys}`); changing a binding you made edits its rule; a reset deletes your rules for that binding and adds nothing. `keybindings.json` holds only your changes, so no changes is no file.
+
+If the generated Lua fails to load, or one rule in it fails, Hyprland keeps everything bound so far (the defaults are bound before it loads) and the page says what happened. A rule whose action is gone (an add-on removed, a default renamed) does nothing and is listed as no longer applying.
+
+### Adding a default
+
+One line in `karchy/hypr/bindings.lua`, under the `o.bind_group("…")` it belongs to:
+
+```lua
+o.bind("SUPER + SHIFT + N", "Night light", "karchy-settings-nightlight toggle")
+```
+
+`o.bind(keys, name, what it runs)`: the name is the action's identity in the editor and in people's saved changes, so every action gets its own, and renaming one orphans changes made to it. The row appears in Settings › Keybindings by itself, in that group. Add the key to the tables above (D-17).
+
+An add-on brings its bindings in its own file, installed to `/usr/share/karchy/hypr.d/<name>.lua`: the same `o.bind` lines after `o.bind_group("<what the add-on is called>")`. They show with the add-on's name as their source and can be changed in the editor like karchy's own.
+

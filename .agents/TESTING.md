@@ -26,6 +26,8 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 ```text
 shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they land
 tools/quick-install-search-check   # the Quick install window's search ranking, against the real list
+python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, rules, the generated Lua; with lua installed, karchy's real Lua layer under a stand-in Hyprland
+bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
 bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, en/menu.json agrees
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
 ```

@@ -1,6 +1,6 @@
 # The Settings window and its commands
 
-`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names: displays, input, power, network, notifications, storage, security, ssh, datetime, appearance, fonts, apps, about.
+`karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names: displays, input, keybindings, power, network, notifications, storage, security, ssh, datetime, appearance, fonts, apps, about.
 
 Settings is where everything that is set and left lives. The menu (Super+Space) holds actions and launches only: there is no Setup, Update or Appearance submenu. Searching the menu for a word such as `fingerprint`, `timezone` or `git` offers the Settings page ("Settings › Security"). To send the user to a setting, name the page.
 
@@ -15,6 +15,7 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | Displays | `karchy-settings-displays status \| set <monitor> <setting> <value> \| forget <monitor>` | `~/.config/karchy/displays.json`, one entry for each physical monitor | `~/.local/state/karchy/hypr/displays.lua` |
 | Night light (on the Displays page) | `karchy-settings-nightlight status \| on \| off \| toggle \| set <key> <value>` | `~/.config/karchy/nightlight.json` | user unit `karchy-nightlight.service` (hyprsunset) |
 | Input | `karchy-settings-input status \| set <setting> <value> \| reset <setting>\|all` | `~/.config/karchy/input.json` | `~/.local/state/karchy/hypr/input.lua` |
+| Keybindings | `karchy-settings-keybindings list [--json] \| conflicts <keys> \| set \| add \| remove \| reset` | `~/.config/karchy/keybindings.json` | `~/.local/state/karchy/hypr/keybindings.lua`; see [keybindings.md](keybindings.md) |
 | Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |
 | Notifications | `karchy-settings-notifications status \| set <app> <allow\|silent\|off> [name] \| dnd <on\|off>` | `~/.config/karchy/notifications.json` | the notification service watches the file |
 | Storage | `karchy-settings-storage ...` | nothing in the home folder | see [storage.md](storage.md) |
@@ -36,7 +37,7 @@ The valid settings and values for each command are in its header comment. Read i
 - Displays are saved for the physical monitor (make, model and serial), not the connector. `set` accepts a connector name such as `DP-1`.
 - Idle times and battery warnings are the `idle` and `battery` keys of `~/.config/karchy/shell.json`. `karchy-settings-power set` writes them there, one key for each change. A hand edit of those keys is also valid, and it is what `status` reports.
 - `~/.config/hypr/hyprsunset.conf`, if the user wrote one, replaces the night-light profiles that Settings generates.
-- A page whose area has a file the user may edit by hand links it in its header ("Open config file"): `monitors.lua` (Displays), `input.lua` and `bindings.lua` (Input), `shell.json` (Power, Date & Time, Appearance), `looknfeel.lua` (Appearance), the default terminal's config (Fonts), `mimeapps.list` (Default apps), `~/.ssh/config` and `~/.gitconfig` (SSH & Git), `hyprland.lua` (About). `karchy-launch-config-editor <path>` opens one in the user's editor, and creates a missing one from `/etc/skel` first.
+- A page whose area has a file the user may edit by hand links it in its header ("Open config file"): `monitors.lua` (Displays), `input.lua` (Input), `bindings.lua` (Keybindings), `shell.json` (Power, Date & Time, Appearance), `looknfeel.lua` (Appearance), the default terminal's config (Fonts), `mimeapps.list` (Default apps), `~/.ssh/config` and `~/.gitconfig` (SSH & Git), `hyprland.lua` (About). `karchy-launch-config-editor <path>` opens one in the user's editor, and creates a missing one from `/etc/skel` first.
 
 ## What needs a password
 

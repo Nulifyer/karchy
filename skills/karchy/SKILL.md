@@ -64,7 +64,8 @@ Read [references/privilege.md](references/privilege.md) before any change that n
 | --- | --- |
 | [references/layout.md](references/layout.md) | needs to know where a file lives, who owns it, or whether an edit survives an update. Also for hooks, the menu extension and dev mode |
 | [references/settings.md](references/settings.md) | changes something the Settings window shows: displays, input, power, notifications, default apps, security (passwords, fingerprint, FIDO2), SSH and git, date and time, appearance, fonts |
-| [references/hyprland.md](references/hyprland.md) | touches `~/.config/hypr`, keybindings, window rules, monitors, autostart, the bar, shell plugins, or needs a reload |
+| [references/keybindings.md](references/keybindings.md) | adds, changes, removes or looks up a keyboard shortcut. karchy has its own keybinding system with layers; use `karchy-settings-keybindings` |
+| [references/hyprland.md](references/hyprland.md) | touches `~/.config/hypr`, window rules, monitors, autostart, the bar, shell plugins, or needs a reload |
 | [references/themes.md](references/themes.md) | sets, installs, makes or adjusts a theme, a background, the font or the text size |
 | [references/privilege.md](references/privilege.md) | needs root, or meets a password prompt it did not expect |
 | [references/packages.md](references/packages.md) | installs or removes software, runs an update, changes the release channel, or uses Quick install or the AUR |

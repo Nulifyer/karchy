@@ -12,27 +12,13 @@ Make every Hyprland change in layer 3, or through a `karchy-settings-*` command 
 
 ## Before you edit
 
-- Read the default that you want to change. For a key, read `/usr/share/karchy/karchy/hypr/bindings.lua`. For look and feel, read `/usr/share/karchy/default/hypr/looknfeel.lua`. For input, read `default/hypr/input.lua`.
+- Read the default that you want to change. For a key, run `karchy-settings-keybindings list` ([keybindings.md](keybindings.md)). For look and feel, read `/usr/share/karchy/default/hypr/looknfeel.lua`. For input, read `default/hypr/input.lua`.
 - If the value is a display, keyboard, mouse or touchpad setting that Settings shows, prefer the Settings command ([settings.md](settings.md)). Use `~/.config/hypr` when Settings does not offer the value, or when the user wants the rule in their own file.
 - Check that the user's file does not already set the value.
 
 ## Keybindings
 
-The complete default set is in `/usr/share/karchy/karchy/hypr/bindings.lua`. Media, volume, brightness and clipboard keys are in `default/hypr/bindings/`. Super+K opens the keybinding viewer (`karchy menu keybindings`), which lists what is bound now.
-
-Write the user's bindings in `~/.config/hypr/bindings.lua` with karchy's helpers:
-
-```lua
-o.bind("SUPER + SHIFT + R", "SSH", "footclient ssh my-server")          -- add
-o.rebind("SUPER + E", "File manager", "karchy-launch-files ~/Projects") -- replace a default
-hl.unbind("SUPER + K")                                                  -- remove a default
-```
-
-- The second argument is the description that the keybinding viewer shows. Always give one.
-- The third argument is a shell command (a string) or a Hyprland dispatcher such as `hl.dsp.window.close()`.
-- Use `o.rebind` for a key that karchy already binds. `o.bind` on a taken key adds a second action to the key.
-- Before you add a binding, check that the key is free: search `bindings.lua` and the user's file for the key.
-- To undo, delete the line. karchy's default returns.
+karchy has a keybinding system with layers and an editor (Settings › Keybindings, Super+K). Read [keybindings.md](keybindings.md) before you add, change or remove a shortcut: use `karchy-settings-keybindings`, not a hand edit, unless the user keeps their own `~/.config/hypr/bindings.lua`.
 
 ## Monitors, input, look, autostart
 
