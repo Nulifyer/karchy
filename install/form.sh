@@ -158,7 +158,6 @@ form_run() {
     channel_published "$channel" && channels+=("$channel")
   done
   ((${#channels[@]} > 0)) || die "karchy's package repositories at $KARCHY_REPO_SERVER can't be reached; nothing was changed. Check the network and run karchy-install again."
-  ((${#channels[@]} == 3)) || header+=$'\n'"Channels with no release yet aren't listed."
   KARCHY_CHANNEL=$(gum choose --header "$header" --selected "${channels[0]}" "${channels[@]}") || form_cancel
   form_screen
 
