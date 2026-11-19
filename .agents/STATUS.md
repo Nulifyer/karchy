@@ -72,7 +72,7 @@ Local commits on `main`, not pushed. Tested in VM `inst` with packages built fro
 - **Seen:** the four installs (encrypted; not encrypted; encrypted with a second disk chosen and a third kept; the fallback), the interactive form's new screens, hibernate and resume in both modes, the lock screen with the shared password entry. Details and what was not tested are in the decision rows.
 - **Found, not fixed (outside this work):** in `inst`, a VM that resumed from hibernation resets about a minute later, in both modes. The resume itself works (same `boot_id`, session kept). Writing `V` to `/dev/watchdog0` right after resume prevents the reset, so it is the VM's emulated iTCO watchdog (`<watchdog model='itco' action='reset'>`) running after resume while the kernel reports it inactive. Whether real Intel hardware does the same is not known.
 - **Found, not fixed:** the installer's bees question is wider than an 80-column screen and is cut at the right edge.
-- **For the user:** fingerprint. Enrolment is in the menu (Setup › Security › Set Up Fingerprint, shown with a reader), not in the Settings window. It unlocks polkit prompts and the lock screen (D-79). The login screen takes the password only; adding the reader there needs a decision, since a fingerprint login can't open the keyring on an install without encryption.
+- **For the user:** fingerprint. Enrolment is in Settings › Security (shown with a reader; D-133). It unlocks polkit prompts and the lock screen (D-79). The login screen takes the password only; adding the reader there needs a decision, since a fingerprint login can't open the keyring on an install without encryption.
 
 ## Current batch
 

@@ -26,6 +26,7 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 ```text
 shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they land
 tools/quick-install-search-check   # the Quick install window's search ranking, against the real list
+bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, en/menu.json agrees
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
 ```
 
@@ -81,7 +82,7 @@ Both machines:
 
 Desktop (RTX 5080, Ryzen 7 3700X):
 - `pacman -Q linux-cachyos` comes from `cachyos-v3`.
-- Firmware: Update Firmware lists devices; with Secure Boot on, a BIOS update applies (the signed `fwupdx64.efi.signed` is used).
+- Firmware: the Updates window's "Check for firmware updates…" lists devices; with Secure Boot on, a BIOS update applies (the signed `fwupdx64.efi.signed` is used).
 - Both monitors at their full refresh rate; HDMI color and refresh look right; VRR and 10-bit where the monitors take them.
 - Suspend and resume work; Hibernate is not offered. To check NVIDIA issue #1343 once a driver says it's fixed: save everything, then follow the test in .agents/research/docs-audit/nvidia-hibernation.md (resume keeps the session, `boot_id` unchanged, no `nv_pmops_freeze -5`).
 - Idle VRAM use (`nvidia-smi`) with the desktop running; only act if it's gigabytes.
@@ -91,7 +92,7 @@ Desktop (RTX 5080, Ryzen 7 3700X):
 Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/pre-laptop/03-framework-readiness.md` §5):
 - `pacman -Q linux-cachyos` comes from `cachyos-znver4` (Ryzen 7040).
 - First boot: run the command block in `03-framework-readiness.md` §3.3 (failed units, kernel versions, command line, swap and resume offset, sleep states, power profiles); every line matches its comment. Then take a named snapshot.
-- Firmware: Update Firmware lists devices; decline System Firmware 3.20 (bricked boards reported, see `03-framework-readiness.md`).
+- Firmware: the Updates window's "Check for firmware updates…" lists devices; decline System Firmware 3.20 (bricked boards reported, see `03-framework-readiness.md`).
 - Back up the LUKS header to the NAS (`docs/recovery.md`).
 - Wi-Fi: the network joined on the install media connects at the first boot without asking (the installer carries it over; a real connect was never tested in a VM). Then connect to another network from the network panel, reboot, and confirm it reconnects. `iw reg get` shows your country and the link is on 5 or 6 GHz.
 - Bluetooth: pair headphones and a mouse; check the headset microphone.
