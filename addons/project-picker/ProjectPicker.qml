@@ -41,12 +41,9 @@ Item {
   readonly property int cardWidth: Math.min(Style.space(720), panel.width - Style.gapsOut * 2)
   readonly property int cardHeight: Math.min(Style.space(500), panel.height - Style.gapsOut * 2)
   readonly property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", Commons.Color.menu.selectedBorder, 0)
-  // Secondary text and errors use the shell's derived roles where it has them
-  // (karchy), else the menu text at reduced opacity and the theme's red.
-  readonly property color quietText: typeof Commons.Color.secondaryText === "function"
-    ? Commons.Color.secondaryText(Commons.Color.menu.text, Commons.Color.menu.background)
-    : Util.alpha(Commons.Color.menu.text, 0.55)
-  readonly property color errorColor: Commons.Color.status ? Commons.Color.status.error : Commons.Color.urgent
+  // Secondary text and errors use the shell's derived roles.
+  readonly property color quietText: Commons.Color.secondaryText(Commons.Color.menu.text, Commons.Color.menu.background)
+  readonly property color errorColor: Commons.Color.status.error
   readonly property var newProjectRow: ({ newProject: true, name: "", path: "", displayPath: "" })
 
   function displayPath(path) {

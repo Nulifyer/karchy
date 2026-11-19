@@ -53,13 +53,12 @@ publish() {  # publish <state> <reason> [until]
     --arg device "$net_device" --arg name "$net_name" --arg uuid "$net_uuid" --arg type "$net_type" \
     --argjson trusted "$net_trusted" --arg trust "$net_trust" \
     --arg tunnel "$VPN_CONNECTION" --arg interface "$VPN_INTERFACE" \
-    --arg until "$until" --arg integration "$NV_INTEGRATION" '
+    --arg until "$until" '
     {version: 1, mode: $mode, state: $state, reason: $reason,
      network: (if $device == "" then null else
        {device: $device, name: $name, uuid: $uuid, type: $type, trusted: $trusted, trust: $trust} end),
      tunnel: {name: $tunnel, interface: $interface},
-     until: (if $until == "" then null else ($until | tonumber) end),
-     integration: $integration}')
+     until: (if $until == "" then null else ($until | tonumber) end)}')
   # Rewritten only when something changed, so watchers wake only for news.
   # "since" is when the state last changed.
   if [[ -n $previous ]] && [[ $(jq -c 'del(.since)' <<<"$previous" 2>/dev/null) == "$new" ]]; then

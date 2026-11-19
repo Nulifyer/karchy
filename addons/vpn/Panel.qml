@@ -20,8 +20,6 @@ Panel {
   // `nulifyer-vpn setup` writes /etc/nulifyer-vpn/config (world-readable);
   // until then the VPN is installed but not set up.
   property bool configured: false
-  // The theme's green from colors.toml, for shells without status roles.
-  property color themeGreen: Commons.Color.accent
   property bool cursorActive: false
   property string focusSection: "header"
   property int modeIndex: 1
@@ -31,17 +29,12 @@ Panel {
   readonly property string policyMode: String(vpnInfo.mode || vpnInfo.intent || "off")
   readonly property bool busy: modeProcess.running
   // The panel sits on the popups surface, so its text takes that surface's
-  // color. Status, error and secondary text use the shell's derived roles
-  // where it has them (karchy), else the theme's green and red and a darker
-  // text color as before.
-  readonly property bool hasStatusRoles: Commons.Color.status !== undefined
+  // color; status, error and secondary text use the shell's derived roles.
   readonly property color foreground: Commons.Color.popups.text
-  readonly property color success: hasStatusRoles ? Commons.Color.status.success : themeGreen
-  readonly property color urgent: hasStatusRoles ? Commons.Color.status.error : (bar ? bar.urgent : Commons.Color.urgent)
-  readonly property bool hasTextRoles: typeof Commons.Color.secondaryText === "function"
-  readonly property color dim: hasTextRoles
-    ? Commons.Color.secondaryText(foreground, Commons.Color.popups.background) : Qt.darker(foreground, 1.4)
-  readonly property color labelColor: hasTextRoles ? dim : Util.alpha(foreground, 0.6)
+  readonly property color success: Commons.Color.status.success
+  readonly property color urgent: Commons.Color.status.error
+  readonly property color dim: Commons.Color.secondaryText(foreground, Commons.Color.popups.background)
+  readonly property color labelColor: dim
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   readonly property color iconColor: connected ? success
     : vpnInfo.state === "failed" || vpnInfo.state === "unknown" ? urgent
@@ -80,11 +73,6 @@ Panel {
       handshakeAge: -1,
       statusAge: -1
     }
-  }
-
-  function loadThemeGreen(raw) {
-    var match = String(raw || "").match(/^\s*green\s*=\s*["'](#[0-9A-Fa-f]{6})["']/m)
-    themeGreen = match ? match[1] : Commons.Color.accent
   }
 
   // The live details come from the package's status helper, which only
@@ -208,8 +196,8 @@ Panel {
 
   function dnsText() {
     if (vpnInfo.dnsMode === "vpn") return "VPN · " + (vpnInfo.dnsServer || "Private")
-    if (vpnInfo.dnsMode === "doh") return "DNS over HTTPS"
-    if (vpnInfo.dnsMode === "dhcp") return "DHCP"
+    // Off the tunnel, DNS is whatever Settings › Network sets.
+    if (vpnInfo.dnsMode === "network") return "Network settings"
     if (vpnInfo.dnsMode === "blocked") return "Waiting for VPN"
     if (vpnInfo.dnsMode === "unavailable") return "Unavailable"
     return "Unknown"
@@ -307,15 +295,6 @@ Panel {
     running: !root.statusPresent
     repeat: true
     onTriggered: { configFile.reload(); statusFile.reload() }
-  }
-
-  FileView {
-    // Only needed where the shell has no status roles (Omarchy).
-    path: root.hasStatusRoles ? "" : Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
-    watchChanges: true
-    printErrors: false
-    onLoaded: root.loadThemeGreen(text())
-    onFileChanged: reload()
   }
 
   Process {

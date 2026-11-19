@@ -26,10 +26,6 @@ OPTIONAL = {
     "TRUSTED_INTERFACE": "", "TRUSTED_GATEWAY": "", "HOME_LAN": "yes", "HANDSHAKE_MAX_AGE": "150",
     "CONNECT_TIMEOUT": "30",
 }
-# Accepted and dropped: settings for stock Omarchy (trust and DNS come from
-# karchy) and from 1.x (the status no longer expires, and the router's DNS
-# comes from the network itself).
-RETIRED = {"STATUS_MAX_AGE", "TRUSTED_DNS", "INTEGRATION", "TRUSTED_UUIDS", "DOH_IPV4"}
 UNITS = ["nulifyer-vpn-guard.service", "nulifyer-vpn-policy.path"]
 
 
@@ -49,8 +45,6 @@ def parse(text):
         key, value = parts[0].split("=", 1)
         if key in values:
             fail(f"{key} is set twice")
-        if key in RETIRED:
-            continue
         if key not in REQUIRED and key not in OPTIONAL:
             fail(f"unknown setting {key}")
         values[key] = value

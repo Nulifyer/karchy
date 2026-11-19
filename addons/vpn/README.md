@@ -118,7 +118,7 @@ changes (never on a timer), so a bar or panel can watch it instead of polling:
  "network": {"device": "wlan0", "name": "CoffeeBar", "uuid": "…", "type": "wifi",
              "trusted": false, "trust": "not trusted"},
  "tunnel": {"name": "wgclient", "interface": "wgclient"},
- "until": null, "integration": "karchy", "since": 1794700000}
+ "until": null, "since": 1794700000}
 ```
 
 | state | reason | Internet |

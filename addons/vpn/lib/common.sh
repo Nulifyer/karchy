@@ -34,9 +34,6 @@ nv_load_config() {
   CONNECT_TIMEOUT=30
   # shellcheck source=/dev/null
   source "$NV_CONFIG"
-  # Trust and upstream DNS come from karchy (karchy-trusted-networks and
-  # karchy-network-dns); the package is built only for karchy.
-  NV_INTEGRATION=karchy
 }
 
 nv_write_atomic() {

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The Omarchy bar widget's view of the VPN: the published status
+# The bar widget's view of the VPN: the published status
 # (/run/nulifyer-vpn/status) plus live tunnel details. The widget runs it when
 # the status file changes, and while its panel is open. Other readers use the
 # status file itself (see README, "Status").
@@ -65,8 +65,7 @@ jq -c --arg legacy "$legacy" --arg vpnNm "$vpn_nm" --arg vpnIp "$vpn_ip" --arg g
                   elif $s.state == "off" or $s.state == "standing-by" and $s.reason == "trusted" then "direct"
                   elif $s.state == "unknown" then "unknown" else "blocked" end),
       dnsMode: (if $s.state == "protecting" then "vpn"
-                elif $s.state == "off" or $s.state == "standing-by" and $s.reason == "trusted" then
-                  (if $s.integration == "karchy" then "network" elif $n.trusted then "dhcp" else "doh" end)
+                elif $s.state == "off" or $s.state == "standing-by" and $s.reason == "trusted" then "network"
                 elif $s.state == "unknown" then "unknown" else "blocked" end),
       dnsServer: "",
       handshakeAge: $handshakeAge, statusAge: 0
