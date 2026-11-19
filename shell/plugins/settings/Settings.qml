@@ -111,7 +111,7 @@ Item {
     var w = m ? m.width / m.scale : 1280
     var h = m ? m.height / m.scale : 800
     if (m && (m.transform || 0) % 2 === 1) { var t = w; w = h; h = t }
-    return { width: Math.round(Math.min(Style.space(900), w * 0.85)), height: Math.round(Math.min(Style.space(640), h * 0.85)) }
+    return { width: Math.round(Math.min(Style.space(900), w * 0.85)), height: Math.round(Math.min(Style.space(680), h * 0.85)) }
   }
 
   Timer {
@@ -206,13 +206,14 @@ Item {
     visible: root.opened
     title: "karchy Settings"
     color: Commons.Color.background
-    // Fit the screen it opens on: 900×640 where there is room, less where not.
+    // Fit the screen it opens on: 900×680 where there is room (the height
+    // that shows every page in the list), less where not.
     readonly property var fitScreen: Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
       ? Hyprland.focusedMonitor.lastIpcObject : null
     readonly property real screenWidth: fitScreen ? fitScreen.width / fitScreen.scale : 1280
     readonly property real screenHeight: fitScreen ? fitScreen.height / fitScreen.scale : 800
     implicitWidth: Math.round(Math.min(Style.space(900), screenWidth * 0.85))
-    implicitHeight: Math.round(Math.min(Style.space(640), screenHeight * 0.85))
+    implicitHeight: Math.round(Math.min(Style.space(680), screenHeight * 0.85))
 
     onVisibleChanged: {
       if (!visible && root.opened) root.close()
@@ -255,46 +256,70 @@ Item {
             Layout.bottomMargin: Style.spacing.lg
           }
 
-          Repeater {
-            id: navRepeater
-            model: root.sections
-            delegate: Button {
-              required property var modelData
-              required property int index
-              Layout.fillWidth: true
-              // Where the group changes: room above, with a thin rule in it.
-              readonly property bool startsGroup: index > 0 && root.sections[index - 1].group !== modelData.group
-              Layout.topMargin: startsGroup ? Style.spacing.lg : 0
-              Rectangle {
-                visible: parent.startsGroup
-                anchors.left: parent.left
-                anchors.right: parent.right
-                y: -Math.round((Style.spacing.lg + Style.spacing.sm) / 2) - height
-                height: Math.max(1, Style.space(1))
-                color: Util.alpha(Commons.Color.foreground, 0.12)
+          // The pages. On a screen too low for all of them the list scrolls,
+          // and the one the keyboard is on is brought into view.
+          Flickable {
+            id: navList
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            contentWidth: width
+            contentHeight: navColumn.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+
+            function reveal(item) {
+              var top = item.y - Style.spacing.lg, bottom = item.y + item.height + Style.spacing.lg
+              var maxY = Math.max(0, contentHeight - height)
+              if (top < contentY) contentY = Math.max(0, top)
+              else if (bottom > contentY + height) contentY = Math.min(maxY, bottom - height)
+            }
+
+            ColumnLayout {
+              id: navColumn
+              width: navList.width
+              spacing: Style.spacing.sm
+
+              Repeater {
+                id: navRepeater
+                model: root.sections
+                delegate: Button {
+                  required property var modelData
+                  required property int index
+                  Layout.fillWidth: true
+                  onActiveFocusChanged: if (activeFocus) navList.reveal(this)
+                  // Where the group changes: room above, with a thin rule in it.
+                  readonly property bool startsGroup: index > 0 && root.sections[index - 1].group !== modelData.group
+                  Layout.topMargin: startsGroup ? Style.spacing.lg : 0
+                  Rectangle {
+                    visible: parent.startsGroup
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    y: -Math.round((Style.spacing.lg + Style.spacing.sm) / 2) - height
+                    height: Math.max(1, Style.space(1))
+                    color: Util.alpha(Commons.Color.foreground, 0.12)
+                  }
+                  focusable: true
+                  function step(dy) {
+                    var next = index + dy
+                    if (next < 0 || next >= root.sections.length) return
+                    root.section = root.sections[next].id
+                    root.focusSection(next)
+                  }
+                  Keys.onUpPressed: step(-1)
+                  Keys.onDownPressed: step(1)
+                  Keys.onPressed: function(event) {
+                    if (event.text === "k") { step(-1); event.accepted = true }
+                    else if (event.text === "j") { step(1); event.accepted = true }
+                  }
+                  leftAlign: true
+                  iconText: Icons.glyph(modelData.iconName)
+                  text: modelData.label
+                  selected: root.section === modelData.id
+                  onClicked: root.section = modelData.id
+                }
               }
-              focusable: true
-              function step(dy) {
-                var next = index + dy
-                if (next < 0 || next >= root.sections.length) return
-                root.section = root.sections[next].id
-                root.focusSection(next)
-              }
-              Keys.onUpPressed: step(-1)
-              Keys.onDownPressed: step(1)
-              Keys.onPressed: function(event) {
-                if (event.text === "k") { step(-1); event.accepted = true }
-                else if (event.text === "j") { step(1); event.accepted = true }
-              }
-              leftAlign: true
-              iconText: Icons.glyph(modelData.iconName)
-              text: modelData.label
-              selected: root.section === modelData.id
-              onClicked: root.section = modelData.id
             }
           }
-
-          Item { Layout.fillHeight: true }
         }
       }
 
