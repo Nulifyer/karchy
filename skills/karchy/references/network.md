@@ -14,7 +14,7 @@ Each job has one owner. Change a setting through its owner, not around it.
 | Which networks are trusted | karchy | `karchy-trusted-networks set` |
 | `.local` names and announcements | avahi, switched by karchy | Follows trust. No setting |
 | Incoming firewall rules | ufw | `sudo ufw ...` for the user's own rules |
-| VPN tunnel, its DNS and kill switch | the `karchy-vpn` package, when installed | The `karchy-vpn` skill |
+| VPN tunnel, its DNS and kill switch | the `karchy-vpn` package, when installed | Leave it alone: the user changes it in the VPN panel or Settings › Network › VPN |
 
 ## Reading the state
 
@@ -75,4 +75,4 @@ karchy detects a captive portal and opens a sign-in window (`karchy-network-capt
 
 ## VPN
 
-Without the `karchy-vpn` package, `karchy-network-vpn switch <uuid> on|off` connects a NetworkManager VPN or WireGuard profile, and `karchy-network-vpn import <file.conf>` adds a WireGuard profile. With `karchy-vpn` installed (`pacman -Q karchy-vpn`), use the `karchy-vpn` skill. The VPN and the firewall are system-level changes: plan them with the user.
+Without the `karchy-vpn` package, `karchy-network-vpn switch <uuid> on|off` connects a NetworkManager VPN or WireGuard profile, and `karchy-network-vpn import <file.conf>` adds a WireGuard profile. With `karchy-vpn` installed (`pacman -Q karchy-vpn`), leave the VPN alone (see SKILL.md). The firewall is a system-level change: plan it with the user.

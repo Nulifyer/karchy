@@ -24,7 +24,7 @@ rfkill list
 4. Internet without names: `ping -c 3 1.1.1.1`.
 5. Names: `resolvectl query archlinux.org`.
 6. A sign-in page: `nmcli networking connectivity` prints `portal`.
-7. A VPN: if `karchy-vpn` is installed, `karchy-vpn status`. States `connecting`, `failed` and `paused` block ordinary traffic on purpose. Use the `karchy-vpn` skill.
+7. A VPN: if `karchy-vpn` is installed, `karchy-vpn status`. States `connecting`, `failed` and `paused` block ordinary traffic on purpose. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in its bar panel or in Settings › Network › VPN.
 
 ## DNS
 

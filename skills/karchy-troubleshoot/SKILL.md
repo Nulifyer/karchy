@@ -39,7 +39,7 @@ Ask what changed last: an update, a new package, a config edit, new hardware. `g
 | No internet, no name lookups, a sign-in page that does not open, a blocked port, slow network | [references/network.md](references/network.md) |
 | The user wants to file a bug, or the cause is karchy's own code | [references/reporting.md](references/reporting.md) |
 
-If `karchy-vpn` is installed and `karchy-vpn status` shows `connecting`, `failed` or `paused`, a blocked internet connection is the VPN's kill switch. Use the `karchy-vpn` skill.
+If `karchy-vpn` is installed and `karchy-vpn status` shows `connecting`, `failed` or `paused`, a blocked internet connection is the VPN's kill switch. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in its bar panel or in Settings › Network › VPN.
 
 ## Quick restarts
 

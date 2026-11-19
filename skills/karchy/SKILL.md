@@ -34,6 +34,10 @@ A snapshot covers the system, not `/home`. If a large change rewrites files in t
 
 If you cannot tell which kind a change is, treat it as large.
 
+## Leave the VPN alone
+
+If `karchy-vpn` is installed, don't change it: not its mode, its configuration, its kill switch or its units, and don't work around the kill switch. You may read `karchy-vpn status` to explain why the internet is blocked (`connecting`, `failed` or `paused` blocks ordinary traffic on purpose). Then tell the user, who changes the VPN in its bar panel or in Settings › Network › VPN.
+
 ## Never write under /usr/share/karchy
 
 Read `/usr/share/karchy` freely. It is the best documentation of how a feature works. Do not change anything in it, and do not change `/usr/bin/karchy-*` or `/usr/lib/karchy`.
