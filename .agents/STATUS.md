@@ -128,7 +128,6 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 
 - Try resizing the `karchy-disp` window in virt-manager (View › Scale Display › Auto resize VM with window) and say whether the desktop follows.
 
-- How the dotfiles user layer is set up on a karchy machine (open decision; recommended: you run `./dotfiles` yourself after installing). D-84 lists what karchy took from it.
 - Hardware: the checklist in `.agents/TESTING.md` › On the real machines, including the bees soak and hibernation tests (D-83, D-85); then tag stable `v0.1.0`.
 - Plugins port.
 - The narrow passwordless sudo rule for the browser theme color (`karchy-theme-browser`, Omarchy's rule) was added so theme switches don't ask for a password; the user may want to review it.
