@@ -33,6 +33,7 @@ the box; nothing you didn't ask for is installed.
 | 💾 | Disks and NAS | Internal drives mounted like Windows does; keep a network share mounted from the menu. |
 | 📡 | Sharing | LocalSend that only opens its port on networks you trust. |
 | 🖥️ | Made for your hardware | Laptops, NVIDIA GPUs and VMs are detected at install and get what they need. |
+| 🤖 | Ready for AI agents | Claude Code, Codex and other coding agents get skills that explain this system: how to change it safely, find a fault, and work with the features you installed. |
 | ⚡ | CachyOS kernel | CachyOS's optimized kernel and packages on top of Arch. |
 
 ## Install

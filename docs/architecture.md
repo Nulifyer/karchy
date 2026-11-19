@@ -17,6 +17,8 @@ karchy/
 ├── karchy/                   karchy's composition layer
 │   ├── hypr/                 init.lua, bindings.lua, autostart.lua
 │   └── shell.json            default bar layout and plugin list
+├── skills/                   agent skills, one folder each (SKILL.md and references/);
+│                             see Agent skills below
 ├── config/                   starter files for ~/.config, shipped in /etc/skel
 ├── system/                   /etc and /usr/lib files: sudoers, mkinitcpio, oomd, PAM,
 │                             uwsm env, greetd template, pacman repos and hooks…
@@ -205,6 +207,49 @@ One owner per job. NetworkManager connects; systemd-resolved resolves; avahi alo
 - VPN: with the package, "Set up VPN" is `karchy-network-vpn setup <uuid> [dns]`: it sets what the package needs on the user's own WireGuard profile (a fixed listen port, the VPN's DNS for every name, no autoconnect; no password), refuses a profile the package can't use in plain words (more than one peer, not a full tunnel, no IPv4 endpoint, no DNS server: exit 3, and the page asks for one), writes the package's configuration from the profile and hands it to `karchy-vpn setup`, whose root helper checks it again (an administrator's password, `org.karchy.vpn.configure`; no rule waives it). Then `karchy-vpn mode` and, for "Allow local devices on trusted networks", `karchy-network-vpn home-lan`, which hands the package's configuration with `HOME_LAN` changed to `karchy-vpn setup` (its own root helper checks it; an administrator's password). Without it, `karchy-network-vpn switch` connects NetworkManager's VPN and WireGuard profiles. `karchy-network-vpn import` adds a WireGuard `.conf` chosen in the portal's file chooser (`karchy-file-choose`) with `nmcli connection import`, under a valid interface name and with autoconnect off.
 
 **What the panel reports.** `karchy-network-status` describes the underlying link: the lowest-metric default route in the main table that isn't a tunnel (WireGuard, tun, IP-in-IP and GRE kinds, or no link layer), and separately a `vpn_*` block (name, interface, address, whether the internet goes through it). The panel keeps the Wi-Fi QR share and the real IP and gateway with a VPN up, shows the VPN as its own line, and names the speed test "Home-5G via VPN" when the tunnel carries it.
+
+## Agent skills (D-115)
+
+karchy ships [Agent Skills](https://agentskills.io) so an AI coding agent on the machine knows how karchy works: where its files are, which command owns a setting, and how much care a change needs. Each skill is a folder in `skills/` with a `SKILL.md` and, for topics only some tasks need, files in `references/`. A skill is installed by the package it describes, so an agent hears only about what is installed.
+
+| Skill | Installed by | Covers |
+| --- | --- | --- |
+| `karchy` | `karchy` | Customizing and running the system; holds the change rules the other skills refer to |
+| `karchy-troubleshoot` | `karchy` | Logs, core dumps, boot problems and rollback, hardware and network checks, bug reports |
+| `karchy-vms` | `karchy`, linked only while QEMU is installed | `karchy vm` and `~/VMs` |
+| `karchy-containers` | `karchy-containers` | Rootless Podman, the `docker` command and Compose |
+| `karchy-vpn` | `karchy-vpn` | The WireGuard VPN and its kill switch |
+
+Every package installs its skills into one folder, `/usr/share/karchy/agents/skills/<name>`. VMs are not a karchy package (Quick install adds QEMU itself, D-67), so `karchy-vms` ships in `karchy` with a `.requires` file naming `qemu-system-x86_64`; a skill with that file is linked only while each command in it is installed.
+
+`karchy-agent-skills` sets up one shared skills folder and links karchy's skills into it. Its header is the reference; in short:
+
+- `~/.agents/skills` is the machine's skills folder and is made if missing. Each karchy skill is a link there, `~/.agents/skills/<name>` → the packaged folder.
+- An agent that doesn't read `~/.agents/skills` has its own skills folder made a link to it, so every agent sees the same skills, the user's and karchy's, and nothing is relinked when a skill is added. Claude Code's `~/.claude/skills` is linked ahead of time, even before Claude Code is installed. The others (`FOLDER_AGENTS`: Antigravity, Kiro) are linked once the agent's config folder exists, so no dot-folders appear for agents the user never installs.
+- An agent that writes its own files into its skills folder never has it redirected. Hermes copies its bundled skills, a manifest and hub state into `~/.hermes/skills` (and each profile's `skills`), so karchy's skills are linked into those one by one (`EACH_AGENTS`). Codex keeps its built-in skills in `~/.codex/skills/.system` and reads `~/.agents/skills` itself, so nothing of Codex's is touched.
+- A skills folder that already exists as a real folder is not replaced, since it may hold things that aren't in `~/.agents/skills`. karchy's skills are linked into it one by one and a line says how to share it: `karchy agent skills --adopt` moves what the folder holds into `~/.agents/skills` and then makes it the link. Adopt overwrites nothing (a name taken by something different stops that folder's adoption and is listed) and runs only when asked. A skills folder that is a link to somewhere else is left alone.
+- It never replaces a skill of the same name that is the user's (a folder, or a link pointing elsewhere). It removes only its own per-skill links, when the skill's package is gone. A folder link is never removed.
+- If `~/.agents` is the user's git repository, a marked `skills/karchy*` line goes into its `.gitignore` once, or into `.git/info/exclude` when there is no `.gitignore`. Nothing is committed, and a line the user takes out is not put back (`~/.local/state/karchy/agent-skills-ignored` records that it was done).
+- karchy links no shared instructions file (`AGENTS.md`, `CLAUDE.md`) into any agent. Those are the user's.
+
+It runs from these places, all of which do nothing when the links are in place: the user unit `karchy-agent-skills.service` at session start; `karchy-agent-skills.path`, which watches the skills folder, so installing or removing a feature package with Quick install or pacman adds or removes its link at once; the end of `karchy update`; Quick install, after it installs an app of the `ai` category, so an agent installed just now is set up before its first run; `karchy-feature-vms`, after adding or removing QEMU; and the installer's user setup. No migration is needed per skill.
+
+Where each agent looks, from its documentation or source on 2026-11-18:
+
+| Agent | User-level skill folders | Reads `~/.agents/skills` | karchy does |
+| --- | --- | --- | --- |
+| Claude Code | `~/.claude/skills` ([docs](https://code.claude.com/docs/en/skills)); its claude.ai skill sync writes `synced/` and `.trash/` there | no | folder link, always |
+| Antigravity | `~/.gemini/config/skills` ([docs](https://antigravity.google/docs/skills)) | no (only in a workspace) | folder link when `~/.gemini/config` exists |
+| Kiro CLI | `~/.kiro/skills` ([docs](https://kiro.dev/docs/skills/)) | not documented | folder link when `~/.kiro` exists |
+| Hermes | `~/.hermes/skills`, `~/.hermes/profiles/<name>/skills` ([docs](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)); it writes its bundled skills there | only through `skills.external_dirs` in its config | per-skill links when the folder's parent exists |
+| Codex | `~/.agents/skills` ([docs](https://developers.openai.com/codex/skills)); built-ins in `~/.codex/skills/.system` | yes | nothing |
+| Gemini CLI | `~/.gemini/skills`, `~/.agents/skills` ([docs](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/skills.md)) | yes | nothing |
+| Pi | `~/.pi/agent/skills`, `~/.agents/skills` ([docs](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/docs/skills.md)) | yes | nothing |
+| OpenCode | `~/.config/opencode/skills`, `~/.claude/skills`, `~/.agents/skills` ([docs](https://opencode.ai/docs/skills/)) | yes | nothing |
+| GitHub Copilot CLI | `~/.copilot/skills`, `~/.agents/skills` ([docs](https://docs.github.com/en/copilot/concepts/agents/about-agent-skills)) | yes | nothing |
+| Cursor, Amp, Goose, Crush, Qwen Code, Cline, Droid, Kilo Code | their own folder and `~/.agents/skills` | yes | nothing |
+
+Of the coding agents in the Quick install catalog (Claude Code, Codex, Crush, Cursor, Gemini CLI, GitHub Copilot CLI, OpenCode), only Claude Code needs a link. To add an agent, put it in `FOLDER_AGENTS` (it writes nothing of its own into its skills folder) or `EACH_AGENTS` (it does) in `bin/karchy-agent-skills`, and add a row here. `tests/agent-skills.sh` runs the command in a made-up home; never run it against a real home to test it.
 
 ## karchy's Hyprland composition
 
