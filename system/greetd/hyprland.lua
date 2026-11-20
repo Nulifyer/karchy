@@ -38,6 +38,13 @@ hl.config({
   input = {
     kb_layout = vconsole.XKBLAYOUT or "us",
     kb_variant = vconsole.XKBVARIANT or "",
+    -- The desktop's default compose key (default/hypr/input.lua: Shift +
+    -- Caps Lock, from /etc/xkb), so a password chosen there with a composed
+    -- character, such as é on a US keyboard, can be typed here. Without the
+    -- option that password can't be entered at this screen at all. A compose
+    -- key someone picked in Settings › Input is in their home and can't be
+    -- read before they log in.
+    kb_options = "karchy:shift_caps_compose",
     numlock_by_default = true,
     touchpad = {
       natural_scroll = true,
