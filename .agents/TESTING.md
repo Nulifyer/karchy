@@ -35,6 +35,7 @@ tests/storage-helpers.sh system/storage   # Storage's root side: what the helper
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
 tests/users-settings.sh system/users/users-settings   # Settings › Users' root helper as a user: what it turns away, and, in a user namespace with a made-up /etc, the rules between several people and the greetd file automatic login writes
 podman run --rm --user 0 -v "$PWD":/repo:ro localhost/karchy-build:<hash> bash /repo/tests/users-accounts.sh   # the same helper making real accounts, as root in a throwaway container (it refuses to run anywhere else)
+tests/keyring-login.sh       # the login keyring's root hook (D-142), in a user namespace with a made-up /etc and a made-up oo7-cli: what it refuses, both directions, every interrupted state, the stale key; and the helper's mark and wish for automatic login. One check waits 10 seconds for the hook's time limit
 ```
 
 ## Full checks
