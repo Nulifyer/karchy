@@ -190,18 +190,31 @@ Item {
   }
 
   // Keep the focused control on screen as Tab walks down a long page.
+  //
+  // A control that holds the keyboard for something else says what to show
+  // with a `revealItem()` function: a list that is one Tab stop gives its
+  // current row, and nothing (null) when the pointer put the keyboard there,
+  // since what was clicked is on screen and must stay under the pointer.
+  // Without it the whole list was "revealed": a click on a row scrolled the
+  // page to the list's end or start, and the next click hit another row.
   function revealFocused(item) {
     var page = sectionLoader.item
     if (!item || !page) return
     for (var p = item; p && p !== page; p = p.parent) {}
     if (!p) return
+    if (typeof item.revealItem === "function") {
+      item = item.revealItem()
+      if (!item) return
+    }
     var margin = Style.spacing.lg
     var top = item.mapToItem(content.contentItem, 0, 0).y
     var bottom = top + item.height
     var maxY = Math.max(0, content.contentHeight - content.height)
+    // Something taller than the view is shown from its start.
+    var fits = item.height + margin * 2 <= content.height
     if (top - margin < content.contentY) content.contentY = Math.max(0, top - margin)
     else if (bottom + margin > content.contentY + content.height)
-      content.contentY = Math.min(maxY, bottom + margin - content.height)
+      content.contentY = Math.min(maxY, fits ? bottom + margin - content.height : top - margin)
   }
 
   FloatingWindow {

@@ -107,6 +107,15 @@ ColumnLayout {
     if (item && root.settings) root.settings.revealFocused(item)
   }
 
+  // A click selects the row where it is: the list takes the keyboard without
+  // the page scrolling (list.revealItem).
+  function selectByPointer(id) {
+    root.currentId = id
+    list.byPointer = true
+    list.forceActiveFocus()
+    list.byPointer = false
+  }
+
   // The keys a row is known by to the command: what it has, or had.
   function rowKeys(row) { return row.keys !== "" ? row.keys : row.firstKeys }
 
@@ -122,6 +131,8 @@ ColumnLayout {
     root.captureConflicts = []
     root.confirming = false
     catcher.forceActiveFocus()
+    // The row's "Press the new key combination" line, once it is laid out.
+    if (kind === "change" || kind === "another") revealSoon.restart()
   }
 
   function endCapture(returnFocus) {
@@ -263,6 +274,9 @@ ColumnLayout {
     width: 0
     height: 0
     focus: false
+    // It sits at the top of the page; what is being changed is elsewhere
+    // (Settings.revealFocused).
+    function revealItem() { return null }
     onActiveFocusChanged: if (!activeFocus && root.capture !== "" && !root.confirming) {
       if (root.capture === "record") root.recording = root.recordedKeys !== ""
       root.endCapture(false)
@@ -520,7 +534,10 @@ ColumnLayout {
     Accessible.role: Accessible.List
     Accessible.name: "Keybindings"
 
-    onActiveFocusChanged: if (activeFocus) root.reveal()
+    // What Settings keeps in view when the keyboard comes here: the current
+    // row, or nothing after a click (root.selectByPointer).
+    property bool byPointer: false
+    function revealItem() { return byPointer ? null : (root.rowItems[root.currentId] || null) }
     Keys.onUpPressed: root.move(-1)
     Keys.onDownPressed: root.move(1)
     // A held key repeats: the Enter that accepted a capture must not start
@@ -582,7 +599,7 @@ ColumnLayout {
                 id: rowMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: { root.currentId = rowItem.modelData.id; list.forceActiveFocus() }
+                onClicked: root.selectByPointer(rowItem.modelData.id)
                 onDoubleClicked: { root.currentId = rowItem.modelData.id; root.startCapture("change") }
               }
 
