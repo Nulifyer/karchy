@@ -20,9 +20,10 @@ import qs.Commons as Commons
 // heading over the first row of each run of options that share it.
 //
 // Keyboard: Tab to focus the trigger, Enter/Space opens (search focused
-// immediately). Down arrow from the search jumps to the first match;
-// Up from the first match returns to the search. Enter selects, Esc
-// closes (and clears the filter).
+// immediately). The list opens at the present choice, with the cursor on
+// it. Down arrow from the search goes to it, or to the first match once
+// something is typed; Up from the first row returns to the search. Enter
+// selects, Esc closes (and clears the filter).
 //
 // Where the window has too little room under the trigger the popup opens
 // over it, mirrored: the search stays next to the trigger, the first match
@@ -265,6 +266,7 @@ Item {
         onOpened: {
           searchField.text = ""
           root.recomputeFiltered()
+          resultList.showChosen()
           Qt.callLater(function() { searchField.forceActiveFocus() })
         }
         onClosed: searchField.text = ""
@@ -298,16 +300,20 @@ Item {
                   popup.close(); event.accepted = true
                 } else if (event.key === (popup.above ? Qt.Key_Up : Qt.Key_Down)) {
                   // Toward the list, which is over the search in a popup
-                  // that opened upward.
+                  // that opened upward: the first match, or with nothing
+                  // typed the row the list opened at.
                   if (resultList.count > 0) {
-                    resultList.currentIndex = 0
+                    if (searchField.text !== "" || resultList.currentIndex < 0) resultList.currentIndex = 0
                     resultList.forceActiveFocus()
                   }
                   event.accepted = true
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                  // Enter takes the first match. With nothing typed the row
+                  // under the cursor is the present choice: nothing changes.
                   if (resultList.count > 0) {
-                    resultList.currentIndex = 0
-                    resultList.selectCurrent()
+                    if (searchField.text !== "" || resultList.currentIndex < 0) resultList.currentIndex = 0
+                    if (root.optionValue(root.filtered[resultList.currentIndex]) === root.value) popup.close()
+                    else resultList.selectCurrent()
                   }
                   event.accepted = true
                 }
@@ -348,6 +354,19 @@ Item {
               keyNavigationEnabled: false
               // The first match is always the one next to the search.
               verticalLayoutDirection: popup.above ? ListView.BottomToTop : ListView.TopToBottom
+
+              // A list opens at the present choice, in view with the
+              // cursor on it: a long list (the timezones) opened at its
+              // first row, far from the one in use. Without a choice among
+              // the options, the first row.
+              function showChosen() {
+                var at = -1
+                for (var i = 0; i < root.filtered.length && at < 0; i++)
+                  if (root.optionValue(root.filtered[i]) === root.value) at = i
+                currentIndex = at >= 0 ? at : (count > 0 ? 0 : -1)
+                if (at >= 0) positionViewAtIndex(at, ListView.Center)
+                else positionViewAtBeginning()
+              }
 
               function selectCurrent() {
                 if (currentIndex < 0 || currentIndex >= root.filtered.length) return
