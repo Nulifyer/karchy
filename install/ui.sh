@@ -37,6 +37,7 @@ ui_init() {
   UI_BOLD=$'\033[1m' UI_RESET=$'\033[0m'
 
   if [[ ${TERM:-} == linux ]]; then
+    ui_console_quiet
     ui_console_font
     local i
     for i in "${!KARCHY_UI_PALETTE[@]}"; do
@@ -70,6 +71,48 @@ gum() {
   else
     command gum "$@"
   fi
+}
+
+# The kernel prints its messages on the Linux console, over whatever is drawn
+# there: the live system's kernel line sets no level, so the kernel's default
+# holds and every error appears (a line such as "EXT4-fs (vda2): VFS: Can't
+# find ext4 filesystem" then sits on the progress screen until the end).
+# While the installer draws, only a kernel panic reaches the screen;
+# ui_console_restore, from the caller's EXIT trap, puts the level back for
+# the shell. Nothing is lost: the messages stay in the kernel's log, and the
+# installer copies the errors of the install into its own log
+# (ui_kernel_log).
+UI_PRINTK=""
+
+ui_console_quiet() {
+  local level
+  read -r level _ </proc/sys/kernel/printk 2>/dev/null || return 0
+  [[ $level =~ ^[0-9]+$ ]] || return 0
+  dmesg --console-level 1 2>/dev/null || return 0
+  UI_PRINTK=$level
+}
+
+ui_console_restore() {
+  [[ -n $UI_PRINTK ]] || return 0
+  dmesg --console-level "$UI_PRINTK" 2>/dev/null || true
+  UI_PRINTK=""
+}
+
+# The kernel's errors since the install log was opened (karchy-install sets
+# UI_KERNEL_LOG_FROM then), for that log: what ui_console_quiet kept off the
+# screen. Once.
+UI_KERNEL_LOG_FROM=""
+
+ui_kernel_log() {
+  local lines
+  [[ -n $UI_KERNEL_LOG_FROM ]] || return 0
+  lines=$(journalctl --dmesg --priority err --since "@$UI_KERNEL_LOG_FROM" --no-pager --quiet --output short 2>/dev/null) || true
+  UI_KERNEL_LOG_FROM=""
+  [[ -n $lines ]] || return 0
+  {
+    echo "$(date +%H:%M:%S) Kernel errors during the install:"
+    printf '%s\n' "$lines"
+  } >>"$KARCHY_INSTALL_LOG"
 }
 
 # The Linux console: karchy's monospace font in the size that suits the

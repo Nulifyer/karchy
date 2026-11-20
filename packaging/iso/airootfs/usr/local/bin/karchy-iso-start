@@ -25,6 +25,9 @@ source "$KARCHY_SRC/install/lib.sh"
 # shellcheck source=/dev/null
 source "$KARCHY_SRC/install/ui.sh"
 ui_init
+# ui_init keeps the kernel's messages off these screens; the shell that
+# follows gets them back.
+trap ui_console_restore EXIT
 
 boot_param() {
   local param

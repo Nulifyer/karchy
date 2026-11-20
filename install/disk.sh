@@ -122,7 +122,7 @@ disk_data_encrypt() {
     # A new, empty disk for the person installing: theirs to write to.
     local mount
     mount=$(mktemp -d)
-    mount "/dev/mapper/$LUKS_MAPPER" "$mount"
+    mount -t btrfs "/dev/mapper/$LUKS_MAPPER" "$mount"
     chown "$uid:$gid" "$mount"
     umount "$mount"
     rmdir "$mount"
@@ -135,7 +135,12 @@ disk_filesystems() {
   mkfs.fat -F 32 -n EFI "$KARCHY_ESP"
   mkfs.btrfs --force --label karchy "$KARCHY_ROOT_DEV"
 
-  mount "$KARCHY_ROOT_DEV" "$KARCHY_MNT"
+  # Every mount of a filesystem made here names its type. Left to find it
+  # out, mount can end up trying each filesystem the kernel knows in turn, and
+  # the kernel prints an error on the console for each that doesn't fit
+  # ("EXT4-fs (vda2): VFS: Can't find ext4 filesystem", over the installer's
+  # screen).
+  mount -t btrfs "$KARCHY_ROOT_DEV" "$KARCHY_MNT"
   local entry
   for entry in "${KARCHY_SUBVOLUMES[@]}"; do
     btrfs subvolume create "$KARCHY_MNT/${entry%%:*}"
@@ -156,13 +161,13 @@ disk_mount() {
       options="noatime,subvol=/$name"
     fi
     mkdir -p "$target"
-    mount -o "$options" "$KARCHY_ROOT_DEV" "$target"
+    mount -t btrfs -o "$options" "$KARCHY_ROOT_DEV" "$target"
   done
   # New subvolumes are 0755; these two need their usual modes.
   chmod 0700 "$KARCHY_MNT/root"
   chmod 1777 "$KARCHY_MNT/var/tmp" 2>/dev/null || true
   mkdir -p "$KARCHY_MNT/boot"
-  mount -o fmask=0077,dmask=0077 "$KARCHY_ESP" "$KARCHY_MNT/boot"
+  mount -t vfat -o fmask=0077,dmask=0077 "$KARCHY_ESP" "$KARCHY_MNT/boot"
 }
 
 # Swap file sized to RAM so laptop hibernation stays possible (D-10, D-32).

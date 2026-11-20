@@ -24,8 +24,9 @@ source "$KARCHY_SRC/install/disk.sh"
 source "$KARCHY_SRC/install/base.sh"
 source "$KARCHY_SRC/install/setup.sh"
 trap on_error ERR
-# However the installer ends: no clock left running, and the cursor back.
-trap 'ui_ticker_stop; [[ $KARCHY_UI != tui ]] || ui_out $'"'"'\033[?25h'"'"'' EXIT
+# However the installer ends: no clock left running, the cursor back, the
+# kernel's messages of the install in the log and on the console again.
+trap 'ui_ticker_stop; [[ $KARCHY_UI != tui ]] || ui_out $'"'"'\033[?25h'"'"'; ui_kernel_log; ui_console_restore' EXIT
 
 config_file=""
 reboot_after=false
@@ -141,6 +142,7 @@ finish() {
 
 : >"$KARCHY_INSTALL_LOG"
 chmod 600 "$KARCHY_INSTALL_LOG"
+UI_KERNEL_LOG_FROM=$(date +%s)
 ui_init
 preflight
 
@@ -185,6 +187,7 @@ step "Link resolv.conf" base_resolved_link
 steps_run
 
 unset KARCHY_PASSWORD
+ui_kernel_log
 install -Dm 0600 "$KARCHY_INSTALL_LOG" "$KARCHY_MNT/var/log/karchy-install.log"
 swapoff "$KARCHY_MNT/swap/swapfile" || true
 umount -R "$KARCHY_MNT"
