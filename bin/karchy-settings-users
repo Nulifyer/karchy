@@ -75,8 +75,10 @@ password_from_install() {
   installed=$(install_answer KARCHY_INSTALLED)
   [[ $installed =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]] || return 1
   [[ $(head -n 1 "$CHANGED_MARK" 2>/dev/null) != "$installed" ]] || return 1
-  # "name P 2026-11-19 …": passwd answers for one's own account without root.
-  changed=$(LC_ALL=C passwd -S 2>/dev/null | awk '$3 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ { print $3 }')
+  # Both days are UTC: the install's stamp, and the day the system records
+  # for the password (never the local date, which is a day behind or ahead
+  # of it for part of every day away from UTC).
+  changed=$(karchy-password-changed --utc)
   [[ -n $changed && ! $changed > ${installed%%T*} ]]
 }
 

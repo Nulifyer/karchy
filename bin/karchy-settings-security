@@ -19,8 +19,8 @@
 #                         screen take it), installed (fprintd is installed, so
 #                         there may be prints to remove)
 #            fido2        setUp (a key is registered or sudo asks for one)
-#            password     user, changed (the day it was last changed,
-#                         YYYY-MM-DD, or "")
+#            password     user, changed (the day it was last changed, as a
+#                         local date: YYYY-MM-DD, or "")
 #            drive        encrypted (the system disk), device, others (how many
 #                         other encrypted drives there are)
 
@@ -40,8 +40,8 @@ status() {
   user=$(id -un)
   device=$(root_luks_device)
   luks_count=$(lsblk -nrpo NAME,FSTYPE 2>/dev/null | awk '$2 == "crypto_LUKS" && !seen[$1]++ { n++ } END { print n + 0 }')
-  # "name P 2026-11-19 …": passwd answers for one's own account without root.
-  changed=$(LC_ALL=C passwd -S 2>/dev/null | awk '$3 ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ { print $3 }')
+  # The day to show beside the local date: the system records it in UTC.
+  changed=$(karchy-password-changed)
 
   jq -n \
     --argjson reader "$(is karchy-hw-fingerprint)" \

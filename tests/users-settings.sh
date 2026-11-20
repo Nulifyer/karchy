@@ -248,5 +248,28 @@ CASES
   unshare -rm bash -c "$inside" _ "$sandbox" "$sandbox/cases" "$(realpath "$helper")" || fails=1
 fi
 
+# karchy-password-changed, which Security's "changed …" and the Users page's
+# "set at install" note both read: the system's record is a UTC day, shown as
+# a local date that is never in the future, and compared as it is.
+# changed_is <name> <expected> <time zone> <now, UTC> <recorded day> [--utc]
+changed=$(dirname "$helper")/../../bin/karchy-password-changed
+[[ -x $changed ]] || changed=$(command -v karchy-password-changed)
+changed_is() {
+  local name=$1 want=$2 got
+  got=$(TZ=$3 KARCHY_NOW=$(date -u -d "$4" +%s) KARCHY_PASSWORD_STATUS="$me P $5 0 99999 7 -1" "$changed" ${6:-} 2>&1)
+  if [[ $got == "$want" ]]; then ok "password changed: $name"; else bad "password changed: $name: want [$want] got [$got]"; fi
+}
+if [[ -x $changed ]]; then
+  changed_is "an evening west of UTC, changed just now: today, not tomorrow" 2026-11-19 America/New_York 2026-11-20T01:30:00Z 2026-11-20
+  changed_is "the same change a day later" 2026-11-20 America/New_York 2026-11-21T01:30:00Z 2026-11-20
+  changed_is "a morning east of UTC, changed just now: today, not yesterday" 2026-11-21 Australia/Sydney 2026-11-20T21:30:00Z 2026-11-20
+  changed_is "weeks ago: the recorded day" 2026-11-01 America/New_York 2026-11-20T01:30:00Z 2026-11-01
+  changed_is "at UTC: the recorded day" 2026-11-20 UTC 2026-11-20T12:00:00Z 2026-11-20
+  changed_is "for comparing: the recorded day as it is" 2026-11-20 America/New_York 2026-11-20T01:30:00Z 2026-11-20 --utc
+  changed_is "an account without a date" "" UTC 2026-11-20T12:00:00Z ""
+else
+  bad "karchy-password-changed was not found"
+fi
+
 ((fails == 0)) && echo "users-settings: all as expected"
 exit "$fails"
