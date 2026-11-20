@@ -34,7 +34,7 @@ After that, the system updates through pacman: `karchy update` (or `paru -Syu`) 
 
    Restart now restarts at once, without the live system's usual shutdown (the installed system is already unmounted and closed by then), so a stick pulled out too early no longer leaves the computer stuck on read errors. "Stay in the live system" leaves a root shell; restart from there with `reboot` and take the media out once the screen goes dark.
 
-Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system.
+Every step is logged to `/var/log/karchy-install.log`, which is copied into the installed system. While the installer is on the screen the kernel's own messages are kept off it; the errors among them are at the end of that log.
 
 ### Disk encryption and login
 
@@ -120,6 +120,8 @@ KARCHY_VM_ISO=out/iso/karchy-….iso tools/vm run --name isotest --iso
 ## Unattended installs
 
 `karchy-install --config FILE` reads the answers from FILE instead of showing the form. FILE sets `KARCHY_DISK`, `KARCHY_USER`, `KARCHY_PASSWORD`, `KARCHY_HOSTNAME` and `KARCHY_TIMEZONE`, and optionally `KARCHY_KEYMAP`, `KARCHY_FULL_NAME`, `KARCHY_EMAIL`, `KARCHY_BEES`, `KARCHY_ENCRYPT` (`encrypted`, the default, or `login` for no encryption and a login screen at boot; anything else is refused), `KARCHY_ENCRYPT_DISKS` (other internal disks to erase and encrypt, separated by spaces, such as `"/dev/sdb /dev/nvme1n1"`; needs `KARCHY_ENCRYPT=encrypted`), `KARCHY_CHANNEL` (`stable`, `rc`, `nightly`; `dev` for VM tests), `KARCHY_SECUREBOOT` (`auto`, the default, sets it up when the firmware is in Setup Mode; or `yes`/`no`), `KARCHY_REPO_SERVER` and `KARCHY_REPO_SIGLEVEL` for another `[karchy]` repository, `KARCHY_CACHYOS_LEVEL` (`generic` skips CachyOS's CPU-tuned repositories; otherwise the installer picks `v3`, `v4` or `znver4` from the CPU, as CachyOS's own installer does), and `KARCHY_KEYRING_KEY_FILE` (a key saved with `karchy keyring-key export`, so a home folder restored from a backup opens its keyring; D-57; not with `KARCHY_ENCRYPT=login`, where the login password opens the keyring). `KARCHY_CONSOLE_FONT` names the console font (`karchy-10x20`, `karchy-12x24` or `karchy-16x32`) instead of the one picked from the screen's height. `tests/vm-install.conf` is the VM test example; its credentials are for throwaway VMs only.
+
+An install from an answer file asks nothing at the end: its last screen says to type `reboot` and to take the media out when the screen goes dark. `--reboot` restarts by itself.
 
 ## Testing in a VM
 
