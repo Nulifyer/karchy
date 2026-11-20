@@ -1,32 +1,48 @@
 #!/bin/bash
-# karchy (D-57): the login keyring's key for one user, made once.
+# karchy (D-57, D-142): the login keyring's key for one user, made once.
 #
 # greetd's automatic login never runs PAM authentication, so there is no
-# password to unlock a keyring with. Instead each user gets a random key in
-# systemd's credential store (root only, on the encrypted disk). user@.service
-# imports it as oo7.keyring-encryption-password, which oo7's daemon uses to
-# open the login keyring at every login.
+# password to unlock a keyring with. Instead the one person of such an
+# install gets a random key in systemd's credential store (root only, on the
+# encrypted disk). user@.service imports it as
+# oo7.keyring-encryption-password, which oo7's daemon uses to open the login
+# keyring at every login.
 #
 # The installer makes the first user's key right after creating the account,
 # so every snapshot of the system holds it: a new key would leave the existing
 # keyring unopenable, so a key exists before any keyring does.
 #
-# An install without disk encryption keeps no key: there
-# the keyring opens with the login password (D-131), and a key on a plain
-# disk would open it for anyone who has the disk. The installer marks such an
-# install with /etc/karchy/keyring-login-password.
+# A key is only for automatic login. Wherever karchy's login screen is how
+# people get in (an install without disk encryption, D-131; an encrypted one
+# with automatic login off or more than one person, D-142), the keyring opens
+# with the login password and no key is made: a key would open the keyring
+# for anyone who can read /etc/credstore. /etc/karchy/keyring-login-password
+# marks such an install; the installer and /usr/lib/karchy/users-settings
+# write it.
 #
-# Usage: keyring-key <uid>   (run by the installer and karchy-keyring-key@<uid>.service)
+# Usage: keyring-key <uid>        Make the key, unless the mark is there
+#                                 (the installer, users-settings and
+#                                 karchy-keyring-key@<uid>.service)
+#        keyring-key <uid> next   Make <key>.next, whatever the mark says: the
+#                                 key a keyring is about to be locked with
+#                                 when automatic login is turned on
+#                                 (/usr/lib/karchy/keyring-login, which
+#                                 renames it once the keyring has taken it).
+#                                 One that is there already is kept.
 
 set -euo pipefail
 
 uid=${1:-}
 [[ $uid =~ ^[0-9]+$ ]] || exit 1
 ((uid >= 1000)) || exit 0
-[[ ! -e /etc/karchy/keyring-login-password ]] || exit 0
 
 store=/etc/credstore
 key=$store/karchy.keyring.$uid
+case "${2:-}" in
+  "") [[ ! -e /etc/karchy/keyring-login-password ]] || exit 0 ;;
+  next) key=$key.next ;;
+  *) exit 1 ;;
+esac
 [[ -s $key ]] && exit 0
 
 install -d -m 0700 "$store"
@@ -34,4 +50,7 @@ umask 077
 tmp=$(mktemp "$store/.karchy.keyring.XXXXXX")
 trap 'rm -f "$tmp"' EXIT
 head -c 32 /dev/urandom | base64 -w0 >"$tmp"
+# On the disk before anything is locked with it.
+sync "$tmp"
 mv "$tmp" "$key"
+sync "$store"

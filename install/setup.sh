@@ -68,14 +68,16 @@ setup_enable_multilib() {
 setup_system_files() {
   # greetd (D-13, D-130). On an encrypted disk: automatic login for the
   # installed user after the disk password, and karchy's login screen after
-  # logging out. Without encryption: that screen at every boot, through the
-  # PAM service that opens the keyring with the login password (D-131).
+  # logging out. Without encryption: that screen at every boot. Either way a
+  # login at that screen goes through karchy's PAM service, which opens the
+  # keyring with the login password or leaves it to its key (D-131, D-142).
   if install_encrypted; then
     sed "s/@USER@/$KARCHY_USER/" "$KARCHY_SRC/system/greetd/config.toml" >"$KARCHY_MNT/etc/greetd/config.toml"
   else
     install -m 0644 "$KARCHY_SRC/system/greetd/config-login.toml" "$KARCHY_MNT/etc/greetd/config.toml"
     # ...and a changed login password changes the keyring's with it. passwd's
-    # PAM file is a backup file of shadow, so pacman keeps the line.
+    # PAM file is a backup file of shadow, so pacman keeps the line. (On an
+    # encrypted install Settings › Users adds it when automatic login goes.)
     grep -q pam_oo7 "$KARCHY_MNT/etc/pam.d/passwd" ||
       echo "password	optional	pam_oo7.so" >>"$KARCHY_MNT/etc/pam.d/passwd"
   fi

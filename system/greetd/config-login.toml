@@ -1,7 +1,7 @@
 # karchy (D-130): an install without disk encryption. karchy's login screen asks for the password at boot and after logging
 # out (/usr/lib/karchy/greeter; the text greeter when it can't start). The
 # login goes through karchy's PAM service, which hands the password to the
-# keyring (D-131).
+# keyring (D-131, D-142).
 [terminal]
 vt = 1
 

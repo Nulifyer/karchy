@@ -126,8 +126,11 @@ fi
 # that. /run is empty there but for udev's records (lsblk reads a disk's
 # encryption from them): room for the helper's lock, and no logind, so nobody
 # counts as signed in. /etc/greetd is an empty folder of the sandbox's own
-# (an installed one belongs to an account the namespace doesn't have).
-# PKEXEC_UID says who is asking, as pkexec does.
+# (an installed one belongs to an account the namespace doesn't have), and so
+# are /etc/karchy, /etc/credstore and /etc/pam.d, which holds a passwd file
+# as shadow ships it. PKEXEC_UID says who is asking, as pkexec does.
+# tests/keyring-login.sh runs what these files mean for the keyring, with the
+# disk's encryption made up too.
 sandbox=$(mktemp -d)
 # (The overlay leaves a work folder nobody may read.)
 trap 'rm -f "$scratch"; chmod -R u+rwx "$sandbox" 2>/dev/null; rm -rf "$sandbox"' EXIT
@@ -138,6 +141,10 @@ inside='
   mount --bind /run/udev "$1/udev" && mount -t tmpfs tmpfs /run && mkdir /run/udev &&
     mount --bind "$1/udev" /run/udev || exit 90
   mkdir -p /etc/greetd && mount -t tmpfs tmpfs /etc/greetd || exit 90
+  for made in /etc/karchy /etc/credstore /etc/pam.d; do
+    mkdir -p "$made" && mount -t tmpfs tmpfs "$made" || exit 90
+  done
+  printf "#%%PAM-1.0\nauth\t\tinclude\t\tsystem-auth\naccount\t\tinclude\t\tsystem-auth\npassword\tinclude\t\tsystem-auth\n" >/etc/pam.d/passwd
   shift
   exec bash "$@"'
 if ! unshare -rm bash -c "$inside" _ "$sandbox" -c true 2>/dev/null; then
@@ -194,14 +201,36 @@ as 1100 "no second automatic login with two people" 65 "" check autologin on
 as 1100 "a taken name, as another person asks" 65 "already has an account" check add sam standard
 as 1100 "a service account's name" 65 "the system uses" check add svc standard
 
-# Automatic login off: only the [initial_session] part goes.
-before=$(grep -v -e '^\[initial_session\]' -e 'karchy/session' -e '"ada"' /etc/greetd/config.toml | cat -s)
+# Automatic login off: the [initial_session] part goes, and a login at the
+# login screen is sent through karchy's PAM service (the keyring, D-142).
+before='# a comment at the top
+[terminal]
+vt = 1
+
+[general]
+service = "karchy-login"
+
+[default_session]
+service = "greetd"
+command = "/usr/lib/karchy/greeter"
+user = "greeter"'
 as 1100 "automatic login off" 0 "" autologin off
-if [[ $(</etc/greetd/config.toml) == "$before" ]]; then ok "the config lost its [initial_session] and nothing else"
+if [[ $(</etc/greetd/config.toml) == "$before" ]]; then ok "the config lost its [initial_session] and gained the login service, nothing else"
 else bad "the config after off: $(</etc/greetd/config.toml)"; fi
+[[ -f /etc/karchy/keyring-login-password ]] && ok "off marks keyrings as opening with the login password" || bad "no keyring mark after off"
+[[ $(grep -c pam_oo7 /etc/pam.d/passwd) == 1 ]] && ok "passwd changes the keyring too" || bad "passwd file: $(</etc/pam.d/passwd)"
 [[ $(PKEXEC_UID=1100 "$helper" status | jq -r .autologin.on) == false ]] && ok "status: automatic login is off" || bad "status still says on"
 as 1100 "automatic login off again changes nothing" 0 "" autologin off
 [[ $(</etc/greetd/config.toml) == "$before" ]] && ok "the config is the same after a second off" || bad "a second off changed the config"
+[[ $(grep -c pam_oo7 /etc/pam.d/passwd) == 1 ]] && ok "...and the passwd file" || bad "passwd file after a second off: $(</etc/pam.d/passwd)"
+# Service lines someone wrote are theirs.
+config "[general]" 'service = "mine"' ""
+sed -i 's/^user = "greeter"$/&\nservice = "other"/' /etc/greetd/config.toml
+as 1100 "automatic login off with service lines there" 0 "" autologin off
+[[ $(grep -c '^service' /etc/greetd/config.toml) == 2 ]] && grep -qxF 'service = "mine"' /etc/greetd/config.toml &&
+  grep -qxF 'service = "other"' /etc/greetd/config.toml && ok "service lines that are there are kept" || bad "service lines: $(</etc/greetd/config.toml)"
+config
+as 1100 "automatic login off again" 0 "" autologin off
 
 # A second administrator: either can go, neither by their own hand.
 accounts "$ada" "$sam" "$pat"
@@ -218,6 +247,8 @@ groups "wheel:x:998:ada"
 as 1101 "the only account can't be removed" 65 "only account" check remove ada keep-home
 status=$(PKEXEC_UID=1100 "$helper" status)
 if [[ $(jq -r .encrypted <<<"$status") == true ]]; then
+  # (Their keyring still has its key: nobody logged in since it went off.)
+  echo "a-key-as-keyring-key-makes-them-0000000000000=" >/etc/credstore/karchy.keyring.1100
   as 1100 "automatic login on" 0 "" autologin on
   status=$(PKEXEC_UID=1100 "$helper" status)
   if jq -e '.autologin.on and .autologin.user == "ada"' <<<"$status" >/dev/null &&

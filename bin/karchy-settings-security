@@ -13,6 +13,7 @@
 #   password      karchy-settings-users password (passwd, and the note that
 #                 it is no longer the install's)
 #   drive         karchy-drive-password
+#   keyring       karchy-keyring reset (saved passwords)
 #
 #   status   JSON, read without root:
 #            fingerprint  reader (one is present), setUp (prompts and the lock
@@ -23,6 +24,8 @@
 #                         local date: YYYY-MM-DD, or "")
 #            drive        encrypted (the system disk), device, others (how many
 #                         other encrypted drives there are)
+#            keyring      state (open, locked or none) and opensWith
+#                         (password or key): karchy-keyring status --json
 
 set -uo pipefail
 
@@ -36,12 +39,13 @@ root_luks_device() {
 }
 
 status() {
-  local user device luks_count changed
+  local user device luks_count changed keyring
   user=$(id -un)
   device=$(root_luks_device)
   luks_count=$(lsblk -nrpo NAME,FSTYPE 2>/dev/null | awk '$2 == "crypto_LUKS" && !seen[$1]++ { n++ } END { print n + 0 }')
   # The day to show beside the local date: the system records it in UTC.
   changed=$(karchy-password-changed)
+  keyring=$(karchy-keyring status --json 2>/dev/null) && [[ -n $keyring ]] || keyring='{}'
 
   jq -n \
     --argjson reader "$(is karchy-hw-fingerprint)" \
@@ -52,11 +56,13 @@ status() {
     --arg changed "$changed" \
     --arg device "$device" \
     --argjson luksCount "$luks_count" \
+    --argjson keyring "$keyring" \
     '{fingerprint: {reader: $reader, setUp: $fingerprintSetUp, installed: $fprintd},
       fido2: {setUp: $fido2SetUp},
       password: {user: $user, changed: $changed},
       drive: {encrypted: ($device != ""), device: $device,
-              others: ([$luksCount - (if $device != "" then 1 else 0 end), 0] | max)}}'
+              others: ([$luksCount - (if $device != "" then 1 else 0 end), 0] | max)},
+      keyring: $keyring}'
 }
 
 case "${1:-}" in

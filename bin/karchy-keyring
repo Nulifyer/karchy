@@ -1,0 +1,155 @@
+#!/bin/bash
+
+# karchy:summary=Show whether your saved passwords (the login keyring) are open, and erase them to start over
+# karchy:args=status [--json] | reset [--yes] | check
+# karchy:examples=karchy keyring status | karchy keyring reset
+
+# Your login keyring is where apps keep passwords and sign-ins: Brave's saved
+# passwords and its sign-ins, VS Code's sign-ins, passwords for network
+# shares, SSH key passphrases you chose to remember. Wi-Fi and VPN passwords
+# are not in it; NetworkManager keeps those for the whole computer.
+#
+# It opens by itself when you log in: with your login password where karchy's
+# login screen asks for it, with a key of this install where the computer
+# logs you in after the disk password (D-142). Nothing ever asks for a
+# keyring password. That leaves one way to lose access: when your password
+# was changed without the old one (an administrator reset it in Settings ›
+# Users), the keyring is still locked with the old password and stays shut.
+# There is no way to open it then. `reset` erases it so apps can save again.
+# (docs/recovery.md has the rarer case: the system was taken back to a
+# snapshot and the keyring was not.)
+#
+#   status   One word:
+#              open    apps can read and save
+#              locked  there is a keyring and it could not be opened at login
+#              none    there is no keyring; a new one starts at your next
+#                      login (after a reset, where the login password opens
+#                      it)
+#            --json adds what opens it:
+#              {"state": "open", "opensWith": "password"}  (or "key")
+#   reset    Erase the keyring: stops the keyring service, deletes every
+#            keyring file in ~/.local/share/keyrings and starts the service
+#            again. Asks first (--yes skips the question). Everything saved
+#            in it is gone for good; your files, your login password and the
+#            apps themselves are untouched, and apps ask you to sign in
+#            again. Says whether the new keyring is ready or starts at your
+#            next login.
+#   check    At login (karchy/hypr/autostart.lua): when the keyring is locked,
+#            one notification that opens Settings › Security. Once per locked
+#            keyring, not at every login.
+
+set -uo pipefail
+
+FOLDER=${XDG_DATA_HOME:-$HOME/.local/share}/keyrings
+MARK=/etc/karchy/keyring-login-password
+TOLD=${XDG_STATE_HOME:-$HOME/.local/state}/karchy/keyring-locked-told
+SERVICE=oo7-daemon.service
+
+usage() {
+  sed -n 's/^# karchy:args=/Usage: karchy-keyring /p' "$0" >&2
+  exit 1
+}
+
+keyring_files() { find "$FOLDER" -maxdepth 2 -type f -name '*.keyring' 2>/dev/null; }
+
+# The key of this install reaches the keyring service as a credential of the
+# session; without one the login password opens the keyring.
+opens_with() {
+  if [[ -e /run/credentials/user@$(id -u).service/oo7.keyring-encryption-password ]]; then echo key
+  elif [[ -e $MARK ]]; then echo password
+  else echo key; fi
+}
+
+# The Secret Service says whether the default keyring is locked. It answers
+# once the service has tried the secret it was started with.
+state() {
+  local locked
+  locked=$(busctl --user --timeout=5 get-property org.freedesktop.secrets /org/freedesktop/secrets/aliases/default \
+    org.freedesktop.Secret.Collection Locked 2>/dev/null) || locked=""
+  if [[ $locked == "b false" ]]; then echo open
+  elif [[ -n $(keyring_files) ]]; then echo locked
+  else echo none; fi
+}
+
+status() {
+  local now
+  now=$(state)
+  if [[ ${1:-} == --json ]]; then
+    jq -cn --arg state "$now" --arg with "$(opens_with)" '{state: $state, opensWith: $with}'
+  else
+    echo "$now"
+  fi
+}
+
+reset() {
+  local file
+  if [[ ${1:-} != --yes ]]; then
+    echo "This erases your saved passwords: everything apps keep in your login keyring,"
+    echo "such as Brave's saved passwords and sign-ins, VS Code's sign-ins and passwords"
+    echo "for network shares. It can't be undone. Wi-Fi passwords, your files and your"
+    echo "login password are not touched."
+    echo
+    karchy-gum confirm --default=false "Erase your saved passwords?" --affirmative "Erase" --negative "Keep them" || exit 130
+  fi
+  systemctl --user stop "$SERVICE" || { echo "The keyring service could not be stopped; nothing was erased." >&2; exit 1; }
+  while IFS= read -r file; do
+    rm -f -- "$file" || { echo "$file could not be deleted." >&2; exit 1; }
+  done < <(keyring_files)
+  # Copies an interrupted change of the keyring's lock left behind.
+  rm -f -- "$FOLDER"/v1/.login.keyring.rekey
+  rm -f -- "$TOLD"
+  systemctl --user start "$SERVICE" || { echo "Your saved passwords were erased, but the keyring service did not start. Log out and in." >&2; exit 1; }
+  if [[ $(state) == open ]]; then
+    echo "Your saved passwords were erased. A new, empty keyring is ready."
+  else
+    echo "Your saved passwords were erased. A new keyring starts the next time you log in."
+  fi
+}
+
+check() {
+  local now id=""
+  karchy-notifications-wait || exit 0
+  # The keyring service takes its name on the bus once it has tried its
+  # secret. A password handed to a service that was already running (a
+  # quick log out and in) arrives a moment later.
+  gdbus wait --session --timeout 30 org.freedesktop.secrets || exit 0
+  now=$(state)
+  if [[ $now == locked ]]; then
+    sleep 3
+    now=$(state)
+  fi
+  if [[ $now != locked ]]; then
+    rm -f -- "$TOLD"
+    exit 0
+  fi
+  # Which keyring this is about: told once for each.
+  id=$(keyring_files | sort | xargs -r -d '\n' stat -c '%n %i %Y' 2>/dev/null | sha256sum | cut -d' ' -f1)
+  [[ $(cat "$TOLD" 2>/dev/null) != "$id" ]] || exit 0
+  mkdir -p "${TOLD%/*}"
+  echo "$id" >"$TOLD"
+  # Two lines of this show until it is pointed at.
+  local body="Your new password can't open them. Reset them in Security so apps can save again."
+  # With a key of this computer (automatic login) a login at the login
+  # screen can put it right, when the keyring has the login password.
+  [[ $(opens_with) != key ]] || body="Log out and back in at the login screen. If they stay locked, see Security."
+  karchy-notification-send -g security -u critical -t 0 --transient \
+    "Your saved passwords are locked" "$body" \
+    --action "Open Security" karchy-settings security \
+    --action "Not now" true
+}
+
+case "${1:-}" in
+  status)
+    (($# == 1)) || { (($# == 2)) && [[ $2 == --json ]]; } || usage
+    status "${2:-}"
+    ;;
+  reset)
+    (($# == 1)) || { (($# == 2)) && [[ $2 == --yes ]]; } || usage
+    reset "${2:-}"
+    ;;
+  check)
+    (($# == 1)) || usage
+    check
+    ;;
+  *) usage ;;
+esac

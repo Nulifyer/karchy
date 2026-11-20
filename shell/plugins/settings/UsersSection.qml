@@ -33,6 +33,9 @@ ColumnLayout {
   property bool admin: false
   property bool encrypted: true
   property bool passwordNote: false
+  // Keyrings open with the login password here (the login screen is in
+  // force, D-142): a reset password leaves that person's keyring locked.
+  property bool keyringPassword: false
 
   // The row that is open, by account name.
   property string openUser: ""
@@ -63,6 +66,7 @@ ColumnLayout {
       root.encrypted = status.encrypted === true
       root.autologin = status.autologin || {}
       root.passwordNote = status.passwordNote === true
+      root.keyringPassword = status.keyringPassword === true
       root.users = status.users || []
       root.loaded = true
       root.loadError = ""
@@ -386,11 +390,15 @@ ColumnLayout {
 
     SettingRow {
       label: "Log in automatically"
-      // Off can always be chosen; on only where the helper allows it.
-      enabled: root.admin && (root.autologin.on === true || (root.autologin.cannotTurnOn || "") === "")
+      // Off can always be chosen; on only where the helper allows it. Asked
+      // for while saved passwords open with the login password, it waits
+      // for a login, which is when they can be given a key instead.
+      readonly property bool wanted: root.autologin.on === true || root.autologin.pending === true
+      enabled: root.admin && (wanted || (root.autologin.cannotTurnOn || "") === "")
       info: "On: after the disk password the computer starts your desktop without asking for yours. Off: the login screen asks for it too. A change applies the next time the computer starts."
-      note: root.autologin.on === true ? "" : (root.autologin.cannotTurnOn || "")
-      checked: root.autologin.on === true
+      note: root.autologin.pending === true ? "Starts after you next log in at the login screen."
+        : root.autologin.on === true ? "" : (root.autologin.cannotTurnOn || "")
+      checked: wanted
       busy: root.busy("autologin")
       onToggled: root.change("autologin", ["autologin", checked ? "off" : "on"])
     }

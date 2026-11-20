@@ -13,6 +13,11 @@ import qs.Ui
 // change in a terminal, since every one of them asks for the password, a touch
 // or a typed secret. It reads the state again when a window closes, which is
 // when the terminal is done.
+//
+// Saved passwords (the login keyring, D-142) open by themselves at login and
+// have no prompt of their own. The row shows whether they did, and Reset
+// erases them (karchy-keyring reset), which is the one way out when they are
+// locked with a password nobody has any more.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -24,6 +29,8 @@ ColumnLayout {
   property var fido2: ({})
   property var password: ({})
   property var drive: ({})
+  property var keyring: ({})
+  property string keyringError: ""
 
   readonly property bool showFingerprint: fingerprint.reader === true || fingerprint.setUp === true || fingerprint.installed === true
 
@@ -36,6 +43,7 @@ ColumnLayout {
       root.fido2 = status.fido2 || {}
       root.password = status.password || {}
       root.drive = status.drive || {}
+      root.keyring = status.keyring || {}
       root.loaded = true
     } catch (e) {}
   }
@@ -54,7 +62,29 @@ ColumnLayout {
     return "changed " + Qt.formatDate(date, "d MMM yyyy")
   }
 
+  function resetKeyring() {
+    if (!root.settings || keyringReset.running) return
+    root.settings.ask(
+      "Erase your saved passwords? Everything apps keep there is gone for good, such as Brave's saved passwords and sign-ins, "
+        + "VS Code's sign-ins and passwords for network shares. Apps will ask you to sign in again.\n\n"
+        + "Wi-Fi passwords, your files and your login password are not touched.",
+      "Erase saved passwords", function() {
+        root.keyringError = ""
+        keyringReset.running = true
+      })
+  }
+
   Component.onCompleted: refresh()
+
+  Process {
+    id: keyringReset
+    command: ["karchy-keyring", "reset", "--yes"]
+    stderr: StdioCollector { id: keyringResetErr; waitForEnd: true }
+    onExited: function(code) {
+      if (code !== 0) root.keyringError = keyringResetErr.text.trim() || "Your saved passwords could not be reset."
+      root.refresh()
+    }
+  }
 
   Process {
     id: statusProc
@@ -112,6 +142,13 @@ ColumnLayout {
       + (root.loaded && !root.showFingerprint ? " Fingerprint appears here on a computer with a reader." : "")
   }
 
+  InlineMessage {
+    kind: "error"
+    text: root.keyringError
+    dismissible: true
+    onDismissed: root.keyringError = ""
+  }
+
   Section {
     title: "Passwords"
 
@@ -145,6 +182,42 @@ ColumnLayout {
         text: "Change…"
         accessibleName: "Change the drive password"
         onClicked: root.inTerminal("karchy-drive-password")
+      }
+    }
+
+    StateRow {
+      label: "Saved passwords"
+      // One word where it can be: the reason is the info beside it.
+      value: !root.loaded ? ""
+        : root.keyring.state === "open" ? "Open"
+        : root.keyring.state === "locked" ? "Locked"
+        : root.keyring.state === "none" ? "Empty until next login"
+        : ""
+      info: root.keyring.state === "locked" && root.keyring.opensWith === "key"
+          ? "The key of this computer that opens them at login doesn't fit. Log out and in once at the login screen. If they stay locked, Reset erases them so apps can save again."
+        : root.keyring.state === "locked"
+          ? "They were saved under another password and can't be opened. That happens when a password is reset without the old one. Reset erases them so apps can save again."
+        : root.keyring.state === "none"
+          ? "They were reset. Apps can save again after you log out and in."
+        : "What apps keep for you, such as Brave's saved passwords and sign-ins. They open when you log in"
+          + (root.keyring.opensWith === "key" ? "." : ", with your login password.")
+      Button {
+        visible: root.keyring.state === "none"
+        focusable: true
+        bordered: true
+        text: "Log out"
+        accessibleName: "Log out, to start saving passwords again"
+        onClicked: Quickshell.execDetached(["karchy-system", "logout"])
+      }
+      Button {
+        visible: root.keyring.state === "open" || root.keyring.state === "locked"
+        focusable: true
+        bordered: true
+        variant: "destructive"
+        text: "Reset…"
+        accessibleName: "Reset your saved passwords"
+        busy: keyringReset.running
+        onClicked: root.resetKeyring()
       }
     }
   }

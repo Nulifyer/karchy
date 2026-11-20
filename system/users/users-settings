@@ -24,6 +24,10 @@
 #                                        on stdin
 #   autologin on|off                     Whether the computer logs its one
 #                                        person in after the disk password
+#   autologin-finish <name>              Turn automatic login on for the
+#                                        person who asked, once their keyring
+#                                        opens with a key (run by
+#                                        /usr/lib/karchy/keyring-login)
 #
 # Exit status: 0 done; 64 not a request this takes; 65 a request it refuses,
 # with one sentence for a person on stderr; 77 not root; 1 it failed part
@@ -37,10 +41,9 @@
 # What `add` makes: the account with its home (from /etc/skel: karchy's
 # starter configs and migration marks), fish as its shell, wheel for an
 # administrator, the password, the home closed to everyone else (0700), the
-# login keyring's key on an encrypted install (/usr/lib/karchy/keyring-key,
-# D-57; without disk encryption the keyring opens with the login password,
-# D-131, and no key is made), and the desktop's files that are made rather
-# than copied (/usr/lib/karchy/user-setup, run as the new account, where the
+# login keyring's key where automatic login is on (/usr/lib/karchy/keyring-key;
+# see the keyring below), and the desktop's files that are made rather than
+# copied (/usr/lib/karchy/user-setup, run as the new account, where the
 # desktop is installed). If a step fails the account is taken away again, so
 # nothing half-made is left.
 #
@@ -49,8 +52,34 @@
 # person is added, and says so with the line "autologin=off" on stdout;
 # `autologin on` is refused with more than one person, and without disk
 # encryption (no karchy computer starts into a desktop without a password,
-# D-130). Only the [initial_session] part of /etc/greetd/config.toml is
-# written; it applies the next time the computer starts.
+# D-130). In /etc/greetd/config.toml the [initial_session] part is written,
+# and the two `service` lines that send a login at the login screen through
+# karchy's PAM service are added where they are missing; it applies the next
+# time the computer starts.
+#
+# The keyring (D-142). A person's login keyring is locked with their login
+# password whenever the login screen is how they get in; only automatic
+# login keeps a random key for it in /etc/credstore (D-57), since no
+# password is typed there. This helper owns which of the two an install is
+# in, and /usr/lib/karchy/keyring-login changes a keyring from one lock to
+# the other at its owner's next login, the one moment their password is at
+# hand:
+# - Automatic login off (`autologin off`, or `add` making a second person):
+#   /etc/karchy/keyring-login-password is written, which stops keys being
+#   made, and /etc/pam.d/passwd gets oo7's line, so passwd changes the
+#   keyring's password too. The first person's key stays until their next
+#   login at the login screen gives their keyring the password; then it is
+#   deleted.
+# - Automatic login on: while the key is still there (nobody logged in since
+#   it was turned off), the mark is taken away and automatic login is written
+#   at once. Otherwise the keyring opens with the password, which only a
+#   login has: /etc/karchy/autologin-pending records the wish, "autologin=
+#   pending" is printed, and keyring-login gives the keyring a new key at
+#   the next login and calls `autologin-finish`, which writes automatic
+#   login. Nothing is written that the keyring can't follow.
+# - An account that is removed loses its key, if it still had one. A reset
+#   password changes nothing about a keyring: one locked with the old
+#   password stays shut, and its owner resets it (karchy-keyring reset).
 #
 # Threat reasoning. polkit asks for an administrator's password for every
 # changing call (auth_admin, not kept; no rule waives it): an account is who
@@ -81,8 +110,10 @@
 #   PKEXEC_UID, which pkexec sets, to know who is asking. Nothing of the
 #   caller's is sourced or evaluated.
 # - Files written: the account databases through shadow's own tools;
-#   /etc/greetd/config.toml, only when it is a regular file owned by root,
-#   by a temporary file and a rename; keys in /etc/credstore (root only).
+#   /etc/greetd/config.toml and /etc/pam.d/passwd, each only when it is a
+#   regular file owned by root, by a temporary file and a rename; the two
+#   marks in /etc/karchy; keys in /etc/credstore (root only), which are made
+#   by keyring-key and only ever deleted here.
 #   A kept home is handed to root and closed (0700), so a later account
 #   that gets the same user number doesn't own it.
 # - user-setup runs as the new account, never as root (setpriv drops to
@@ -101,6 +132,13 @@ GREETD_CONF=/etc/greetd/config.toml
 SESSION=/usr/lib/karchy/session
 KEY_MAKER=/usr/lib/karchy/keyring-key
 KEY_STORE=/etc/credstore
+# Keyrings open with the login password; no key is made (D-131, D-142).
+KEYRING_MARK=/etc/karchy/keyring-login-password
+# The one person who asked for automatic login while their keyring opens
+# with the password: turned on at their next login (keyring-login).
+AUTOLOGIN_WANTED=/etc/karchy/autologin-pending
+PAM_PASSWD=/etc/pam.d/passwd
+LOGIN_SERVICE=karchy-login
 USER_SETUP=/usr/lib/karchy/user-setup
 LOGIN_SHELL=/usr/bin/fish
 ADMIN_GROUP=wheel
@@ -116,7 +154,7 @@ fail() {
 refuse() { fail "$1" 65; }
 
 usage() {
-  fail "usage: users-settings status | [check] add <name> admin|standard [full name] | remove <name> keep-home|delete-home | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off" 64
+  fail "usage: users-settings status | [check] add <name> admin|standard [full name] | remove <name> keep-home|delete-home | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off | autologin-finish <name>" 64
 }
 
 # ---- what is on this computer ----
@@ -183,6 +221,14 @@ autologin_user() {
       print value
       exit
     }' "$GREETD_CONF"
+}
+
+# Who asked for automatic login and waits for their next login, or nothing.
+autologin_wanted() {
+  local name=""
+  [[ -f $AUTOLOGIN_WANTED && ! -L $AUTOLOGIN_WANTED && -r $AUTOLOGIN_WANTED ]] || return 0
+  IFS= read -r name <"$AUTOLOGIN_WANTED" || true
+  ! is_person "$name" || echo "$name"
 }
 
 # Who is asking: the person behind pkexec, or whoever runs this without
@@ -264,9 +310,10 @@ autologin_refusal() {
 # ---- status ----
 
 status() {
-  local who auto can_auto name uid full home rows=""
+  local who auto wanted can_auto name uid full home rows=""
   who=$(asker)
   auto=$(autologin_user)
+  wanted=$(autologin_wanted)
   can_auto=$(autologin_refusal)
   while IFS=: read -r name uid full home; do
     rows+=$(jq -cn --arg name "$name" --argjson uid "$uid" --arg full "$full" --arg home "$home" \
@@ -281,10 +328,13 @@ status() {
   jq -cn --arg who "$who" \
     --argjson admin "$([[ -n $who ]] && is_admin "$who" && echo true || echo false)" \
     --argjson encrypted "$(encrypted && echo true || echo false)" \
-    --arg auto "$auto" --arg cannotAuto "$can_auto" \
+    --arg auto "$auto" --arg wanted "$wanted" --arg cannotAuto "$can_auto" \
+    --argjson keyringPassword "$([[ -e $KEYRING_MARK ]] && echo true || echo false)" \
     --argjson users "$(jq -cs . <<<"$rows")" \
     '{you: $who, admin: $admin, encrypted: $encrypted,
-      autologin: {on: ($auto != ""), user: $auto, cannotTurnOn: $cannotAuto},
+      autologin: {on: ($auto != ""), user: $auto, pending: ($auto == "" and $wanted != ""),
+                  cannotTurnOn: $cannotAuto},
+      keyringPassword: $keyringPassword,
       users: $users}'
 }
 
@@ -369,6 +419,13 @@ judge() {
         [[ -z $reason ]] || refuse "$reason"
       fi
       ;;
+    autologin-finish)
+      (($# == 2)) || usage
+      existing_person "$name"
+      reason=$(autologin_refusal)
+      [[ -z $reason ]] || refuse "$reason"
+      [[ $(autologin_wanted) == "$name" ]] || refuse "Automatic login was not asked for by $name."
+      ;;
     *) usage ;;
   esac
 }
@@ -403,7 +460,10 @@ read_password() {
 set_password() { printf '%s:%s\n' "$name" "$password" | chpasswd; }
 
 # /etc/greetd/config.toml without its [initial_session] part, plus one for
-# $1 when given. Comments and every other part stay as they are.
+# $1 when given. A login at the login screen goes through karchy's PAM
+# service, which looks after the keyring (D-142): `service` is added to
+# [general] where the file names none, and greetd's own to the greeter's
+# session. Comments and every other part stay as they are.
 write_autologin() {
   local user=$1
   [[ -f $GREETD_CONF && ! -L $GREETD_CONF && $(stat -c %u "$GREETD_CONF") == 0 ]] ||
@@ -411,11 +471,39 @@ write_autologin() {
   grep -Eq '^[[:space:]]*\[default_session\]' "$GREETD_CONF" ||
     fail "Automatic login was not changed: $GREETD_CONF names no login screen ([default_session])."
   tmp=$(mktemp "${GREETD_CONF%/*}/.config.toml.XXXXXX") || fail "Automatic login was not changed: ${GREETD_CONF%/*} can't be written."
-  awk -v user="$user" -v session="$SESSION" '
-    /^[[:space:]]*\[/ { section = $0; gsub(/[[:space:]]/, "", section); skipping = (section == "[initial_session]") }
+  awk -v user="$user" -v session="$SESSION" -v service="$LOGIN_SERVICE" '
+    function header(line) { gsub(/[[:space:]]/, "", line); return line }
+    function flush() { while (blank > 0) { print ""; blank-- } }
+    # First reading: which service lines the file has.
+    NR == FNR {
+      if ($0 ~ /^[[:space:]]*\[/) section = header($0)
+      if (section == "[general]") {
+        has_general = 1
+        if ($0 ~ /^[[:space:]]*service[[:space:]]*=/) general_service = 1
+      }
+      if (section == "[default_session]" && $0 ~ /^[[:space:]]*service[[:space:]]*=/) greeter_service = 1
+      next
+    }
+    FNR == 1 { section = "" }
+    /^[[:space:]]*\[/ {
+      section = header($0)
+      skipping = (section == "[initial_session]")
+      if (skipping) next
+      flush()
+      if (!has_general && !general_added && section != "[terminal]") {
+        print "[general]"
+        print "service = \"" service "\""
+        print ""
+        general_added = 1
+      }
+      print
+      if (section == "[general]" && !general_service) print "service = \"" service "\""
+      if (section == "[default_session]" && !greeter_service) print "service = \"greetd\""
+      next
+    }
     skipping && $0 !~ /^[[:space:]]*#/ { next }
     /^[[:space:]]*$/ { blank++; next }
-    { while (blank > 0) { print ""; blank-- } print }
+    { flush(); print }
     END {
       if (user != "") {
         print ""
@@ -423,17 +511,73 @@ write_autologin() {
         print "command = \"" session "\""
         print "user = \"" user "\""
       }
-    }' "$GREETD_CONF" >"$tmp" || fail "Automatic login was not changed."
+    }' "$GREETD_CONF" "$GREETD_CONF" >"$tmp" || fail "Automatic login was not changed."
   chmod 644 "$tmp"
   mv -f -- "$tmp" "$GREETD_CONF" || fail "Automatic login was not changed."
   tmp=""
+}
+
+# The login screen is how people get in from now on: keyrings open with the
+# login password (D-142). No key is made any more, and passwd changes a
+# keyring's password with the account's. A key that is still in the store
+# stays until its owner's next login gives their keyring the password
+# (/usr/lib/karchy/keyring-login).
+enter_login_model() {
+  if [[ -f $PAM_PASSWD && ! -L $PAM_PASSWD && $(stat -c %u "$PAM_PASSWD") == 0 ]]; then
+    if ! grep -Eq '^[[:space:]]*-?password[[:space:]].*pam_oo7\.so' "$PAM_PASSWD"; then
+      tmp=$(mktemp "${PAM_PASSWD%/*}/.passwd.XXXXXX") || fail "The keyring was not changed: ${PAM_PASSWD%/*} can't be written."
+      { cat -- "$PAM_PASSWD" && printf 'password\toptional\tpam_oo7.so\n'; } >"$tmp" && chmod 644 "$tmp" &&
+        mv -f -- "$tmp" "$PAM_PASSWD" || fail "The keyring was not changed: $PAM_PASSWD could not be written."
+      tmp=""
+    fi
+  else
+    fail "The keyring was not changed: $PAM_PASSWD is not a regular file owned by root."
+  fi
+  [[ -e $KEYRING_MARK ]] && return 0
+  install -d -m 0755 -- "${KEYRING_MARK%/*}" &&
+    echo "# karchy: the login keyring opens with the login password (D-131, D-142); no key is kept in /etc/credstore." >"$KEYRING_MARK" ||
+    fail "The keyring was not changed: $KEYRING_MARK could not be written."
+}
+
+# Automatic login off, and the wish for it with it.
+autologin_off() {
+  enter_login_model
+  write_autologin ""
+  rm -f -- "$AUTOLOGIN_WANTED"
+}
+
+# Automatic login on for the one person. Their keyring has to open without
+# a password from then on, so it happens here only while it still has its
+# key; otherwise at their next login.
+autologin_on() {
+  local user uid
+  user=$(people | head -n 1 | cut -d: -f1)
+  uid=$(person_field "$user" 2)
+  if [[ -n $(autologin_user) ]]; then
+    write_autologin "$user"
+  elif [[ ! -e $KEYRING_MARK || -s $KEY_STORE/karchy.keyring.$uid ]]; then
+    autologin_now "$user"
+  else
+    tmp=$(mktemp "${AUTOLOGIN_WANTED%/*}/.autologin-pending.XXXXXX") && echo "$user" >"$tmp" && chmod 644 "$tmp" &&
+      mv -f -- "$tmp" "$AUTOLOGIN_WANTED" || fail "Automatic login was not changed: $AUTOLOGIN_WANTED could not be written."
+    tmp=""
+    echo "autologin=pending"
+  fi
+}
+
+# The keyring of $1 opens with a key (or will be made with one): the mark
+# goes first, so a key is made at the next start where there is none yet.
+autologin_now() {
+  rm -f -- "$KEYRING_MARK" || fail "Automatic login was not changed: $KEYRING_MARK could not be removed."
+  write_autologin "$1"
+  rm -f -- "$AUTOLOGIN_WANTED"
 }
 
 # Take a half-made account away again, and say why it wasn't added.
 undo_add() {
   local uid=$1 why=$2
   userdel --remove -- "$name" >/dev/null 2>&1
-  [[ -z $uid ]] || rm -f -- "$KEY_STORE/karchy.keyring.$uid"
+  [[ -z $uid ]] || rm -f -- "$KEY_STORE/karchy.keyring.$uid" "$KEY_STORE/karchy.keyring.$uid.next"
   fail "Couldn't add $name: $why."
 }
 
@@ -450,7 +594,7 @@ add() {
   chmod 0700 -- "$home" || undo_add "$uid" "its home folder couldn't be closed to others"
   out=$(set_password 2>&1) || undo_add "$uid" "the password wasn't accepted (${out##*$'\n'})"
   # The login keyring's key, before the first login and the next snapshot.
-  # On an install without disk encryption this makes none (D-131).
+  # Where the login screen is in force this makes none (D-131, D-142).
   [[ ! -x $KEY_MAKER ]] || "$KEY_MAKER" "$uid" || undo_add "$uid" "its keyring key couldn't be made"
   # The desktop's made files (the theme), as the new account. Absent while
   # the installer makes the first account, before the desktop is installed:
@@ -463,10 +607,17 @@ add() {
       PATH=/usr/local/bin:/usr/bin LANG="${LANG:-C.UTF-8}" "$USER_SETUP" 2>&1) ||
       undo_add "$uid" "its desktop couldn't be set up (${out##*$'\n'})"
   fi
-  # A second person: everyone signs in as themselves from now on.
-  if (($(people_count) > 1)) && [[ -n $(autologin_user) ]]; then
-    write_autologin ""
-    echo "autologin=off"
+  # A second person: everyone signs in as themselves from now on, and
+  # keyrings open with the login password. The key made a moment ago is
+  # for a keyring that doesn't exist yet.
+  if (($(people_count) > 1)); then
+    if [[ -n $(autologin_user) || -n $(autologin_wanted) ]]; then
+      autologin_off
+      echo "autologin=off"
+    elif [[ ! -e $KEYRING_MARK ]]; then
+      enter_login_model
+    fi
+    rm -f -- "$KEY_STORE/karchy.keyring.$uid" "$KEY_STORE/karchy.keyring.$uid.next"
   fi
 }
 
@@ -481,21 +632,20 @@ remove() {
   pkill -KILL -U "$uid" >/dev/null 2>&1 && sleep 1
   if [[ $choice == delete-home ]]; then
     userdel --remove -- "$name" >&2 || fail "Couldn't remove $name."
-    rm -f -- "$key" "$key.before-import"
-    return 0
-  fi
-  userdel -- "$name" >&2 || fail "Couldn't remove $name."
-  # The kept folder is root's now and closed, so a later account given the
-  # same user number doesn't own these files; its keyring's key stays with
-  # it under a name no login reads.
-  if [[ $home == /home/* && -d $home && ! -L $home ]]; then
-    if ! { chown root:root -- "$home" && chmod 0700 -- "$home"; }; then
-      fail "$name was removed, but $home could not be closed to others."
+  else
+    userdel -- "$name" >&2 || fail "Couldn't remove $name."
+    # The kept folder is root's now and closed, so a later account given the
+    # same user number doesn't own these files.
+    if [[ $home == /home/* && -d $home && ! -L $home ]]; then
+      if ! { chown root:root -- "$home" && chmod 0700 -- "$home"; }; then
+        rm -f -- "$key" "$key.next" "$key.before-import"
+        fail "$name was removed, but $home could not be closed to others."
+      fi
     fi
   fi
-  rm -f -- "$key.before-import"
-  [[ ! -f $key ]] || mv -f -- "$key" "$KEY_STORE/karchy.keyring.kept.$name" ||
-    fail "$name was removed, but the key of its keyring could not be set aside."
+  # No key outlives its account (D-142): nobody else is to open that
+  # keyring, and a later account with the same user number must not get it.
+  rm -f -- "$key" "$key.next" "$key.before-import"
 }
 
 case $verb in add | reset-password) read_password ;; esac
@@ -523,11 +673,14 @@ case $verb in
     faillock --user "$name" --reset >/dev/null 2>&1
     ;;
   autologin)
-    if [[ $choice == on ]]; then
-      write_autologin "$(people | head -n 1 | cut -d: -f1)"
-    else
-      write_autologin ""
-    fi
+    if [[ $choice == on ]]; then autologin_on; else autologin_off; fi
+    ;;
+  autologin-finish)
+    # Their keyring must open without a password before the computer logs
+    # them in without one.
+    [[ -s $KEY_STORE/karchy.keyring.$(person_field "$name" 2) ]] ||
+      refuse "The keyring of $name has no key yet."
+    autologin_now "$name"
     ;;
 esac
 exit 0

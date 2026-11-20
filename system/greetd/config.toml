@@ -1,13 +1,21 @@
 # karchy (D-13, D-130): an encrypted install. After the disk is unlocked, go
 # straight into the Hyprland session. Logging out shows karchy's login screen (/usr/lib/karchy/greeter; the text greeter
-# when it can't start).
+# when it can't start). A login there goes through karchy's PAM service,
+# which looks after the keyring (D-142). Settings › Users takes
+# [initial_session] away when automatic login is turned off.
 [terminal]
 vt = 1
+
+[general]
+service = "karchy-login"
 
 [initial_session]
 command = "/usr/lib/karchy/session"
 user = "@USER@"
 
+# The greeter's own session keeps greetd's plain service: the keyring is the
+# business of the person logging in.
 [default_session]
 command = "/usr/lib/karchy/greeter"
 user = "greeter"
+service = "greetd"

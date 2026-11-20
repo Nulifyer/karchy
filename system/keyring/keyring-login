@@ -1,0 +1,305 @@
+#!/bin/bash
+
+# karchy (D-142): the login keyring follows how its owner gets in. Run by PAM
+# as root while someone logs in at karchy's login screen:
+#
+#   /etc/pam.d/karchy-login
+#     auth [success=1 default=ignore] pam_exec.so expose_authtok quiet quiet_log /usr/lib/karchy/keyring-login
+#     auth optional pam_oo7.so
+#
+# The rule: a keyring is locked with its owner's login password whenever the
+# login screen is how they get in. Only automatic login (an encrypted disk
+# with one person) keeps a random key in /etc/credstore, because nobody types
+# a password there. This hook is where a keyring changes from one lock to the
+# other, because a login is the one moment the password is at hand:
+#
+#   to the password   /etc/karchy/keyring-login-password marks an install
+#                     whose keyrings open with the login password. A key that
+#                     is still in /etc/credstore for the person logging in is
+#                     left over from automatic login: their keyring is given
+#                     the login password in the key's place, and the key is
+#                     deleted.
+#   to a key          /etc/karchy/autologin-pending names the one person who
+#                     asked for automatic login. Their keyring is given a new
+#                     random key in the password's place, the key goes into
+#                     /etc/credstore, and users-settings turns automatic
+#                     login on (it starts at the next boot).
+#   back to its key   Automatic login is in force and the key stopped opening
+#                     the keyring while the password does: the system went
+#                     back to a snapshot from before automatic login was
+#                     turned off, and the home folder, where the keyring has
+#                     the password since, did not. The keyring is given the
+#                     key that is there.
+#
+# Exit status, which is all PAM reads of it: 0 when a key in /etc/credstore
+# opens this person's keyring in the session that follows, so pam_oo7 is
+# skipped and never hands the password to the keyring's daemon (the daemon
+# takes that over the key, and a keyring locked with the key would stay
+# shut); 1 when the password opens it, so pam_oo7 keeps it for the daemon.
+# Neither can fail the login (the line's result is ignored by the stack) or
+# hold it up beyond the time limits below.
+#
+# Nothing is changed unless every one of these holds; otherwise the hook
+# only answers which lock is in force, and the change waits for the next
+# login:
+# - the password on stdin is this account's password (checked here with
+#   unix_chkpwd, not taken from the order of the PAM file);
+# - the account is a person's (a user number from 1000 to 59999);
+# - their user manager and keyring daemon are not running (a keyring file
+#   must not be changed under a running daemon);
+# - no other login of theirs is in this hook (a lock).
+#
+# No step can lose a keyring. The keyring is changed on a copy beside it and
+# renamed into place only when the copy opens with the new secret and holds
+# as many entries as before (keyring-rekey). A new key is on the disk before
+# a keyring is locked with it. A key is deleted only once the keyring is
+# known to open with the password, or when there is no keyring at all. An
+# interrupted run leaves the keyring opening with the old secret or with the
+# new one, and the next login finds out which and finishes.
+#
+# Threat reasoning. This runs as root inside every login at the login
+# screen, with the password just typed on its stdin.
+# - Input: PAM_USER from PAM (checked against the passwd database and the
+#   person rule), and the password on stdin. No arguments, nothing else from
+#   the environment, no file of the person's is read or written as root.
+# - The password and the key go to child programs only through pipes, from
+#   shell builtins: never in argv, the environment, a file or a log. Nothing
+#   here traces or prints them. A password with a control character in it is
+#   not passed on (it has to cross a terminal, see keyring-rekey); that
+#   keyring keeps its key until the password changes.
+# - Everything in the person's home is done by /usr/lib/karchy/keyring-rekey
+#   as that person (setpriv drops the user, group and groups, with a fresh
+#   environment), in a process namespace of its own that ends with the step,
+#   so nothing it starts outlives it, and under a time limit. Root follows no
+#   path of theirs.
+# - Only packaged, root-owned programs are run, from fixed paths. Files
+#   written: keys in /etc/credstore (root only), and, through
+#   /usr/lib/karchy/users-settings, the files that one owns.
+# - What a person could gain by making it misbehave: nothing beyond their own
+#   keyring, which is theirs already. What an administrator loses: the key
+#   to another person's keyring, which is the point.
+
+set -uo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 077
+IFS=$' \t\n'
+cd / || exit 1
+
+STORE=/etc/credstore
+MARK=/etc/karchy/keyring-login-password
+WANTED=/etc/karchy/autologin-pending
+REKEY=/usr/lib/karchy/keyring-rekey
+KEY_MAKER=/usr/lib/karchy/keyring-key
+USERS=/usr/lib/karchy/users-settings
+BUS_CONF=/usr/lib/karchy/keyring-rekey-bus.conf
+UID_FIRST=1000
+UID_LAST=59999
+# Seconds one step in the person's home may take, and the time after which
+# no further step is started: a login is never held up for long.
+STEP_LIMIT=10
+TOTAL_LIMIT=20
+
+note() { logger -t karchy-keyring -p auth.info -- "$1" 2>/dev/null || true; }
+
+# ---- who is logging in ----
+
+name=${PAM_USER:-}
+[[ $name =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] || exit 1
+entry=$(getent passwd "$name") || exit 1
+IFS=: read -r _ _ uid gid _ <<<"$entry"
+[[ $uid =~ ^[0-9]+$ && $gid =~ ^[0-9]+$ ]] || exit 1
+((uid >= UID_FIRST && uid <= UID_LAST)) || exit 1
+
+key=$STORE/karchy.keyring.$uid
+next=$key.next
+
+# The answer for PAM, from what is on the disk now.
+answer() {
+  if [[ -e $MARK && ! -e $key ]]; then exit 1; fi
+  exit 0
+}
+
+# Only an authentication is acted on.
+[[ ${PAM_TYPE:-} == auth ]] || answer
+
+# What pam_exec wrote: the password, with or without a closing NUL.
+password=""
+IFS= read -r -d '' password || true
+[[ -n $password ]] || answer
+# It must cross a terminal on its way to oo7-cli (keyring-rekey).
+usable_password() { [[ $password != *[[:cntrl:]]* ]] && ((${#password} <= 512)); }
+
+# Is there anything to look at for this person? Not at the common login:
+# the password is in force and no key is left.
+wanted=""
+[[ ! -f $WANTED || -L $WANTED ]] || wanted=$(head -n 1 "$WANTED" 2>/dev/null)
+[[ $wanted == "$name" || -e $key || ( -e $MARK && -e $next ) ]] || answer
+
+printf '%s\0' "$password" | unix_chkpwd "$name" nullok >/dev/null 2>&1 || answer
+
+exec 9>"/run/karchy-keyring-login.$uid.lock" || answer
+flock -n 9 || answer
+
+# Their user manager, or a keyring daemon of theirs outside it.
+session_running() {
+  local state
+  state=$(systemctl show -P ActiveState "user@$uid.service" 2>/dev/null)
+  [[ $state == inactive || $state == failed ]] || return 0
+  pgrep -U "$uid" -x oo7-daemon >/dev/null 2>&1
+}
+if session_running; then
+  note "$name: the keyring's lock changes at a later login (their session is still running)"
+  answer
+fi
+
+# ---- the person's side ----
+
+scratch=""
+trap '[[ -z $scratch ]] || rm -rf -- "$scratch"' EXIT
+
+# keyring-rekey as the person, on a session bus of its own (oo7-cli asks the
+# bus for a keyring service before it opens a file; this one has a daemon
+# that sees an empty folder). stdin goes through to it.
+#
+# Everything it starts is gone when this returns, also when the time limit
+# ends it: the first process of the namespace is a root shell, the limit is
+# counted inside it, and when that shell ends the kernel kills whatever is
+# left in the namespace before unshare returns. (unshare's own
+# kill-the-child-when-I-die would not do: the kernel drops that request the
+# moment a process changes user, so it stays on the root shell and is only
+# the outer limit's last resort.)
+as_person() {
+  ((SECONDS < TOTAL_LIMIT)) || return 1
+  if [[ -z $scratch ]]; then
+    scratch=$(mktemp -d /run/karchy-keyring.XXXXXXXX) || return 1
+    chown "$uid:$gid" "$scratch" || return 1
+  fi
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  timeout --kill-after=2 "$((STEP_LIMIT + 5))" \
+    unshare --pid --fork --kill-child -- \
+    /usr/bin/bash -c 'timeout --kill-after=2 "$0" "$@"; exit $?' "$STEP_LIMIT" \
+    setpriv --reuid "$uid" --regid "$gid" --init-groups --no-new-privs -- \
+    env -i HOME="$scratch" USER="$name" LOGNAME="$name" SHELL=/usr/bin/sh PATH=/usr/bin LC_ALL=C \
+    XDG_RUNTIME_DIR="$scratch" XDG_DATA_HOME="$scratch/data" OO7_PAM_SOCKET="$scratch/pam.sock" \
+    dbus-run-session --config-file="$BUS_CONF" -- "$REKEY" "$@" >/dev/null 2>&1 9>&-
+}
+
+# 0 a keyring is there, 44 none (keyring-rekey's own answer, which no failed
+# step on the way to it gives), anything else: can't tell.
+NONE=44
+has_keyring() {
+  local code=0
+  as_person has </dev/null || code=$?
+  return "$code"
+}
+
+# The keyring from the secret in file $1 to the password, or the other way
+# for `to-key`. 0 when the keyring now opens with the new secret.
+change() {
+  local direction=$1 file=$2 secret
+  secret=$(<"$file") || return 1
+  [[ $secret =~ ^[A-Za-z0-9+/]{43}=$ ]] || return 1
+  if [[ $direction == to-password ]]; then
+    printf '%s\n%s\n' "$secret" "$password" | as_person change
+  else
+    printf '%s\n%s\n' "$password" "$secret" | as_person change
+  fi
+}
+
+password_opens() { printf '%s\n' "$password" | as_person opens; }
+key_opens() {
+  local secret
+  secret=$(<"$1") || return 1
+  [[ $secret =~ ^[A-Za-z0-9+/]{43}=$ ]] || return 1
+  printf '%s\n' "$secret" | as_person opens
+}
+
+# ---- automatic login was asked for: the keyring goes to a key ----
+
+to_key() {
+  local found=0 allowed=0
+  # No longer allowed (a second person since): the wish is dropped. Only a
+  # refusal drops it, not a helper that could not answer.
+  timeout 10 "$USERS" check autologin on >/dev/null 2>&1 || allowed=$?
+  if ((allowed == 65)); then
+    rm -f -- "$WANTED"
+    note "$name: automatic login is no longer possible here; the request was dropped"
+    return 1
+  elif ((allowed != 0)); then
+    note "$name: automatic login could not be checked; it waits"
+    return 1
+  fi
+  if [[ ! -e $key ]]; then
+    has_keyring || found=$?
+    ((found == 0 || found == NONE)) || { note "$name: the keyring could not be looked at; automatic login waits"; return 1; }
+    # The new key is on the disk before any keyring is locked with it, and
+    # one from an interrupted run is used again, never replaced.
+    "$KEY_MAKER" "$uid" next && [[ -s $next ]] || { note "$name: no key could be made; automatic login waits"; return 1; }
+    if ((found == 0)) && ! key_opens "$next"; then
+      usable_password || { note "$name: this password can't be handed to the keyring; automatic login waits"; return 1; }
+      change to-key "$next" || { note "$name: the keyring did not take its key; automatic login waits"; return 1; }
+    fi
+    mv -f -- "$next" "$key" && sync "$STORE" || return 1
+    note "$name: the keyring now opens with a key in $STORE"
+  fi
+  rm -f -- "$next"
+  # (It waits for the lock of a change being made in Settings › Users.)
+  if timeout --kill-after=2 15 "$USERS" autologin-finish "$name" >/dev/null 2>&1 9>&-; then
+    note "$name: automatic login is on from the next start"
+  else
+    note "$name: automatic login could not be turned on; it is tried again at the next login"
+  fi
+}
+
+# ---- the login screen is in force: the keyring goes to the password ----
+
+# One left-over key file: gone when the keyring opens with the password.
+retire() {
+  local file=$1 found=0
+  [[ -e $file ]] || return 0
+  has_keyring || found=$?
+  if ((found == NONE)); then
+    rm -f -- "$file"
+    note "$name: no keyring yet; the key in $STORE was deleted"
+  elif ((found != 0)); then
+    note "$name: the keyring could not be looked at; its key stays for now"
+  elif usable_password && change to-password "$file"; then
+    rm -f -- "$file"
+    note "$name: the keyring now opens with the login password; the key in $STORE was deleted"
+  elif password_opens; then
+    # It was given the password already (an interrupted run, or the system
+    # went back to a snapshot from before): the key opens nothing.
+    rm -f -- "$file"
+    note "$name: the keyring already opens with the login password; the stale key was deleted"
+  else
+    note "$name: the keyring did not take the login password; its key stays and the next login tries again"
+  fi
+}
+
+# ---- automatic login is in force: the key must still open the keyring ----
+
+restore() {
+  has_keyring || return 0
+  key_opens "$key" && return 0
+  password_opens || return 0
+  if usable_password && change to-key "$key"; then
+    note "$name: the keyring opened with the login password and not with its key (a snapshot from before?); it has its key again"
+  else
+    note "$name: the keyring opens with the login password and not with its key; it could not be given the key"
+  fi
+}
+
+if [[ $wanted == "$name" ]]; then
+  to_key && answer
+  # Still asked for, and waiting for a later login: nothing else is touched.
+  [[ ! -f $WANTED ]] || answer
+fi
+if [[ -e $MARK ]]; then
+  retire "$key"
+  # A key that an interrupted change to automatic login left behind.
+  retire "$next"
+elif [[ -e $key ]]; then
+  restore
+fi
+answer

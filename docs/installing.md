@@ -42,7 +42,7 @@ One question decides both. The first answer is selected already, so pressing Ent
 
 | Answer | The disk | At boot | Saved passwords (the keyring) |
 |---|---|---|---|
-| **Encrypted** (the default) | LUKS2. Nobody reads it without the password | The disk-password screen; the same password logs you in | Opened by a key that is itself on the encrypted disk |
+| **Encrypted** (the default) | LUKS2. Nobody reads it without the password | The disk-password screen; the same password logs you in | Opened by a key that is itself on the encrypted disk, while the computer logs you in by itself; by your login password once the login screen asks for it |
 | **Not encrypted** | Plain btrfs. Anyone who has the computer or the disk can read your files | karchy's login screen asks for your password | Opened by your login password, so they stay protected on the plain disk |
 
 Every install asks for a password at boot; there is none that starts straight into the desktop. Not encrypted shows its warning in red and asks once more, and the summary repeats it in red beside the erase line. The choice is made at install time. Changing it later means installing again (encrypting a plain disk in place is not something karchy does).
@@ -62,7 +62,12 @@ What that changes at boot:
 
 On an encrypted install, adding the second person turns automatic login off. The first person's password is still the one typed into the installer, which is also the disk password, and everyone who starts the computer has to know that one. So the page asks them to change their own password then (Settings › Security does the same later) and keeps a note until they have. The disk password itself doesn't change; Settings › Security › Drive password changes it. The note goes by the date the password last changed, so a change made with plain `passwd` on the day of the install doesn't clear it; the page's own "Change password…" does.
 
-Saved passwords (the keyring) keep working through all of it. On an encrypted install each person's keyring opens with a key of its own in `/etc/credstore`, whether or not the computer logs in by itself (D-57, D-139); a person added later gets theirs when the account is made. Standard users can't read those keys; an administrator can, as an administrator can read everything on the computer. Without encryption each keyring opens with its owner's login password. There, a password reset by an administrator leaves that person's keyring locked with the old password until it is re-keyed or set aside ([Recovery](recovery.md#someone-cant-sign-in)).
+Saved passwords (the keyring) keep working through all of it, and nothing ever asks for a keyring password (D-142). The rule: a person's keyring is locked with their login password whenever the login screen is how they get in. Only automatic login keeps a random key for it in `/etc/credstore` (D-57), because no password is typed there; the disk password is the lock.
+
+- **Automatic login turned off, or a second person added.** The first person's keyring changes from its key to their login password at their next login at the login screen, by itself, and the key is deleted. From then on nobody else can open it: not a standard user, and not an administrator either, who could read the key before. A person added now never gets a key.
+- **Automatic login turned on again** (one person left). While nobody has logged in since it was turned off, it is on at once. Otherwise the page says "Starts after you next log in at the login screen": that login gives the keyring a new key, and the computer logs in by itself from the next start.
+- **Without disk encryption** the login password opens each keyring from the first login, as before (D-131).
+- **A password reset by an administrator** can't give the keyring the new password. That person's saved passwords stay locked, a notification says so at their next login, and Settings › Security › Saved passwords › Reset… erases them so apps can save again ([Recovery](recovery.md#someone-cant-sign-in)). A password changed by its owner (Settings › Security, or `passwd`) changes the keyring's with it.
 
 ### Other internal disks
 

@@ -13,6 +13,11 @@ depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-r
   # Settings › Storage's "Measure now": compsize counts what files hold
   # against what they take on a btrfs disk; jq writes the result.
   'compsize' 'jq'
+  # The login keyring (D-142): keyring-login gives a keyring another secret
+  # with oo7-cli (`--secret -` is 0.7.2's) on a bus of its own
+  # (dbus-run-session), through a terminal from script(1), as the person
+  # (setpriv, unshare), after checking the password (unix_chkpwd, in pam).
+  'oo7>=0.7.2' 'dbus' 'util-linux'
   # The disk-password screen (D-122): the mkinitcpio drop-in below names
   # Plymouth's hook, so the package must be there when an image is built.
   'plymouth')
@@ -160,8 +165,8 @@ package() {
   # Thunar's Send To › LocalSend; hidden while LocalSend isn't installed.
   install -Dm644 thunar/sendto/karchy-localsend.desktop "$pkgdir/usr/share/Thunar/sendto/karchy-localsend.desktop"
   install -Dm644 pam.d/karchy-lock-password "$pkgdir/etc/pam.d/karchy-lock-password"
-  # The login screen's PAM service on an install whose keyring opens with the
-  # login password (D-131); greetd's config names it only there.
+  # The login screen's PAM service (D-131, D-142): greetd's config names it,
+  # and it runs keyring-login, below.
   install -Dm644 pam.d/karchy-login "$pkgdir/etc/pam.d/karchy-login"
   # Font defaults: monospace is JetBrainsMono Nerd Font, unless karchy-font-set
   # chose another (the state file it includes) or the user's fontconfig does.
@@ -221,6 +226,13 @@ package() {
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.users-settings.policy"
 
   install -Dm755 keyring/keyring-key "$pkgdir/usr/lib/karchy/keyring-key"
+  # The login keyring follows how its owner gets in (D-142): the root hook
+  # karchy-login's PAM file runs, the part of it that runs as the person
+  # logging in, and the session bus that part gets.
+  install -Dm755 -t "$pkgdir/usr/lib/karchy" keyring/keyring-login keyring/keyring-rekey
+  install -Dm644 keyring/rekey-bus.conf "$pkgdir/usr/lib/karchy/keyring-rekey-bus.conf"
+  install -Dm644 keyring/rekey-secrets.service \
+    "$pkgdir/usr/lib/karchy/keyring-rekey-services/org.freedesktop.secrets.service"
   install -Dm644 systemd/system/karchy-keyring-key@.service "$pkgdir/usr/lib/systemd/system/karchy-keyring-key@.service"
   install -Dm644 systemd/system/user@.service.d/karchy-keyring.conf \
     "$pkgdir/usr/lib/systemd/system/user@.service.d/karchy-keyring.conf"

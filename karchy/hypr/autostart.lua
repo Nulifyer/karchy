@@ -27,6 +27,8 @@ hl.on("hyprland.start", function()
   hl.exec_cmd("karchy-secureboot check")
   -- Say so when the boot menu started a snapshot, and offer to restore it.
   hl.exec_cmd("karchy-snapshot-boot check")
+  -- Say so when saved passwords (the login keyring) could not be opened.
+  hl.exec_cmd("karchy-keyring check")
   -- Warn when the desktop draws on the processor (no usable GPU driver).
   hl.exec_cmd("karchy-hw-renderer check")
   hl.exec_cmd("karchy-powerprofiles-init")

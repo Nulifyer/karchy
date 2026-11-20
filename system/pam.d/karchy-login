@@ -1,13 +1,22 @@
-# karchy (D-131): logging in at karchy's login screen on an install whose
-# keyring opens with the login password (no disk encryption). greetd's own
-# service plus oo7's module: it keeps the password typed at the login screen and hands it to the user's oo7 daemon once the session
-# is open, which unlocks the login keyring with it. /etc/greetd/config.toml
-# names this service only on such an install.
+# karchy (D-131, D-142): logging in at karchy's login screen. greetd's own
+# service plus the login keyring: /etc/greetd/config.toml names this service
+# on every install.
+#
+# /usr/lib/karchy/keyring-login runs once the password is known. Where a
+# person's keyring opens with the login password (no disk encryption, or
+# automatic login off) it exits 1, and oo7's module keeps the password typed
+# at the login screen and hands it to the user's oo7 daemon once the session
+# is open, which unlocks the login keyring with it. Where a key in
+# /etc/credstore opens it (automatic login) it exits 0 and oo7's module is
+# skipped, because the daemon would take the password over the key. It is
+# also where a keyring changes from one to the other. Its result is ignored:
+# it can't refuse a login.
 #%PAM-1.0
 
 auth       required     pam_securetty.so
 auth       requisite    pam_nologin.so
 auth       include      system-local-login
+auth       [success=1 default=ignore]  pam_exec.so expose_authtok quiet quiet_log /usr/lib/karchy/keyring-login
 auth       optional     pam_oo7.so
 account    include      system-local-login
 session    include      system-local-login

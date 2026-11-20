@@ -295,14 +295,14 @@ ColumnLayout {
           font.pixelSize: Style.font.body
           wrapMode: Text.Wrap
         }
-        // Without disk encryption the keyring opens with the login password,
-        // and only its owner can change that one.
+        // Where the login screen is in force the keyring opens with the
+        // login password (D-142), and a reset can't give it the new one.
         Text {
-          visible: !!root.page && root.page.encrypted === false
+          visible: !!root.page && root.page.keyringPassword === true
           Layout.fillWidth: true
           Layout.maximumWidth: Style.space(460)
           textFormat: Text.PlainText
-          text: "Their saved passwords (the keyring) stay locked with the old password, and apps can't save new ones until the keyring is re-keyed or set aside."
+          text: "Their saved passwords stay locked with the old password. They can reset them in Settings › Security."
           color: Commons.Color.status.warning
           font.family: Style.font.family
           font.pixelSize: Style.font.body
@@ -392,7 +392,7 @@ ColumnLayout {
             textFormat: Text.PlainText
             text: root.homeChoice === "delete-home"
               ? "Everything in " + root.home + " is deleted: files, settings and saved passwords. This can't be undone."
-              : root.home + " stays on the disk. Only an administrator can open it."
+              : root.home + " stays on the disk. Only an administrator can open it; the saved passwords in it stay locked."
             color: root.homeChoice === "delete-home" ? Commons.Color.status.warning : Commons.Color.textSecondary
             font.family: Style.font.family
             font.pixelSize: Style.font.body

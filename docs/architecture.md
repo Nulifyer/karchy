@@ -318,7 +318,7 @@ The base pacstrap includes `karchy-settings`, so the sudo policy, the mkinitcpio
 **Setup** (`install/setup.sh`) does only what depends on this machine and user (D-54):
 
 1. Packages: `karchy-desktop`, plus `karchy-laptop` with a battery and `karchy-nvidia` (Turing and newer) or `karchy-nvidia-580xx` (Maxwell, Pascal, Volta) with an NVIDIA GPU.
-2. greetd: auto-login for the user after the disk password and karchy's login screen after logging out; without disk encryption, the login screen at every boot through the PAM service that opens the keyring (D-130, D-131). mDNS in `nsswitch.conf`, ufw enabled.
+2. greetd: auto-login for the user after the disk password and karchy's login screen after logging out; without disk encryption, the login screen at every boot. A login at that screen goes through the PAM service `karchy-login`, which opens the keyring with the login password or leaves it to its key (D-130, D-131, D-142). mDNS in `nsswitch.conf`, ufw enabled.
 3. Services: greetd, bluetooth, avahi, ufw, smartd, paccache, oomd, power-profiles-daemon (laptop); for every user, the foot server and karchy's sleep-lock and internal-monitor units.
 4. The default theme, nulifyer, applied without a session.
 

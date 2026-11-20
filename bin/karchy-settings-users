@@ -15,7 +15,9 @@
 #   (nothing)           Open the Settings window at Users
 #   status              JSON: you, whether you are an administrator, whether
 #                       the disk is encrypted, automatic login (on, for whom,
-#                       why it can't be turned on), each person (name, full
+#                       pending: asked for and waiting for a login, why it
+#                       can't be turned on), keyringPassword (keyrings open
+#                       with the login password here), each person (name, full
 #                       name, administrator, signed in, why they can't be
 #                       removed or change role), and passwordNote: your
 #                       password is the one from the install and others use
@@ -29,11 +31,18 @@
 #                       everyone but administrators; delete-home deletes it
 #   full-name, role     Another person's shown name, or administrator or not
 #   reset-password      Another person's password (stdin or the terminal).
-#                       Without disk encryption their keyring keeps the old
-#                       one and stays locked (D-131)
+#                       Where the login screen asks for passwords, their
+#                       saved passwords (the keyring) stay locked with the
+#                       old one; they reset them with `karchy-keyring reset`
+#                       or in Settings › Security (D-142)
 #   autologin on|off    On an encrypted computer with one person: start the
 #                       desktop after the disk password, or show the login
-#                       screen. Applies at the next start
+#                       screen. Applies at the next start. Off locks saved
+#                       passwords with the login password from that person's
+#                       next login. On prints "autologin=pending" when it has
+#                       to wait for their next login at the login screen,
+#                       where saved passwords get a key of this computer
+#                       instead (D-142)
 #   password            Change your own password (passwd), and note that it
 #                       is no longer the one from the install
 #

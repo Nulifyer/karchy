@@ -285,21 +285,26 @@ base_locale() {
 }
 
 base_user() {
-  # The login keyring (D-57, D-131). Without disk encryption it opens with
-  # the login password (PAM, system/pam.d/karchy-login), and no key is made: a
-  # key on a plain disk would open the keyring for anyone who has the disk.
-  # This file says so to whatever would make one (users-settings below,
-  # karchy-keyring-key@.service) and to karchy-keyring-key. It comes before
-  # the account, which gets its key as it is made.
+  # The login keyring (D-57, D-131, D-142). It opens with the login password
+  # wherever karchy's login screen asks for one (PAM,
+  # system/pam.d/karchy-login), and no key is made there: a key would open
+  # the keyring for anyone who can read it, which on a plain disk is anyone
+  # who has the disk. An install without disk encryption is such a place
+  # from the start, and this file says so to whatever would make a key
+  # (users-settings below, karchy-keyring-key@.service) and to
+  # karchy-keyring-key. It comes before the account. An encrypted install
+  # starts with automatic login and a key; Settings › Users writes the file
+  # when that is turned off.
   if ! install_encrypted; then
     install -d -m 0755 "$KARCHY_MNT/etc/karchy"
-    echo "# karchy: the login keyring opens with the login password (D-131); no key is kept in /etc/credstore." \
+    echo "# karchy: the login keyring opens with the login password (D-131, D-142); no key is kept in /etc/credstore." \
       >"$KARCHY_MNT/etc/karchy/keyring-login-password"
   fi
   # The account, by the owner of what an account is (system/users, from
   # karchy-settings, pacstrapped with the base): an administrator with fish
-  # as the shell, a home nobody else opens and, on an encrypted disk, the
-  # keyring's key, before any snapshot is taken. Settings › Users makes
+  # as the shell, a home nobody else opens and, on an encrypted disk (where
+  # the computer logs them in by itself), the keyring's key, before any
+  # snapshot is taken. Settings › Users makes
   # later accounts the same way. The password goes in on stdin.
   printf '%s\n' "$KARCHY_PASSWORD" | in_target /usr/lib/karchy/users-settings add "$KARCHY_USER" admin
   in_target passwd --lock root

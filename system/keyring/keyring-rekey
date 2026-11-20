@@ -1,0 +1,103 @@
+#!/bin/bash
+
+# karchy (D-142): the part of /usr/lib/karchy/keyring-login that touches a
+# person's home, run as that person (never as root) while they log in. It
+# looks at their login keyring and gives it another secret with oo7-cli.
+#
+#   has      Exit 0 when a login keyring file is there, 44 when there is
+#            none, 3 when this can't tell (the data folder was moved, or only
+#            a keyring in the old format is there)
+#   opens    One line on stdin: a secret. Exit 0 when it opens at least one
+#            entry of the keyring
+#   change   Two lines on stdin: the secret the keyring has, then the one it
+#            gets. Exit 0 when the keyring now opens with the new one
+#
+# `change` works on a copy beside the keyring and renames it into place only
+# when oo7-cli changed it without complaint and it lists as many entries
+# with the new secret as the keyring did with the old one. Until that rename
+# the keyring is untouched; after it, it is whole. A copy left by an
+# interrupted run is deleted first.
+#
+# oo7-cli asks the session bus for a keyring service before it opens a file,
+# so the caller runs this under a bus of its own (dbus-run-session with
+# /usr/lib/karchy/keyring-rekey-bus.conf), where that service is a daemon looking
+# at an empty folder. The person's real daemon must not be running.
+#
+# Secrets come in on stdin and go on through pipes from shell builtins, never
+# in argv. oo7-cli takes the old secret on its stdin for a listing
+# (`--secret -`, oo7 0.7.2), but asks for the two of `change-secret` on a
+# terminal, so those cross a terminal made by script(1), whose record goes to
+# /dev/null. A terminal acts on control characters, so a secret holding one
+# is refused.
+
+set -uo pipefail
+PATH=/usr/bin
+export LC_ALL=C
+umask 077
+IFS=$' \t\n'
+
+NONE=44
+home=$(getent passwd "$(id -u)" | cut -d: -f6)
+[[ $home == /* && -d $home ]] || exit 3
+folder=$home/.local/share/keyrings
+keyring=$folder/v1/login.keyring
+copy=$folder/v1/.login.keyring.rekey
+
+# A data folder somewhere else: the daemon reads XDG_DATA_HOME, which only a
+# session's environment files can set for it. karchy sets none.
+moved() {
+  grep -qsE '^[[:space:]]*(export[[:space:]]+)?XDG_DATA_HOME=' /etc/environment \
+    /etc/environment.d/*.conf /usr/lib/environment.d/*.conf "$home"/.config/environment.d/*.conf 2>/dev/null
+}
+
+has() {
+  moved && return 3
+  [[ -f $keyring && ! -L $keyring ]] && return 0
+  # The format before oo7's: oo7 converts it when it is unlocked.
+  compgen -G "$folder/*.keyring" >/dev/null && return 3
+  return "$NONE"
+}
+
+# How many entries of file $1 the secret on stdin opens, or nothing.
+entries() { oo7-cli --keyring "$1" --secret - list --json 2>/dev/null | jq 'length' 2>/dev/null; }
+
+case "${1:-}" in
+  has)
+    has
+    ;;
+  opens)
+    has || exit 1
+    IFS= read -r secret || true
+    [[ -n $secret ]] || exit 1
+    count=$(printf '%s\n' "$secret" | entries "$keyring")
+    [[ $count =~ ^[0-9]+$ ]] && ((count > 0))
+    ;;
+  change)
+    has || exit 1
+    IFS= read -r old || true
+    IFS= read -r new || true
+    [[ -n $old && -n $new && $old != *[[:cntrl:]]* && $new != *[[:cntrl:]]* ]] || exit 1
+    before=$(printf '%s\n' "$old" | entries "$keyring")
+    [[ $before =~ ^[0-9]+$ ]] || exit 1
+    rm -f -- "$copy"
+    cp --preserve=mode,timestamps -- "$keyring" "$copy" || exit 1
+    trap 'rm -f -- "$copy"' EXIT
+    cd "$folder/v1" || exit 1
+    # oo7-cli asks "Keyring secret" and then "Type the new secret" on the
+    # terminal script makes; the two lines answer them in that order.
+    printf '%s\n%s\n' "$old" "$new" |
+      script -qfec 'exec /usr/bin/oo7-cli --keyring ./.login.keyring.rekey change-secret' /dev/null >/dev/null 2>&1 ||
+      exit 1
+    after=$(printf '%s\n' "$new" | entries "$copy")
+    [[ $after == "$before" ]] || exit 1
+    sync "$copy" || exit 1
+    mv -f -- "$copy" "$keyring" || exit 1
+    trap - EXIT
+    sync "$folder/v1"
+    exit 0
+    ;;
+  *)
+    echo "usage: keyring-rekey has | opens | change" >&2
+    exit 64
+    ;;
+esac

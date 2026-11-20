@@ -5,10 +5,11 @@
 # karchy:examples=karchy keyring-key export /mnt/nas/backups/keyring-key.txt | karchy keyring-key import keyring-key.txt
 # karchy:requires-sudo=true
 
-# Your login keyring (Brave's saved logins, app passwords) is encrypted with a
-# random key that only this install has, in /etc/credstore (root only, D-57).
-# A home folder restored onto a new install can't open its keyring without
-# that key, so keep it with your backups:
+# On a computer that logs you in by itself (an encrypted disk, one person),
+# your login keyring (Brave's saved logins, app passwords) is encrypted with
+# a random key that only this install has, in /etc/credstore (root only,
+# D-57). A home folder restored onto a new install can't open its keyring
+# without that key, so keep it with your backups:
 #
 #   export <file>  writes the key to <file> (only you can read it); keep it
 #                  somewhere safe, it opens every password in the keyring
@@ -16,7 +17,9 @@
 #                  keyring opens; takes effect at the next sign-in. The key
 #                  it replaces is kept beside it in /etc/credstore.
 #
-# An install without disk encryption has no such key: its keyring opens with the login password (D-131).
+# Where karchy's login screen asks for your password (no disk encryption, or
+# automatic login off) there is no such key: the keyring opens with the
+# login password (D-131, D-142).
 #
 # The installer takes one too: KARCHY_KEYRING_KEY_FILE=<file> in an unattended
 # config (docs/installing.md).
@@ -33,7 +36,7 @@ fail() {
 valid() { [[ $1 =~ ^[A-Za-z0-9+/]{43}=$ ]]; }
 
 if [[ -e /etc/karchy/keyring-login-password ]]; then
-  echo "This install's keyring opens with your login password, not with a key, so there is no key to save or restore."
+  echo "Your keyring opens with your login password here, not with a key, so there is no key to save or restore."
   echo "A restored home folder's keyring opens here if your login password is the one it had."
   exit 0
 fi
