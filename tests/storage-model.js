@@ -114,6 +114,11 @@ eq(M.beesLine(bees({ state: "starting" })), "Running: getting ready"); eq(M.bees
 eq(M.beesLine(bees({ on: false, active: false, state: "stopped" })), "Off")
 eq(M.beesLine(bees({ active: false, waitsForPower: true, state: "stopped" })), "Paused: it runs while plugged in")
 eq(M.beesLine(bees({ active: false, state: "stopped" })), "Not running")
+eq(M.beesLine(bees({ active: false, failed: true, state: "stopped" })), "Stopped with an error")
+// An error is said before the charger: plugging in would not mend it.
+eq(M.beesLine(bees({ active: false, failed: true, waitsForPower: true, state: "stopped" })), "Stopped with an error")
+// Switched off after it failed: Off, as the switch says.
+eq(M.beesLine(bees({ on: false, active: false, failed: true, state: "stopped" })), "Off")
 eq(M.beesLine(bees({ lockedOff: true, on: false, active: false })), "Switched off by karchy for now; an update turns it back on")
 eq(M.beesLine({ available: false }), ""); eq(M.beesLine(null), "")
 eq(M.beesTotal(bees({ dedupBytes: 12.3 * GB, since: at(2026, 10, 18, 8, 57) / 1000 }), now), "About 12.3 GB shared by it since it started today at 08:57")

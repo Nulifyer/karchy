@@ -11,7 +11,7 @@ Read this before you mount or unmount storage, change `/etc/fstab`, switch backg
 - `karchy-settings-storage health` prints each disk's SMART health, wear and temperature, asked of the disks now. No password for the person at the computer.
 - `karchy-settings-storage subvolumes` prints, for each mounted btrfs filesystem by UUID, its top-level subvolumes with where each is mounted, and how many snapshots and nested subvolumes it has. btrfs lets only root list them: the person at the computer gets the full list without a password; anyone else gets the mounted ones and `null` counts. No size per subvolume exists: they share the filesystem's space.
 - `karchy-settings-storage shares` prints the network shares kept at `/mnt`, each `connected`, `idle` or `unreachable`. It never waits on a server that is away. Prefer it to `df` or `ls /mnt/<share>`, which can block for about 30 seconds on an unreachable share.
-- `karchy-settings-storage bees` prints whether deduplication is on, running, and how far it is.
+- `karchy-settings-storage bees` prints whether deduplication is on, running, and how far it is. Switched on but not running, it says why: `waitsForPower` (a laptop on battery; it starts again on the charger) or `failed` (it ended with an error; `karchy-settings-storage bees log` prints the end of its log). Neither set means it was stopped by hand.
 - `karchy settings storage` opens the page.
 - `karchy-drive-info <drive>` prints one drive's size, model and partitions.
 

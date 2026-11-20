@@ -330,6 +330,7 @@ ColumnLayout {
   }
 
   // Background deduplication, on the system disk.
+  readonly property bool beesFailed: !!root.page && root.page.bees.on === true && root.page.bees.active !== true && root.page.bees.failed === true
   RowLayout {
     visible: root.volume.role === "system" && !!root.page && root.page.bees.available === true
     Layout.fillWidth: true
@@ -356,6 +357,7 @@ ColumnLayout {
         Layout.fillWidth: true
         wrapMode: Text.Wrap
         text: root.page ? Model.beesLine(root.page.bees) : ""
+        color: root.beesFailed ? Commons.Color.status.error : Commons.Color.textSecondary
       }
       Quiet {
         visible: text !== ""
@@ -363,6 +365,17 @@ ColumnLayout {
         wrapMode: Text.Wrap
         text: root.page ? Model.beesTotal(root.page.bees, root.page.nowMs) : ""
       }
+    }
+
+    // Only when it stopped with an error: what it said, in a terminal.
+    Button {
+      visible: root.beesFailed
+      Layout.alignment: Qt.AlignVCenter
+      focusable: true
+      bordered: true
+      text: "Show log"
+      accessibleName: "Show the log of background deduplication"
+      onClicked: root.page.showBeesLog()
     }
 
     ButtonGroup {

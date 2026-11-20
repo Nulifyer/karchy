@@ -254,7 +254,10 @@ function beesLine(bees) {
   if (!bees || !bees.available) return ""
   if (bees.lockedOff) return "Switched off by karchy for now; an update turns it back on"
   if (!bees.on && !bees.active) return "Off"
-  if (!bees.active) return bees.waitsForPower ? "Paused: it runs while plugged in" : "Not running"
+  // Not running with the switch on: it ended with an error (the page offers
+  // its log), karchy-laptop holds it until the charger is back, or it was
+  // stopped by hand.
+  if (!bees.active) return bees.failed ? "Stopped with an error" : bees.waitsForPower ? "Paused: it runs while plugged in" : "Not running"
   if (bees.state === "starting") return "Running: getting ready"
   if (bees.state === "idle") return "Idle: everything on the disk is checked"
   if (bees.state === "scanning") {

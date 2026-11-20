@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Show disks, mounted storage and how full it is (Settings › Storage)
-# karchy:args=[status | usage | health | subvolumes | shares | bees [on|off] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
+# karchy:args=[status | usage | health | subvolumes | shares | bees [on|off|log] | measure | mount <device> | unmount <device> | eject <disk> | unlock <device> | keep <device> | check <mount point> | watch]
 # karchy:examples=karchy settings storage | karchy-settings-storage status | karchy-settings-storage bees off
 # karchy:hidden=true
 
@@ -38,8 +38,13 @@
 #                      2 seconds at most, so a server that is away never
 #                      holds this up.
 #   bees               JSON: background deduplication (bees) on the system
-#                      disk: whether it is on, running, and how far it is
+#                      disk: whether it is on, running, and how far it is;
+#                      when it isn't running, whether it waits for the
+#                      charger (waitsForPower) or stopped with an error
+#                      (failed)
 #   bees on|off        Switch it, then the same JSON
+#   bees log           The end of its log since startup (the journal), for
+#                      when it stopped with an error
 #   measure            Count, now, what the files on each btrfs filesystem
 #                      hold against what they take (minutes on a full disk;
 #                      nothing else ever starts this)
@@ -65,6 +70,10 @@ BTRFS_SYSFS=${KARCHY_BTRFS_SYSFS:-/sys/fs/btrfs}
 HEALTH_DIR=${KARCHY_DISK_HEALTH_DIR:-/var/lib/karchy/disk-health}
 FSTAB=${KARCHY_FSTAB:-/etc/fstab}
 BEES_UNIT=karchy-bees.service
+BEES_PACKAGED_CONF=${KARCHY_BEES_PACKAGED_CONF:-/usr/share/karchy/bees.conf}
+BEES_CONF=${KARCHY_BEES_CONF:-/etc/karchy/bees.conf}
+# karchy-laptop's rule that stops bees when the charger is unplugged (D-86).
+BEES_POWER_RULE=${KARCHY_BEES_POWER_RULE:-/usr/lib/udev/rules.d/90-karchy-bees-power.rules}
 DISK_MARKER="# karchy-data-disk"
 SHARE_MARKER="# karchy-kept-mount"
 
@@ -381,10 +390,23 @@ conf_enabled() {
   printf '%s' "${value%%[[:space:]]*}"
 }
 
+# bees is held back by karchy-laptop, which runs it only while plugged in
+# (D-86), in two ways. Its drop-in keeps the service from starting on battery:
+# the start condition then reads "no". Its udev rule stops the service when
+# the charger is unplugged: a plain stop, after which the condition still
+# reads "yes" from the start on the charger. Either way it is waiting for the
+# charger only while the machine is on battery.
+bees_waits_for_power() {
+  command -v systemd-ac-power >/dev/null || return 1
+  ! systemd-ac-power || return 1
+  [[ -e $BEES_POWER_RULE || $(systemctl show "$BEES_UNIT" -P ConditionResult 2>/dev/null) == no ]]
+}
+
 bees_status() {
-  local available=false on=false active=false locked=false waits=false packaged override enabled since=0 stamp summary=""
-  packaged=$(conf_enabled /usr/share/karchy/bees.conf)
-  override=$(conf_enabled /etc/karchy/bees.conf)
+  local available=false on=false active=false locked=false waits=false failed=false
+  local packaged override enabled since=0 stamp summary=""
+  packaged=$(conf_enabled "$BEES_PACKAGED_CONF")
+  override=$(conf_enabled "$BEES_CONF")
   if [[ -x /usr/lib/bees/bees && -x $ROOT_HELPER && $(findmnt -no FSTYPE /) == btrfs ]]; then available=true; fi
   [[ ${packaged:-yes} == yes ]] || locked=true
   enabled=${override:-${packaged:-yes}}
@@ -395,15 +417,19 @@ bees_status() {
     [[ -z $stamp ]] || since=$(date -d "$stamp" +%s 2>/dev/null || echo 0)
     # Its progress is root's to read; the helper hands out the summary.
     [[ $available == false ]] || summary=$(root_read show=bees)
-  elif [[ $on == true && $(systemctl show "$BEES_UNIT" -P ConditionResult 2>/dev/null) == no ]]; then
-    # karchy-laptop runs it only while plugged in.
+  elif [[ $(systemctl show "$BEES_UNIT" -P ActiveState 2>/dev/null) == failed ]]; then
+    # It ended with an error and systemd gave up on it; `bees log` says why.
+    failed=true
+  elif [[ $on == true ]] && bees_waits_for_power; then
     waits=true
   fi
   jq -n -c -R --argjson available "$available" --argjson on "$on" --argjson active "$active" \
-    --argjson lockedOff "$locked" --argjson waitsForPower "$waits" --argjson since "$since" --arg summary "$summary" '
+    --argjson lockedOff "$locked" --argjson waitsForPower "$waits" --argjson failed "$failed" \
+    --argjson since "$since" --arg summary "$summary" '
     ($summary | split("\n") | map(select(test("^[a-z_]+=[a-z0-9-]+$")) | split("=") | {key: .[0], value: .[1]}) | from_entries) as $s
     | {
         available: $available, on: $on, active: $active, lockedOff: $lockedOff, waitsForPower: $waitsForPower,
+        failed: $failed,
         state: (if $active then ($s.state // "unknown") else "stopped" end),
         firstPass: ($s.first_pass == "1"),
         percent: ($s.percent // "0" | tonumber? // 0),
@@ -437,6 +463,15 @@ bees() {
     on | off)
       as_root "bees=$1"
       bees_status
+      ;;
+    log)
+      # What the page's "Show log" opens in a terminal when bees stopped with
+      # an error. The system's log is an administrator's to read.
+      echo "Background deduplication (bees): the end of its log since startup"
+      echo
+      journalctl -u "$BEES_UNIT" -b -n 15 --no-pager -o short 2>&1 || true
+      echo
+      echo "All of it: journalctl -u $BEES_UNIT -b"
       ;;
     *) usage ;;
   esac

@@ -40,8 +40,8 @@ import "StorageModel.js" as Model
 // a disk warning changes (karchy-settings-storage watch). What has no event
 // is asked for again, only while the page is in view: how full each volume
 // is every two seconds (the filesystem's own totals, nothing is walked),
-// bees' progress every ten, and whether a connected share still answers
-// every half minute.
+// bees' state and progress every ten while it is switched on, and whether a
+// connected share still answers every half minute.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -187,6 +187,11 @@ ColumnLayout {
     root.act("bees", where, ["bees", on ? "on" : "off"])
   }
 
+  // Why bees stopped with an error: the end of its log, in a terminal.
+  function showBeesLog() {
+    root.inTerminal(["karchy-settings-storage", "bees", "log"])
+  }
+
   function volumeAction(action, volume, disk) {
     var name = Model.volumeName(volume)
     switch (action) {
@@ -300,10 +305,13 @@ ColumnLayout {
     running: root.visible && root.loaded
     onTriggered: usageQuery.request()
   }
+  // bees' state too, whenever it is switched on: started again, stopped by
+  // the charger rule or ended with an error, the page said "Not running"
+  // until it was opened again, since it only asked while bees was running.
   Timer {
     interval: 10000
     repeat: true
-    running: root.visible && root.bees.active === true
+    running: root.visible && root.bees.available === true && (root.bees.active === true || root.bees.on === true)
     onTriggered: beesQuery.request()
   }
   Timer {

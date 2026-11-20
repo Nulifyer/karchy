@@ -1,6 +1,7 @@
 #!/bin/bash
 # Settings › Storage's root side: what the helpers turn away, and how bees'
-# status file is read.
+# status file is read. Also the page's own command on a bees that isn't
+# running: off, stopped, waiting for the charger, ended with an error.
 # Usage: tests/storage-helpers.sh [folder holding the five helpers]
 #   from a checkout:   tests/storage-helpers.sh system/storage
 #   on an install:     tests/storage-helpers.sh            (/usr/lib/karchy)
@@ -14,7 +15,8 @@ settings=$dir/storage-settings measure=$dir/storage-measure health=$dir/storage-
 subvolumes=$dir/storage-subvolumes
 fails=0
 scratch=$(mktemp)
-trap 'rm -f "$scratch"' EXIT
+stubs=$(mktemp -d)
+trap 'rm -rf "$scratch" "$stubs"' EXIT
 
 ok() { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fails=1; }
@@ -303,6 +305,52 @@ ID 257 gen 5 top level 256 path home/alex/secret project'
 subvolumes_are "lines that are not subvolumes are dropped" '{"uuid":"u","top":["@"],"snapshots":0,"nested":0}' '' \
 'ERROR: something
 ID 256 gen 5 top level 5 path @'
+
+# `karchy-settings-storage bees` when bees isn't running: which of the
+# reasons it reports. systemd and the power state are stand-ins here (the
+# unit's state as systemctl would print it, the charger as systemd-ac-power
+# would report it), so a laptop on battery is tested without one.
+#   STUB_ENABLED, STUB_ACTIVE   yes or no
+#   STUB_STATE                  the unit's ActiveState
+#   STUB_CONDITION              its ConditionResult
+#   STUB_AC                     systemd-ac-power's exit status: 0 on the charger
+page=$(dirname "$0")/../bin/karchy-settings-storage
+[[ $dir == /usr/lib/karchy ]] && page=/usr/bin/karchy-settings-storage
+cat >"$stubs/systemctl" <<'STUB'
+#!/bin/bash
+case " $* " in
+  *" is-enabled "*) [[ $STUB_ENABLED == yes ]] ;;
+  *" is-active "*) [[ $STUB_ACTIVE == yes ]] ;;
+  *" ActiveState "*) echo "$STUB_STATE" ;;
+  *" ConditionResult "*) echo "$STUB_CONDITION" ;;
+  *) exit 1 ;;
+esac
+STUB
+printf '#!/bin/bash\nexit "$STUB_AC"\n' >"$stubs/systemd-ac-power"
+chmod +x "$stubs/systemctl" "$stubs/systemd-ac-power"
+: >"$stubs/rule"
+
+# bees_is <name> <expected> <rule file> <enabled> <state> <condition> <ac>
+bees_is() {
+  local name=$1 want=$2 got
+  got=$(PATH="$stubs:$PATH" KARCHY_BEES_PACKAGED_CONF=/dev/null KARCHY_BEES_CONF=/dev/null KARCHY_BEES_POWER_RULE=$3 \
+    STUB_ENABLED=$4 STUB_ACTIVE=no STUB_STATE=$5 STUB_CONDITION=$6 STUB_AC=$7 \
+    "$page" bees 2>&1 | jq -r '"on=\(.on) active=\(.active) waits=\(.waitsForPower) failed=\(.failed) state=\(.state)"' 2>&1)
+  if [[ $got == "$want" ]]; then ok "bees: $name"; else bad "bees: $name: want [$want] got [$got]"; fi
+}
+
+rule=$stubs/rule none=$stubs/no-rule
+bees_is "switched off" "on=false active=false waits=false failed=false state=stopped" "$none" no inactive yes 0
+bees_is "stopped by hand, on the charger" "on=true active=false waits=false failed=false state=stopped" "$none" yes inactive yes 0
+bees_is "a laptop unplugged after boot: the charger rule stopped it" "on=true active=false waits=true failed=false state=stopped" "$rule" yes inactive yes 1
+bees_is "a laptop started on battery: the start was held back" "on=true active=false waits=true failed=false state=stopped" "$rule" yes inactive no 1
+bees_is "held back at startup, and no rule file to go by" "on=true active=false waits=true failed=false state=stopped" "$none" yes inactive no 1
+bees_is "a laptop on the charger, stopped by hand" "on=true active=false waits=false failed=false state=stopped" "$rule" yes inactive yes 0
+bees_is "plugged in again, before the rule has started it" "on=true active=false waits=false failed=false state=stopped" "$rule" yes inactive no 0
+bees_is "on battery without karchy-laptop (a desktop on a UPS)" "on=true active=false waits=false failed=false state=stopped" "$none" yes inactive yes 1
+bees_is "ended with an error" "on=true active=false waits=false failed=true state=stopped" "$none" yes failed yes 0
+bees_is "ended with an error, then unplugged: the error is said" "on=true active=false waits=false failed=true state=stopped" "$rule" yes failed yes 1
+bees_is "switched off on battery: off, not paused" "on=false active=false waits=false failed=false state=stopped" "$rule" no inactive yes 1
 
 ((fails == 0)) && echo "storage helpers ok"
 exit "$fails"
