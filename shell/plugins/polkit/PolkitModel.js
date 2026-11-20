@@ -24,8 +24,20 @@ function authorizationLabel(message, tr) {
   return match ? t("polkit.authorizeRunning", "Authorize running '%1'").replace("%1", match[1]) : text
 }
 
+// The account a request asks the password of, from polkit's identity (a
+// Quickshell Identity: `string` is the user or group name, `displayName` the
+// full name where there is one). The account name is what is shown: it is
+// what the person types at a login prompt. Nothing for a group or when polkit
+// named nobody.
+function identityName(identity) {
+  if (!identity || identity.isGroup) return ""
+  var name = String(identity.string || identity.displayName || "").replace(/^unix-user:/, "")
+  return /^\d*$/.test(name) ? "" : name
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
+    identityName: identityName,
     promptLooksFingerprint: promptLooksFingerprint,
     fingerprintConfiguredFromPamConfig: fingerprintConfiguredFromPamConfig,
     authorizationLabel: authorizationLabel

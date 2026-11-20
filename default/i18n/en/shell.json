@@ -430,6 +430,7 @@
   "polkit.authorizeRunning": "Authorize running '%1'",
   "polkit.checking": "Checking…",
   "polkit.enterPassword": "Enter password",
+  "polkit.passwordFor": "Password for %1",
   "polkit.wrong": "Wrong password",
   "power.battery": "Battery",
   "power.batterySize": "Battery size",

@@ -29,6 +29,9 @@ Item {
   property string currentMessage: ""
   property string currentPrompt: ""
   property string currentSupplementary: ""
+  // Whose password is asked for (polkit's identity): the person's own when
+  // they are an administrator, an administrator's when they are not.
+  property string currentIdentity: ""
   property bool responseRequired: false
   property bool responseVisible: false
   property bool failed: false
@@ -67,6 +70,7 @@ Item {
     currentMessage = ""
     currentPrompt = ""
     currentSupplementary = ""
+    currentIdentity = ""
     responseRequired = false
     responseVisible = false
     failed = false
@@ -82,6 +86,7 @@ Item {
     currentMessage = String(flow.message || "")
     currentPrompt = String(flow.inputPrompt || "")
     currentSupplementary = String(flow.supplementaryMessage || "")
+    currentIdentity = PolkitModel.identityName(flow.selectedIdentity)
     responseRequired = !!flow.isResponseRequired
     responseVisible = !!flow.responseVisible
     failed = !!flow.failed
@@ -370,31 +375,56 @@ Item {
     }
 
     // What the password approves, whole: a long request wraps instead of
-    // losing its middle.
-    Rectangle {
+    // losing its middle. Under it, whose password it is. The box has the
+    // card's border: without one its text read as part of the page behind
+    // it, colliding with that page's own lines.
+    BorderSurface {
+      id: justification
       readonly property real room: Math.min(Style.space(560), panel.width - Style.gapsOut * 2)
-      width: Math.min(justificationText.implicitWidth + Style.space(24), room)
-      height: justificationText.height + Style.space(14)
+      readonly property real textRoom: room - Style.space(24)
+      width: Math.min(Math.max(justificationText.implicitWidth, identityText.implicitWidth) + Style.space(24), room)
+      height: justificationColumn.height + Style.space(14)
       anchors.horizontalCenter: card.horizontalCenter
       anchors.bottom: card.top
       anchors.bottomMargin: Style.space(10)
       radius: root.cornerRadius
       color: root.background
+      borderSpec: Border.surfaceSpec("polkit", "border", root.border, Math.max(1, Style.space(1)), "border-alpha")
 
-      Text {
-        id: justificationText
-        textFormat: Text.PlainText
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(implicitWidth, parent.room - Style.space(24))
-        text: root.authorizationLabel(root.currentMessage)
-        color: root.foreground
-        font.family: root.fontFamily
-        font.pixelSize: Style.font.body
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.Wrap
-        maximumLineCount: 6
-        elide: Text.ElideRight
+      Column {
+        id: justificationColumn
+        anchors.centerIn: parent
+        width: parent.width - Style.space(24)
+        spacing: Style.spacing.xxs
+
+        Text {
+          id: justificationText
+          textFormat: Text.PlainText
+          width: parent.width
+          text: root.authorizationLabel(root.currentMessage)
+          color: root.foreground
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+          horizontalAlignment: Text.AlignHCenter
+          wrapMode: Text.Wrap
+          maximumLineCount: 6
+          elide: Text.ElideRight
+        }
+
+        Text {
+          id: identityText
+          visible: text !== ""
+          textFormat: Text.PlainText
+          width: parent.width
+          text: root.currentIdentity !== "" && !root.fingerprintMode
+            ? I18n.t("polkit.passwordFor").arg(root.currentIdentity) : ""
+          color: root.foreground
+          opacity: 0.7
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.body
+          horizontalAlignment: Text.AlignHCenter
+          elide: Text.ElideRight
+        }
       }
     }
   }
