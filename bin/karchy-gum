@@ -64,4 +64,19 @@ elif ((header == -1)); then
   args+=(--header "$help")
 fi
 
+# A list left with Esc: gum prints "nothing selected" at the left edge, on a
+# line of its own, and exits 1. The caller says what a cancel means in its own
+# words, so that line is taken off again (the cursor is on the line after it).
+# The exit status stays. gum reports a wrong argument with status 80, so that
+# message is kept; a list given no options at all also ends with status 1 and
+# loses its one line ("no options provided").
+if [[ $1 == choose || $1 == filter ]]; then
+  code=0
+  gum "${args[@]}" --show-help=false || code=$?
+  if ((code == 1)) && [[ -t 2 ]]; then
+    printf '\033[1A\033[2K\r' >&2
+  fi
+  exit "$code"
+fi
+
 exec gum "${args[@]}" --show-help=false
