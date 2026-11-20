@@ -31,7 +31,14 @@ Item {
   property string section: "network"
   // What the section was opened at, from the summon payload.
   property var target: ({})
-  onSectionChanged: if (!root.target || root.target.section !== root.section) root.target = ({})
+  onSectionChanged: {
+    if (!root.target || root.target.section !== root.section) root.target = ({})
+    // The keyboard was in the page list, on another page's row: it goes with
+    // the page, however that was opened.
+    var focused = frame.Window.activeFocusItem
+    for (var i = 0; i < navRepeater.count; i++)
+      if (navRepeater.itemAt(i) === focused && root.sections[i].id !== root.section) { root.focusSection(root.currentSectionIndex()); break }
+  }
 
   // The pages, grouped by what people come to Settings for (user
   // 2026-11-19): connecting and controlling the machine, how it looks and
@@ -61,13 +68,20 @@ Item {
     { id: "about", label: "About", iconName: "info", group: 5 }
   ]
   readonly property var sections: allSections.filter(function(entry) { return entry.visible !== false })
+  function hasSection(id) { return root.sections.some(function(entry) { return entry.id === id }) }
+  // The open page left the list (the Bluetooth adapter was taken out).
+  onSectionsChanged: if (!root.hasSection(root.section)) root.section = root.sections[0].id
 
   function open(payloadJson) {
     var payload = {}
     try { payload = JSON.parse(payloadJson || "{}") } catch (e) {}
-    // The page asked for, else the first one.
-    root.section = payload && payload.section ? String(payload.section) : root.sections[0].id
-    root.target = payload || {}
+    // The page asked for, else the first one. A page this machine doesn't
+    // list (Bluetooth without an adapter) is not opened behind the list's
+    // back, with no row to show for it: the first page opens instead.
+    var wanted = payload && payload.section ? String(payload.section) : ""
+    var listed = root.hasSection(wanted)
+    root.section = listed ? wanted : root.sections[0].id
+    root.target = listed && payload ? payload : {}
     if (sectionLoader.item && "target" in sectionLoader.item) sectionLoader.item.target = root.target
     // Already open: move the keyboard to the section asked for (or let the
     // section put it on the item it was opened at).
