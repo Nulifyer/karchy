@@ -11,9 +11,11 @@ import qs.Ui
 // other.
 //
 // Keyboard: typing goes to the password; Enter signs in; Up and Down pick
-// another person when there are several; Tab walks to the power buttons and
-// back. This view only shows state and reports intent; shell/greeter.qml
-// talks to greetd.
+// another person when there are several (the buttons beside the name point
+// the same way); Tab walks to the power buttons and back. While a password is
+// being tried the box still takes typing, so a retry begun before "Wrong
+// password" shows is not lost. This view only shows state and reports intent;
+// shell/greeter.qml talks to greetd.
 Item {
   id: root
 
@@ -37,6 +39,8 @@ Item {
   readonly property bool severalUsers: users.length > 1
   readonly property var user: users.length > 0 ? users[Math.min(userIndex, users.length - 1)] : null
   readonly property bool busy: phase !== "idle"
+  // Signed in and on the way to the desktop: nothing more is typed.
+  readonly property bool leaving: phase === "starting"
   readonly property bool wrong: failure.length > 0 && !busy
 
   // The default theme's colours by role (themes/nulifyer; a user's own theme
@@ -66,15 +70,15 @@ Item {
   }
 
   onPasswordTextChanged: syncPassword()
-  // The field is disabled while a password is tried, which drops its focus.
-  onBusyChanged: if (!busy) Qt.callLater(focusPassword)
+  // The field is disabled while the desktop starts, which drops its focus.
+  onLeavingChanged: if (!leaving) Qt.callLater(focusPassword)
   Component.onCompleted: { syncPassword(); Qt.callLater(focusPassword) }
 
   // A character typed while a button has the keyboard is still the password:
   // it goes to the field, and so does the keyboard. Otherwise a password
   // typed blind after a stray Tab is lost, and its Enter presses Restart.
   Keys.onPressed: function(event) {
-    if (root.busy || event.text.length !== 1 || event.text < " " || event.text === " " || event.text === "\x7f") return
+    if (root.leaving || event.text.length !== 1 || event.text < " " || event.text === " " || event.text === "\x7f") return
     if (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) return
     root.focusPassword()
     passwordInput.insert(passwordInput.length, event.text)
@@ -109,7 +113,8 @@ Item {
   }
 
   // Who signs in, between the mark and the box. One person: the name alone.
-  // Several: the arrows step through them, as Up and Down do in the field.
+  // Several: the arrows step through them, as Up and Down do in the field,
+  // and point up and down as the hint under the box says.
   Row {
     id: userRow
     anchors.horizontalCenter: parent.horizontalCenter
@@ -119,7 +124,7 @@ Item {
     Button {
       visible: root.severalUsers
       anchors.verticalCenter: parent.verticalCenter
-      iconText: Icons.glyph("ui.chevron.left")
+      iconText: Icons.glyph("ui.chevron.up")
       accessibleName: Commons.I18n.t("greeter.previousUser")
       focusable: true
       enabled: !root.busy
@@ -143,7 +148,7 @@ Item {
     Button {
       visible: root.severalUsers
       anchors.verticalCenter: parent.verticalCenter
-      iconText: Icons.glyph("ui.chevron.right")
+      iconText: Icons.glyph("ui.chevron.down")
       accessibleName: Commons.I18n.t("greeter.nextUser")
       focusable: true
       enabled: !root.busy
@@ -178,8 +183,10 @@ Item {
       anchors.leftMargin: 44
       anchors.rightMargin: 16
       focus: true
-      enabled: !root.busy && root.user !== null
-      checking: root.busy
+      // Usable while a password is tried: what is typed then is the next
+      // try (shell/greeter.qml keeps an Enter until the answer is in).
+      enabled: !root.leaving && root.user !== null
+      checking: root.leaving
       textColor: root.busy ? Commons.Color.muted : Commons.Color.foreground
       selectionColor: Util.alpha(Commons.Color.accent, 0.45)
       dotFontSize: 22

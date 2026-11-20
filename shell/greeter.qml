@@ -42,6 +42,9 @@ ShellRoot {
   // The try under way: its password, whether greetd has had it, and what PAM
   // said along the way (the reason shown when the try fails).
   property string pendingPassword: ""
+  // A password entered while the one before it was still being tried: it is
+  // tried when that one is refused, and forgotten when it is accepted.
+  property string queuedPassword: ""
   property bool answered: false
   property var pamNotes: []
   property bool canSuspend: true
@@ -70,9 +73,17 @@ ShellRoot {
     pamNotes = []
     failure = message
     phase = "idle"
+    // Not at once: greetd is still closing the refused try (its answer to
+    // that is the error onError lets pass), and a session asked for before
+    // then fails with "unable to send message".
+    if (queuedPassword !== "") retryTimer.restart()
   }
 
   function submit(password) {
+    if (phase === "checking" && user && password.length > 0) {
+      queuedPassword = password
+      return
+    }
     if (phase !== "idle" || !user || password.length === 0) return
     failure = ""
     passwordText = ""
@@ -89,6 +100,7 @@ ShellRoot {
 
   function stepUser(delta) {
     if (phase !== "idle" || users.length < 2) return
+    queuedPassword = ""
     userIndex = (userIndex + delta + users.length) % users.length
     failure = ""
     passwordText = ""
@@ -177,6 +189,8 @@ ShellRoot {
     function onReadyToLaunch() {
       root.phase = "starting"
       root.pendingPassword = ""
+      root.queuedPassword = ""
+      root.passwordText = ""
       if (root.user) lastUserFile.setText(root.user.name + "\n")
       // greetd starts the session once this greeter is gone: quit after.
       Greetd.launch([root.sessionCommand], [], true)
@@ -195,12 +209,23 @@ ShellRoot {
     }
   }
 
+  // The password that was entered during the try just refused.
+  Timer {
+    id: retryTimer
+    interval: 500
+    onTriggered: {
+      var next = root.queuedPassword
+      root.queuedPassword = ""
+      if (next !== "" && root.phase === "idle") root.submit(next)
+    }
+  }
+
   // The preview's stand-in for greetd.
   Timer {
     id: previewTimer
     interval: 900
     onTriggered: {
-      if (root.pendingPassword === "karchy-test") root.phase = "starting"
+      if (root.pendingPassword === "karchy-test") { root.phase = "starting"; root.queuedPassword = ""; root.passwordText = "" }
       else if (root.pendingPassword === "locked") root.fail("The account is locked due to 10 failed logins. (2 minutes left to unlock)")
       else root.fail(Commons.I18n.t("greeter.wrongPassword"))
     }
