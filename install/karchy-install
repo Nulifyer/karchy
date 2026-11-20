@@ -121,7 +121,16 @@ finish() {
   ui_header "karchy is installed" $((10 + ${#KARCHY_NOTES[@]}))
   ui_line "✓ Installed on $KARCHY_DISK in $elapsed" "$UI_GREEN"
   ui_line
-  ui_line "1  Choose Restart now below. Leave the USB stick in until the screen"
+  # How the restart happens: by itself (--reboot), by the question that
+  # follows the form's install, or by hand after an answer file's, which
+  # asks nothing.
+  if [[ $reboot_after == "true" ]]; then
+    ui_line "1  The computer restarts now. Leave the USB stick in until the screen"
+  elif [[ -n $config_file ]]; then
+    ui_line "1  Type reboot to restart. Leave the USB stick in until the screen"
+  else
+    ui_line "1  Choose Restart now below. Leave the USB stick in until the screen"
+  fi
   ui_line "   goes dark: the installer runs from it."
   ui_line "2  Then take the USB stick out."
   if install_encrypted; then
