@@ -1,0 +1,141 @@
+#!/bin/bash
+
+# Check the login keyring's lock change against the oo7 that the repositories
+# carry today (D-142). tests/keyring-login.sh tests karchy's side with a
+# made-up oo7-cli; this runs the real one, so a change in oo7's command line
+# or behaviour is seen here and not on a machine. (0.7.3 moved --keyring and
+# --secret behind the command, and every lock change failed until a VM test
+# happened to install it.)
+#
+# Usage: tools/keyring-check
+#
+# In a throwaway container of stock Arch (the build image's pinned base, with
+# today's packages; CachyOS's oo7 is a rebuild of the same source), as a
+# person made for the test:
+#   1. A keyring is made the way an install makes one: oo7's daemon gets a
+#      key as a credential and two secrets are stored.
+#   2. /usr/lib/karchy/keyring-rekey, on its own bus as keyring-login runs it:
+#      `has`, `opens` with the right and a wrong secret, `change` to a login
+#      password with a space and an accented letter, and back to a key.
+#   3. The daemon, started again with the key, still gives both secrets.
+#   4. What `karchy keyring status` reads: with a secret that doesn't fit the
+#      daemon stays up and says the keyring is locked.
+# Exits 1 on any failure. Run on every push (checks.yml) and daily
+# (packaging/ci/upkeep). Needs podman (rootless) and the network.
+
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+if [[ ${1:-} != "--inside" ]]; then
+  command -v podman >/dev/null || { echo "keyring-check: missing podman (pacman -S podman)" >&2; exit 1; }
+  image=$(sed -n 's/^FROM //p' "$ROOT/packaging/container/Containerfile")
+  exec podman run --quiet --rm --volume "$ROOT:$ROOT:ro" --workdir "$ROOT" "$image" "$ROOT/tools/keyring-check" --inside
+fi
+
+failed=0
+t() {
+  local name=$1
+  shift
+  if "$@"; then echo "ok   $name"; else
+    echo "FAIL $name"
+    failed=1
+  fi
+}
+
+# The same, for what must fail.
+nt() {
+  local name=$1
+  shift
+  if "$@"; then
+    echo "FAIL $name"
+    failed=1
+  else echo "ok   $name"; fi
+}
+
+pacman -Syu --noconfirm --needed oo7 dbus util-linux jq libsecret >/tmp/pacman.log 2>&1 ||
+  { tail -n 20 /tmp/pacman.log; echo "FAIL installing oo7 and what the step needs"; exit 1; }
+echo "== $(pacman -Q oo7)"
+
+install -Dm755 "$ROOT/system/keyring/keyring-rekey" /usr/lib/karchy/keyring-rekey
+install -Dm644 "$ROOT/system/keyring/rekey-bus.conf" /usr/lib/karchy/keyring-rekey-bus.conf
+install -Dm644 "$ROOT/system/keyring/rekey-secrets.service" \
+  /usr/lib/karchy/keyring-rekey-services/org.freedesktop.secrets.service
+
+useradd --create-home ada
+KEY="b2s3IGtleSBtYWRlIGZvciB0aGUgY2hlY2sgMDAwMDAwMDA="
+PASSWORD="pass wörd 1"
+keyring=/home/ada/.local/share/keyrings/v1/login.keyring
+
+as_ada() { setpriv --reuid ada --regid ada --init-groups --no-new-privs -- "$@"; }
+
+# A session of ada's with oo7's daemon, which gets the secret in $1 the way a
+# service gets a credential; the rest is run in it.
+session() {
+  local secret=$1 run
+  shift
+  run=$(mktemp -d /run/kc.XXXXXX)
+  mkdir "$run/creds"
+  printf '%s' "$secret" >"$run/creds/oo7.keyring-encryption-password"
+  chown -R ada:ada "$run"
+  # shellcheck disable=SC2016  # expanded by the inner shell
+  as_ada env -i HOME=/home/ada USER=ada PATH=/usr/bin LC_ALL=C XDG_RUNTIME_DIR="$run" \
+    CREDENTIALS_DIRECTORY="$run/creds" dbus-run-session -- bash -c '
+      /usr/lib/oo7-daemon >"$XDG_RUNTIME_DIR/daemon.log" 2>&1 &
+      for _ in $(seq 50); do
+        busctl --user status org.freedesktop.secrets >/dev/null 2>&1 && break
+        sleep 0.1
+      done
+      "$@"
+      code=$?
+      kill %1 2>/dev/null
+      exit $code' session "$@" 2>>/tmp/session.log
+}
+
+# As bin/karchy-keyring asks.
+LOCKED='busctl --user --timeout=5 get-property org.freedesktop.secrets /org/freedesktop/secrets/aliases/default org.freedesktop.Secret.Collection Locked'
+
+# keyring-rekey as keyring-login runs it (as_person there).
+step() {
+  local scratch
+  scratch=$(mktemp -d /run/karchy-keyring.XXXXXXXX)
+  chown ada:ada "$scratch"
+  as_ada env -i HOME="$scratch" USER=ada LOGNAME=ada SHELL=/usr/bin/sh PATH=/usr/bin LC_ALL=C \
+    XDG_RUNTIME_DIR="$scratch" XDG_DATA_HOME="$scratch/data" OO7_PAM_SOCKET="$scratch/pam.sock" \
+    timeout 30 dbus-run-session --config-file=/usr/lib/karchy/keyring-rekey-bus.conf -- \
+    /usr/lib/karchy/keyring-rekey "$@" >/dev/null 2>&1
+}
+
+echo "== 1. a keyring locked with a key"
+t "two secrets are stored" session "$KEY" bash -c '
+  printf one-value | secret-tool store --label one karchy-check one &&
+  printf two-value | secret-tool store --label two karchy-check two'
+t "the keyring file is where karchy looks for it" test -f "$keyring"
+
+echo "== 2. keyring-rekey with the real oo7-cli"
+t "has: there is a keyring" step has
+t "opens with the key" step opens <<<"$KEY"
+nt "does not open with a wrong secret" step opens <<<"not the secret"
+t "change: from the key to a login password" step change <<<"$KEY"$'\n'"$PASSWORD"
+t "opens with the login password" step opens <<<"$PASSWORD"
+nt "no longer opens with the key" step opens <<<"$KEY"
+t "change: back to the key" step change <<<"$PASSWORD"$'\n'"$KEY"
+t "opens with the key again" step opens <<<"$KEY"
+t "no copy is left beside the keyring" bash -c "! test -e '${keyring%/*}/.login.keyring.rekey'"
+
+echo "== 3. nothing was lost"
+# shellcheck disable=SC2016  # expanded by the session's shell
+t "both secrets are read back" session "$KEY" bash -c '
+  [[ $(secret-tool lookup karchy-check one) == one-value && $(secret-tool lookup karchy-check two) == two-value ]]'
+
+echo "== 4. what karchy keyring status reads"
+t "open with the right secret" session "$KEY" bash -c "[[ \$($LOCKED) == 'b false' ]]"
+t "up and locked with a secret that does not fit" session "not the secret" bash -c "[[ \$($LOCKED) == 'b true' ]]"
+
+if ((failed)); then
+  # The bus's and the daemon's own words, for whoever reads the run.
+  tail -n 30 /tmp/session.log 2>/dev/null || true
+  echo "keyring-check: FAILED with $(pacman -Q oo7)"
+  exit 1
+fi
+echo "keyring-check: all as expected with $(pacman -Q oo7)"

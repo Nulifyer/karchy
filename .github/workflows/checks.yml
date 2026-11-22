@@ -53,3 +53,10 @@ jobs:
         run: tools/catalog-check
       - name: Quick install search ranks apps as expected
         run: tools/quick-install-search-check
+
+  keyring:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The login keyring changes its lock with the oo7 the repositories carry (D-142)
+        run: tools/keyring-check

@@ -6,6 +6,8 @@
 #
 #   tools/repos-check     karchy still installs from the live repositories
 #   tools/catalog-check   the Quick install list still matches them
+#   tools/keyring-check   the login keyring still changes its lock with
+#                         their oo7 (D-142)
 #
 # Usage: packaging/ci/upkeep [--now]
 #
@@ -53,6 +55,7 @@ check() {
 }
 check tools/repos-check
 check tools/catalog-check
+check tools/keyring-check
 
 issue=$(gh issue list --state open --limit 200 --json number,title |
   jq -r --arg title "$TITLE" 'map(select(.title == $title)) | first | .number // empty')
