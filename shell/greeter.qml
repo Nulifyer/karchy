@@ -142,6 +142,12 @@ ShellRoot {
     path: "/etc/passwd"
     blockLoading: true
     printErrors: false
+    // An account added or removed while this screen is showing (over SSH,
+    // from a console): the list follows, and the person chosen stays chosen
+    // while they are still there.
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: if (root.users.length > 0) root.loadUsers(text(), root.user ? root.user.name : "")
   }
 
   FileView {
