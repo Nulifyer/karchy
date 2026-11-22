@@ -55,7 +55,7 @@ One card width at every level; the header shows where you are ("Reload"), or "Se
 | Settings › Storage | `karchy settings storage` | disk, storage, space, bees, smart, nas, smb, samba, share, network shares, mount |
 | Settings › Date & Time | `karchy settings datetime` | timezone, time, clock, date, ntp |
 | Settings › Users | `karchy settings users` | user, users, account, accounts, add user, login, auto-login |
-| Settings › Security | `karchy settings security` | security, fingerprint, fido2, yubikey, security key, password, passwd, change password, drive password, luks, encryption |
+| Settings › Security | `karchy settings security` | security, fingerprint, fido2, yubikey, security key, password, passwd, change password, drive password, luks, encryption, keyring, saved passwords |
 | Settings › SSH & Git | `karchy settings ssh` | ssh, sshd, ssh server, ssh agent, git, github |
 | Settings › About | `karchy settings about` | about, version, system info, fastfetch, hyprland config, update, updates, channel |
 | Update › Firmware | `karchy updates firmware` (the Updates window at its Firmware part) | firmware, update firmware, fwupd, bios |

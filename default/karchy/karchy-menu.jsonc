@@ -42,7 +42,7 @@
   "settings.storage": {"iconName":"disk","label":"Storage","aliases":["disk","storage","space","bees","smart","nas","smb","samba","share","network shares","mount"],"action":"karchy-settings storage"},
   "settings.datetime": {"iconName":"time","label":"Date & Time","aliases":["timezone","time","clock","date","ntp"],"action":"karchy-settings datetime"},
   "settings.users": {"iconName":"account.user","label":"Users","aliases":["user","users","account","accounts","add user","login","auto-login"],"action":"karchy-settings users"},
-  "settings.security": {"iconName":"security","label":"Security","aliases":["security","fingerprint","fido2","yubikey","security key","password","passwd","change password","drive password","luks","encryption"],"action":"karchy-settings security"},
+  "settings.security": {"iconName":"security","label":"Security","aliases":["security","fingerprint","fido2","yubikey","security key","password","passwd","change password","drive password","luks","encryption","keyring","saved passwords"],"action":"karchy-settings security"},
   "settings.ssh": {"iconName":"security.ssh","label":"SSH & Git","aliases":["ssh","sshd","ssh server","ssh agent","git","github"],"action":"karchy-settings ssh"},
   "settings.about": {"iconName":"info","label":"About","aliases":["about","version","system info","fastfetch","hyprland config","edit hyprland config","update","updates","channel"],"action":"karchy-settings about"},
 

@@ -47,7 +47,7 @@ for (const id of order) assert.ok(!/^(appearance|setup|about|restart)(\.|$)|^pac
 for (const id of order) assert.ok(items[id].label.indexOf("›") < 0, id)
 
 const finds = {
-  "Settings › Security": ["security", "fingerprint", "fido2", "yubikey", "security key", "password", "passwd", "change password", "drive password", "luks", "encryption"],
+  "Settings › Security": ["security", "fingerprint", "fido2", "yubikey", "security key", "password", "passwd", "change password", "drive password", "luks", "encryption", "keyring", "saved passwords"],
   "Settings › Users": ["user", "users", "account", "accounts", "add user", "login", "auto-login"],
   "Settings › Date & Time": ["timezone", "time", "clock", "date", "ntp"],
   "Settings › SSH & Git": ["ssh", "git", "github"],
