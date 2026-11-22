@@ -32,7 +32,6 @@ ColumnLayout {
   // The open parts: a new password, or the question about the home folder.
   property bool resetting: false
   property bool removing: false
-  property string homeChoice: "keep-home"
   property string passwordError: ""
 
   function focusHeader() { header.forceActiveFocus() }
@@ -50,7 +49,6 @@ ColumnLayout {
     passwordError = ""
     newPassword.text = ""
     repeatPassword.text = ""
-    homeChoice = "keep-home"
     nameField.text = user.fullName || ""
   }
 
@@ -73,12 +71,10 @@ ColumnLayout {
   }
 
   function remove() {
-    var deleting = homeChoice === "delete-home"
     page.settings.ask(
-      deleting ? "Remove " + user.name + " and delete their home folder with everything in it? This can't be undone."
-        : "Remove " + user.name + "? They can no longer sign in. Their home folder is kept.",
-      deleting ? "Remove and delete" : "Remove user",
-      function() { page.change("remove:" + user.name, ["remove", user.name, root.homeChoice]) })
+      "Remove " + user.name + " and delete their home folder with everything in it? This can't be undone.",
+      "Remove and delete",
+      function() { page.change("remove:" + user.name, ["remove", user.name]) })
   }
 
   // ---- the row itself ----
@@ -375,14 +371,7 @@ ColumnLayout {
         columnSpacing: Style.spacing.xxl
         rowSpacing: Style.spacing.md
 
-        SettingsLabel { text: "Home folder" }
-        ButtonGroup {
-          options: [{ value: "keep-home", label: "Keep" }, { value: "delete-home", label: "Delete" }]
-          value: root.homeChoice
-          onChanged: function(value) { root.homeChoice = value }
-        }
-
-        Item { implicitWidth: 1; implicitHeight: 1 }
+        SettingsLabel { text: "Remove"; Layout.alignment: Qt.AlignTop }
         ColumnLayout {
           Layout.fillWidth: true
           spacing: Style.spacing.md
@@ -390,10 +379,8 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.maximumWidth: Style.space(460)
             textFormat: Text.PlainText
-            text: root.homeChoice === "delete-home"
-              ? "Everything in " + root.home + " is deleted: files, settings and saved passwords. This can't be undone."
-              : root.home + " stays on the disk. Only an administrator can open it; the saved passwords in it stay locked."
-            color: root.homeChoice === "delete-home" ? Commons.Color.status.warning : Commons.Color.textSecondary
+            text: "Everything in " + root.home + " is deleted with the account: files, settings and saved passwords. This can't be undone. Copy what should be kept first."
+            color: Commons.Color.status.warning
             font.family: Style.font.family
             font.pixelSize: Style.font.body
             wrapMode: Text.Wrap
@@ -404,7 +391,7 @@ ColumnLayout {
               focusable: true
               bordered: true
               variant: "destructive"
-              text: "Remove " + root.user.name + (root.homeChoice === "delete-home" ? " and delete files" : "")
+              text: "Remove " + root.user.name + " and delete files"
               busy: !!root.page && root.page.busy("remove:" + root.user.name)
               onClicked: root.remove()
             }

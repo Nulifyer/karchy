@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # karchy:summary=List, add, change and remove this computer's accounts, and set automatic login (Settings › Users)
-# karchy:args=[status | add <name> admin|standard [full name] | remove <name> keep-home|delete-home | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off | password]
-# karchy:examples=karchy settings users | karchy-settings-users status | karchy-settings-users add sam standard "Sam Example" | karchy-settings-users remove sam keep-home
+# karchy:args=[status | add <name> admin|standard [full name] | remove <name> | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off | password]
+# karchy:examples=karchy settings users | karchy-settings-users status | karchy-settings-users add sam standard "Sam Example" | karchy-settings-users remove sam
 # karchy:hidden=true
 
 # The page's side of Settings › Users. Nothing here runs as root: every
@@ -27,8 +27,8 @@
 #                       for at a terminal. On an encrypted computer, adding
 #                       the second person turns automatic login off and
 #                       prints "autologin=off"
-#   remove              keep-home leaves /home/<name> on the disk, closed to
-#                       everyone but administrators; delete-home deletes it
+#   remove              Removes the account and its data: /home/<name> with
+#                       everything in it is deleted for good
 #   full-name, role     Another person's shown name, or administrator or not
 #   reset-password      Another person's password (stdin or the terminal).
 #                       Where the login screen asks for passwords, their

@@ -34,17 +34,17 @@ free=${free:0:32}
 # Not a request.
 expect "no request" 64 usage:
 expect "a verb alone" 64 usage: add
-expect "an unknown verb" 64 usage: delete "$me" keep-home
+expect "an unknown verb" 64 usage: delete "$me"
 expect "status with more" 64 usage: status now
 expect "check alone" 64 usage: check
 expect "too many arguments" 64 usage: add "$free" standard "A Name" more
 expect "a role that isn't one" 64 usage: add "$free" owner
 expect "a role that isn't one, for role" 64 usage: role "$me" root
 expect "a home choice that isn't one" 64 usage: remove "$me" shred
-expect "remove without a home choice" 64 usage: remove "$me"
 expect "autologin without on or off" 64 usage: autologin maybe
 expect "autologin with more" 64 usage: autologin on "$me"
-expect "an option as an account" 64 usage: remove --force delete-home
+expect "an option as an account" 64 usage: remove --force
+expect "the home choice is gone: removing always deletes" 64 usage: remove "$me" keep-home
 expect "a path as an account" 64 usage: reset-password /etc/shadow
 expect "a path through an account" 64 usage: full-name ../root "A Name"
 expect "shell text as an account" 64 usage: role 'x;id' admin
@@ -70,14 +70,13 @@ expect "a full name with a line break" 65 "full name" full-name "$me" $'Sam\nroo
 expect "a full name of 81 characters" 65 "full name" full-name "$me" "$(printf 'a%.0s' {1..81})"
 
 # Accounts that aren't a person's.
-expect "removing root" 65 "not a person" remove root delete-home
+expect "removing root" 65 "not a person" remove root
 expect "a password for root" 65 "not a person" reset-password root
 expect "a role for a service account" 65 "not a person" role nobody admin
-expect "removing nobody in particular" 65 "not a person" remove "$free" keep-home
+expect "removing nobody in particular" 65 "not a person" remove "$free"
 
 # Yourself.
-expect "removing yourself" 65 "signed in with" remove "$me" delete-home
-expect "removing yourself, keeping the home" 65 "signed in with" remove "$me" keep-home
+expect "removing yourself" 65 "signed in with" remove "$me"
 expect "your own role" 65 "your own role" role "$me" standard
 expect "your own password" 65 "Security" reset-password "$me"
 
@@ -88,7 +87,7 @@ if ((code == 0)) && [[ -z $out ]]; then ok "check: a good new account"; else bad
 code=0
 out=$("$helper" check autologin off 2>&1 </dev/null) || code=$?
 if ((code == 0)) && [[ -z $out ]]; then ok "check: automatic login off"; else bad "check autologin off: exit $code [$out]"; fi
-expect "check refuses as the call would" 65 "signed in with" check remove "$me" delete-home
+expect "check refuses as the call would" 65 "signed in with" check remove "$me"
 if ((EUID != 0)); then
   expect "a good new account, not as root" 77 "root" add "$free" standard "Sam Example"
   expect "a good name change, not as root" 77 "root" full-name "$me" "Sam Example"
@@ -191,10 +190,10 @@ if jq -e '.you == "ada" and .admin and (.users | map(.name) == ["ada", "sam"])
     and .autologin.on and .autologin.user == "ada" and .autologin.cannotTurnOn != ""
     and .users[1].cannotRemove == "" and .users[1].cannotChangeRole == ""' <<<"$status" >/dev/null
 then ok "status: two people, the service accounts left out"; else bad "status: $status"; fi
-as 1100 "the administrator removes the other person" 0 "" check remove sam delete-home
+as 1100 "the administrator removes the other person" 0 "" check remove sam
 as 1100 "the administrator makes the other one too" 0 "" check role sam admin
 as 1100 "the administrator resets the other's password" 0 "" check reset-password sam
-as 1101 "the only administrator can't be removed" 65 "only administrator" check remove ada keep-home
+as 1101 "the only administrator can't be removed" 65 "only administrator" check remove ada
 as 1101 "the only administrator keeps the role" 65 "only administrator" check role ada standard
 as 1101 "making an administrator one again is no change to refuse" 0 "" check role ada admin
 as 1100 "no second automatic login with two people" 65 "" check autologin on
@@ -235,16 +234,16 @@ as 1100 "automatic login off again" 0 "" autologin off
 # A second administrator: either can go, neither by their own hand.
 accounts "$ada" "$sam" "$pat"
 groups "wheel:x:998:ada,pat"
-as 1102 "with two administrators one removes the other" 0 "" check remove ada delete-home
+as 1102 "with two administrators one removes the other" 0 "" check remove ada
 as 1102 "...or takes the role" 0 "" check role ada standard
 as 1102 "...but not their own" 65 "your own role" check role pat standard
-as 1102 "...and not themselves" 65 "signed in with" check remove pat keep-home
+as 1102 "...and not themselves" 65 "signed in with" check remove pat
 
 # One person: the only account stays, and automatic login is theirs to set
 # where the disk is encrypted.
 accounts "$ada"
 groups "wheel:x:998:ada"
-as 1101 "the only account can't be removed" 65 "only account" check remove ada keep-home
+as 1101 "the only account can't be removed" 65 "only account" check remove ada
 status=$(PKEXEC_UID=1100 "$helper" status)
 if [[ $(jq -r .encrypted <<<"$status") == true ]]; then
   # (Their keyring still has its key: nobody logged in since it went off.)

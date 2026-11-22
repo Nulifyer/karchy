@@ -51,7 +51,7 @@ After logging out, every install shows karchy's login screen: the mark, a passwo
 
 ### More than one person
 
-The installer makes one account, an administrator. Add the others in **Settings › Users** (an administrator's password each time): a username by the installer's rule, an optional full name, a password, and Standard or Administrator (the `wheel` group). Each person gets a home folder nobody else can open, karchy's starter files and the default theme, as the first account did. The same page changes another person's name or role, resets their password, and removes an account, keeping its home folder (closed to everyone but administrators) or deleting it. It won't remove the only administrator, a person who is signed in, or the account you are using, and says which.
+The installer makes one account, an administrator. Add the others in **Settings › Users** (an administrator's password each time): a username by the installer's rule, an optional full name, a password, and Standard or Administrator (the `wheel` group). Each person gets a home folder nobody else can open, karchy's starter files and the default theme, as the first account did. The same page changes another person's name or role, resets their password, and removes an account together with its data: the home folder and everything in it is deleted for good, so copy what should be kept first. It won't remove the only administrator, a person who is signed in, or the account you are using, and says which.
 
 What that changes at boot:
 

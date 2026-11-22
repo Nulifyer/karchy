@@ -77,30 +77,33 @@ t "reset sam's password: exit 0, nothing printed" test "$rc:$out" = "0:"
 t "sam's hash changed" bash -c "test \"\$(grep '^sam:' /etc/shadow | cut -d: -f2)\" != '$before'"
 out=$(printf 'x\n' | PKEXEC_UID=$uid $H reset-password ada 2>&1); t "not your own here ($?)" grep -q Security <<<"$out"
 
-out=$(PKEXEC_UID=$suid $H remove ada keep-home 2>&1); rc=$?
+out=$(PKEXEC_UID=$suid $H remove ada 2>&1); rc=$?
 t "the only administrator isn't removed (65)" bash -c "test $rc = 65 && getent passwd ada >/dev/null"
-out=$(PKEXEC_UID=$uid $H remove ada delete-home 2>&1); rc=$?
+out=$(PKEXEC_UID=$uid $H remove ada 2>&1); rc=$?
 t "nor by herself (65)" bash -c "test $rc = 65 && test -d /home/ada"
+out=$(PKEXEC_UID=$uid $H remove sam keep-home 2>&1); rc=$?
+t "there is no keeping the home: the old form is refused (64)" bash -c "test $rc = 64 && getent passwd sam >/dev/null && test -d /home/sam"
 
 runuser -u sam -- bash -c 'echo secret > /home/sam/note'
 # (A key sam still had, had he been here before the second person came.)
 echo "a-key-as-keyring-key-makes-them-0000000000000=" >"/etc/credstore/karchy.keyring.$suid"
 cp "/etc/credstore/karchy.keyring.$suid" "/etc/credstore/karchy.keyring.$suid.next"
-out=$(PKEXEC_UID=$uid $H remove sam keep-home 2>&1); rc=$?
-t "remove sam, keeping the home: exit 0 [$out]" test "$rc" = 0
+out=$(PKEXEC_UID=$uid $H remove sam 2>&1); rc=$?
+t "remove sam: exit 0 [$out]" test "$rc" = 0
 t "sam is gone" bash -c '! getent passwd sam >/dev/null && ! grep -q "^sam:" /etc/shadow'
-t "the home is kept, root's and closed" test "$(stat -c '%a %U:%G' /home/sam)" = "700 root:root"
-t "its file is still there" test "$(cat /home/sam/note)" = secret
+t "the home and its file are gone with the account" bash -c '! test -e /home/sam'
 t "no key outlives the account, and none is set aside" bash -c "! ls /etc/credstore | grep -v '^karchy.keyring.$uid\$' | grep ."
-out=$(printf 'x\n' | $H add sam standard 2>&1); rc=$?
-t "the name can't be reused over the kept home (65)" bash -c "test $rc = 65 && grep -q 'already there' <<<'$out'"
 printf 'x\n' | $H add pat standard >/dev/null 2>&1
-t "pat got sam's old number, and still can't open the kept home" bash -c "test \$(id -u pat) = $suid && ! runuser -u pat -- ls /home/sam >/dev/null 2>&1"
+t "pat got sam's old number, with nothing of sam's to find" bash -c "test \$(id -u pat) = $suid && ! test -e /home/sam"
 t "pat got no key" bash -c "! test -e /etc/credstore/karchy.keyring.$suid"
-out=$(PKEXEC_UID=$uid $H remove pat delete-home 2>&1); rc=$?
-t "remove pat, deleting the home: exit 0 [$out]" test "$rc" = 0
+mkdir /home/sam
+out=$(printf 'x\n' | $H add sam standard 2>&1); rc=$?
+t "a name whose home folder is already there is refused (65)" bash -c "test $rc = 65 && grep -q 'already there' <<<'$out'"
+rmdir /home/sam
+out=$(PKEXEC_UID=$uid $H remove pat 2>&1); rc=$?
+t "remove pat: exit 0 [$out]" test "$rc" = 0
 t "pat and the home are gone" bash -c "! getent passwd pat >/dev/null && ! test -e /home/pat && ! test -e /etc/credstore/karchy.keyring.$suid"
-out=$(PKEXEC_UID=$suid $H remove ada keep-home 2>&1); rc=$?
+out=$(PKEXEC_UID=$suid $H remove ada 2>&1); rc=$?
 t "the only account stays (65)" bash -c "test $rc = 65"
 
 # A step that fails takes the half-made account away again.

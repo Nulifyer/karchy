@@ -17,7 +17,8 @@
 #   add <name> admin|standard [full name]
 #                                        A new account. Its password is one
 #                                        line on stdin
-#   remove <name> keep-home|delete-home  Remove an account
+#   remove <name>                        Remove an account and its data: the
+#                                        home folder with everything in it
 #   full-name <name> [full name]         The name shown at the login screen
 #   role <name> admin|standard           Administrator (group wheel) or not
 #   reset-password <name>                Another person's password: one line
@@ -97,7 +98,7 @@
 #   automatic login where the rules above forbid it.
 # - Input is argv plus, for add and reset-password, one line on stdin. A
 #   verb from the fixed list; an account name matching the installer's rule
-#   (^[a-z_][a-z0-9_-]{0,31}$); a role and a home choice from fixed lists; a
+#   (^[a-z_][a-z0-9_-]{0,31}$); a role from a fixed list; a
 #   full name of up to 80 characters without ":" "," "=" or control
 #   characters (the passwd file's separators). Everything is checked before
 #   anything is changed, and before who is asking, so a bad request is
@@ -114,8 +115,8 @@
 #   regular file owned by root, by a temporary file and a rename; the two
 #   marks in /etc/karchy; keys in /etc/credstore (root only), which are made
 #   by keyring-key and only ever deleted here.
-#   A kept home is handed to root and closed (0700), so a later account
-#   that gets the same user number doesn't own it.
+#   A removed account's home is deleted with it (userdel --remove), so no
+#   later account with the same user number inherits its files.
 # - user-setup runs as the new account, never as root (setpriv drops to
 #   its user, group and groups), with a fresh environment. Only packaged,
 #   root-owned programs are run, from a fixed PATH.
@@ -154,7 +155,7 @@ fail() {
 refuse() { fail "$1" 65; }
 
 usage() {
-  fail "usage: users-settings status | [check] add <name> admin|standard [full name] | remove <name> keep-home|delete-home | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off | autologin-finish <name>" 64
+  fail "usage: users-settings status | [check] add <name> admin|standard [full name] | remove <name> | full-name <name> [full name] | role <name> admin|standard | reset-password <name> | autologin on|off | autologin-finish <name>" 64
 }
 
 # ---- what is on this computer ----
@@ -253,7 +254,7 @@ name_refusal() {
   elif getent passwd "$name" >/dev/null || getent group "$name" >/dev/null || reserved_name "$name"; then
     echo "$name is a name the system uses itself. Pick another."
   elif [[ -e /home/$name || -L /home/$name ]]; then
-    echo "/home/$name is already there (kept from a removed account, perhaps). Move or delete it first, or pick another name."
+    echo "/home/$name is already there (left by an account removed another way, perhaps). Move or delete it first, or pick another name."
   fi
 }
 
@@ -383,9 +384,7 @@ judge() {
       full_name_arg "$full"
       ;;
     remove)
-      (($# == 3)) || usage
-      choice=$3
-      [[ $choice == keep-home || $choice == delete-home ]] || usage
+      (($# == 2)) || usage
       existing_person "$name"
       reason=$(remove_refusal "$name" "$(asker)")
       [[ -z $reason ]] || refuse "$reason"
@@ -622,27 +621,17 @@ add() {
 }
 
 remove() {
-  local uid home key
+  local uid key
   uid=$(person_field "$name" 2)
-  home=$(person_field "$name" 4)
   key=$KEY_STORE/karchy.keyring.$uid
   # What is left of an ended session: their user manager and its services.
   loginctl disable-linger -- "$name" >/dev/null 2>&1
   loginctl terminate-user -- "$name" >/dev/null 2>&1
   pkill -KILL -U "$uid" >/dev/null 2>&1 && sleep 1
-  if [[ $choice == delete-home ]]; then
-    userdel --remove -- "$name" >&2 || fail "Couldn't remove $name."
-  else
-    userdel -- "$name" >&2 || fail "Couldn't remove $name."
-    # The kept folder is root's now and closed, so a later account given the
-    # same user number doesn't own these files.
-    if [[ $home == /home/* && -d $home && ! -L $home ]]; then
-      if ! { chown root:root -- "$home" && chmod 0700 -- "$home"; }; then
-        rm -f -- "$key" "$key.next" "$key.before-import"
-        fail "$name was removed, but $home could not be closed to others."
-      fi
-    fi
-  fi
+  # A removed account takes its data with it (user 2026-11-22): the home
+  # folder and the mail spool go too, so nothing of theirs is left for a
+  # later account with the same user number.
+  userdel --remove -- "$name" >&2 || fail "Couldn't remove $name."
   # No key outlives its account (D-142): nobody else is to open that
   # keyring, and a later account with the same user number must not get it.
   rm -f -- "$key" "$key.next" "$key.before-import"

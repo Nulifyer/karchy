@@ -26,7 +26,7 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |
 | Storage | `karchy-settings-storage ...` | nothing in the home folder | see [storage.md](storage.md) |
 | Date & Time (section `datetime`) | `karchy-settings-datetime status \| timezones \| timezone <Area/City> \| ntp on\|off \| sync \| clock <format>` | systemd (timezone, automatic time); the clock's format in `~/.config/karchy/shell.json` | timedated over D-Bus; `karchy bar set karchy.clock format` |
-| Users | `karchy-settings-users status \| add <name> admin\|standard [full name] \| remove <name> keep-home\|delete-home \| full-name <name> [full name] \| role <name> admin\|standard \| reset-password <name> \| autologin on\|off \| password` | `/etc/passwd`, `/etc/group`, `/etc/shadow`, the `[initial_session]` part of `/etc/greetd/config.toml` | see below |
+| Users | `karchy-settings-users status \| add <name> admin\|standard [full name] \| remove <name> \| full-name <name> [full name] \| role <name> admin\|standard \| reset-password <name> \| autologin on\|off \| password` | `/etc/passwd`, `/etc/group`, `/etc/shadow`, the `[initial_session]` part of `/etc/greetd/config.toml` | see below |
 | Security | `karchy-settings-security status` (read only); saved passwords: `karchy-keyring status [--json] \| reset` | `/etc/pam.d`, `/etc/fido2`, the LUKS header; `~/.local/share/keyrings` | see below |
 | SSH & Git (section `ssh`) | `karchy-settings-ssh status \| authorized add\|remove ... \| key copy\|new \| agent on\|off` | `~/.ssh`, `~/.gitconfig` | see below |
 | About | none | read only | `karchy version`, `karchy channel` |
