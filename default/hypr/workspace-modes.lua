@@ -267,6 +267,11 @@ end
 -- exclusions current before their first window opens, including tag rules.
 o.floating_apps_changed = sync_open_rules
 
+M.not_floating_on_their_own = not_floating_on_their_own
+M.OPEN_WIDTH = OPEN_WIDTH
+M.OPEN_HEIGHT = OPEN_HEIGHT
+M.FLOATED_TAG = FLOATED_TAG
+
 -- A rule's tag leaves with the rule, so a window the open rule floated is
 -- claimed for good as it opens, and the mode tiles it again when it ends. A
 -- rule's tags are listed with a trailing "*", and a strict tag query passes
@@ -322,10 +327,23 @@ end
 -- focuses on click rather than on hover. Every other workspace keeps the user's
 -- own setting.
 local input = {}
+local input_watching = false
+-- Another part of the config can ask for the same on a workspace of its own
+-- choosing (games.lua: a workspace where windows sit above a fullscreen game).
+local click_to_focus = {}
 
 local function update_input()
   local workspace = hl.get_active_workspace()
   local active = workspace ~= nil and floating_workspace(workspace.id)
+
+  if workspace ~= nil and not active then
+    for _, wants in ipairs(click_to_focus) do
+      if wants(workspace) then
+        active = true
+        break
+      end
+    end
+  end
 
   if active == input.floating then
     return
@@ -333,7 +351,37 @@ local function update_input()
 
   input.floating = active
 
-  hl.config({ input = { follow_mouse = active and 0 or input.follow_mouse } })
+  -- float_switch_override_focus moves the focus when the pointer goes from a
+  -- floating window to a tiled one whatever follow_mouse says, which is what
+  -- leaving a window above a fullscreen game does.
+  hl.config({
+    input = {
+      follow_mouse = active and 0 or input.follow_mouse,
+      float_switch_override_focus = active and 0 or input.float_switch_override_focus,
+    },
+  })
+end
+
+local function watch_input()
+  if input_watching then
+    return
+  end
+
+  input_watching = true
+
+  input.follow_mouse = hl.get_config("input.follow_mouse")
+  input.float_switch_override_focus = hl.get_config("input.float_switch_override_focus")
+
+  hl.on("workspace.active", update_input)
+  hl.on("monitor.focused", update_input)
+end
+
+-- `wants(workspace)` says whether that workspace focuses on click. Returns the
+-- function to call when its answer may have changed.
+function M.click_to_focus(wants)
+  table.insert(click_to_focus, wants)
+  watch_input()
+  return update_input
 end
 
 -- Windows arrive by opening and by being carried in, and a window rule only ever
@@ -346,7 +394,7 @@ local function watch()
 
   watching = true
 
-  input.follow_mouse = hl.get_config("input.follow_mouse")
+  watch_input()
 
   hl.on("window.open", function(window)
     claim_opened(window)
@@ -370,8 +418,6 @@ local function watch()
     end, { type = "oneshot", timeout = 1 })
   end)
 
-  hl.on("workspace.active", update_input)
-  hl.on("monitor.focused", update_input)
 end
 
 function o.workspace_mode(spec)
