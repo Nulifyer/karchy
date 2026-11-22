@@ -29,6 +29,9 @@
 # terminal, so those cross a terminal made by script(1), whose record goes to
 # /dev/null. A terminal acts on control characters, so a secret holding one
 # is refused.
+#
+# oo7-cli's options go after its command (`list --keyring F`): 0.7.3 takes
+# them nowhere else, and 0.7.2 takes them in either place.
 
 set -uo pipefail
 PATH=/usr/bin
@@ -59,7 +62,7 @@ has() {
 }
 
 # How many entries of file $1 the secret on stdin opens, or nothing.
-entries() { oo7-cli --keyring "$1" --secret - list --json 2>/dev/null | jq 'length' 2>/dev/null; }
+entries() { oo7-cli list --keyring "$1" --secret - --json 2>/dev/null | jq 'length' 2>/dev/null; }
 
 case "${1:-}" in
   has)
@@ -86,7 +89,7 @@ case "${1:-}" in
     # oo7-cli asks "Keyring secret" and then "Type the new secret" on the
     # terminal script makes; the two lines answer them in that order.
     printf '%s\n%s\n' "$old" "$new" |
-      script -qfec 'exec /usr/bin/oo7-cli --keyring ./.login.keyring.rekey change-secret' /dev/null >/dev/null 2>&1 ||
+      script -qfec 'exec /usr/bin/oo7-cli change-secret --keyring ./.login.keyring.rekey' /dev/null >/dev/null 2>&1 ||
       exit 1
     after=$(printf '%s\n' "$new" | entries "$copy")
     [[ $after == "$before" ]] || exit 1

@@ -14,7 +14,8 @@ depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-r
   # against what they take on a btrfs disk; jq writes the result.
   'compsize' 'jq'
   # The login keyring (D-142): keyring-login gives a keyring another secret
-  # with oo7-cli (`--secret -` is 0.7.2's) on a bus of its own
+  # with oo7-cli (`--secret -` is 0.7.2's; 0.7.3 moved the options behind
+  # the command, where keyring-rekey puts them) on a bus of its own
   # (dbus-run-session), through a terminal from script(1), as the person
   # (setpriv, unshare), after checking the password (unix_chkpwd, in pam).
   'oo7>=0.7.2' 'dbus' 'util-linux'

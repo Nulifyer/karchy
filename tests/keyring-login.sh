@@ -91,6 +91,11 @@ stub oo7-cli <<'STUB'
 printf '%s\n' "$*" >>/run/t/oo7-argv
 # The real one asks the bus for a keyring service first.
 [[ -n ${KARCHY_TEST_BUS:-} ]] || { echo "Error: zbus error" >&2; exit 1; }
+# As 0.7.3 does: the command comes first, its options after it.
+case ${1:-} in
+  list | change-secret) ;;
+  *) echo "error: unexpected argument '${1:-}' found" >&2; exit 2 ;;
+esac
 file="" from_stdin=false command=""
 while (($#)); do
   case $1 in
