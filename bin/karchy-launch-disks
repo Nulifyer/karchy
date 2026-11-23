@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# karchy:summary=Open Disks in the theme's colors
+# karchy:args=[gnome-disks options]
+# karchy:examples=karchy-launch-disks | karchy-launch-disks --block-device /dev/nvme0n1
+
+# GNOME Disks draws its window with libhandy, which replaces the GTK theme
+# with its own Adwaita, so Disks alone came up grey and white among karchy's
+# apps. libhandy leaves the theme alone when GTK_THEME names one, so Disks is
+# started with karchy's generated theme (karchy-theme-set-gnome) named there.
+# Only for this app: with GTK_THEME set, GTK 4 apps lose libadwaita's own
+# styling, so it must never reach the session's environment. The app menu
+# (shell/services/AppLibrary.qml) and the disk-health notice start Disks
+# through here. A Disks window that is open keeps its colors over a theme
+# switch until it is opened again.
+
+theme=$(gsettings get org.gnome.desktop.interface gtk-theme 2>/dev/null | tr -d "'")
+[[ -z $theme ]] || export GTK_THEME=$theme
+exec setsid uwsm-app -- gnome-disks "$@"

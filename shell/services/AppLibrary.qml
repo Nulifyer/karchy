@@ -97,6 +97,13 @@ Item {
       Util.execDetached("karchy-launch-tui " + command.map(function(word) { return Util.shellQuote(word) }).join(" "))
       return
     }
+    // Disks needs the GTK theme named in its environment to take the theme's
+    // colors (karchy-launch-disks says why); its desktop entry would start it
+    // over D-Bus, where no launcher can give it one.
+    if (id === "org.gnome.DiskUtility") {
+      Util.execDetached("karchy-launch-disks")
+      return
+    }
     // Start gtk-launch inside a scope under app-graphical.slice so apps do not
     // inherit wayland-wm@.service. Keeping gtk-launch as the desktop-entry
     // resolver supports IDs with spaces and entries that UWSM rejects.

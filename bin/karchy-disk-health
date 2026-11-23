@@ -185,7 +185,7 @@ disks() {
     [[ -b ${device}n1 ]] || exit 1
     device=${device}n1
   fi
-  exec setsid uwsm-app -- gnome-disks --block-device "$device"
+  exec karchy-launch-disks --block-device "$device"
 }
 
 case ${1:-check} in
