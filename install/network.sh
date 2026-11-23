@@ -97,6 +97,9 @@ net_wifi_connect() {
   rfkill unblock wlan 2>/dev/null || true
   systemctl start iwd.service 2>/dev/null || true
   while true; do
+    # The device again each time: a USB adapter plugged in meanwhile, or one
+    # whose driver came up late under another name.
+    dev=$(net_wifi_device) || return 1
     ui_header "Wi-Fi"
     ui_line "Looking for networks..." "$UI_DIM"
     # A scan of every band takes a few seconds, and iwd refuses a second
