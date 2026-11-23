@@ -6,6 +6,7 @@
 // rank in tiers, best first:
 //   5  the name starts with the query            "obs"  OBS Studio, Obsidian
 //   4  a word in the name starts with it         "studio"  OBS Studio
+//   3.5 a keyword, a package or the id is it     "adb"  Android platform tools
 //   3  the name contains it                      "fox"  Firefox
 //   2  the name holds its letters in order       "vsc"  VSCodium, "ff" Firefox
 //   1  the keywords, description, packages or id contain every word of it
@@ -115,6 +116,11 @@ function match(app, query) {
     if (starts[at]) return { tier: 4, score: -at, positions: range(at, q.length) }
     at = text.indexOf(q, at + 1)
   }
+  // The whole of a keyword, a package name or the id: what the app is called
+  // by people who don't know its name here ("adb", "npm").
+  var known = (app.keywords || []).concat(app.packages || [], [app.id])
+  for (var k = 0; k < known.length; k++)
+    if (lower(known[k]) === q) return { tier: 3.5, score: 0, positions: firstAt >= 0 ? range(firstAt, q.length) : [] }
   if (firstAt >= 0) return { tier: 3, score: -firstAt, positions: range(firstAt, q.length) }
 
   var sub = subsequence(name, q.replace(/\s+/g, ""))

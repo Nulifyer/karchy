@@ -150,7 +150,7 @@ status() {
   # (karchy-app-<id>) when that is there, or when its first package was
   # installed by hand (as a dependency of another app it isn't this app:
   # docker under WinBoat). Each one's launcher is the first of its packages
-  # that has one (scrcpy for Android SDK), from a single pacman -Ql.
+  # that has one (scrcpy for Android platform tools), from a single pacman -Ql.
   local have
   have=$(awk -F'\t' '
     FILENAME == ARGV[1] { have[$1]; next }

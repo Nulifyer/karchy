@@ -2858,15 +2858,21 @@
     },
     {
       "id": "android-sdk",
-      "name": "Android SDK",
+      "name": "Android platform tools",
       "category": "languages",
-      "description": "Android platform tools",
+      "description": "adb and fastboot for a phone on a USB cable, and scrcpy to show and control its screen",
       "icon": "android-sdk",
       "packages": [
         "android-tools",
         "scrcpy"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "adb",
+        "fastboot",
+        "screen mirror",
+        "phone"
+      ]
     },
     {
       "id": "bun",

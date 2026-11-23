@@ -77,6 +77,15 @@ check("keywords, packages and descriptions are searched", () => {
   assert.ok(rank("redis", "Valkey") >= 0)
 })
 
+check("a whole keyword or package name beats letters inside other names", () => {
+  // "adb" is inside MariaDB; the app people mean lists it as a keyword.
+  assert.equal(names("adb", 1)[0], "Android platform tools")
+  assert.equal(names("fastboot", 1)[0], "Android platform tools")
+  assert.equal(rank("npm", "Node.js"), 0)
+  // A name that starts with the query still comes first.
+  assert.equal(names("go", 1)[0], "Go")
+})
+
 check("case is ignored", () => {
   assert.deepEqual(names("FIREFOX", 1), names("firefox", 1))
 })
