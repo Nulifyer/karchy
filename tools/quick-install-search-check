@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 // Checks the Quick install window's search against the real list
-// (default/karchy/quick-install.json). Run it from anywhere:
+// (default/karchy/quick-install.json), and the sentence its bar says about
+// the last install. Run it from anywhere, with node or bun:
 // tools/quick-install-search-check
 
 "use strict"
@@ -11,6 +12,7 @@ const fs = require("node:fs")
 const path = require("node:path")
 const root = path.join(__dirname, "..")
 const Search = require(path.join(root, "shell", "plugins", "quick-install", "Search.js"))
+const Model = require(path.join(root, "shell", "plugins", "quick-install", "Model.js"))
 const catalog = JSON.parse(fs.readFileSync(path.join(root, "default", "karchy", "quick-install.json"), "utf8"))
 const apps = catalog.apps
 
@@ -84,6 +86,24 @@ check("a whole keyword or package name beats letters inside other names", () => 
   assert.equal(rank("npm", "Node.js"), 0)
   // A name that starts with the query still comes first.
   assert.equal(names("go", 1)[0], "Go")
+})
+
+check("the bar says what the last install did, never Done after a failure", () => {
+  const run = (states, verb) => Model.runText(states.map((s, i) => ({ name: "App" + i, state: s })), verb || "install")
+  assert.equal(run(["done"]), "App0 installed.")
+  assert.equal(run(["cancelled"]), "Nothing was changed.")
+  assert.equal(run(["terminal"]), "App0 continues in a terminal.")
+  assert.match(run(["failed"]), /^App0 failed\./)
+  assert.match(run(["done", "done", "failed"]), /^2 installed and 1 failed\./)
+  assert.equal(run(["done", "cancelled"], "remove"), "1 removed and 1 not removed.")
+  assert.equal(run([]), "")
+})
+
+check("an AUR app says which of its packages are built here", () => {
+  const droidcam = apps.find((a) => a.id === "droidcam")
+  const text = Model.installsText(droidcam, {})
+  assert.ok(text.indexOf("droidcam, v4l2loopback-dc-dkms from the AUR") === 0)
+  assert.ok(/with android-tools, .*linux-cachyos-headers.* from the package repositories$/.test(text))
 })
 
 check("case is ignored", () => {

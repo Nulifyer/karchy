@@ -36,6 +36,8 @@
 #                 services    system units to enable and start
 #                 userServices user units to enable and start
 #                 groups      groups to add you to (applies at next login)
+#                 modules     kernel modules to load now; the app's package
+#                             loads them at each start (DroidCam's camera)
 #                 run         commands to run as you afterwards
 #                 firewall    have karchy open the app's ports on trusted
 #                             networks only (D-33), now and not at the next
@@ -456,7 +458,7 @@ user_setup() {
 
 # The window's install or removal of several apps (D-109).
 apply() {
-  local verb=$1 id app repo=() term=() state rest problems log
+  local verb=$1 id app repo=() term=() state rest problems log code=0
   shift
   [[ $verb == install || $verb == remove ]] || die "Usage: karchy-quick-install apply install|remove <id>..."
   log="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/quick-install.log"
@@ -477,6 +479,8 @@ apply() {
     declare -A final=()
     while read -r state id rest; do
       [[ -n $id ]] || continue
+      # pkexec's own exit status, after the helper's last line.
+      [[ $state == pkexec ]] && { code=$id; continue; }
       if [[ $state == "done" && $verb == install ]]; then
         app=$(entry "$id")
         problems=$(user_setup "$app" 2>>"$log" | paste -sd, - | sed 's/,/, /g')
@@ -484,11 +488,17 @@ apply() {
       fi
       [[ $state == "done" || $state == failed ]] && final[$id]=1
       echo "$state $id${rest:+ $rest}"
-    done < <(pkexec /usr/lib/karchy/app-packages "$verb" "${repo[@]}" 2>>"$log")
-    # The password prompt closed, or the helper stopped early: say so for
-    # every app it never got to.
+    done < <(pkexec /usr/lib/karchy/app-packages "$verb" "${repo[@]}" 2>>"$log"; echo "pkexec $?")
+    # Every app the helper never got to: the password prompt was closed
+    # (pkexec's 126), which is the person's choice and no failure; the
+    # password was refused (127); or the helper stopped early.
     for id in "${repo[@]}"; do
-      [[ -n ${final[$id]:-} ]] || echo "failed $id Nothing was changed: the password wasn't given, or the install stopped (see the log)"
+      [[ -z ${final[$id]:-} ]] || continue
+      case $code in
+        126) echo "cancelled $id the password prompt was closed" ;;
+        127) echo "failed $id The password wasn't accepted; nothing was changed" ;;
+        *) echo "failed $id It stopped before this app; see the log" ;;
+      esac
     done
     refresh_window >/dev/null 2>&1
   fi
@@ -496,7 +506,7 @@ apply() {
   if ((${#term[@]})); then
     # Ids are catalog ids ([a-z0-9.+-]), so the command line needs no quoting.
     setsid karchy-launch-floating-terminal-with-presentation \
-      "for id in ${term[*]}; do karchy-quick-install $verb \"\$id\" || failed=1; done; exit \${failed:-0}" \
+      "for id in ${term[*]}; do karchy-quick-install $verb \"\$id\" || failed=1; done; karchy-shell -q shell call karchy.quick-install finished terminal >/dev/null 2>&1; exit \${failed:-0}" \
       >/dev/null 2>&1 </dev/null &
   fi
   echo "finished"

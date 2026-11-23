@@ -33,8 +33,8 @@ import "Search.js" as Search
 // or opens the focused app; Space picks it, except in the middle of typing
 // a search, where it is a space and Ctrl+Space picks (`spacePicks`); Tab
 // walks the search, the category list (one stop, j/k or the arrows to
-// choose) and the focused row's buttons; Escape clears the search, then
-// closes.
+// choose), the focused row's buttons and the bar under the list (Install N
+// apps for what was picked); Escape clears the search, then closes.
 Item {
   id: root
 
@@ -62,9 +62,16 @@ Item {
   // failed one stays picked, so trying again is one click.
   property var selected: ({})
   // What `karchy-quick-install apply` reported: id -> { state, reason }, with
-  // state queued, working, done, failed or terminal (AUR apps and karchy's
-  // features, which continue in a terminal).
+  // state queued, working, done, failed, cancelled (the password prompt was
+  // closed) or terminal (AUR apps and karchy's features, which continue in a
+  // terminal).
   property var progress: ({})
+  // The ids of the last install or removal, for the bar's sentence about it.
+  property var lastRun: []
+  readonly property string lastRunText: Model.runText(root.lastRun.map(function(id) {
+    var app = Model.find(root.apps, id)
+    return { name: app ? app.name : id, state: root.progress[id] ? root.progress[id].state : "" }
+  }), root.applyVerb)
   property bool applying: false
   property string applyVerb: ""
   property string logPath: ""
@@ -136,8 +143,35 @@ Item {
   // `karchy-quick-install` calls this when its install or removal is done,
   // before the terminal waits for a key, so the row and the other buttons
   // don't wait for the terminal to close.
-  function finished() {
-    root.refresh()
+  // The terminal that took the AUR apps and features says "terminal" when it
+  // is through with them all: a status read after that is the last word.
+  function finished(what) {
+    if (String(what || "") === "terminal") settleProc.request()
+    else root.refresh()
+  }
+
+  function takeStatus(text, terminalEnded) {
+    var data = Model.parse(text, null)
+    root.statusFailed = !data
+    root.installed = data ? (data.installed || {}) : {}
+    root.statusLoaded = true
+    if (data) root.settleTerminal(terminalEnded)
+  }
+
+  // An app handed to the terminal is done once the status shows it; what the
+  // status doesn't show once the terminal is through didn't happen.
+  function settleTerminal(terminalEnded) {
+    var next = Object.assign({}, root.progress), changed = false
+    for (var id in next) {
+      var p = next[id]
+      if (p.state !== "terminal") continue
+      var there = root.installed[id] !== undefined
+      if (there === (p.verb === "install")) next[id] = { state: "done", reason: "", verb: p.verb }
+      else if (terminalEnded) next[id] = { state: "cancelled", reason: "the terminal showed why", verb: p.verb }
+      else continue
+      changed = true
+    }
+    if (changed) root.progress = next
   }
 
   function isBusy(id) {
@@ -173,6 +207,7 @@ Item {
     var next = Object.assign({}, root.progress)
     ids.forEach(function(id) { next[id] = { state: "queued", reason: "", verb: verb } })
     root.progress = next
+    root.lastRun = ids.slice()
     root.applying = true
     root.applyVerb = verb
     applyComponent.createObject(root, {
@@ -185,7 +220,7 @@ Item {
     if (!m) return
     if (m[1] === "log") { root.logPath = m[2] || ""; return }
     if (m[1] === "finished") return
-    if (["queued", "working", "done", "failed", "terminal"].indexOf(m[1]) < 0 || !m[2]) return
+    if (["queued", "working", "done", "failed", "cancelled", "terminal"].indexOf(m[1]) < 0 || !m[2]) return
     var next = Object.assign({}, root.progress)
     next[m[2]] = { state: m[1], reason: m[3] || "", verb: root.applyVerb }
     root.progress = next
@@ -305,12 +340,14 @@ Item {
   Query {
     id: statusProc
     command: ["karchy-quick-install", "status"]
-    onResult: function(text) {
-      var data = Model.parse(text, null)
-      root.statusFailed = !data
-      root.installed = data ? (data.installed || {}) : {}
-      root.statusLoaded = true
-    }
+    onResult: function(text) { root.takeStatus(text, false) }
+  }
+
+  // Asked for only when the terminal is through, so its answer is from after.
+  Query {
+    id: settleProc
+    command: ["karchy-quick-install", "status"]
+    onResult: function(text) { root.takeStatus(text, true) }
   }
 
   // One per install or removal. A terminal it opens for AUR apps and
@@ -382,13 +419,14 @@ Item {
     visible: root.opened
     title: "Quick install"
     color: Commons.Color.background
-    // Fit the screen it opens on: 1000×680 where there is room, less where not.
+    // Fit the screen it opens on: 1000×740 where there is room, less where not.
     readonly property var fitScreen: Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
       ? Hyprland.focusedMonitor.lastIpcObject : null
     readonly property real screenWidth: fitScreen ? fitScreen.width / fitScreen.scale : 1280
     readonly property real screenHeight: fitScreen ? fitScreen.height / fitScreen.scale : 800
     implicitWidth: Math.round(Math.min(Style.space(1000), screenWidth * 0.85))
-    implicitHeight: Math.round(Math.min(Style.space(680), screenHeight * 0.85))
+    // 740 shows every category without scrolling the sidebar.
+    implicitHeight: Math.round(Math.min(Style.space(740), screenHeight * 0.85))
 
     onVisibleChanged: {
       if (!visible && root.opened) root.close()
@@ -514,13 +552,40 @@ Item {
               clip: true
               contentHeight: categoryColumn.implicitHeight
               boundsBehavior: Flickable.StopAtBounds
+              // On a low screen the list is longer than the window: the bar
+              // says there is more, with room beside the counts.
+              readonly property bool scrolls: contentHeight > height
+              ScrollBar.vertical: ListScrollBar {}
+
+              // The chosen category in view: after a click or a key, and
+              // when the window opens at one (`window @system`), which is
+              // before the rows exist.
+              function reveal() {
+                var rows = root.categoryRows
+                for (var i = 0; i < rows.length; i++) {
+                  if (rows[i].id !== root.category) continue
+                  var item = categoryRepeater.itemAt(i)
+                  if (!item) return
+                  if (item.y < contentY) contentY = item.y
+                  else if (item.y + item.height > contentY + height)
+                    contentY = Math.min(item.y + item.height, contentHeight) - height
+                  return
+                }
+              }
+              onHeightChanged: Qt.callLater(reveal)
+              onContentHeightChanged: Qt.callLater(reveal)
+              Connections {
+                target: root
+                function onCategoryChanged() { Qt.callLater(categoryFlick.reveal) }
+              }
 
               Column {
                 id: categoryColumn
-                width: categoryFlick.width
+                width: categoryFlick.width - (categoryFlick.scrolls ? Style.spacing.md : 0)
                 spacing: Style.spacing.xxs
 
                 Repeater {
+                  id: categoryRepeater
                   model: root.categoryRows
                   delegate: Item {
                     id: categoryRow
@@ -542,7 +607,6 @@ Item {
                         root.setCategory(categoryRow.modelData.id)
                         categoryList.forceActiveFocus(Qt.MouseFocusReason)
                       }
-                      onSelectedChanged: if (selected) categoryFlick.contentY = Math.max(0, Math.min(categoryRow.y, categoryFlick.contentHeight - categoryFlick.height))
 
                       Text {
                         id: count
@@ -608,7 +672,7 @@ Item {
               if (event.key === Qt.Key_PageDown) { browse(8); event.accepted = true }
               else if (event.key === Qt.Key_PageUp) { browse(-8); event.accepted = true }
               else if (event.key === Qt.Key_Tab) { categoryList.forceActiveFocus(Qt.TabFocusReason); event.accepted = true }
-              else if (event.key === Qt.Key_Backtab) { root.focusActions(false); event.accepted = true }
+              else if (event.key === Qt.Key_Backtab) { if (!root.focusBar(false)) root.focusActions(false); event.accepted = true }
               else if (event.key === Qt.Key_Space && root.spacePicks
                        && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
                 root.toggleSelected(root.current)
@@ -634,7 +698,7 @@ Item {
           boundsBehavior: Flickable.StopAtBounds
           model: root.results
           cacheBuffer: Style.space(400)
-          ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+          ScrollBar.vertical: ListScrollBar {}
 
           // Row buttons hand Up/Down and j/k to the list; the keyboard stays
           // on the focused row's first button. Space is the window's
@@ -703,46 +767,68 @@ Item {
             Text {
               Layout.fillWidth: true
               textFormat: Text.PlainText
-              text: Model.selectionText(root.selectedApps.length, root.selectedInTerminal, root.applying, root.applyVerb)
+              text: Model.selectionText(root.selectedApps.length, root.selectedInTerminal, root.applying, root.applyVerb, root.lastRunText)
               color: Commons.Color.foreground
               font.family: Style.font.family
               font.pixelSize: Style.font.body
               wrapMode: Text.Wrap
             }
+            // Tab stops after the focused row's buttons, so what was picked
+            // with Space can be installed without the mouse.
             Button {
+              id: logButton
               visible: root.logPath !== ""
+              focusable: true
               bordered: true
               text: "Show log"
+              Keys.onTabPressed: function(event) { root.tabFromBar(logButton, event) }
+              Keys.onBacktabPressed: function(event) { root.tabFromBar(logButton, event) }
               onClicked: root.showLog()
             }
             Button {
+              id: reviewButton
               visible: root.selectedApps.length > 0 && root.category !== "picked"
+              focusable: true
               bordered: true
               text: "Review"
+              Keys.onTabPressed: function(event) { root.tabFromBar(reviewButton, event) }
+              Keys.onBacktabPressed: function(event) { root.tabFromBar(reviewButton, event) }
               onClicked: root.setCategory("picked")
             }
             Button {
+              id: clearButton
               visible: root.selectedApps.length > 0
               enabled: !root.applying
+              focusable: true
               bordered: true
               text: "Clear"
+              Keys.onTabPressed: function(event) { root.tabFromBar(clearButton, event) }
+              Keys.onBacktabPressed: function(event) { root.tabFromBar(clearButton, event) }
               onClicked: root.clearSelected()
             }
             Button {
+              id: removePickedButton
               visible: root.selectedToRemove.length > 0
               enabled: !root.applying
+              focusable: true
               bordered: true
               variant: "destructive"
               text: "Remove " + root.selectedToRemove.length
+              Keys.onTabPressed: function(event) { root.tabFromBar(removePickedButton, event) }
+              Keys.onBacktabPressed: function(event) { root.tabFromBar(removePickedButton, event) }
               onClicked: root.askRemoveSelected()
             }
             Button {
+              id: installPickedButton
               visible: root.selectedToInstall.length > 0
               enabled: !root.applying
+              focusable: true
               busy: root.applying && root.applyVerb === "install"
               bordered: true
               variant: "primary"
               text: "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
+              Keys.onTabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
+              Keys.onBacktabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
               onClicked: root.installSelected()
             }
           }
@@ -795,16 +881,44 @@ Item {
     }
   }
 
-  // The focused row's buttons, in Tab order: its action, then Remove.
+  // The focused row's buttons, in Tab order: its action, then Remove. Then
+  // the bar under the list, then the search again.
   function focusActions(first) {
     var row = appList.itemAtIndex(root.currentIndex)
     var buttons = row ? row.actionButtons() : []
     if (buttons.length === 0) {
-      if (first) searchField.forceActiveFocus(Qt.TabFocusReason)
-      else categoryList.forceActiveFocus(Qt.BacktabFocusReason)
+      if (!first) categoryList.forceActiveFocus(Qt.BacktabFocusReason)
+      else if (!root.focusBar(true)) searchField.forceActiveFocus(Qt.TabFocusReason)
       return
     }
     buttons[first ? 0 : buttons.length - 1].forceActiveFocus(first ? Qt.TabFocusReason : Qt.BacktabFocusReason)
+  }
+
+  // The bar's buttons that can be pressed now, left to right.
+  function barButtons() {
+    return [logButton, reviewButton, clearButton, removePickedButton, installPickedButton].filter(function(b) {
+      return b.visible && b.enabled && !b.busy
+    })
+  }
+
+  function focusBar(first) {
+    var buttons = root.barButtons()
+    if (buttons.length === 0) return false
+    buttons[first ? 0 : buttons.length - 1].forceActiveFocus(first ? Qt.TabFocusReason : Qt.BacktabFocusReason)
+    return true
+  }
+
+  function tabFromBar(button, event) {
+    var buttons = root.barButtons()
+    var i = buttons.indexOf(button)
+    if (event.key === Qt.Key_Tab) {
+      if (i >= 0 && i < buttons.length - 1) buttons[i + 1].forceActiveFocus(Qt.TabFocusReason)
+      else searchField.forceActiveFocus(Qt.TabFocusReason)
+    } else {
+      if (i > 0) buttons[i - 1].forceActiveFocus(Qt.BacktabFocusReason)
+      else root.focusActions(false)
+    }
+    event.accepted = true
   }
 
   // ------------------------------------------------------------ components
@@ -830,14 +944,14 @@ Item {
       return out
     }
 
-    // Tab from the last button goes back to the search; Shift+Tab from the
-    // first to the categories.
+    // Tab from the last button goes on to the bar under the list, or back
+    // to the search; Shift+Tab from the first to the categories.
     function tabFrom(button, event) {
       var buttons = row.actionButtons()
       var i = buttons.indexOf(button)
       if (event.key === Qt.Key_Tab) {
         if (i >= 0 && i < buttons.length - 1) buttons[i + 1].forceActiveFocus(Qt.TabFocusReason)
-        else searchField.forceActiveFocus(Qt.TabFocusReason)
+        else if (!root.focusBar(true)) searchField.forceActiveFocus(Qt.TabFocusReason)
       } else {
         if (i > 0) buttons[i - 1].forceActiveFocus(Qt.BacktabFocusReason)
         else categoryList.forceActiveFocus(Qt.BacktabFocusReason)
@@ -916,7 +1030,9 @@ Item {
             font.family: Style.font.family
             font.pixelSize: Style.font.bodySmall
             elide: Text.ElideRight
-            maximumLineCount: 1
+            // The focused row shows all of it.
+            wrapMode: row.current ? Text.Wrap : Text.NoWrap
+            maximumLineCount: row.current ? 4 : 1
           }
 
           // This app's part of the last install or removal.
@@ -1010,7 +1126,7 @@ Item {
     readonly property bool repoApp: app.source !== "aur" && !app.feature
     readonly property string size: info === "loading" ? "Reading…" : Model.sizeText(info)
     readonly property var rows: {
-      var out = [{ label: "Installs", value: Model.installsText(app, info) }]
+      var out = [{ label: installedHere ? "Installed" : "Installs", value: Model.installsText(app, info) }]
       if (repoApp && size !== "")
         out.push({ label: "Size", value: size + ((app.packages || []).length > 1 && info !== "loading" ? " for " + app.packages[0] : "") })
       out.push({ label: "Setup", value: setup.length > 0 ? setup.join(" ") : "Nothing else to set up." })
@@ -1132,6 +1248,22 @@ Item {
         font.pixelSize: Style.font.heading
         font.bold: true
       }
+    }
+  }
+
+  // A scrollbar that shows whenever its list is longer than its view, in the
+  // theme's text color: Qt's own is the palette's mid gray, which a dark
+  // theme hides, and it only appears while scrolling.
+  component ListScrollBar: ScrollBar {
+    id: listBar
+    policy: ScrollBar.AsNeeded
+    visible: size < 1.0
+    background: null
+    contentItem: Rectangle {
+      implicitWidth: Style.space(4)
+      implicitHeight: Style.space(4)
+      radius: width / 2
+      color: Util.alpha(Commons.Color.foreground, listBar.pressed || listBar.hovered ? 0.55 : 0.28)
     }
   }
 

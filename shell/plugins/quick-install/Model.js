@@ -177,6 +177,8 @@ if (typeof module !== "undefined") {
     categories: categories,
     inCategory: inCategory,
     installsText: installsText,
+    runText: runText,
+    selectionText: selectionText,
     setupLines: setupLines,
     sizeText: sizeText,
     tileKeys: tileKeys
@@ -202,15 +204,37 @@ function progressText(p, verb) {
     case "working": return verb === "remove" ? "Removing…" : "Installing…"
     case "done": return verb === "remove" ? "Removed" : "Installed"
     case "terminal": return "Continues in a terminal" + (verb === "remove" ? "" : ": it builds from the AUR or runs karchy's setup there")
+    // Stopped by the person (the password prompt closed) or in the terminal,
+    // which showed why: said plainly, not as an error.
+    case "cancelled": return (verb === "remove" ? "Not removed" : "Not installed") + (p.reason ? ": " + p.reason : "")
     case "failed": return "Failed: " + (p.reason || "see the log")
   }
   return ""
 }
 
+// The last install or removal in a sentence, for the bar under the list:
+// `entries` are its apps as { name, state }. "Hyperfine installed.",
+// "2 installed and 1 failed. The log has every step.", "Nothing was changed."
+function runText(entries, verb) {
+  var n = { done: 0, failed: 0, cancelled: 0, terminal: 0 }
+  for (var i = 0; i < entries.length; i++) if (n[entries[i].state] !== undefined) n[entries[i].state]++
+  var total = n.done + n.failed + n.cancelled + n.terminal
+  if (total === 0) return ""
+  var did = verb === "remove" ? "removed" : "installed"
+  if (n.cancelled === total) return "Nothing was changed."
+  var one = entries.length === 1 ? entries[0].name : ""
+  var parts = []
+  if (n.done > 0) parts.push((one || n.done) + " " + did)
+  if (n.failed > 0) parts.push((one || n.failed) + " failed")
+  if (n.terminal > 0) parts.push((one || n.terminal) + (one || n.terminal === 1 ? " continues" : " continue") + " in a terminal")
+  if (n.cancelled > 0) parts.push(n.cancelled + " not " + did)
+  return capitalized(list(parts)) + "." + (n.failed > 0 ? " The log has every step." : "")
+}
+
 // The selection bar's words.
-function selectionText(count, inTerminal, applying, verb) {
+function selectionText(count, inTerminal, applying, verb, lastRun) {
   if (applying) return verb === "remove" ? "Removing…" : "Installing… the password prompt comes first."
-  if (count === 0) return "Done. The log has every step."
+  if (count === 0) return lastRun || ""
   var text = plural(count, "app", "apps") + " picked."
   if (inTerminal > 0) text += " " + (inTerminal === 1 ? "One" : inTerminal) + " of them " + (inTerminal === 1 ? "opens" : "open") + " in a terminal after the rest, to show the AUR's build files or karchy's setup."
   return text
