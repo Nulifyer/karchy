@@ -148,6 +148,8 @@ inside='
   exec bash "$@"'
 if ! unshare -rm bash -c "$inside" _ "$sandbox" -c true 2>/dev/null; then
   echo "skip the made-up /etc (no user namespace with an overlay here)"
+  # A check that didn't run must not pass where nobody reads the output.
+  [[ -z ${CI:-} ]] || fails=1
 else
   cat >"$sandbox/cases" <<'CASES'
 helper=$1

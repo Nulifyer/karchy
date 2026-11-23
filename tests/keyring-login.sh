@@ -139,6 +139,8 @@ inside='
   exec bash "$@"'
 if ! unshare -rm bash -c "$inside" _ "$sandbox" -c true 2>/dev/null; then
   echo "skip keyring-login (no user namespace with an overlay here)"
+  # A check that didn't run must not pass where nobody reads the output.
+  [[ -z ${CI:-} ]] || exit 1
   exit 0
 fi
 

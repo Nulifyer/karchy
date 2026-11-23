@@ -60,3 +60,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: The login keyring changes its lock with the oo7 the repositories carry (D-142)
         run: tools/keyring-check
+
+  users:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Allow the user namespace both tests work in (Ubuntu's AppArmor refuses it)
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - name: The login keyring follows how its owner gets in (D-142)
+        run: tests/keyring-login.sh
+      - name: Settings › Users' root helper judges every request (D-139, D-144)
+        run: tests/users-settings.sh system/users/users-settings
