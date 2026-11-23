@@ -10,8 +10,7 @@
 #
 #   fingerprint   karchy-setup-security-fingerprint, karchy-remove-security-fingerprint
 #   FIDO2 key     karchy-setup-security-fido2, karchy-remove-security-fido2
-#   password      karchy-settings-users password (passwd, and the note that
-#                 it is no longer the install's)
+#   password      karchy-settings-users password (passwd)
 #   drive         karchy-drive-password
 #   keyring       karchy-keyring reset (saved passwords)
 #

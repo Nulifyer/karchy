@@ -32,7 +32,6 @@ ColumnLayout {
   property string you: ""
   property bool admin: false
   property bool encrypted: true
-  property bool passwordNote: false
   // Keyrings open with the login password here (the login screen is in
   // force, D-142): a reset password leaves that person's keyring locked.
   property bool keyringPassword: false
@@ -65,7 +64,6 @@ ColumnLayout {
       root.admin = status.admin === true
       root.encrypted = status.encrypted === true
       root.autologin = status.autologin || {}
-      root.passwordNote = status.passwordNote === true
       root.keyringPassword = status.keyringPassword === true
       root.users = status.users || []
       root.loaded = true
@@ -219,15 +217,6 @@ ColumnLayout {
     text: root.failed.tag === "autologin" ? String(root.failed.text || "") : ""
     dismissible: true
     onDismissed: root.failed = ({})
-  }
-
-  InlineMessage {
-    kind: "warning"
-    text: root.passwordNote
-      ? "Your password was set at install, where it also became the disk password. Change it now that others use this computer."
-      : ""
-    actionText: "Change password…"
-    onAction: root.inTerminal("karchy-settings-users password")
   }
 
   InlineMessage {
