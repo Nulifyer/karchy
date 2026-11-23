@@ -155,13 +155,19 @@ function setupLines(app, multilibOn) {
 // installed, everything pacman would add for it ("412 MiB download, 1.9 GiB
 // installed, 37 packages with what it needs"); for an installed one, what its
 // own packages take. An AUR app's figure covers only what comes from the
-// repositories.
-function sizeText(info, aur) {
+// repositories. `multilibPending`: the app needs Arch's 32-bit repository
+// and it is still off.
+function sizeText(info, aur, multilibPending) {
   if (!info) return ""
   var parts = []
   if (info.download) parts.push(info.download + " download")
   if (info.installed) parts.push(info.installed + " installed")
-  if (parts.length === 0) return ""
+  // An app that needs Arch's 32-bit repository, while that is off: pacman
+  // can't say yet what the install comes to.
+  var later = "counted once Arch's 32-bit repository is on, which installing turns on"
+  if (parts.length === 0) return multilibPending ? capitalized(later) + "." : ""
+  if (info.alone)
+    return parts.join(", ") + " for " + info.alone + " alone" + (multilibPending ? "; the 32-bit packages it needs are " + later : "")
   if (info.count > 1) parts.push(info.count + " packages with what it needs")
   var text = parts.join(", ")
   if (aur) text += " from the repositories; the AUR build comes on top"

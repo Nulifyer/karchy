@@ -1141,7 +1141,8 @@ Item {
     signal tabOut(Item button, var event)
 
     readonly property var setup: Model.setupLines(app, root.multilibOn)
-    readonly property string size: info === "loading" ? "Reading…" : Model.sizeText(info, app.source === "aur")
+    readonly property string size: info === "loading" ? "Reading…"
+      : Model.sizeText(info, app.source === "aur", !!app.multilib && !root.multilibOn)
     readonly property var rows: {
       var out = [{ label: installedHere ? "Installed" : "Installs", value: Model.installsText(app, info) }]
       if (!app.feature && size !== "") out.push({ label: "Size", value: size })

@@ -193,6 +193,11 @@ human_size() {
   }'
 }
 
+# "86.65 MiB" on stdin to bytes.
+size_bytes() {
+  awk '{ printf "%.0f", $1 * ($2 == "GiB" ? 1073741824 : $2 == "MiB" ? 1048576 : $2 == "KiB" ? 1024 : 1) }'
+}
+
 # The sum of the "Installed Size" lines of pacman -Si or -Qi, in bytes.
 installed_bytes() {
   awk -F': *' '/^Installed Size/ {
@@ -232,8 +237,18 @@ info() {
     ((${#extra[@]})) && mapfile -t missing < <(pacman -T -- "${extra[@]}")
     want+=("${missing[@]}")
   fi
-  # No root and no lock: pacman only says what it would do.
-  plan=$(pacman -Sp --print-format '%r/%n %s' -- "${want[@]}" 2>/dev/null) && [[ -n $plan ]] || { echo '{}'; return; }
+  # No root and no lock: pacman only says what it would do. It can't while
+  # the app needs Arch's 32-bit repository and that is still off (Lutris,
+  # Steam on a fresh machine): then the app's first package alone, if pacman
+  # knows it, and said as that.
+  if ! plan=$(pacman -Sp --print-format '%r/%n %s' -- "${want[@]}" 2>/dev/null) || [[ -z $plan ]]; then
+    local alone
+    [[ $(field "$app" .source) != aur ]] && alone=$(LC_ALL=C pacman -Si -- "$main" 2>/dev/null) || { echo '{}'; return; }
+    jq -cn --arg d "$(human_size "$(sed -n 's/^Download Size *: //p' <<<"$alone" | head -n1 | size_bytes)")" \
+      --arg i "$(human_size "$(sed -n 's/^Installed Size *: //p' <<<"$alone" | head -n1 | size_bytes)")" --arg r "$repo" --arg a "$main" \
+      '{download: $d, installed: $i, repo: $r, alone: $a}'
+    return
+  fi
   mapfile -t names < <(cut -d' ' -f1 <<<"$plan")
   bytes=$(LC_ALL=C pacman -Si -- "${names[@]}" 2>/dev/null | installed_bytes)
   # The app's own package (karchy-app-<id>) has no files and isn't counted.
