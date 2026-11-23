@@ -68,6 +68,8 @@ Quick install is the catalog of apps and karchy features. The catalog is `/usr/s
 - `karchy-quick-install` opens the window. `karchy-quick-install window <search>` opens it with a search.
 - `karchy-quick-install status` prints which catalog apps are installed, as JSON.
 - `karchy-quick-install install <id>` and `remove <id>` work in a terminal for one catalog id. They also apply the entry's declared setup: multilib, the 32-bit graphics driver, services, groups and firewall ports.
+- An entry that lists several packages is installed as one package, `karchy-app-<id>` (for example `karchy-app-lutris`). It has no files and depends on the entry's packages, so `remove <id>` also removes what came with the app, unless something else needs it or the user installed it by name. `pacman -R` on one of those parts is refused while the app is installed; remove the app instead.
+- Such an app counts as installed when `karchy-app-<id>` is installed, or when its first package was installed by hand.
 - Prefer a catalog id over raw package names when the catalog has the app. Find the id with `jq '.apps[] | select(.name | test("<name>"; "i")) | .id' <catalog>`.
 - karchy features are catalog entries with a `feature` script: `containers`, `vms` and `printing`. Install them with `karchy-quick-install install <id>` or the window, not by package name, so that their setup runs.
 - An app marked `required` cannot be removed.

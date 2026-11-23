@@ -18,8 +18,12 @@ Errors:
     (shown, not removable)
   - an entry whose packages conflict with each other, repeat, or aren't
     plain package names
+  - an AUR entry whose other packages aren't all in a signed repository:
+    its karchy-app-<id> package (D-150, packaging/pkgbuilds/karchy-apps)
+    depends on them, and pacman can't resolve a dependency from the AUR
   - the apps karchy ships (karchy-desktop's optdepends) and the list's
-    `default` entries differ (D-71)
+    `default` entries differ (D-71); an entry of several packages is named
+    there by its karchy-app-<id> package, which is what gets installed
 
   - the wrong build: Arch's own package when it carries the app, otherwise
     the -bin build (a signed repo's, then a well-kept AUR one), and a source
@@ -97,11 +101,21 @@ def closure(roots, meta):
 OPT_IN = {'karchy-vpn', 'karchy-project-picker', 'karchy-containers', 'karchy-printing'}
 
 
+def target(app):
+    """The package that stands for an entry (D-150): karchy-app-<id> when it
+    is more than its first package, as packaging/pkgbuilds/karchy-apps makes
+    them and Quick install installs them; else that package."""
+    if len(app['packages']) > 1 or app.get('setup', {}).get('gpu32') is True:
+        return 'karchy-app-' + app['id']
+    return app['packages'][0]
+
+
 def karchy_base():
     base = set()
     pkgdir = os.path.join(ROOT, 'packaging/pkgbuilds')
     for name in os.listdir(pkgdir):
-        if 'nvidia' in name or name in OPT_IN:
+        # karchy-apps makes the entries' own packages, from this list.
+        if 'nvidia' in name or name in OPT_IN or name == 'karchy-apps':
             continue
         f = os.path.join(pkgdir, name, 'PKGBUILD')
         if not os.path.exists(f):
@@ -125,6 +139,9 @@ def main():
                 errors.append(f'{where}: no {key}')
         if a.get('id') in ids:
             errors.append(f'{where}: duplicate id')
+        # Ids are arguments of the root helper and name karchy-app-<id>.
+        if not re.fullmatch(r'[a-z0-9][a-z0-9.+-]*', a.get('id', '')):
+            errors.append(f'{where}: an id is lower-case letters, digits, ".", "+" and "-"')
         ids.add(a.get('id'))
         if a.get('category') not in cats:
             errors.append(f'{where}: unknown category {a.get("category")!r}')
@@ -190,6 +207,8 @@ def main():
                 errors.append(f'{where}: {p} is not in {src}' + (f' (found in {", ".join(found)})' if found else ''))
             elif p not in every_repo and src != 'aur':
                 errors.append(f'{where}: {p} is in no signed repository')
+            elif p not in every_repo and n > 0:
+                errors.append(f'{where}: {p} is not in a signed repository, so karchy-app-{where} could not depend on it')
             elif src == 'aur' and p not in every_repo:
                 info = aur.get(p)
                 if not info:
@@ -234,11 +253,11 @@ def main():
     text = '\n'.join(l.split('#', 1)[0] for l in open(os.path.join(ROOT, 'packaging/pkgbuilds/karchy-desktop/PKGBUILD')).read().splitlines())
     m = re.search(r'\boptdepends=\((.*?)\n\)', text, re.S)
     shipped = {re.split(r'[:<>=]', x)[0] for x in re.findall(r"'([^']+)'", m.group(1))} if m else set()
-    defaults = {p for a in data['apps'] if a.get('default') and not a.get('required') for p in a['packages']}
+    defaults = {target(a) for a in data['apps'] if a.get('default') and not a.get('required')}
     for p in sorted(shipped - defaults):
         errors.append(f'karchy-desktop optdepends {p}, but no default entry in the list installs it')
     for p in sorted(defaults - shipped):
-        errors.append(f'{p} is in a default entry, but not in karchy-desktop\'s optdepends')
+        errors.append(f'{p} is what a default entry installs, but not in karchy-desktop\'s optdepends')
     for a in data['apps']:
         if a.get('required') and not a.get('default'):
             errors.append(f'{a["id"]}: required apps must also be default')

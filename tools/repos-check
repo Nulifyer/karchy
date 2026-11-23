@@ -21,9 +21,10 @@
 #      microcodes), every package in [karchy] with all its dependencies, and
 #      the apps karchy ships (their optional dependencies). The legacy NVIDIA
 #      driver, which takes the other's place and needs [multilib], is resolved
-#      on its own; it stands for every 32-bit package (Steam), whose
-#      libraries need the exact version of their 64-bit ones. Nothing is
-#      downloaded.
+#      on its own. The apps' own packages (karchy-app-<id>, D-150: an app
+#      of several packages, depending on them) are each resolved on their
+#      own too, with [multilib]: some need it (Steam), and some can't be
+#      installed together (Docker and Containers). Nothing is downloaded.
 # pacman's own errors name what no longer resolves. Exits 1 on any failure.
 #
 # Needs podman (rootless) and the network.
@@ -131,7 +132,7 @@ base+=(amd-ucode intel-ucode)
 declare -A legacy=()
 for channel in "${channels[@]}"; do
   use_channel "$channel" || continue
-  mapfile -t karchy < <(pacman -Slq karchy | grep -vx 'karchy-nvidia-580xx')
+  mapfile -t karchy < <(pacman -Slq karchy | grep -vxE 'karchy-nvidia-580xx|karchy-app-.*')
   mapfile -t apps < <(optional_of "${karchy[@]}")
   resolve "$channel: base, every [karchy] package and the apps karchy ships" "${base[@]}" "${karchy[@]}" "${apps[@]}"
   if pacman -Slq karchy | grep -qx 'karchy-nvidia-580xx'; then
@@ -139,15 +140,26 @@ for channel in "${channels[@]}"; do
   fi
 done
 
-if ((${#legacy[@]} > 0)); then
-  # install/setup.sh turns on [multilib] on these machines. The container
-  # image's pacman.conf has no such section to uncomment.
-  printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >>/etc/pacman.conf
-  for channel in "${channels[@]}"; do
-    [[ -n ${legacy[$channel]:-} ]] || continue
-    use_channel "$channel" || continue
+# install/setup.sh turns on [multilib] for the legacy NVIDIA driver, and
+# Quick install for the apps that need it. The container image's pacman.conf
+# has no such section to uncomment.
+printf '\n[multilib]\nInclude = /etc/pacman.d/mirrorlist\n' >>/etc/pacman.conf
+for channel in "${channels[@]}"; do
+  use_channel "$channel" || continue
+  if [[ -n ${legacy[$channel]:-} ]]; then
     resolve "$channel: the legacy NVIDIA driver (karchy-nvidia-580xx)" "${base[@]}" karchy-desktop karchy-nvidia-580xx
+  fi
+  # Each app's package on its own; only the ones that fail are listed.
+  mapfile -t app_packages < <(pacman -Slq karchy | grep -E '^karchy-app-' || true)
+  broken=0
+  for package in "${app_packages[@]}"; do
+    if ! output=$(LC_ALL=C pacman --dbpath "$fresh" -Sp --noconfirm --print-format '%n' "$package" 2>&1); then
+      printf '%s\n' "$output" | awk 'NF && !seen[$0]++' | head -n 10 | sed 's/^/    /'
+      fail "$channel: $package, an app's package, no longer installs"
+      broken=$((broken + 1))
+    fi
   done
-fi
+  ((${#app_packages[@]} == 0 || broken > 0)) || echo "ok: $channel: the ${#app_packages[@]} apps' packages (karchy-app-*) each resolve"
+done
 
 exit "$failed"

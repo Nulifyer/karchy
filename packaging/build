@@ -51,6 +51,13 @@ there is no release to build yet, and the package is skipped. karchy's
 add-ons (addons/, such as karchy-vpn) are built from karchy-src.tar.gz like
 karchy itself.
 
+A PKGBUILD can make several packages ("# karchy:split=<prefix>", as
+karchy-apps does: one karchy-app-<id> for each Quick install app that is more
+than one package). Each of them is compared and versioned on its own, and one
+the PKGBUILD no longer makes is taken out of the repository. A PKGBUILD can
+also ask for a file of the packaged tree beside it ("# karchy:beside=<path>"),
+to read while makepkg sources it, before any source is unpacked.
+
 Hashes live next to the database in karchy.versions, so the repository is the
 only state: CI downloads a channel's repository, builds, signs and uploads it.
 
@@ -169,6 +176,12 @@ def missing_requirement(pkg):
     return None
 
 
+def split_prefix(pkg):
+    """The name prefix of the packages a split PKGBUILD makes, or None."""
+    m = re.search(r"^# karchy:split=(\S+)$", pkgbuild_text(pkg), re.M)
+    return m.group(1) if m else None
+
+
 def is_native(pkg):
     return not re.search(r"^arch=\(\s*'any'\s*\)", pkgbuild_text(pkg), re.M)
 
@@ -207,8 +220,11 @@ def drop_stale_signature(pkgfile):
 
 
 def drop_superseded(repo, pkg, pkgfile):
-    """Remove every other version of PKG, and their signatures, from REPO; return the names removed."""
-    keep = {pkgfile.name, pkgfile.name + ".sig"}
+    """Remove every other version of PKG, and their signatures, from REPO; return the names removed.
+
+    With no PKGFILE (the package is no longer made), every version goes.
+    """
+    keep = {pkgfile.name, pkgfile.name + ".sig"} if pkgfile else set()
     removed = []
     for path in sorted(repo.iterdir()):
         if path.name not in keep and package_name(path.name) == pkg and path.is_file():
@@ -238,11 +254,18 @@ def self_test():
         left = sorted(p.name for p in repo.iterdir())
         assert left == sorted(set(files) - {new + ".sig", "karchy-nvidia-1-1-any.pkg.tar.zst",
                                             "karchy-nvidia-1-1-any.pkg.tar.zst.sig"}), left
+        # A package no longer made loses every file; a longer name isn't it.
+        gone = ["karchy-app-go-1-1-any.pkg.tar.zst", "karchy-app-go-1-1-any.pkg.tar.zst.sig"]
+        for name in [*gone, "karchy-app-go-extras-1-1-any.pkg.tar.zst"]:
+            (repo / name).write_text(name)
+        assert drop_superseded(repo, "karchy-app-go", None) == gone
+        assert (repo / "karchy-app-go-extras-1-1-any.pkg.tar.zst").exists()
     print("build: self-test passed")
 
 
 def build(pkg, version, source, conf, workdir, env, native):
-    """Build pkgbuilds/PKG at VERSION in WORKDIR; return the package file."""
+    """Build pkgbuilds/PKG at VERSION in WORKDIR; return the package file,
+    or for a split PKGBUILD the files by package name."""
     build_dir = workdir / pkg
     shutil.rmtree(build_dir, ignore_errors=True)
     build_dir.mkdir(parents=True)
@@ -254,9 +277,20 @@ def build(pkg, version, source, conf, workdir, env, native):
             shutil.copy(extra, build_dir / extra.name)
     if "karchy-src.tar.gz" in text:
         os.symlink(source, build_dir / "karchy-src.tar.gz")
+    # From the packaged tree (a --ref build's, not the checkout's).
+    for rel in re.findall(r"^# karchy:beside=(.+)$", text, re.M):
+        with tarfile.open(source, "r:gz") as tar:
+            data = tar.extractfile(f"karchy/{rel.strip()}").read()
+        (build_dir / Path(rel.strip()).name).write_bytes(data)
     deps = ["--syncdeps"] if native else ["--nodeps"]
     run(["makepkg", "--config", conf, *deps, "--clean", "--cleanbuild", "--force", "--noconfirm"],
         cwd=build_dir, stdout=subprocess.DEVNULL, env=env)
+    prefix = split_prefix(pkg)
+    if prefix:
+        found = {package_name(f.name): f for f in build_dir.glob(f"{prefix}*-{version}-*.pkg.tar.zst")}
+        if not found:
+            sys.exit(f"build: {pkg} made no {prefix}* package")
+        return found
     found = list(build_dir.glob(f"{pkg}-{version}-*.pkg.tar.zst"))
     if len(found) != 1:
         sys.exit(f"build: expected one package file for {pkg}, found {found}")
@@ -323,8 +357,37 @@ def main():
                         "PACKAGER='karchy-pkgs <karchy-pkgs@users.noreply.github.com>'\n")
 
         changed = []
+        dropped = []
+
+        def take(name, pkg_version, pkgfile, digest):
+            """Put a built package in the repository as NAME's new version."""
+            previous = versions.get(name, (None, None))[0]
+            print(f"{name}: {previous or 'new'} -> {pkg_version}")
+            shutil.copy(pkgfile, repo / pkgfile.name)
+            if args.sign:
+                run(["gpg", "--batch", "--yes", "--detach-sign", "--no-armor", "--local-user", args.sign,
+                     "--output", str(repo / (pkgfile.name + ".sig")), str(repo / pkgfile.name)])
+            elif drop_stale_signature(repo / pkgfile.name):
+                print(f"{name}: removed the signature of the file this one replaces")
+            changed.append((name, repo / pkgfile.name))
+            versions[name] = (pkg_version, digest)
+
+        def changed_since(name, pkg_version, digest):
+            """Whether a package rebuilt at karchy's version differs from the repository's copy."""
+            previous, old_hash = versions.get(name, (None, None))
+            if digest == old_hash:
+                print(f"{name}: unchanged ({previous})")
+                return False
+            if pkg_version == previous:
+                sys.exit(f"build: {name} changed but its version {pkg_version} is already published; "
+                         "clients would never see it. Commit the change (or pass a newer --version).")
+            if previous and older(pkg_version, previous):
+                sys.exit(f"build: {name} {pkg_version} is older than the published {previous}; "
+                         "clients would never install it.")
+            return True
+
         for pkg in packages:
-            previous, old_hash = versions.get(pkg, (None, None))
+            previous = versions.get(pkg, (None, None))[0]
             missing = missing_requirement(pkg)
             if missing:
                 print(f"{pkg}: skipped, {missing} doesn't exist yet")
@@ -336,48 +399,50 @@ def main():
             if pkg_version == "":
                 print(f"{pkg}: skipped, no release pinned yet")
                 continue
-            if pkg_version:
+            prefix = split_prefix(pkg)
+            if prefix:
+                if pkg_version:
+                    sys.exit(f"build: {pkg} makes several packages, so it takes karchy's version, not its own")
+                made = build(pkg, version, source, conf, workdir, env, native=False)
+                for name, pkgfile in sorted(made.items()):
+                    digest = content_hash(pkgfile)
+                    if changed_since(name, version, digest):
+                        take(name, version, pkgfile, digest)
+                # What the PKGBUILD made before and no longer does.
+                dropped += sorted(n for n in versions if n.startswith(prefix) and n not in made)
+            elif pkg_version:
                 if pkg_version == previous:
                     print(f"{pkg}: unchanged ({previous})")
                     continue
                 pkgfile = build(pkg, pkg_version, source, conf, workdir, env, native=is_native(pkg))
-                digest = content_hash(pkgfile)
+                take(pkg, pkg_version, pkgfile, content_hash(pkgfile))
             else:
-                pkg_version = version
-                pkgfile = build(pkg, pkg_version, source, conf, workdir, env, native=False)
+                pkgfile = build(pkg, version, source, conf, workdir, env, native=False)
                 digest = content_hash(pkgfile)
-                if digest == old_hash:
-                    print(f"{pkg}: unchanged ({previous})")
-                    continue
-                if pkg_version == previous:
-                    sys.exit(f"build: {pkg} changed but its version {pkg_version} is already published; "
-                             "clients would never see it. Commit the change (or pass a newer --version).")
-                if previous and older(pkg_version, previous):
-                    sys.exit(f"build: {pkg} {pkg_version} is older than the published {previous}; "
-                             "clients would never install it.")
-            print(f"{pkg}: {previous or 'new'} -> {pkg_version}")
-            shutil.copy(pkgfile, repo / pkgfile.name)
-            if args.sign:
-                run(["gpg", "--batch", "--yes", "--detach-sign", "--no-armor", "--local-user", args.sign,
-                     "--output", str(repo / (pkgfile.name + ".sig")), str(repo / pkgfile.name)])
-            elif drop_stale_signature(repo / pkgfile.name):
-                print(f"{pkg}: removed the signature of the file this one replaces")
-            changed.append((pkg, repo / pkgfile.name))
-            versions[pkg] = (pkg_version, digest)
+                if changed_since(pkg, version, digest):
+                    take(pkg, version, pkgfile, digest)
 
+    sign = ["--sign", "--key", args.sign] if args.sign else []
     if changed:
-        sign = ["--sign", "--key", args.sign] if args.sign else []
         run(["repo-add", "--quiet", "--remove", *sign, str(repo / f"{REPO_NAME}.db.tar.gz"),
              *(str(path) for _, path in changed)])
         write_versions(state_file, versions)
         for pkg, path in changed:
             for name in drop_superseded(repo, pkg, path):
                 print(f"{pkg}: removed {name}")
+    if dropped:
+        run(["repo-remove", "--quiet", *sign, str(repo / f"{REPO_NAME}.db.tar.gz"), *dropped])
+        for pkg in dropped:
+            del versions[pkg]
+            for name in drop_superseded(repo, pkg, None):
+                print(f"{pkg}: no longer made, removed {name}")
+        write_versions(state_file, versions)
     # A full build is a release of the channel; a partial one (native packages
     # only, say) leaves the channel's release as it was.
     if not args.packages:
         (repo / "release").write_text(f"VERSION={version}\nCHANNEL={args.channel}\nCOMMIT={commit}\n")
-    print(f"build: {len(changed)} package(s) updated in {repo}")
+    print(f"build: {len(changed)} package(s) updated in {repo}"
+          + (f", {len(dropped)} removed" if dropped else ""))
 
 
 if __name__ == "__main__":

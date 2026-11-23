@@ -39,10 +39,15 @@
 #                             network change; remove closes them the same way
 #                 A failed setup step is reported and the command fails; running
 #                 install again retries the setup (pacman skips what's there)
-#   remove <id>   remove the app's own packages (not ones another list entry
-#                 also installs), after pacman confirms nothing else needs
-#                 them; apps karchy needs (`required`) can't be removed, and
-#                 removing the default browser says where links open now
+#   remove <id>   remove the app, and with it the packages that came with it
+#                 and nothing else needs, after pacman confirms nothing else
+#                 needs the app; apps karchy needs (`required`) can't be
+#                 removed, and removing the default browser says where links
+#                 open now
+#
+# An app that is more than one package is installed as its `karchy-app-<id>`
+# package from [karchy] (D-150, packaging/pkgbuilds/karchy-apps), which
+# depends on the entry's packages, so pacman knows what came with the app.
 #   open <id>     start the app
 
 set -uo pipefail
@@ -63,6 +68,15 @@ entry() {
 }
 
 field() { jq -r "$2" <<<"$1"; }
+
+# The package that stands for an app (D-150): `karchy-app-<id>` when the app
+# is more than its first package, else that package. Written the same in
+# system/packages/app-packages and install/setup.sh (tests/app-packages-rule.sh).
+TARGET='if (.packages | length) > 1 or .setup.gpu32 == true then "karchy-app-" + .id else .packages[0] end'
+
+# Exact names: pacman -Q also answers for what a package provides.
+installed() { [[ $(pacman -Qq -- "$1" 2>/dev/null) == "$1" ]]; }
+installed_explicitly() { [[ $(pacman -Qeq -- "$1" 2>/dev/null) == "$1" ]]; }
 
 # pacman takes one lock; say so instead of failing midway in the terminal.
 pacman_free() {
@@ -128,12 +142,20 @@ desktop_of() {
 
 status() {
   local id main
-  # Catalog apps whose main package is installed, with all their packages;
-  # each one's launcher is the first of its packages that has one (scrcpy
-  # for Android SDK), from a single pacman -Ql.
+  # Catalog apps that are installed, with all their packages: an app of one
+  # package when that package is there; an app with a package of its own
+  # (karchy-app-<id>) when that is there, or when its first package was
+  # installed by hand (as a dependency of another app it isn't this app:
+  # docker under WinBoat). Each one's launcher is the first of its packages
+  # that has one (scrcpy for Android SDK), from a single pacman -Ql.
   local have
-  have=$(awk -F'\t' 'FILENAME == ARGV[1] { have[$1]; next } { split($2, p, " ") } p[1] in have' \
-    <(pacman -Qq) <(jq -r '.apps[] | select(.feature | not) | "\(.id)\t\(.packages | join(" "))"' "$CATALOG"))
+  have=$(awk -F'\t' '
+    FILENAME == ARGV[1] { have[$1]; next }
+    FILENAME == ARGV[2] { mine[$1]; next }
+    { split($3, p, " ") }
+    ($2 in have) || ($2 != p[1] && p[1] in mine) { print $1 "\t" $3 }' \
+    <(pacman -Qq) <(pacman -Qeq) \
+    <(jq -r ".apps[] | select(.feature | not) | \"\(.id)\t\($TARGET)\t\(.packages | join(\" \"))\"" "$CATALOG"))
   {
     if [[ -n $have ]]; then
       local pkgs=()
@@ -205,7 +227,7 @@ gpu32_packages() {
 }
 
 install_app() {
-  local app name feature pkgs=() extra=() sync=-S unit group cmd failed=()
+  local app name feature target pkgs=() extra=() missing=() sync=-S unit group cmd failed=()
   app=$(entry "$1") || exit 1
   name=$(field "$app" .name)
   feature=$(field "$app" '.feature // empty')
@@ -217,6 +239,7 @@ install_app() {
   fi
   mapfile -t pkgs < <(field "$app" '.packages[]')
   ((${#pkgs[@]})) || die "$name lists no packages."
+  target=$(field "$app" "$TARGET")
   pacman_free
 
   if [[ $(field "$app" '.multilib // false') == true ]]; then
@@ -234,22 +257,43 @@ install_app() {
       sync=-Syu
     fi
   fi
+
+  printf '%s%s%s %s\n' "$BOLD" "Installing $name" "$RESET" "${pkgs[*]}"
+  # This machine's 32-bit graphics drivers first, as dependencies: the app's
+  # package depends on the names they provide (lib32-vulkan-driver), which
+  # pacman would otherwise give to the first package that has them. As
+  # dependencies they go again with the last app that needs them. One that is
+  # installed already keeps its reason.
   if [[ $(field "$app" '.setup.gpu32 // false') == true ]]; then
     mapfile -t extra < <(gpu32_packages)
-    ((${#extra[@]})) && echo "Adding the 32-bit graphics driver for this machine: ${extra[*]}"
+    ((${#extra[@]})) && mapfile -t missing < <(pacman -T -- "${extra[@]}")
+    if ((${#missing[@]})); then
+      echo "Adding the 32-bit graphics driver for this machine: ${missing[*]}"
+      sudo pacman --color auto "$sync" --needed --asdeps --noconfirm -- "${missing[@]}" || {
+        [[ $sync != -S ]] || karchy-pkg-install-failed
+        die "$name wasn't installed."
+      }
+      sync=-S
+    fi
   fi
-
-  printf '%s%s%s %s\n' "$BOLD" "Installing $name" "$RESET" "${pkgs[*]} ${extra[*]}"
   if [[ $(field "$app" .source) == aur ]]; then
+    # The app itself is built here and stays the user's own package; what it
+    # needs from the repositories comes with its karchy-app package.
     printf '%s%s%s\n' "$DIM" "From the AUR: built on this computer from a community-maintained script." "$RESET"
-    paru --color auto "$sync" --needed "${pkgs[@]}" "${extra[@]}" || die "$name wasn't installed."
-  else
+    paru --color auto "$sync" --needed "${pkgs[0]}" || die "$name wasn't installed."
+    sync=-S
+    [[ $target == "${pkgs[0]}" ]] && target=""
+  fi
+  if [[ -n $target ]]; then
     # The window's Install is the confirmation; pacman still lists what it
     # installs (user 2026-11-15). paru keeps its own prompts for the AUR.
-    sudo pacman --color auto "$sync" --needed --noconfirm -- "${pkgs[@]}" "${extra[@]}" || {
+    sudo pacman --color auto "$sync" --needed --noconfirm -- "$target" || {
       [[ $sync != -S ]] || karchy-pkg-install-failed
       die "$name wasn't installed."
     }
+    # Asked for by name, so it is the user's: a copy that came as another
+    # app's dependency (pnpm with Node.js) would otherwise go with that app.
+    installed_explicitly "$target" || sudo pacman -D --asexplicit -- "$target" >/dev/null
   fi
 
   while read -r unit; do
@@ -292,7 +336,7 @@ install_app() {
 }
 
 remove_app() {
-  local app name feature installed=() unit stopped=() stopped_user=()
+  local app name feature gone=() unit stopped=() stopped_user=()
   app=$(entry "$1") || exit 1
   name=$(field "$app" .name)
   local required
@@ -305,28 +349,31 @@ remove_app() {
     refresh_window
     return $code
   fi
-  # The app's own packages: its main one, and the others unless another
-  # entry also installs them (Lutris and Wine helpers share winetricks).
-  local pkgs=() shared p
-  shared=$(jq -r --arg id "$1" '[.apps[] | select(.id != $id) | .packages[]] | unique | .[]' "$CATALOG")
-  mapfile -t pkgs < <(field "$app" '.packages[]')
-  ((${#pkgs[@]})) || die "$name lists no packages."
+  # The app's package, which takes what came with it and nothing else needs
+  # (pacman -Rns), and the app itself where it is the user's own: an app of
+  # one package, an AUR app, or one installed by hand before its package.
+  local target main needs by
+  target=$(field "$app" "$TARGET")
+  main=$(field "$app" '.packages[0]')
+  [[ -n $main ]] || die "$name lists no packages."
   pacman_free
-  for p in "${pkgs[@]}"; do
-    [[ $p != "${pkgs[0]}" ]] && grep -qxF -- "$p" <<<"$shared" && continue
-    # Exact names only: pacman -Q also answers for a package's provides.
-    [[ $(pacman -Qq -- "$p" 2>/dev/null) == "$p" ]] && installed+=("$p")
-  done
-  if ((${#installed[@]} == 0)); then
+  installed "$target" && gone+=("$target")
+  [[ $main != "$target" ]] && installed_explicitly "$main" && gone+=("$main")
+  if ((${#gone[@]} == 0)); then
     echo "$name isn't installed."
     refresh_window
     return 0
   fi
-  # Ask pacman first, so a refusal leaves everything as it was.
-  if ! pacman -Rs --print "${installed[@]}" >/dev/null 2>&1; then
-    echo "Another installed package needs part of $name:"
-    pacman -Rs --print "${installed[@]}" 2>&1 | grep -i "required by\|breaks dependency" || true
-    die "Remove that package first, then try again. Nothing was changed."
+  # Ask pacman first, so a refusal leaves everything as it was. It names the
+  # package that still needs this one; for an app's package, the app.
+  if ! needs=$(LC_ALL=C pacman -Rs --print -- "${gone[@]}" 2>&1); then
+    echo "Something installed still needs $name:"
+    while read -r by; do
+      [[ $by == karchy-app-* ]] && by=$(jq -r --arg id "${by#karchy-app-}" --arg by "$by" \
+        '[.apps[] | select(.id == $id) | .name][0] // $by' "$CATALOG")
+      echo "  $by"
+    done < <(sed -n 's/.* required by \([^ ]*\)$/\1/p' <<<"$needs" | sort -u)
+    die "Remove that first, then try again. Nothing was changed."
   fi
   # Units are stopped before their files go; if the removal doesn't happen
   # (a wrong password, a pacman error), they are turned back on.
@@ -338,9 +385,9 @@ remove_app() {
     [[ -n $unit ]] && systemctl is-enabled --quiet "$unit" 2>/dev/null &&
       sudo systemctl disable --now "$unit" 2>/dev/null && stopped+=("$unit")
   done < <(field "$app" '.setup.services[]? // empty')
-  printf '%s%s%s %s\n' "$BOLD" "Removing $name" "$RESET" "${installed[*]}"
+  printf '%s%s%s %s\n' "$BOLD" "Removing $name" "$RESET" "${gone[*]}"
   # The window asked already; pacman still lists what it removes.
-  if ! sudo pacman --color auto -Rns --noconfirm -- "${installed[@]}"; then
+  if ! sudo pacman --color auto -Rns --noconfirm -- "${gone[@]}"; then
     for unit in "${stopped_user[@]}"; do systemctl --user enable --now "$unit"; done
     for unit in "${stopped[@]}"; do sudo systemctl enable --now "$unit"; done
     die "$name wasn't removed."

@@ -53,6 +53,8 @@ jobs:
         run: tools/catalog-check
       - name: Quick install search ranks apps as expected
         run: tools/quick-install-search-check
+      - name: An app of several packages is one pacman package, made from the list (D-150)
+        run: tests/app-packages-rule.sh
 
   keyring:
     runs-on: ubuntu-latest

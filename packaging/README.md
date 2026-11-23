@@ -17,6 +17,7 @@
 | `karchy-bees` | Native: bees, the btrfs deduplicator, built from a pinned tag of karchy's fork Nulifyer/bees (D-85); provides and conflicts with Arch's `bees`; a `karchy-settings` dependency; `karchy-bees.service` runs it (D-86) |
 | `karchy-vpn` | Add-on (D-106): the VPN (D-68), its policy service, kill switch, sign-in pause, polkit rule and bar widget, built from `addons/vpn`; offered in Quick install › karchy |
 | `karchy-project-picker` | Add-on (D-106): the project picker overlay and its Ctrl+Alt+P binding, built from `addons/project-picker`; offered in Quick install › karchy |
+| `karchy-app-<id>` | Meta, one per Quick install app of several packages (D-150): no files, depends on the app's packages, so pacman removes them with the app. All made by one PKGBUILD, `pkgbuilds/karchy-apps`, from `default/karchy/quick-install.json` |
 
 ## Channels and versions (D-61)
 
@@ -29,6 +30,8 @@
 Versions come from git tags (`v3.0.0`, `v3.1.0-rc.1`) through `git describe`, in pacman's ordering: `3.1.0rc1 < 3.1.0`, and a nightly `3.0.0.r12.g…` sits between `3.0.0` and the next release. Users pick a channel in the installer or in the Updates window (`karchy channel set <channel>`). Only karchy's packages follow the channel; Arch, CachyOS and AUR packages update through pacman and paru as usual, all in one `karchy update`.
 
 Within a channel every package is rebuilt and compared by content hash with the repository's copy; only packages whose contents changed take the new version, so an update downloads what changed (`karchy` always changes: it carries the release file). Native packages and packages built from another repository compute their own version (`# karchy:version-cmd=`) and rebuild when it changes: for the titlebars when Arch's Hyprland changes, for `karchy-bees` when its `pkgver` is moved to a new tag. A version command that prints nothing skips the package. The add-ons (`karchy-vpn`, `karchy-project-picker`) are built from this repository like `karchy` and take its version.
+
+`pkgbuilds/karchy-apps` is the one PKGBUILD that makes several packages (`# karchy:split=karchy-app-`). It reads the catalog, which the build puts beside it (`# karchy:beside=`), so an app's packages are written down once. Each `karchy-app-<id>` is compared and versioned on its own, so a release that changes one entry publishes one small package; an entry that stops being several packages has its package taken out of the repository.
 
 ## Building
 

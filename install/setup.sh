@@ -47,8 +47,13 @@ setup_packages() {
   # The apps karchy ships, installed as the user's own (explicitly), so each
   # can be removed in Quick install (D-71). The list is the installed
   # catalog's default entries; the ones karchy needs are dependencies above.
+  # An app that is more than one package is installed as its karchy-app-<id>
+  # package, which depends on them (D-150); the
+  # rule is written the same in bin/karchy-quick-install and
+  # system/packages/app-packages (tests/app-packages-rule.sh).
   local -a apps
-  mapfile -t apps < <(jq -r '.apps[] | select(.default and (.required | not)) | .packages[]' \
+  local TARGET='if (.packages | length) > 1 or .setup.gpu32 == true then "karchy-app-" + .id else .packages[0] end'
+  mapfile -t apps < <(jq -r ".apps[] | select(.default and (.required | not)) | $TARGET" \
     "$KARCHY_MNT/usr/share/karchy/default/karchy/quick-install.json")
   ((${#apps[@]})) || die "The list of apps karchy ships couldn't be read from the installed karchy package."
   with_mirrors in_target_pacman -S --needed --noconfirm "${apps[@]}"

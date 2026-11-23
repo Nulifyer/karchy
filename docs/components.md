@@ -88,7 +88,7 @@ Dropped: dock and app grid, emoji picker, intro animations and owe, weather, wor
 
 ## Apps in the base install
 
-Every app below shows in Quick install as installed (D-71). Most can be removed there like any other app: the installer installs them as the user's own packages (`karchy-desktop`'s optdepends), not as dependencies. foot, Thunar and Xarchiver can't be removed, because karchy itself uses them; Quick install says why.
+Every app below shows in Quick install as installed (D-71). Most can be removed there like any other app: the installer installs them as the user's own packages (`karchy-desktop`'s optdepends), not as dependencies. foot, Thunar and Xarchiver can't be removed, because karchy itself uses them; Quick install says why. An app that is more than one package is installed as its `karchy-app-<id>` package, which depends on them, so removing the app also removes what came with it (D-150).
 
 | Role | App | Source |
 |---|---|---|

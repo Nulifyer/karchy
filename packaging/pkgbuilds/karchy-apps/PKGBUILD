@@ -1,0 +1,62 @@
+# karchy-apps: one package per Quick install app that is more than one
+# package (D-150). `karchy-app-<id>` has no files; it depends on the packages
+# the app's entry lists in default/karchy/quick-install.json, so pacman knows
+# what belongs to the app: removing `karchy-app-lutris` with `pacman -Rns`
+# also removes umu-launcher, wine-staging and winetricks, unless another
+# installed package still depends on one or the user installed it themselves.
+#
+# The list is read from the catalog, which stays the only place an app's
+# packages are written down. An entry gets a package when it lists more than
+# one package, or asks for this machine's 32-bit graphics driver (`gpu32`):
+#   - the dependencies are the entry's packages. For an AUR app the first one
+#     (the app itself) is left out: pacman can't resolve a package from the
+#     AUR, so Quick install builds it with paru and it stays the user's own;
+#   - a `gpu32` entry also depends on the names every driver provides
+#     (vulkan-driver, lib32-vulkan-driver, lib32-opengl-driver). Quick
+#     install installs the drivers that fit the machine's GPUs first, as
+#     dependencies, so these names keep them and pacman removes them with
+#     the last app that needs them.
+# Nothing is pinned to a version: the apps update from their own repositories.
+#
+# karchy:beside=default/karchy/quick-install.json
+# karchy:split=karchy-app-
+
+pkgbase=karchy-apps
+pkgver=0
+pkgrel=1
+pkgdesc="karchy: the Quick install apps that are more than one package"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+makedepends=('jq')
+
+_catalog="$(dirname "$(realpath "${BASH_SOURCE[0]}")")/quick-install.json"
+
+# id<TAB>name<TAB>dependencies. The same rule as Quick install's own
+# (`karchy-app-<id>` when the entry is more than its first package).
+_entries=$(jq -r '
+  .apps[]
+  | select(.feature | not)
+  | select((.packages | length) > 1 or .setup.gpu32 == true)
+  | [ .id, .name,
+      ( (if .source == "aur" then .packages[1:] else .packages end)
+        + (if .setup.gpu32 == true then ["vulkan-driver", "lib32-vulkan-driver", "lib32-opengl-driver"] else [] end)
+        | join(" ") ) ]
+  | @tsv' "$_catalog") || exit 1
+
+pkgname=()
+while IFS=$'\t' read -r _id _name _deps; do
+  [[ -n $_id ]] || continue
+  # Names go into code below: only what a package name may hold.
+  if [[ ! $_id =~ ^[a-z0-9][a-z0-9.+-]*$ || ! $_deps =~ ^[a-z0-9@._+\ -]+$ ]]; then
+    echo "karchy-apps: '$_id' or its packages '$_deps' are not plain package names" >&2
+    exit 1
+  fi
+  pkgname+=("karchy-app-$_id")
+  eval "package_karchy-app-$_id() {
+    pkgdesc=$(printf '%q' "$_name, with the packages karchy installs alongside it")
+    depends=($_deps)
+  }"
+done <<<"$_entries"
+unset _id _name _deps
+((${#pkgname[@]})) || { echo "karchy-apps: the catalog names no app with several packages" >&2; exit 1; }
