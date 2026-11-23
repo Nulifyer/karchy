@@ -2,18 +2,25 @@
 // tools/quick-install-search-check can run it under node; the window imports
 // it as a QML JS resource.
 //
-// The letters of the query match in order (a subsequence), and the results
-// rank in tiers, best first:
-//   5  the name starts with the query            "obs"  OBS Studio, Obsidian
-//   4  a word in the name starts with it         "studio"  OBS Studio
-//   3.5 a keyword, a package or the id is it     "adb"  Android platform tools
-//   3  the name contains it                      "fox"  Firefox
-//   2  the name holds its letters in order       "vsc"  VSCodium, "ff" Firefox
-//   1  the keywords, description, packages or id contain every word of it
-// Within a tier, letters on word starts and in runs rank higher, then the
-// shorter name, then the name alphabetically. Case is ignored; spaces in the
-// query are ignored for the subsequence tier, so "vs code" still finds
-// "VSCodium".
+// The results rank in tiers, best first:
+//   5    the name starts with the query          "obs"  OBS Studio, Obsidian
+//   4.5  a keyword, a package or the id is it    "adb"  Android platform tools,
+//        "vm"  Virtual machines before ScummVM
+//   4    a word in the name starts with it       "studio"  OBS Studio
+//   3    the name contains it                    "fox"  Firefox
+//   2.7  its letters are the name's word starts  "kpx"  KeePassXC
+//   2.5  every word of it is a word, or starts one, in the name, keywords,
+//        description or packages                 "ssh"  PuTTY, "video edit"
+//   2    the name holds its letters in order     "ff"  Firefox
+//   1    the name and the rest contain every word of it somewhere
+//   0.5  four letters or more scattered through the name with no word start
+//        or run to hold them: almost always chance ("excel" in Sched-ext
+//        schedulers), so they come after everything that says the word
+// A word found in the text (2.5) ranks above letters in order (2) because
+// that is what people type when they don't know the name: "dj" is Mixxx,
+// not Deja Dup. Within a tier, letters on word starts and in runs rank
+// higher, then the shorter name, then the name alphabetically. Case is
+// ignored; spaces in the query are ignored for the letters-in-order tiers.
 
 function lower(value) {
   return String(value || "").toLowerCase()
@@ -89,7 +96,7 @@ function subsequence(name, q) {
   return { score: top, positions: positions }
 }
 
-// What else an app is known by, for tier 1.
+// What else an app is known by.
 function otherText(app) {
   return lower([
     (app.keywords || []).join(" "),
@@ -97,6 +104,39 @@ function otherText(app) {
     (app.packages || []).join(" "),
     app.id
   ].join(" "))
+}
+
+// The words of a text: letters and digits, with "+" and "#" kept (c++, c#).
+function words(text) {
+  return lower(text).split(/[^a-z0-9+#]+/).filter(function(w) { return w !== "" })
+}
+
+// Whether `word` is one of `list`, or starts one (from three letters on, so
+// "rec" finds "recorder" and "r" finds only R). 2 for the whole word, 1 for
+// a start, 0 for neither.
+function wordIn(list, word) {
+  var best = 0
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] === word) return 2
+    if (word.length >= 3 && list[i].indexOf(word) === 0) best = 1
+  }
+  return best
+}
+
+// Tier 2.5: every word of the query is a word of the app, or starts one.
+// A whole word counts more than the start of one ("java" is Java before
+// javascript); then keywords, the name, the description and packages.
+function wordScore(app, queryWords) {
+  var keywords = words((app.keywords || []).join(" "))
+  var name = words(app.name)
+  var rest = words([app.description, (app.packages || []).join(" "), app.id].join(" "))
+  var score = 0
+  for (var i = 0; i < queryWords.length; i++) {
+    var k = wordIn(keywords, queryWords[i]), n = wordIn(name, queryWords[i]), r = wordIn(rest, queryWords[i])
+    if (k + n + r === 0) return -1
+    score += Math.max(k === 2 ? 6 : k * 3, n === 2 ? 5 : n * 2, r === 2 ? 4 : r)
+  }
+  return score
 }
 
 // How well `app` matches `query`: { tier, score, positions } (positions are
@@ -112,26 +152,48 @@ function match(app, query) {
   var starts = wordStarts(name)
   var at = text.indexOf(q)
   var firstAt = at
+  // The whole of a keyword, a package name or the id: what the app is called
+  // by people who don't know its name here ("adb", "npm", "vm").
+  var known = (app.keywords || []).concat(app.packages || [], [app.id])
+  for (var k = 0; k < known.length; k++)
+    if (lower(known[k]) === q) return { tier: 4.5, score: 0, positions: firstAt >= 0 ? range(firstAt, q.length) : [] }
   while (at > 0) {
     if (starts[at]) return { tier: 4, score: -at, positions: range(at, q.length) }
     at = text.indexOf(q, at + 1)
   }
-  // The whole of a keyword, a package name or the id: what the app is called
-  // by people who don't know its name here ("adb", "npm").
-  var known = (app.keywords || []).concat(app.packages || [], [app.id])
-  for (var k = 0; k < known.length; k++)
-    if (lower(known[k]) === q) return { tier: 3.5, score: 0, positions: firstAt >= 0 ? range(firstAt, q.length) : [] }
   if (firstAt >= 0) return { tier: 3, score: -firstAt, positions: range(firstAt, q.length) }
 
-  var sub = subsequence(name, q.replace(/\s+/g, ""))
-  if (sub) return { tier: 2, score: sub.score, positions: sub.positions }
+  // Letters in order: on word starts only (an abbreviation), held together
+  // by word starts and runs, or scattered.
+  var letters = q.replace(/\s+/g, "")
+  var sub = subsequence(name, letters)
+  var acronym = !!sub, tight = !!sub
+  if (sub) {
+    for (var p = 0; p < sub.positions.length; p++) {
+      var onStart = starts[sub.positions[p]]
+      if (!onStart) acronym = false
+      if (!onStart && !(p > 0 && sub.positions[p] === sub.positions[p - 1] + 1)) tight = false
+    }
+  }
+  if (sub && acronym) return { tier: 2.7, score: sub.score, positions: sub.positions }
 
-  var other = otherText(app)
-  var words = q.split(/\s+/)
-  for (var i = 0; i < words.length; i++) if (other.indexOf(words[i]) < 0) return null
-  // A keyword hit before one in the description.
-  var keywords = lower((app.keywords || []).join(" "))
-  return { tier: 1, score: keywords.indexOf(words[0]) >= 0 ? 1 : 0, positions: [] }
+  var queryWords = words(q)
+  var worded = queryWords.length > 0 ? wordScore(app, queryWords) : -1
+  if (worded >= 0) return { tier: 2.5, score: worded, positions: [] }
+
+  if (sub && (letters.length <= 3 || tight)) return { tier: 2, score: sub.score, positions: sub.positions }
+
+  var all = text + " " + otherText(app)
+  var parts = q.split(/\s+/)
+  var everywhere = true
+  for (var i = 0; i < parts.length; i++) if (all.indexOf(parts[i]) < 0) { everywhere = false; break }
+  if (everywhere) {
+    // A keyword hit before one in the description.
+    var keywords = lower((app.keywords || []).join(" "))
+    return { tier: 1, score: keywords.indexOf(parts[0]) >= 0 ? 1 : 0, positions: [] }
+  }
+  if (sub) return { tier: 0.5, score: sub.score, positions: sub.positions }
+  return null
 }
 
 // The apps that match, best first, each as { app, positions }.

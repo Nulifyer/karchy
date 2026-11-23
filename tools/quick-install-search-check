@@ -88,6 +88,39 @@ check("a whole keyword or package name beats letters inside other names", () => 
   assert.equal(names("go", 1)[0], "Go")
 })
 
+check("a word people type finds the apps of that kind, before chance letters", () => {
+  // The word in keywords or the description outranks its letters scattered
+  // through a name: ssh was Sched-ext schedulers, dj was Deja Dup.
+  assert.equal(names("ssh", 1)[0], "PuTTY")
+  assert.equal(names("dj", 1)[0], "Mixxx")
+  assert.equal(names("vnc", 1)[0], "Remmina")
+  assert.ok(names("excel", 4).includes("LibreOffice"))
+  assert.equal(names("excel", 20).pop(), "Sched-ext schedulers")
+  // A kind of app, in two words or while still typing the second.
+  assert.ok(names("video editor", 4).includes("Kdenlive"))
+  assert.ok(names("video edit", 4).includes("Kdenlive"))
+  assert.ok(names("screen rec", 3).includes("OBS Studio"))
+  assert.ok(names("pdf reader", 5).includes("Okular"))
+  assert.ok(names("password manager", 5).includes("KeePassXC"))
+  // An exact keyword before a name that only has the word inside it.
+  assert.ok(rank("vm", "Virtual machines") < rank("vm", "ScummVM"))
+  // A whole word before the start of another: Java before JavaScript.
+  assert.deepEqual(names("java", 2), ["Java", "Java (latest)"])
+  // An abbreviation of the name's words still beats words in descriptions.
+  assert.equal(names("kpx", 1)[0], "KeePassXC")
+})
+
+check("everyday words all find something", () => {
+  const kinds = ["terminal", "torrent", "vpn", "pdf", "email", "music", "screenshot", "backup", "password",
+    "spreadsheet", "photo", "notes", "python", "ftp", "remote desktop", "virtual machine", "emulator", "rgb",
+    "printer", "calculator", "ebook", "file manager", "partition", "bootable usb", "app store", "llm",
+    "kubernetes", "sql", "diff", "firewall", "antivirus", "2fa", "gpg", "cloud storage", "irc", "video call",
+    "photoshop", "cad", "daw", "burn", "color picker", "wallpaper", "ide", "docker", "git", "text editor",
+    "video player", "image viewer", "screen recorder", "fan control", "task manager", "browser"]
+  const none = kinds.filter((q) => Search.search(apps, q).length === 0)
+  assert.deepEqual(none, [])
+})
+
 check("the bar says what the last install did, never Done after a failure", () => {
   const run = (states, verb) => Model.runText(states.map((s, i) => ({ name: "App" + i, state: s })), verb || "install")
   assert.equal(run(["done"]), "App0 installed.")
