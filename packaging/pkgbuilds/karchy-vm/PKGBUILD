@@ -1,5 +1,6 @@
-# karchy-vm: what a virtual machine adds (detected tier). The SPICE agent lets
-# the display follow the viewer's window size and shares the clipboard; the
+# karchy-vm: what a virtual machine adds (detected tier). The SPICE agent
+# shares the clipboard (the display does not follow the viewer's window size:
+# Hyprland keeps its mode when the connector's preferred one changes); the
 # QEMU guest agent lets the host shut down and freeze the guest cleanly. Both
 # start from udev when their virtio port exists, so nothing needs enabling.
 
