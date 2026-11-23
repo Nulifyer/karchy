@@ -127,6 +127,7 @@ Every component owns its look; a caller places it and never overrides its height
 | `Section` | A part of a window page: a rule, a small-caps heading with an optional (i) and trailing control, an optional status line, then its content, with no box. What every page of Settings and of the Updates, VMs and Containers windows is built from (D-114). |
 | `Card` | A bordered box for one item among like items (a disk, a key, a connection, an image), with an optional title, subtitle and trailing controls. Not for a part of a page: that is a `Section`. |
 | `EmptyState` | Why a list is empty and the next step: inline in panels, `centered` in windows. |
+| `ListScrollBar` | The scrollbar of a list or page that can be longer than its view (`ScrollBar.vertical: ListScrollBar {}`): shown whenever there is more than fits, in the theme's text color. Not Qt's `ScrollBar`, which a dark theme hides and which only appears while scrolling. |
 | `KeyValueGrid` | Facts as label and value pairs with tabular figures; `columns`, `justify` for the panels' narrow form, copyable values. |
 | `PanelHero` | The top of every bar panel: icon (no empty slot without one), title, caps status, trailing control. |
 | `ConfirmDialog` | See above. |

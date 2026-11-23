@@ -1251,22 +1251,6 @@ Item {
     }
   }
 
-  // A scrollbar that shows whenever its list is longer than its view, in the
-  // theme's text color: Qt's own is the palette's mid gray, which a dark
-  // theme hides, and it only appears while scrolling.
-  component ListScrollBar: ScrollBar {
-    id: listBar
-    policy: ScrollBar.AsNeeded
-    visible: size < 1.0
-    background: null
-    contentItem: Rectangle {
-      implicitWidth: Style.space(4)
-      implicitHeight: Style.space(4)
-      radius: width / 2
-      color: Util.alpha(Commons.Color.foreground, listBar.pressed || listBar.hovered ? 0.55 : 0.28)
-    }
-  }
-
   // A small bordered label: "AUR".
   component Tag: BorderSurface {
     property alias text: tagText.text

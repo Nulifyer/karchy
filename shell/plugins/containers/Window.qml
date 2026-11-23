@@ -437,7 +437,7 @@ Item {
         contentWidth: width
         contentHeight: pages.implicitHeight + Style.spacing.panelPadding * 2
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        ScrollBar.vertical: ListScrollBar {}
 
         ColumnLayout {
           id: pages
@@ -621,7 +621,7 @@ Item {
             contentWidth: width
             contentHeight: logsBody.implicitHeight
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            ScrollBar.vertical: ListScrollBar {}
 
             // Following, the view stays at the end as lines arrive.
             Connections {

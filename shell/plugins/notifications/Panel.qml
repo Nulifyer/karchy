@@ -397,7 +397,7 @@ Panel {
           boundsBehavior: Flickable.StopAtBounds
           interactive: contentHeight > height
 
-          ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+          ScrollBar.vertical: ListScrollBar {}
 
           // The keyboard's row stays on screen; the pointer's already is.
           function reveal(item) {

@@ -320,7 +320,7 @@ Item {
         contentWidth: width
         contentHeight: page.implicitHeight + Style.spacing.panelPadding * 2
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        ScrollBar.vertical: ListScrollBar {}
 
         ColumnLayout {
           id: page

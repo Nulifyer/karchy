@@ -20,6 +20,7 @@ FocusRing 1.0 FocusRing.qml
 IconContentBounds 1.0 IconContentBounds.qml
 InfoTip 1.0 InfoTip.qml
 InlineMessage 1.0 InlineMessage.qml
+ListScrollBar 1.0 ListScrollBar.qml
 KeyboardPanel 1.0 KeyboardPanel.qml
 KeyValueGrid 1.0 KeyValueGrid.qml
 NumberField 1.0 NumberField.qml
