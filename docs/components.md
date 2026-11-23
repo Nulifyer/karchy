@@ -29,7 +29,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Secure Boot | sbctl + Microsoft keys, signed Limine, config hash enrollment (installer step) | [C] |
 | Firmware | fwupd (menu entry) | [O] |
 | AUR helper | paru (from `[cachyos]`) | [C] |
-| Fonts | JetBrains Mono Nerd; Noto (+ CJK, emoji); Symbols Nerd Font Mono for icons; karchy Symbols for karchy's mark (D-125). Settings › Fonts (D-120) sets the monospace font (shell, terminals, code editors), the app font (GTK and Qt apps, Adwaita Sans by default) and the text size, and installs 15 more Nerd Fonts from Arch's repositories | [O] + [New] |
+| Fonts | Noto Sans for text that is read and Noto Sans Mono for code (D-149), with Noto's CJK and emoji; JetBrains Mono Nerd stays installed as a choice; Symbols Nerd Font Mono for icons; karchy Symbols for karchy's mark (D-125). Settings › Fonts (D-120) sets the interface font (the shell and GTK and Qt apps), the monospace font (terminals, code editors, code in the shell) and the text size, and installs 15 more Nerd Fonts from Arch's repositories | [O] + [New] |
 
 ## Desktop
 

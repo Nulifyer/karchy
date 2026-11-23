@@ -41,7 +41,7 @@ hl.config({
 
     groupbar = {
       font_size = 12,
-      font_family = "monospace",
+      font_family = "sans-serif", -- window titles are text for reading (D-149)
       font_weight_active = "ultraheavy",
       font_weight_inactive = "normal",
       indicator_height = 1,

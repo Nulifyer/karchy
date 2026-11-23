@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# karchy:summary=Set the font of GTK and Qt apps
+# karchy:summary=Set the font the shell and apps use for their text
 # karchy:args=<font-name> | monospace | reset
 # karchy:examples=karchy font app set "Noto Sans" | karchy font app set monospace | karchy font app set reset
 
 # The interface font of GTK apps (Files, Disks, file choosers), which Qt apps
 # follow through the GTK platform theme. It is GNOME's font-name setting, in
 # the same store as the text size (dconf); no file of the user's is edited
-# (D-23). GTK apps change at once, Qt apps when they next start. The shell
-# keeps the monospace font (D-120).
+# (D-23). The shell's own text follows it (D-149). The shell and GTK apps
+# change at once, Qt apps when they next start.
 #
 #   <font-name>  an installed family, as `karchy font app list` prints it
 #   monospace    the monospace font, whichever is chosen (`karchy font set`)
-#   reset        GNOME's default, Adwaita Sans
+#   reset        karchy's default, Noto Sans
 
 SCHEMA=org.gnome.desktop.interface
 # GNOME's own sizes; the text size scales them (karchy display text size).

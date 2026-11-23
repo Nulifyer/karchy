@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=List the monospace fonts that can be chosen
-# karchy:args=[--json]
+# karchy:args=[--json | --names]
 # karchy:examples=karchy font list | karchy font set "FiraCode Nerd Font"
 
 # One line per installed fixed-width family, as `karchy font set` takes it.
@@ -9,6 +9,8 @@
 # "X Nerd Font Mono" (the same letters, with every icon squeezed into one
 # cell) is left out.
 #
+#   --names  Every name `karchy font set` takes: each fixed-width family
+#            under all of its names.
 #   --json   For Settings › Fonts: {"current", "chosen", "default", "fonts"}.
 #            `fonts` holds the installed families, then the fonts from the
 #            Quick install list (its Fonts category) that aren't installed:
@@ -21,20 +23,33 @@
 #            specimen  a picture of the font (tools/font-specimens), so a font
 #                      that isn't installed can be shown
 
-DEFAULT_FAMILY="JetBrainsMono Nerd Font"
+DEFAULT_FAMILY="Noto Sans Mono"
 KARCHY=${KARCHY_PATH:-/usr/share/karchy}
 CATALOG=$KARCHY/default/karchy/quick-install.json
 SPECIMENS=$KARCHY/default/karchy/font-specimens
 STATE="$HOME/.local/state/karchy/fontconfig/font.conf"
 
-# Every fixed-width family, under each of its names.
+# Fixed-width families that fontconfig doesn't mark as such, where they are
+# installed. Noto Sans Mono's letters are one width, but a few of its symbols
+# aren't, and fontconfig goes by every glyph.
+unmarked() {
+  fc-list 'Noto Sans Mono' -f '%{family[0]}\n' | sort -u
+}
+
+# Every fixed-width family, under each of its names (--names).
 fixed_width() {
-  fc-list :spacing=100 family | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep . | sort -u
+  {
+    fc-list :spacing=100 family | tr ',' '\n' | sed 's/^ *//; s/ *$//'
+    unmarked
+  } | grep . | sort -u
 }
 
 installed() {
   local all
-  all=$(fc-list :spacing=100 -f '%{family[0]}\n' |
+  all=$({
+    fc-list :spacing=100 -f '%{family[0]}\n'
+    unmarked
+  } |
     grep -v -i -E 'emoji|signwriting|karchy|omarchy|^symbols nerd font| CJK ' | sort -u)
   awk 'NR == FNR { have[$0]; next }
        { base = $0 }
@@ -45,6 +60,7 @@ installed() {
 if [[ ${1:-} != --json ]]; then
   case ${1:-} in
     "") installed ;;
+    --names) fixed_width ;;
     -h | --help) sed -n 's/^# karchy:args=/Usage: karchy-font-list /p' "$0" ;;
     *) sed -n 's/^# karchy:args=/Usage: karchy-font-list /p' "$0" >&2; exit 1 ;;
   esac
@@ -79,7 +95,7 @@ jq -cn --arg have "$have" --arg icons "$with_icons" --arg current "$current" --a
   ($have | split("\n") | map(select(length > 0))) as $h
   | ($icons | split("\n")) as $i
   | def listed($f): first($catalog[] | select(.family == $f)) // null;
-    def shown($f): if $f == $default then "JetBrains Mono" else ($f | sub(" Nerd Font( Mono)?$"; "")) end;
+    def shown($f): if $f == "JetBrainsMono Nerd Font" then "JetBrains Mono" else ($f | sub(" Nerd Font( Mono)?$"; "")) end;
     def specimen($e): if $e then "\($specimens)/\($e.id).png" else "" end;
   {
     current: $current, chosen: $chosen, default: $default,

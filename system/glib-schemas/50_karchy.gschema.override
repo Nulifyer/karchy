@@ -6,3 +6,7 @@
 # chosen in Settings › Fonts (karchy font set) reaches it too. GNOME's own
 # default names Adwaita Mono, which ignores that choice (D-120).
 monospace-font-name='monospace 11'
+# The interface font of GTK and Qt apps, which the shell's own text follows
+# (D-149). Settings › Fonts (karchy font app set) changes it per user.
+font-name='Noto Sans 11'
+document-font-name='Noto Sans 12'

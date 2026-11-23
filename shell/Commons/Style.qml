@@ -309,14 +309,20 @@ QtObject {
 
   // ---------------------------------------------------------- typography
   //
-  // `fontFamily` defaults to "monospace" so the bar and every qs.Ui
-  // component follows the fontconfig alias `karchy-font-set` writes.
+  // Two fonts (D-149). `fontFamily` is for everything read as text: labels,
+  // headings, menus, messages. It is the interface font of Settings › Fonts
+  // (GNOME's font-name, `karchy font app set`), so the shell and the apps
+  // read alike; "sans-serif" stands in until that is read, and where it
+  // can't be. `monoFontFamily` is for what is typed or read as code: key
+  // names, addresses, paths and file names, commands. It is fontconfig's
+  // "monospace", which `karchy font set` chooses, as in the terminals.
   // Themes can override per-token via [font] in shell.toml, but the
-  // family stays system-wide.
-  property string fontFamily: "monospace"
+  // families stay system-wide.
+  property string fontFamily: "sans-serif"
+  readonly property string monoFontFamily: "monospace"
 
   // The concrete family `monospace` resolves to right now, e.g.
-  // "JetBrainsMono Nerd Font". Bind `font.family` to `fontFamily` (so the
+  // "Noto Sans Mono". Bind `font.family` to `fontFamily` (so the
   // alias path keeps working when the user runs `karchy font set`), but
   // read `resolvedFontFamily` when you want to *display* what's drawing.
   property string resolvedFontFamily: "monospace"
@@ -367,6 +373,7 @@ QtObject {
 
   readonly property QtObject font: QtObject {
     readonly property string family: root.fontFamily
+    readonly property string mono: root.monoFontFamily
     readonly property string resolvedFamily: root.resolvedFontFamily
     readonly property string menuFamily: root.menuFontFamily
     readonly property int baseSize: root.fontBaseSize
@@ -595,6 +602,28 @@ QtObject {
     }
   }
 
+  // The interface font: read at start, and again whenever GNOME's setting
+  // changes, so a choice made in Settings › Fonts or with `karchy font app
+  // set` reaches the shell at once. "monospace" there (the choice that
+  // follows the monospace font) is a family too.
+  property Process interfaceFontProc: Process {
+    id: interfaceFontProc
+    command: ["karchy-font-app-current"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var name = String(text || "").trim()
+        root.fontFamily = name.length > 0 ? name : "sans-serif"
+      }
+    }
+  }
+
+  property Process interfaceFontWatch: Process {
+    command: ["gsettings", "monitor", "org.gnome.desktop.interface", "font-name"]
+    running: true
+    stdout: SplitParser { onRead: function(line) { interfaceFontProc.running = true } }
+  }
+
   property FileView fontconfigFile: FileView {
     path: Quickshell.env("HOME") + "/.config/fontconfig/fonts.conf"
     watchChanges: true
@@ -637,5 +666,6 @@ QtObject {
   Component.onCompleted: {
     refresh()
     resolveFontFamily()
+    interfaceFontProc.running = true
   }
 }

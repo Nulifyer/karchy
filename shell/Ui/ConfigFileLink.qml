@@ -34,6 +34,8 @@ Button {
   focusable: true
   iconText: Icons.glyph("config")
   text: label
+  // A file's name is read as code (D-149).
+  fontFamily: Style.font.mono
   fontSize: Style.font.bodySmall
   foreground: Commons.Color.textSecondary
   tooltipText: "Open ~/" + file + " in your editor"

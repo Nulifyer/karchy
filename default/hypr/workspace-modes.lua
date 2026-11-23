@@ -540,7 +540,7 @@ local function titlebars()
         bar_height = 30,
         bar_color = colors.titlebar,
         col = { text = colors.foreground },
-        bar_text_font = "monospace",
+        bar_text_font = "sans-serif", -- window titles are text for reading (D-149)
         bar_text_size = 12,
         bar_text_weight = "normal",
         bar_text_align = "left",

@@ -170,6 +170,7 @@ ColumnLayout {
     SettingsLabel { visible: root.provider === "custom"; text: "Addresses" }
     TextField {
       id: addressesField
+      font.family: Style.font.mono
       visible: root.provider === "custom"
       Layout.fillWidth: true
       placeholderText: "Like 9.9.9.9 149.112.112.112"
@@ -180,6 +181,7 @@ ColumnLayout {
     SettingsLabel { visible: root.provider === "custom"; text: "Certificate name" }
     TextField {
       id: tlsField
+      font.family: Style.font.mono
       visible: root.provider === "custom"
       Layout.fillWidth: true
       placeholderText: "For encrypted DNS, like dns.quad9.net"

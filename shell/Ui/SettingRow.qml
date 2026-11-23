@@ -17,6 +17,8 @@ import qs.Commons as Commons
 // `note` is one short line under the row for what the person must know to
 // choose: a consequence, a warning (`warning: true`), why the setting has no
 // effect. Show it only while it applies; never put those behind `info`.
+// `command` is a command or an address the note leads to, on its own line in
+// the mono font.
 // `Toggle` is the roomier form the bar panels use.
 ColumnLayout {
   id: root
@@ -24,6 +26,7 @@ ColumnLayout {
   property string label: ""
   property string info: ""
   property string note: ""
+  property string command: ""
   property bool warning: false
   property bool checked: false
   property bool busy: false
@@ -93,5 +96,17 @@ ColumnLayout {
     font.family: Style.font.family
     font.pixelSize: Style.font.body
     wrapMode: Text.Wrap
+  }
+
+  Text {
+    visible: root.command !== ""
+    Layout.fillWidth: true
+    Layout.maximumWidth: Style.space(620)
+    textFormat: Text.PlainText
+    text: root.command
+    color: Commons.Color.foreground
+    font.family: Style.font.mono
+    font.pixelSize: Style.font.body
+    wrapMode: Text.WrapAnywhere
   }
 }

@@ -169,7 +169,7 @@ package() {
   # The login screen's PAM service (D-131, D-142): greetd's config names it,
   # and it runs keyring-login, below.
   install -Dm644 pam.d/karchy-login "$pkgdir/etc/pam.d/karchy-login"
-  # Font defaults: monospace is JetBrainsMono Nerd Font, unless karchy-font-set
+  # Font defaults: monospace is Noto Sans Mono, unless karchy-font-set
   # chose another (the state file it includes) or the user's fontconfig does.
   install -Dm644 fontconfig/50-karchy.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-karchy.conf"
   install -d "$pkgdir/etc/fonts/conf.d"

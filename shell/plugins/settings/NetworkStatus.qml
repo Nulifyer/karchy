@@ -56,17 +56,17 @@ ColumnLayout {
 
   function rowsFor(c) {
     var rows = []
-    if ((c.ipv4 || []).length > 0) rows.push({ label: "IPv4 address", value: c.ipv4.join(", "), copyable: true, tooltip: "Copy" })
-    if ((c.ipv6 || []).length > 0) rows.push({ label: "IPv6 address", value: c.ipv6.join(", "), copyable: true, tooltip: "Copy" })
-    if (c.gateway4 || c.gateway6) rows.push({ label: "Gateway", value: [c.gateway4, c.gateway6].filter(function(g) { return !!g }).join(", "), copyable: true, tooltip: "Copy" })
-    rows.push({ label: "DNS in use", value: dnsText(c) })
+    if ((c.ipv4 || []).length > 0) rows.push({ label: "IPv4 address", value: c.ipv4.join(", "), copyable: true, mono: true, tooltip: "Copy" })
+    if ((c.ipv6 || []).length > 0) rows.push({ label: "IPv6 address", value: c.ipv6.join(", "), copyable: true, mono: true, tooltip: "Copy" })
+    if (c.gateway4 || c.gateway6) rows.push({ label: "Gateway", value: [c.gateway4, c.gateway6].filter(function(g) { return !!g }).join(", "), copyable: true, mono: true, tooltip: "Copy" })
+    rows.push({ label: "DNS in use", value: dnsText(c), mono: true })
     if (!(c.type !== "vpn" && root.page && root.page.vpnFull) && (c.dns || []).length > 0)
       rows.push({ label: "Encrypted DNS", value: c.dns_encrypted ? "Yes, DNS over TLS" : "No",
         color: c.dns_encrypted ? undefined : Commons.Color.textSecondary })
     if (c.type === "vpn") rows.push({ label: "Carries", value: c.vpn_full ? "All internet traffic" : "Only its own networks" })
     var link = linkText(c)
     if (link !== "") rows.push({ label: c.type === "wifi" ? "Band and speed" : "Link speed", value: link })
-    if (c.mac && c.type !== "vpn") rows.push({ label: "Hardware address", value: c.mac, copyable: true, tooltip: "Copy" })
+    if (c.mac && c.type !== "vpn") rows.push({ label: "Hardware address", value: c.mac, copyable: true, mono: true, tooltip: "Copy" })
     return rows
   }
 

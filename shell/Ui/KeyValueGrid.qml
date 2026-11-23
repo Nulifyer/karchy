@@ -88,7 +88,9 @@ GridLayout {
         text: pair.value
         horizontalAlignment: root.justify ? Text.AlignRight : Text.AlignLeft
         color: pair.modelData.color !== undefined ? pair.modelData.color : root.foreground
-        font.family: root.fontFamily
+        // `mono: true` on a row whose value is an address, a path or a
+        // command: read as code, so in the mono font (D-149).
+        font.family: pair.modelData.mono === true ? Style.font.mono : root.fontFamily
         font.pixelSize: root.fontSize
         font.features: { "tnum": 1 }
         elide: root.wrapValues ? Text.ElideNone : Text.ElideMiddle

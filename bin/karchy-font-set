@@ -1,17 +1,17 @@
 #!/bin/bash
 
-# karchy:summary=Set the monospace font of the shell, terminals and code editors
+# karchy:summary=Set the monospace font of terminals, code editors and code in the shell
 # karchy:args=[--no-restart] <font-name> | reset
 # karchy:examples=karchy font list | karchy font set "FiraCode Nerd Font" | karchy font set reset
 
 # fontconfig is the single source of truth: the terminals ask for "monospace"
-# (their starter configs say so), and so do the shell, code editors, and GTK
-# and Qt apps for their monospace text. The choice is one file in karchy's own
+# (their starter configs say so), and so do code editors, the shell for what
+# reads as code (D-149), and GTK and Qt apps for their monospace text. The choice is one file in karchy's own
 # state, which /etc/fonts/conf.d/50-karchy.conf includes (D-120); no file of
 # the user's is written (D-23), and a rule in ~/.config/fontconfig/ still wins.
 #
 #   <font-name>   an installed fixed-width family, as `karchy font list` prints it
-#   reset         back to karchy's default, JetBrainsMono Nerd Font
+#   reset         back to karchy's default, Noto Sans Mono
 #   --no-restart  only write the choice: apps follow as they start, and the
 #                 shell at its next start
 
@@ -46,7 +46,7 @@ if [[ $font_name == reset ]]; then
 else
   # The family as fontconfig spells it, among the fixed-width ones: a
   # proportional font or part of a name would otherwise become the terminal font.
-  family=$(fc-list :spacing=100 family | tr ',' '\n' | sed 's/^ *//; s/ *$//' | grep -ixF -m1 -- "$font_name")
+  family=$(karchy-font-list --names | grep -ixF -m1 -- "$font_name")
   if [[ -z $family ]]; then
     echo "'$font_name' is not an installed monospace font. karchy font list shows the ones that are." >&2
     exit 1

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=List the fonts GTK and Qt apps can use
+# karchy:summary=List the fonts the shell and apps can use for their text
 # karchy:args=[--json]
 # karchy:examples=karchy font app list | karchy font app set "Noto Sans"
 
@@ -11,7 +11,7 @@
 #
 #   --json   For Settings › Fonts: {"current", "default", "fonts": [...]}
 
-DEFAULT_FAMILY="Adwaita Sans"
+DEFAULT_FAMILY="Noto Sans"
 
 families() {
   comm -23 \

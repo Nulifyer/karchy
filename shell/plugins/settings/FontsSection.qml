@@ -6,8 +6,9 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Settings › Fonts (D-120): the monospace font of the shell, terminals and
-// code editors, the font of GTK and Qt apps, and the text size, through the
+// Settings › Fonts (D-120, D-149): the interface font of the shell and of
+// GTK and Qt apps, the monospace font of terminals, code editors and code in
+// the shell, and the text size, through the
 // commands the menu and a terminal use (karchy font, karchy font app, karchy
 // display text size). A font from the Quick install list that isn't
 // installed is installed first, by the same root helper Quick install uses
@@ -26,6 +27,7 @@ ColumnLayout {
   // `karchy-font-app-list --json`.
   property var appFonts: []
   property string appFamily: ""
+  property string appDefault: "Noto Sans"
 
   // An install in progress, and how the last one ended.
   property string installingId: ""
@@ -97,6 +99,7 @@ ColumnLayout {
           var data = JSON.parse(text)
           root.appFonts = data.fonts || []
           root.appFamily = data.current || ""
+          root.appDefault = data["default"] || "Noto Sans"
         } catch (e) {
           root.appFonts = []
         }
@@ -144,9 +147,16 @@ ColumnLayout {
     }
   }
 
+  // The interface font changed outside this page (`karchy font app set`):
+  // show the one in use.
+  Connections {
+    target: Style
+    function onFontFamilyChanged() { appListProc.running = true }
+  }
+
   PageHeader {
     title: "Fonts"
-    explanation: "The monospace font is for the shell, terminals and code editors; the app font for Files, Disks and other GTK and Qt apps. Websites use the fonts they ask for and Brave's own font settings. The boot menu and the disk-password screen always use JetBrains Mono. A font or size line of your own in a terminal's config wins over these."
+    explanation: "The interface font is for text that is read: the shell's own, and Files, Disks and other GTK and Qt apps. The monospace font is for terminals, code editors and what reads as code, such as key names and addresses. Websites use the fonts they ask for and Brave's own font settings. The boot menu and the disk-password screen always use JetBrains Mono. A font or size line of your own in a terminal's config wins over these."
     ConfigFileLink {
       closes: root.settings
       file: root.terminalConfig
@@ -154,9 +164,9 @@ ColumnLayout {
     }
   }
 
-  // The monospace font in use, at the size in use, with the icons a prompt
-  // or a status line draws in it: a font whose icons come out missing,
-  // clipped or too small shows it here.
+  // Both fonts in use, at the size in use. The monospace line carries the
+  // icons a prompt or a status line draws in it: a font whose icons come out
+  // missing, clipped or too small shows it here.
   Rectangle {
     Layout.fillWidth: true
     implicitHeight: specimen.implicitHeight + Style.spacing.xxl * 2
@@ -174,20 +184,10 @@ ColumnLayout {
       Text {
         textFormat: Text.PlainText
         width: parent.width
-        text: root.family
+        text: root.appFamily === "monospace" ? root.family : root.appFamily
         color: Commons.Color.foreground
         font.family: Style.font.family
         font.pixelSize: Style.font.heading + Style.space(2)
-        elide: Text.ElideRight
-      }
-      Text {
-        textFormat: Text.PlainText
-        width: parent.width
-        text: "0O 1lI  {} [] ()  -> => != <=   "
-          + ["ui.check", "notify.bell", "disk", "net.network", "system.power"].map(function(name) { return Icons.glyph(name) }).join("  ")
-        color: Commons.Color.foreground
-        font.family: Style.font.family
-        font.pixelSize: Style.font.body
         elide: Text.ElideRight
       }
       Text {
@@ -199,6 +199,26 @@ ColumnLayout {
         font.pixelSize: Style.font.body
         elide: Text.ElideRight
       }
+      Text {
+        textFormat: Text.PlainText
+        width: parent.width
+        topPadding: Style.spacing.md
+        text: root.family
+        color: Commons.Color.foreground
+        font.family: Style.font.mono
+        font.pixelSize: Style.font.subtitle
+        elide: Text.ElideRight
+      }
+      Text {
+        textFormat: Text.PlainText
+        width: parent.width
+        text: "0O 1lI  {} [] ()  -> => != <=   "
+          + ["ui.check", "notify.bell", "disk", "net.network", "system.power"].map(function(name) { return Icons.glyph(name) }).join("  ")
+        color: Commons.Color.textSecondary
+        font.family: Style.font.mono
+        font.pixelSize: Style.font.body
+        elide: Text.ElideRight
+      }
     }
   }
 
@@ -207,6 +227,21 @@ ColumnLayout {
     columns: 2
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
+
+    SettingsLabel { text: "Interface font" }
+    SearchableDropdown {
+        Layout.fillWidth: true
+        showLabel: false
+        value: root.appFamily
+        // karchy's default first, then the choice that follows the font below.
+        options: [{ value: root.appDefault, label: root.appDefault }, { value: "monospace", label: "Same as monospace" }]
+          .concat(root.appFonts.filter(function(f) { return f !== root.appDefault })
+            .map(function(f) { return { value: f, label: f } }))
+        onChanged: function(value) {
+          appSetProc.command = ["karchy-font-app-set", value]
+          appSetProc.running = true
+        }
+    }
 
     SettingsLabel { text: "Monospace font"; Layout.alignment: Qt.AlignTop }
     ColumnLayout {
@@ -232,21 +267,6 @@ ColumnLayout {
         font.family: Style.font.family
         font.pixelSize: Style.font.bodySmall
       }
-    }
-
-    SettingsLabel { text: "App font" }
-    SearchableDropdown {
-        Layout.fillWidth: true
-        showLabel: false
-        value: root.appFamily
-        // GNOME's default first, then the font that follows the one above.
-        options: [{ value: "Adwaita Sans", label: "Adwaita Sans" }, { value: "monospace", label: "Same as monospace" }]
-          .concat(root.appFonts.filter(function(f) { return f !== "Adwaita Sans" })
-            .map(function(f) { return { value: f, label: f } }))
-        onChanged: function(value) {
-          appSetProc.command = ["karchy-font-app-set", value]
-          appSetProc.running = true
-        }
     }
 
     SettingsLabel { text: "Text size" }

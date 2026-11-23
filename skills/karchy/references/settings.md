@@ -20,7 +20,7 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | Input | `karchy-settings-input status \| set <setting> <value> \| reset <setting>\|all` | `~/.config/karchy/input.json` | `~/.local/state/karchy/hypr/input.lua` |
 | Keybindings | `karchy-settings-keybindings list [--json] \| conflicts <keys> \| set \| add \| remove \| reset` | `~/.config/karchy/keybindings.json` | `~/.local/state/karchy/hypr/keybindings.lua`; see [keybindings.md](keybindings.md) |
 | Appearance | no single command | see [themes.md](themes.md) and the bar section of [hyprland.md](hyprland.md) | `karchy theme`, `karchy bar`, `karchy-hyprland-workspace-layout-default [dwindle\|floating\|scrolling]` (the layout of new and empty workspaces) |
-| Fonts | no single command | see [themes.md](themes.md) | `karchy font` (monospace), `karchy font app` (GTK and Qt apps), `karchy display text size` |
+| Fonts | no single command | see [themes.md](themes.md) | `karchy font` (monospace), `karchy font app` (the interface font of the shell and apps), `karchy display text size` |
 | Notifications | `karchy-settings-notifications status \| set <app> <allow\|silent\|off> [name] \| dnd <on\|off>` | `~/.config/karchy/notifications.json` | the notification service watches the file |
 | Default apps | `karchy-settings-default-apps status \| set <role> <app.desktop>` | `~/.config/mimeapps.list`, `~/.config/xdg-terminals.list` | xdg-mime |
 | Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |

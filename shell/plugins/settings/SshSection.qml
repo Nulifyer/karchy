@@ -145,11 +145,11 @@ ColumnLayout {
     // Why it isn't working, or how to reach it.
     note: {
       if (root.server.enabled !== true) return ""
-      if (root.server.running !== true)
-        return "Turned on but not running. Turn it off and on again, or check: systemctl status sshd"
-      return "Connect with: " + root.server.connect
-        + (root.server.keysOnly === true ? "" : "\nPasswords can sign in too.")
+      if (root.server.running !== true) return "Turned on but not running. Turn it off and on again, or check:"
+      return (root.server.keysOnly === true ? "" : "Passwords can sign in too. ") + "Connect with:"
     }
+    command: root.server.enabled !== true ? ""
+      : root.server.running !== true ? "systemctl status sshd" : String(root.server.connect || "")
     onToggled: root.inTerminal(checked ? "karchy-remove-security-sshd" : "karchy-setup-security-sshd")
   }
 

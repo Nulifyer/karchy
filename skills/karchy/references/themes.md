@@ -14,8 +14,8 @@ A theme switch, a background or a font is a small change. Make it, then tell the
 | Apply the current theme again after its files changed | `karchy theme refresh` |
 | Set a background image or video | `karchy theme bg set <path>` |
 | Next background of the current theme | `karchy theme bg next` |
-| List, show, set the monospace font (shell, terminals, code editors) | `karchy font list`, `karchy font current`, `karchy font set "<name>"`, `karchy font set reset` |
-| List, show, set the font of GTK and Qt apps | `karchy font app list`, `karchy font app current`, `karchy font app set "<name>"`, `karchy font app set monospace`, `karchy font app set reset` |
+| List, show, set the monospace font (terminals, code editors, code in the shell) | `karchy font list`, `karchy font current`, `karchy font set "<name>"`, `karchy font set reset` |
+| List, show, set the interface font (the shell's text and GTK and Qt apps) | `karchy font app list`, `karchy font app current`, `karchy font app set "<name>"`, `karchy font app set monospace`, `karchy font app set reset` |
 | Text size everywhere (shell, GTK, terminals) | `karchy display text size [9-20\|reset]` |
 
 The bar's look (position, background, style) is `karchy bar`. See [hyprland.md](hyprland.md).
@@ -43,12 +43,12 @@ To change the shell's look without a new theme, write the keys in `~/.config/kar
 
 - A theme switch never rewrites the user's dotfiles. The starter terminal configs include generated files from `~/.local/state/karchy/current/theme`, and VS Code gets a generated theme. Do not repair a theme by editing a terminal config. If the user changed their terminal config so that it no longer includes the theme file, that is their choice. Tell them, and do not undo it.
 - `karchy theme install` runs `git clone`. A theme from a git repository may not ship code: `karchy theme set` ignores its `.lua` files, terminal configs and `vscode.json`, and prints "Ignored in ...". Do not copy those files into place to get around this. Review the repository with the user if they want them.
-- `karchy font set` writes `~/.local/state/karchy/fontconfig/font.conf`, which `/etc/fonts/conf.d/50-karchy.conf` includes, and restarts the shell. It takes an installed fixed-width family exactly as `karchy font list` prints it. `reset` goes back to JetBrainsMono Nerd Font. `--no-restart` only writes the choice.
+- `karchy font set` writes `~/.local/state/karchy/fontconfig/font.conf`, which `/etc/fonts/conf.d/50-karchy.conf` includes, and restarts the shell. It takes an installed fixed-width family exactly as `karchy font list` prints it. `reset` goes back to Noto Sans Mono. `--no-restart` only writes the choice.
 - Settings › Fonts shows the same choice. It can also install one of the 15 Nerd Fonts on the Quick install list: `karchy quick-install install font-fira-code` does that from a terminal (the ids are `karchy quick-install` entries in the Fonts category), then `karchy font set "FiraCode Nerd Font"`.
 - A rule in the user's own `~/.config/fontconfig/fonts.conf` wins over karchy's choice when it puts a family first for `monospace` with `mode="prepend_first" binding="strong"`.
 - The shell's icons use a separate symbols font and do not change. A monospace font without Nerd Font icons still shows them in text: fontconfig takes them from an installed Nerd Font or from Symbols Nerd Font Mono.
 - The logo at the start of the fish prompt is karchy's mark: U+100000 in the font karchy Symbols (`/usr/share/fonts/karchy`, icon name `brand.karchy`, `karchy icon brand.karchy` prints it). Every text font shows it through fontconfig. The Linux console can't, so the prompt there has no logo. The prompt is `/usr/share/fish/vendor_functions.d/fish_prompt.fish`; the user's own `~/.config/fish/functions/fish_prompt.fish` replaces it.
-- `karchy font app set` changes GNOME's `font-name` (dconf), which GTK apps follow at once and Qt apps when they next start. The default is Adwaita Sans; `monospace` makes apps follow the monospace font. The shell always uses the monospace font.
+- `karchy font app set` changes GNOME's `font-name` (dconf), which the shell and GTK apps follow at once and Qt apps when they next start. The default is Noto Sans; `monospace` makes them follow the monospace font. The shell keeps the monospace font for what reads as code: key names, addresses, file names, commands.
 - The font is the system monospace font. Terminals ask fontconfig for `monospace`. Do not write a font name into a terminal config.
 - Chromium-based browsers read the theme color from a system policy. `karchy theme set` writes it through a fixed sudo rule that accepts one color value. This is expected and needs no action.
 - A theme switch runs the `theme-set` hook, and a font change runs `font-set` ([layout.md](layout.md)). Use those hooks when the user wants an app of their own to follow the theme.

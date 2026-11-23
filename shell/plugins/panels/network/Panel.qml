@@ -1633,8 +1633,8 @@ Panel {
           rows: [
             { label: Commons.I18n.t("network.ping"), value: root.formatPingLatency(root.internetPingLatency), color: lossColor },
             { label: Commons.I18n.t("network.packetLoss"), value: root.formatPacketLoss(root.internetPingPacketLoss), color: lossColor },
-            { label: Commons.I18n.t("network.ipAddress"), value: root.info.ip || "", copyable: true, tooltip: Commons.I18n.t("network.copyIp") },
-            { label: Commons.I18n.t("network.gateway"), value: root.info.gateway || "", copyable: true, tooltip: Commons.I18n.t("network.copyGateway") }
+            { label: Commons.I18n.t("network.ipAddress"), value: root.info.ip || "", copyable: true, mono: true, tooltip: Commons.I18n.t("network.copyIp") },
+            { label: Commons.I18n.t("network.gateway"), value: root.info.gateway || "", copyable: true, mono: true, tooltip: Commons.I18n.t("network.copyGateway") }
           ]
           onCopyRequested: function(value) { root.copyToClipboard(value) }
         }

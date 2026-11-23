@@ -342,7 +342,8 @@ ColumnLayout {
           textFormat: Text.PlainText
           text: String(modelData)
           color: parent.parent.faded ? Commons.Color.textSecondary : Commons.Color.foreground
-          font.family: Style.font.family
+          // A key's name, as it is typed in bindings.lua.
+          font.family: Style.font.mono
           font.pixelSize: Style.font.bodySmall
           font.strikeout: parent.parent.struck
         }

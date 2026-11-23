@@ -48,7 +48,7 @@ One card width at every level; the header shows where you are ("Reload"), or "Se
 | Settings › Input | `karchy settings input` | keyboard, mouse, touchpad, trackpad, input, input config |
 | Keybinds (the root row) | `karchy settings keybindings` | keybinds, keybindings, shortcuts, keys, hotkeys |
 | Settings › Appearance | `karchy settings appearance` | appearance, style, bar style, lock screen clock, workspace layout, tiling, floating, looknfeel |
-| Settings › Fonts | `karchy settings fonts` | font, fonts, text size, monospace font, app font, terminal font |
+| Settings › Fonts | `karchy settings fonts` | font, fonts, text size, monospace font, interface font, app font, terminal font |
 | Settings › Notifications | `karchy settings notifications` | notifications, do not disturb, dnd, silent |
 | Settings › Default Apps | `karchy settings apps` | default apps, default browser, file associations |
 | Settings › Power | `karchy settings power` | power, battery, sleep, lid, idle, suspend, hibernate |
