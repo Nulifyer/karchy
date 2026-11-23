@@ -27,7 +27,7 @@ depends=(
   # karchy-theme-set-gnome
   'gnome-themes-extra' 'adw-gtk-theme' 'papirus-icon-theme'
   # Files and mounts (D-24, D-36, D-40)
-  'thunar' 'thunar-archive-plugin' 'thunar-volman' 'tumbler' 'ffmpegthumbnailer'
+  'thunar' 'thunar-archive-plugin' 'tumbler' 'ffmpegthumbnailer'
   'gvfs' 'gvfs-mtp' 'gvfs-smb' 'cifs-utils' 'xarchiver' '7zip' 'udiskie'
   # Format and check USB sticks and Windows disks (exFAT, NTFS); FAT's tools
   # come with the base system. GNOME Disks and udisks use them.
