@@ -151,13 +151,21 @@ function setupLines(app, multilibOn) {
   return lines
 }
 
-// "86.65 MiB download, 306.80 MiB installed", from `karchy-quick-install info`.
-function sizeText(info) {
+// The Size line, from `karchy-quick-install info`: for an app that isn't
+// installed, everything pacman would add for it ("412 MiB download, 1.9 GiB
+// installed, 37 packages with what it needs"); for an installed one, what its
+// own packages take. An AUR app's figure covers only what comes from the
+// repositories.
+function sizeText(info, aur) {
   if (!info) return ""
   var parts = []
   if (info.download) parts.push(info.download + " download")
   if (info.installed) parts.push(info.installed + " installed")
-  return parts.join(", ")
+  if (parts.length === 0) return ""
+  if (info.count > 1) parts.push(info.count + " packages with what it needs")
+  var text = parts.join(", ")
+  if (aur) text += " from the repositories; the AUR build comes on top"
+  return text
 }
 
 // The theme colors a letter tile (an app without an icon) may take, by the

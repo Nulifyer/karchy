@@ -19,8 +19,11 @@
 #                 open the Quick install window (the default), searching for
 #                 the given text, or at a category with `window @<category>`
 #   status        {"installed": {"<id>": "<desktop file or empty>"}}
-#   info <id>     {"download": "98 MiB", "installed": "290 MiB", "repo": "extra"}
-#                 for repo apps: the repository pacman installs it from
+#   info <id>     {"download": "412 MiB", "installed": "1.9 GiB", "count": 37,
+#                 "repo": "extra"}: what installing it would add, with the
+#                 packages it needs that aren't here yet, and the repository
+#                 pacman takes it from; for an installed app, what its own
+#                 packages take ({"installed": ..., "repo": ...})
 #   apply install|remove <id>...
 #                 the window's action for several apps at once. Prints, one
 #                 line each: "log <file>", "terminal <id>" for each app the
@@ -180,15 +183,64 @@ status() {
   } | jq -Rsc '{installed: (split("\n") | map(select(length > 0) | split("\t") | {(.[0]): (.[1] // "")}) | add // {})}'
 }
 
+# "412 MiB" from a count of bytes.
+human_size() {
+  awk -v b="${1:-0}" 'BEGIN {
+    if (b >= 1073741824) printf "%.1f GiB", b / 1073741824
+    else if (b >= 10485760) printf "%.0f MiB", b / 1048576
+    else if (b >= 1048576) printf "%.1f MiB", b / 1048576
+    else if (b > 0) printf "%.0f KiB", (b < 1024 ? 1024 : b) / 1024
+  }'
+}
+
+# The sum of the "Installed Size" lines of pacman -Si or -Qi, in bytes.
+installed_bytes() {
+  awk -F': *' '/^Installed Size/ {
+    split($2, v, " ")
+    s += v[1] * (v[2] == "GiB" ? 1073741824 : v[2] == "MiB" ? 1048576 : v[2] == "KiB" ? 1024 : 1)
+  } END { printf "%.0f", s }'
+}
+
+# An app that isn't installed: everything pacman would install for it, its
+# dependencies that aren't here yet included, which is what the download and
+# the disk space come to (Steam is 2 MiB by itself and far more with its
+# 32-bit libraries). An installed app: what its own packages take now. For an
+# AUR app, the part that comes from the repositories.
 info() {
-  local app main out
+  local app main target repo="" pkg plan names=() want=() extra=() missing=() bytes
   app=$(entry "$1") || exit 1
+  [[ -z $(field "$app" '.feature // empty') ]] || { echo '{}'; return; }
   main=$(field "$app" '.packages[0]')
-  out=$(LC_ALL=C pacman -Si "$main" 2>/dev/null) || { echo '{}'; return; }
-  jq -cn --arg d "$(sed -n 's/^Download Size *: //p' <<<"$out" | head -n1)" \
-    --arg i "$(sed -n 's/^Installed Size *: //p' <<<"$out" | head -n1)" \
-    --arg r "$(sed -n 's/^Repository *: //p' <<<"$out" | head -n1)" \
-    '{download: $d, installed: $i, repo: $r}'
+  target=$(field "$app" "$TARGET")
+  if [[ $(field "$app" .source) == aur ]]; then
+    [[ $target != "$main" ]] || { echo '{}'; return; }
+  else
+    repo=$(LC_ALL=C pacman -Si -- "$main" 2>/dev/null | sed -n 's/^Repository *: //p' | head -n1)
+  fi
+  if installed "$target" || { [[ $main != "$target" ]] && installed_explicitly "$main"; }; then
+    while read -r pkg; do
+      installed "$pkg" && names+=("$pkg")
+    done < <(field "$app" '.packages[]')
+    ((${#names[@]})) || { echo '{}'; return; }
+    bytes=$(LC_ALL=C pacman -Qi -- "${names[@]}" 2>/dev/null | installed_bytes)
+    jq -cn --arg i "$(human_size "$bytes")" --arg r "$repo" '{installed: $i, repo: $r}'
+    return
+  fi
+  want=("$target")
+  if [[ $(field "$app" '.setup.gpu32 // false') == true ]]; then
+    mapfile -t extra < <(gpu32_packages)
+    ((${#extra[@]})) && mapfile -t missing < <(pacman -T -- "${extra[@]}")
+    want+=("${missing[@]}")
+  fi
+  # No root and no lock: pacman only says what it would do.
+  plan=$(pacman -Sp --print-format '%r/%n %s' -- "${want[@]}" 2>/dev/null) && [[ -n $plan ]] || { echo '{}'; return; }
+  mapfile -t names < <(cut -d' ' -f1 <<<"$plan")
+  bytes=$(LC_ALL=C pacman -Si -- "${names[@]}" 2>/dev/null | installed_bytes)
+  # The app's own package (karchy-app-<id>) has no files and isn't counted.
+  jq -cn --arg d "$(human_size "$(awk '{ s += $2 } END { printf "%.0f", s }' <<<"$plan")")" \
+    --arg i "$(human_size "$bytes")" --arg r "$repo" \
+    --argjson n "$(grep -cv '/karchy-app-' <<<"$plan")" \
+    '{download: $d, installed: $i, repo: $r, count: $n}'
 }
 
 # The 32-bit graphics driver games need, for the GPUs in this machine. Every

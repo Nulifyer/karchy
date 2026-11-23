@@ -30,7 +30,8 @@ import "Search.js" as Search
 //
 // Keyboard: typing goes to the search, which spans every category; Up/Down
 // (and j/k outside the search field) move through the list; Enter installs
-// or opens the focused app; Space picks it, except in the middle of typing
+// or opens the focused app, or installs the picked apps when some are
+// picked (D-151); Space picks it, except in the middle of typing
 // a search, where it is a space and Ctrl+Space picks (`spacePicks`); Tab
 // walks the search, the category list (one stop, j/k or the arrows to
 // choose), the focused row's buttons and the bar under the list (Install N
@@ -153,7 +154,14 @@ Item {
   function takeStatus(text, terminalEnded) {
     var data = Model.parse(text, null)
     root.statusFailed = !data
+    var before = Object.keys(root.installed).sort().join(" ")
     root.installed = data ? (data.installed || {}) : {}
+    // Sizes say what installing would add, or what is installed: read again
+    // once something was installed or removed.
+    if (before !== Object.keys(root.installed).sort().join(" ")) {
+      root.infos = ({})
+      infoTimer.restart()
+    }
     root.statusLoaded = true
     if (data) root.settleTerminal(terminalEnded)
   }
@@ -278,8 +286,13 @@ Item {
     return !!app && root.installed[app.id] !== undefined
   }
 
-  // Enter on the focused row: open what is installed, install what isn't.
+  // Enter in the search or the list: with apps picked to install, install
+  // those (D-151); otherwise open the focused app, or install it.
   function activate(app) {
+    if (root.selectedToInstall.length > 0) {
+      if (!root.applying && root.statusLoaded) root.installSelected()
+      return
+    }
     // Until status answers, an installed app would look installable.
     if (!app || root.isBusy(app.id) || !root.statusLoaded) return
     if (root.isInstalled(app)) {
@@ -383,7 +396,9 @@ Item {
     onTriggered: {
       var app = root.current
       if (!app || root.infos[app.id] !== undefined) return
-      if (app.source === "aur" || app.feature) return
+      // Sizes come from the repositories: not for a feature's script, nor
+      // for an AUR app unless part of it comes from them.
+      if (app.feature || (app.source === "aur" && (app.packages || []).length < 2)) return
       var next = Object.assign({}, root.infos)
       next[app.id] = "loading"
       root.infos = next
@@ -842,7 +857,9 @@ Item {
           KeyHint { keys: "↑↓"; label: "move" }
           KeyHint {
             keys: "Enter"
-            label: !root.current ? "install or open"
+            label: root.selectedToInstall.length > 0
+                ? (root.applying ? "install picked, once this is done" : "install " + root.selectedToInstall.length + " picked")
+              : !root.current ? "install or open"
               : root.isBusy(root.current.id) ? (root.applyVerb === "remove" ? "removing…" : "installing…")
               : root.isInstalled(root.current) ? (root.installed[root.current.id] !== "" ? "open" : "installed")
               : root.applying ? "install, once this is done"
@@ -1076,7 +1093,8 @@ Item {
           visible: !row.installedHere || row.hasWindow || row.running
           focusable: row.current
           bordered: true
-          variant: row.current && !row.running ? "primary" : "neutral"
+          // With apps picked, the bar's Install N apps is the main action.
+          variant: row.current && !row.running && root.selectedToInstall.length === 0 ? "primary" : "neutral"
           busy: row.running
           text: row.running ? (root.applyVerb === "remove" ? "Removing…" : "Installing…")
             : row.installedHere ? "Open" : "Install"
@@ -1123,12 +1141,10 @@ Item {
     signal tabOut(Item button, var event)
 
     readonly property var setup: Model.setupLines(app, root.multilibOn)
-    readonly property bool repoApp: app.source !== "aur" && !app.feature
-    readonly property string size: info === "loading" ? "Reading…" : Model.sizeText(info)
+    readonly property string size: info === "loading" ? "Reading…" : Model.sizeText(info, app.source === "aur")
     readonly property var rows: {
       var out = [{ label: installedHere ? "Installed" : "Installs", value: Model.installsText(app, info) }]
-      if (repoApp && size !== "")
-        out.push({ label: "Size", value: size + ((app.packages || []).length > 1 && info !== "loading" ? " for " + app.packages[0] : "") })
+      if (!app.feature && size !== "") out.push({ label: "Size", value: size })
       out.push({ label: "Setup", value: setup.length > 0 ? setup.join(" ") : "Nothing else to set up." })
       if (app.setup && app.setup.note) out.push({ label: "Note", value: app.setup.note })
       // The apps karchy ships (D-71): removable like any other, except the
