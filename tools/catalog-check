@@ -25,6 +25,9 @@ Errors:
     in `aur` (the first package among them); those are built with the app
     and left out of its package, which must still have something to hold
   - `setup.modules` that aren't kernel module names
+  - entries out of order: the list is grouped by category, in the order of
+    `categories`, and sorted by name within each, which is the order the
+    window shows
   - the apps karchy ships (karchy-desktop's optdepends) and the list's
     `default` entries differ (D-71); an entry of several packages is named
     there by its karchy-app-<id> package, which is what gets installed
@@ -153,6 +156,13 @@ def main():
             errors.append(f'{where}: feature script bin/{a["feature"]} is missing')
         if a.get('source') not in ('arch', 'cachyos', 'omarchy', 'aur', 'karchy'):
             errors.append(f'{where}: unknown source {a.get("source")!r}')
+
+    # The window lists a category in the file's order.
+    order = [c['id'] for c in data['categories']]
+    key = lambda a: (order.index(a['category']) if a.get('category') in order else len(order), a.get('name', '').lower())
+    for before, after in zip(data['apps'], data['apps'][1:]):
+        if key(after) < key(before):
+            errors.append(f'{after.get("id")}: out of order after {before.get("id")} (by category, then by name)')
 
     meta = {}
     repos = {name: repo_db(url, meta) for name, url in REPOS.items()}

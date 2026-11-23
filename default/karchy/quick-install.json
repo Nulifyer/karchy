@@ -54,7 +54,7 @@
     },
     {
       "id": "network",
-      "name": "Sync & remote"
+      "name": "Network & sync"
     },
     {
       "id": "utilities",
@@ -70,28 +70,6 @@
     }
   ],
   "apps": [
-    {
-      "id": "karchy-vpn",
-      "name": "WireGuard VPN",
-      "category": "karchy",
-      "icon": "network-vpn",
-      "description": "Your own WireGuard VPN with a kill switch: on by itself on networks you don't trust, off at home, with a sign-in pause for café Wi-Fi. A shield in the bar shows whether you're protected.",
-      "packages": [
-        "karchy-vpn"
-      ],
-      "source": "karchy",
-      "keywords": [
-        "wireguard",
-        "vpn",
-        "kill switch"
-      ],
-      "setup": {
-        "run": [
-          "karchy-plugin-enable karchy.vpn --after karchy.network"
-        ],
-        "note": "Next: in Settings › Network › VPN, import your provider's WireGuard file and choose Set up VPN."
-      }
-    },
     {
       "id": "karchy-project-picker",
       "name": "Project picker",
@@ -116,6 +94,28 @@
       }
     },
     {
+      "id": "karchy-vpn",
+      "name": "WireGuard VPN",
+      "category": "karchy",
+      "icon": "network-vpn",
+      "description": "Your own WireGuard VPN with a kill switch: on by itself on networks you don't trust, off at home, with a sign-in pause for café Wi-Fi. A shield in the bar shows whether you're protected.",
+      "packages": [
+        "karchy-vpn"
+      ],
+      "source": "karchy",
+      "keywords": [
+        "wireguard",
+        "vpn",
+        "kill switch"
+      ],
+      "setup": {
+        "run": [
+          "karchy-plugin-enable karchy.vpn --after karchy.network"
+        ],
+        "note": "Next: in Settings › Network › VPN, import your provider's WireGuard file and choose Set up VPN."
+      }
+    },
+    {
       "id": "brave",
       "name": "Brave",
       "category": "browsers",
@@ -124,7 +124,13 @@
       "packages": [
         "brave-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "chrome",
+        "privacy"
+      ]
     },
     {
       "id": "brave-origin",
@@ -151,7 +157,12 @@
       "packages": [
         "chromium"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "chrome"
+      ]
     },
     {
       "id": "falkon",
@@ -162,7 +173,11 @@
       "packages": [
         "falkon"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web"
+      ]
     },
     {
       "id": "firefox",
@@ -173,7 +188,11 @@
       "packages": [
         "firefox"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web"
+      ]
     },
     {
       "id": "floorp",
@@ -184,7 +203,12 @@
       "packages": [
         "floorp-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "firefox"
+      ]
     },
     {
       "id": "gnome-web",
@@ -197,7 +221,9 @@
       ],
       "source": "arch",
       "keywords": [
-        "Epiphany"
+        "Epiphany",
+        "browser",
+        "web"
       ]
     },
     {
@@ -209,7 +235,11 @@
       "packages": [
         "google-chrome"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "browser",
+        "web"
+      ]
     },
     {
       "id": "helium",
@@ -220,7 +250,12 @@
       "packages": [
         "helium-browser-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "chrome"
+      ]
     },
     {
       "id": "konqueror",
@@ -231,7 +266,11 @@
       "packages": [
         "konqueror"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web"
+      ]
     },
     {
       "id": "lynx",
@@ -242,7 +281,13 @@
       "packages": [
         "lynx"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "terminal browser",
+        "text browser"
+      ]
     },
     {
       "id": "microsoft-edge",
@@ -253,7 +298,12 @@
       "packages": [
         "microsoft-edge-stable-bin"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "browser",
+        "web",
+        "chrome"
+      ]
     },
     {
       "id": "mullvad-browser",
@@ -264,7 +314,13 @@
       "packages": [
         "mullvad-browser-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "firefox",
+        "privacy"
+      ]
     },
     {
       "id": "qutebrowser",
@@ -275,7 +331,13 @@
       "packages": [
         "qutebrowser"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "vim keys",
+        "keyboard"
+      ]
     },
     {
       "id": "tor-browser",
@@ -286,7 +348,14 @@
       "packages": [
         "torbrowser-launcher"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "privacy",
+        "onion",
+        "anonymous"
+      ]
     },
     {
       "id": "ungoogled-chromium",
@@ -297,7 +366,13 @@
       "packages": [
         "ungoogled-chromium-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "chrome",
+        "privacy"
+      ]
     },
     {
       "id": "vivaldi",
@@ -308,7 +383,12 @@
       "packages": [
         "vivaldi"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "chrome"
+      ]
     },
     {
       "id": "waterfox",
@@ -319,7 +399,12 @@
       "packages": [
         "waterfox-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "firefox"
+      ]
     },
     {
       "id": "zen",
@@ -330,18 +415,28 @@
       "packages": [
         "zen-browser-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "browser",
+        "web",
+        "firefox"
+      ]
     },
     {
-      "id": "bridge",
-      "name": "Bridge",
+      "id": "claws-mail",
+      "name": "Claws Mail",
       "category": "chat",
-      "description": "Integrate ProtonMail paid account with any program that supports IMAP and SMTP (Qt desktop application)",
-      "icon": "protonmail-bridge",
+      "description": "A GTK based e-mail client",
+      "icon": "claws-mail",
       "packages": [
-        "protonmail-bridge"
+        "claws-mail"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
       "id": "discord",
@@ -352,7 +447,14 @@
       "packages": [
         "discord"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "chat",
+        "messenger",
+        "messaging",
+        "voice chat",
+        "voip"
+      ]
     },
     {
       "id": "element",
@@ -363,7 +465,11 @@
       "packages": [
         "element-desktop"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "matrix",
+        "chat"
+      ]
     },
     {
       "id": "evolution",
@@ -374,7 +480,12 @@
       "packages": [
         "evolution"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
       "id": "fractal",
@@ -387,7 +498,8 @@
       ],
       "source": "arch",
       "keywords": [
-        "Matrix"
+        "Matrix",
+        "chat"
       ]
     },
     {
@@ -399,7 +511,12 @@
       "packages": [
         "geary"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
       "id": "halloy",
@@ -424,7 +541,12 @@
       "packages": [
         "kmail"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
       "id": "konversation",
@@ -435,7 +557,26 @@
       "packages": [
         "konversation"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "irc"
+      ]
+    },
+    {
+      "id": "mailspring",
+      "name": "Mailspring",
+      "category": "chat",
+      "description": "A beautiful, fast and fully open source mail client",
+      "icon": "mailspring",
+      "packages": [
+        "mailspring-bin"
+      ],
+      "source": "aur",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
       "id": "mattermost",
@@ -446,23 +587,12 @@
       "packages": [
         "mattermost-desktop"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "mullvad-vpn",
-      "name": "Mullvad VPN",
-      "category": "chat",
-      "description": "Mullvad VPN client (desktop application)",
-      "icon": "mullvad-vpn",
-      "packages": [
-        "mullvad-vpn"
-      ],
       "source": "arch",
-      "setup": {
-        "services": [
-          "mullvad-daemon.service"
-        ]
-      }
+      "keywords": [
+        "chat",
+        "messenger",
+        "messaging"
+      ]
     },
     {
       "id": "mumble",
@@ -473,7 +603,11 @@
       "packages": [
         "mumble"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "voice chat",
+        "voip"
+      ]
     },
     {
       "id": "neochat",
@@ -484,7 +618,11 @@
       "packages": [
         "neochat"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "matrix",
+        "chat"
+      ]
     },
     {
       "id": "polari",
@@ -495,7 +633,10 @@
       "packages": [
         "polari"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "irc"
+      ]
     },
     {
       "id": "proton-mail",
@@ -506,18 +647,28 @@
       "packages": [
         "proton-mail-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
-      "id": "proton-vpn",
-      "name": "Proton VPN",
+      "id": "bridge",
+      "name": "Proton Mail Bridge",
       "category": "chat",
-      "description": "ProtonVPN GTK app, Maintained by Community",
-      "icon": "",
+      "description": "Integrate ProtonMail paid account with any program that supports IMAP and SMTP (Qt desktop application)",
+      "icon": "protonmail-bridge",
       "packages": [
-        "proton-vpn-gtk-app"
+        "protonmail-bridge"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "email",
+        "imap",
+        "smtp"
+      ]
     },
     {
       "id": "signal",
@@ -528,7 +679,12 @@
       "packages": [
         "signal-desktop"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "chat",
+        "messenger",
+        "messaging"
+      ]
     },
     {
       "id": "slack",
@@ -539,7 +695,12 @@
       "packages": [
         "slack-desktop"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "chat",
+        "messenger",
+        "messaging"
+      ]
     },
     {
       "id": "teams-for-linux",
@@ -550,7 +711,14 @@
       "packages": [
         "teams-for-linux"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "video call",
+        "meeting",
+        "video conferencing",
+        "conference",
+        "microsoft teams"
+      ]
     },
     {
       "id": "telegram",
@@ -561,7 +729,12 @@
       "packages": [
         "telegram-desktop"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "chat",
+        "messenger",
+        "messaging"
+      ]
     },
     {
       "id": "thunderbird",
@@ -572,7 +745,12 @@
       "packages": [
         "thunderbird"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "email",
+        "mail",
+        "outlook"
+      ]
     },
     {
       "id": "vesktop",
@@ -585,19 +763,8 @@
       ],
       "source": "cachyos",
       "keywords": [
-        "Discord menu choice 2"
+        "discord"
       ]
-    },
-    {
-      "id": "wireguard-tools",
-      "name": "WireGuard tools",
-      "category": "chat",
-      "description": "Next generation secure network tunnel - tools for configuration",
-      "icon": "",
-      "packages": [
-        "wireguard-tools"
-      ],
-      "source": "arch"
     },
     {
       "id": "zoom",
@@ -608,7 +775,13 @@
       "packages": [
         "zoom"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "video call",
+        "meeting",
+        "video conferencing",
+        "conference"
+      ]
     },
     {
       "id": "abiword",
@@ -619,7 +792,12 @@
       "packages": [
         "abiword"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "word",
+        "docx",
+        "document"
+      ]
     },
     {
       "id": "atril",
@@ -630,7 +808,12 @@
       "packages": [
         "atril"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "pdf",
+        "pdf reader",
+        "pdf viewer"
+      ]
     },
     {
       "id": "bookworm",
@@ -641,7 +824,13 @@
       "packages": [
         "bookworm"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ebook",
+        "epub",
+        "ebook reader",
+        "kindle"
+      ]
     },
     {
       "id": "calibre",
@@ -652,7 +841,13 @@
       "packages": [
         "calibre"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ebook",
+        "epub",
+        "ebook reader",
+        "kindle"
+      ]
     },
     {
       "id": "calligra",
@@ -663,7 +858,13 @@
       "packages": [
         "calligra"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "office suite",
+        "word",
+        "spreadsheet",
+        "presentation"
+      ]
     },
     {
       "id": "citations",
@@ -674,18 +875,12 @@
       "packages": [
         "citations"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "claws-mail",
-      "name": "Claws Mail",
-      "category": "office",
-      "description": "A GTK based e-mail client",
-      "icon": "claws-mail",
-      "packages": [
-        "claws-mail"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "bibtex",
+        "latex",
+        "references"
+      ]
     },
     {
       "id": "endeavour",
@@ -698,7 +893,10 @@
       ],
       "source": "arch",
       "keywords": [
-        "GNOME To Do"
+        "GNOME To Do",
+        "todo",
+        "to-do",
+        "tasks"
       ]
     },
     {
@@ -710,7 +908,12 @@
       "packages": [
         "errands"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "todo",
+        "to-do",
+        "tasks"
+      ]
     },
     {
       "id": "evince",
@@ -721,7 +924,12 @@
       "packages": [
         "evince"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "pdf",
+        "pdf reader",
+        "pdf viewer"
+      ]
     },
     {
       "id": "fbreader",
@@ -732,7 +940,13 @@
       "packages": [
         "fbreader"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ebook",
+        "epub",
+        "ebook reader",
+        "kindle"
+      ]
     },
     {
       "id": "feathernotes",
@@ -743,7 +957,11 @@
       "packages": [
         "feathernotes"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "notes",
+        "note taking"
+      ]
     },
     {
       "id": "foliate",
@@ -754,7 +972,13 @@
       "packages": [
         "foliate"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ebook",
+        "epub",
+        "ebook reader",
+        "kindle"
+      ]
     },
     {
       "id": "geogebra",
@@ -765,7 +989,11 @@
       "packages": [
         "geogebra"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "math",
+        "geometry"
+      ]
     },
     {
       "id": "gnome-calculator",
@@ -820,7 +1048,11 @@
       "packages": [
         "gnome-notes"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "notes",
+        "note taking"
+      ]
     },
     {
       "id": "gnu-octave",
@@ -831,7 +1063,11 @@
       "packages": [
         "octave"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "math",
+        "matlab"
+      ]
     },
     {
       "id": "gnucash",
@@ -842,7 +1078,13 @@
       "packages": [
         "gnucash"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "budget",
+        "money",
+        "accounting",
+        "finance"
+      ]
     },
     {
       "id": "gnumeric",
@@ -853,7 +1095,11 @@
       "packages": [
         "gnumeric"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "excel",
+        "xlsx"
+      ]
     },
     {
       "id": "graphs",
@@ -864,7 +1110,11 @@
       "packages": [
         "graphs"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "plot",
+        "chart"
+      ]
     },
     {
       "id": "homebank",
@@ -875,7 +1125,13 @@
       "packages": [
         "homebank"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "budget",
+        "money",
+        "accounting",
+        "finance"
+      ]
     },
     {
       "id": "joplin",
@@ -886,7 +1142,11 @@
       "packages": [
         "joplin-desktop"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "notes",
+        "note taking"
+      ]
     },
     {
       "id": "kalgebra",
@@ -897,7 +1157,11 @@
       "packages": [
         "kalgebra"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "math",
+        "geometry"
+      ]
     },
     {
       "id": "kcalc",
@@ -919,7 +1183,13 @@
       "packages": [
         "kmymoney"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "budget",
+        "money",
+        "accounting",
+        "finance"
+      ]
     },
     {
       "id": "libreoffice",
@@ -930,18 +1200,19 @@
       "packages": [
         "libreoffice-fresh"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "mailspring",
-      "name": "Mailspring",
-      "category": "office",
-      "description": "A beautiful, fast and fully open source mail client",
-      "icon": "mailspring",
-      "packages": [
-        "mailspring-bin"
-      ],
-      "source": "aur"
+      "source": "arch",
+      "keywords": [
+        "word",
+        "excel",
+        "powerpoint",
+        "spreadsheet",
+        "presentation",
+        "docx",
+        "xlsx",
+        "pptx",
+        "microsoft office",
+        "office suite"
+      ]
     },
     {
       "id": "newsflash",
@@ -954,7 +1225,9 @@
       ],
       "source": "arch",
       "keywords": [
-        "RSS"
+        "RSS",
+        "feeds",
+        "news"
       ]
     },
     {
@@ -966,7 +1239,14 @@
       "packages": [
         "obsidian"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "notes",
+        "note taking",
+        "markdown",
+        "wiki",
+        "second brain"
+      ]
     },
     {
       "id": "okular",
@@ -977,109 +1257,12 @@
       "packages": [
         "okular"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "onlyoffice",
-      "name": "OnlyOffice",
-      "category": "office",
-      "description": "An office suite that combines text, spreadsheet and presentation editors",
-      "icon": "",
-      "packages": [
-        "onlyoffice-bin"
-      ],
-      "source": "cachyos"
-    },
-    {
-      "id": "papers",
-      "name": "Papers",
-      "category": "office",
-      "description": "Document viewer for PDF and other document formats aimed at the GNOME desktop",
-      "icon": "",
-      "packages": [
-        "papers"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "paperwork",
-      "name": "Paperwork",
-      "category": "office",
-      "description": "Personal document manager to manage scanned documents and PDFs",
-      "icon": "paperwork",
-      "packages": [
-        "paperwork"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "sagemath",
-      "name": "SageMath",
-      "category": "office",
-      "description": "Open Source Mathematics Software, free alternative to Magma, Maple, Mathematica, and Matlab",
-      "icon": "",
-      "packages": [
-        "sagemath"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "skrooge",
-      "name": "Skrooge",
-      "category": "office",
-      "description": "Personal finance manager that aims at being powerful and intuitive",
-      "icon": "skrooge",
-      "packages": [
-        "skrooge"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "solanum",
-      "name": "Solanum",
-      "category": "office",
-      "description": "Pomodoro timer for the GNOME desktop",
-      "icon": "",
-      "packages": [
-        "solanum"
-      ],
       "source": "arch",
       "keywords": [
-        "Pomodoro"
+        "pdf",
+        "pdf reader",
+        "pdf viewer"
       ]
-    },
-    {
-      "id": "wps-office",
-      "name": "WPS Office",
-      "category": "office",
-      "description": "Kingsoft Office (WPS Office) - an office productivity suite",
-      "icon": "",
-      "packages": [
-        "wps-office"
-      ],
-      "source": "aur"
-    },
-    {
-      "id": "xournal",
-      "name": "Xournal++",
-      "category": "office",
-      "description": "Handwriting notetaking software with PDF annotation support",
-      "icon": "xournalpp",
-      "packages": [
-        "xournalpp"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "xreader",
-      "name": "Xreader",
-      "category": "office",
-      "description": "Document viewer for files like PDF and Postscript",
-      "icon": "xreader",
-      "packages": [
-        "xreader"
-      ],
-      "source": "arch"
     },
     {
       "id": "omawrite",
@@ -1104,6 +1287,163 @@
       }
     },
     {
+      "id": "onlyoffice",
+      "name": "OnlyOffice",
+      "category": "office",
+      "description": "An office suite that combines text, spreadsheet and presentation editors",
+      "icon": "",
+      "packages": [
+        "onlyoffice-bin"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "word",
+        "excel",
+        "powerpoint",
+        "spreadsheet",
+        "presentation",
+        "docx",
+        "xlsx",
+        "pptx",
+        "microsoft office",
+        "office suite"
+      ]
+    },
+    {
+      "id": "papers",
+      "name": "Papers",
+      "category": "office",
+      "description": "Document viewer for PDF and other document formats aimed at the GNOME desktop",
+      "icon": "",
+      "packages": [
+        "papers"
+      ],
+      "source": "arch",
+      "keywords": [
+        "pdf",
+        "pdf reader",
+        "pdf viewer"
+      ]
+    },
+    {
+      "id": "paperwork",
+      "name": "Paperwork",
+      "category": "office",
+      "description": "Personal document manager to manage scanned documents and PDFs",
+      "icon": "paperwork",
+      "packages": [
+        "paperwork"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ocr",
+        "scan"
+      ]
+    },
+    {
+      "id": "sagemath",
+      "name": "SageMath",
+      "category": "office",
+      "description": "Open Source Mathematics Software, free alternative to Magma, Maple, Mathematica, and Matlab",
+      "icon": "",
+      "packages": [
+        "sagemath"
+      ],
+      "source": "arch",
+      "keywords": [
+        "math",
+        "mathematica"
+      ]
+    },
+    {
+      "id": "skrooge",
+      "name": "Skrooge",
+      "category": "office",
+      "description": "Personal finance manager that aims at being powerful and intuitive",
+      "icon": "skrooge",
+      "packages": [
+        "skrooge"
+      ],
+      "source": "arch",
+      "keywords": [
+        "budget",
+        "money",
+        "accounting",
+        "finance"
+      ]
+    },
+    {
+      "id": "solanum",
+      "name": "Solanum",
+      "category": "office",
+      "description": "Pomodoro timer for the GNOME desktop",
+      "icon": "",
+      "packages": [
+        "solanum"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Pomodoro",
+        "timer"
+      ]
+    },
+    {
+      "id": "wps-office",
+      "name": "WPS Office",
+      "category": "office",
+      "description": "Kingsoft Office (WPS Office) - an office productivity suite",
+      "icon": "",
+      "packages": [
+        "wps-office"
+      ],
+      "source": "aur",
+      "keywords": [
+        "word",
+        "excel",
+        "powerpoint",
+        "spreadsheet",
+        "presentation",
+        "docx",
+        "xlsx",
+        "pptx",
+        "microsoft office",
+        "office suite"
+      ]
+    },
+    {
+      "id": "xournal",
+      "name": "Xournal++",
+      "category": "office",
+      "description": "Handwriting notetaking software with PDF annotation support",
+      "icon": "xournalpp",
+      "packages": [
+        "xournalpp"
+      ],
+      "source": "arch",
+      "keywords": [
+        "pdf annotate",
+        "handwriting",
+        "stylus",
+        "pen"
+      ]
+    },
+    {
+      "id": "xreader",
+      "name": "Xreader",
+      "category": "office",
+      "description": "Document viewer for files like PDF and Postscript",
+      "icon": "xreader",
+      "packages": [
+        "xreader"
+      ],
+      "source": "arch",
+      "keywords": [
+        "pdf",
+        "pdf reader",
+        "pdf viewer"
+      ]
+    },
+    {
       "id": "amberol",
       "name": "Amberol",
       "category": "media",
@@ -1112,7 +1452,12 @@
       "packages": [
         "amberol"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "ardour",
@@ -1123,7 +1468,12 @@
       "packages": [
         "ardour"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "daw",
+        "music production",
+        "midi"
+      ]
     },
     {
       "id": "audacious",
@@ -1134,7 +1484,12 @@
       "packages": [
         "audacious"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "audacity",
@@ -1145,7 +1500,12 @@
       "packages": [
         "audacity"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "audio editor",
+        "record audio",
+        "audio recorder"
+      ]
     },
     {
       "id": "audio-sharing",
@@ -1167,7 +1527,12 @@
       "packages": [
         "baka-mplayer"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "birdfont",
@@ -1178,7 +1543,10 @@
       "packages": [
         "birdfont"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "font editor"
+      ]
     },
     {
       "id": "bitwig-studio",
@@ -1189,7 +1557,12 @@
       "packages": [
         "bitwig-studio"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "daw",
+        "music production",
+        "midi"
+      ]
     },
     {
       "id": "blanket",
@@ -1200,7 +1573,12 @@
       "packages": [
         "blanket"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "white noise",
+        "ambient",
+        "focus"
+      ]
     },
     {
       "id": "blender",
@@ -1211,7 +1589,13 @@
       "packages": [
         "blender"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "3d",
+        "modeling",
+        "animation",
+        "render"
+      ]
     },
     {
       "id": "brasero",
@@ -1222,7 +1606,13 @@
       "packages": [
         "brasero"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cd",
+        "dvd",
+        "burn",
+        "disc"
+      ]
     },
     {
       "id": "celluloid",
@@ -1233,7 +1623,12 @@
       "packages": [
         "celluloid"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "converseen",
@@ -1244,7 +1639,11 @@
       "packages": [
         "converseen"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "convert images",
+        "image converter"
+      ]
     },
     {
       "id": "curtail",
@@ -1255,7 +1654,10 @@
       "packages": [
         "curtail"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "compress images"
+      ]
     },
     {
       "id": "darktable",
@@ -1266,7 +1668,12 @@
       "packages": [
         "darktable"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "raw",
+        "lightroom",
+        "photos"
+      ]
     },
     {
       "id": "decibels",
@@ -1277,7 +1684,12 @@
       "packages": [
         "decibels"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "digikam",
@@ -1288,7 +1700,11 @@
       "packages": [
         "digikam"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "photos",
+        "photo manager"
+      ]
     },
     {
       "id": "dragon-player",
@@ -1299,7 +1715,12 @@
       "packages": [
         "dragon"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "ear-tag",
@@ -1310,7 +1731,12 @@
       "packages": [
         "eartag"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "tags",
+        "id3",
+        "mp3 tags"
+      ]
     },
     {
       "id": "easyeffects",
@@ -1321,7 +1747,12 @@
       "packages": [
         "easyeffects"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "equalizer",
+        "noise reduction",
+        "audio effects"
+      ]
     },
     {
       "id": "easytag",
@@ -1332,7 +1763,12 @@
       "packages": [
         "easytag"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "tags",
+        "id3",
+        "mp3 tags"
+      ]
     },
     {
       "id": "elisa",
@@ -1343,7 +1779,12 @@
       "packages": [
         "elisa"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "eye-of-gnome",
@@ -1354,7 +1795,12 @@
       "packages": [
         "eog"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "flowblade",
@@ -1365,7 +1811,12 @@
       "packages": [
         "flowblade"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video editor",
+        "video editing",
+        "premiere"
+      ]
     },
     {
       "id": "fontforge",
@@ -1376,7 +1827,10 @@
       "packages": [
         "fontforge"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "font editor"
+      ]
     },
     {
       "id": "freecad",
@@ -1387,7 +1841,11 @@
       "packages": [
         "freecad"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cad",
+        "3d"
+      ]
     },
     {
       "id": "freetube",
@@ -1398,7 +1856,10 @@
       "packages": [
         "freetube-bin"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "youtube"
+      ]
     },
     {
       "id": "fretboard",
@@ -1409,7 +1870,11 @@
       "packages": [
         "fretboard"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "guitar",
+        "chords"
+      ]
     },
     {
       "id": "geeqie",
@@ -1420,7 +1885,12 @@
       "packages": [
         "geeqie"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "gimp",
@@ -1431,7 +1901,12 @@
       "packages": [
         "gimp"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image editor",
+        "photo editor",
+        "photoshop"
+      ]
     },
     {
       "id": "gnome-photos",
@@ -1442,7 +1917,11 @@
       "packages": [
         "gnome-photos"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "photos",
+        "photo manager"
+      ]
     },
     {
       "id": "gnome-podcasts",
@@ -1453,7 +1932,10 @@
       "packages": [
         "gnome-podcasts"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "podcast"
+      ]
     },
     {
       "id": "gnome-videos",
@@ -1464,7 +1946,12 @@
       "packages": [
         "totem"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "gpicview",
@@ -1475,7 +1962,12 @@
       "packages": [
         "gpicview"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "gthumb",
@@ -1486,7 +1978,12 @@
       "packages": [
         "gthumb"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "gwenview",
@@ -1497,7 +1994,12 @@
       "packages": [
         "gwenview"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "handbrake",
@@ -1508,7 +2010,13 @@
       "packages": [
         "handbrake"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "convert video",
+        "transcode",
+        "encoder",
+        "rip dvd"
+      ]
     },
     {
       "id": "haruna",
@@ -1519,7 +2027,12 @@
       "packages": [
         "haruna"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "hypnotix",
@@ -1532,7 +2045,8 @@
       ],
       "source": "arch",
       "keywords": [
-        "IPTV"
+        "IPTV",
+        "tv"
       ]
     },
     {
@@ -1544,7 +2058,10 @@
       "packages": [
         "identity"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "compare images"
+      ]
     },
     {
       "id": "imv",
@@ -1572,7 +2089,13 @@
       "packages": [
         "inkscape"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "vector",
+        "illustrator",
+        "svg",
+        "drawing"
+      ]
     },
     {
       "id": "jellyfin-desktop",
@@ -1583,7 +2106,11 @@
       "packages": [
         "jellyfin-desktop"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "media server",
+        "plex"
+      ]
     },
     {
       "id": "k3b",
@@ -1594,7 +2121,13 @@
       "packages": [
         "k3b"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cd",
+        "dvd",
+        "burn",
+        "disc"
+      ]
     },
     {
       "id": "kaffeine",
@@ -1605,7 +2138,12 @@
       "packages": [
         "kaffeine"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "kdenlive",
@@ -1616,7 +2154,12 @@
       "packages": [
         "kdenlive"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video editor",
+        "video editing",
+        "premiere"
+      ]
     },
     {
       "id": "kicad",
@@ -1627,7 +2170,13 @@
       "packages": [
         "kicad"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "pcb",
+        "electronics",
+        "schematic",
+        "cad"
+      ]
     },
     {
       "id": "kid3",
@@ -1638,7 +2187,12 @@
       "packages": [
         "kid3-qt"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "tags",
+        "id3",
+        "mp3 tags"
+      ]
     },
     {
       "id": "kodi",
@@ -1649,7 +2203,11 @@
       "packages": [
         "kodi"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "media center",
+        "htpc"
+      ]
     },
     {
       "id": "kolourpaint",
@@ -1660,7 +2218,11 @@
       "packages": [
         "kolourpaint"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "paint",
+        "mspaint"
+      ]
     },
     {
       "id": "komikku",
@@ -1671,7 +2233,11 @@
       "packages": [
         "komikku"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "comics",
+        "manga"
+      ]
     },
     {
       "id": "krita",
@@ -1682,7 +2248,14 @@
       "packages": [
         "krita"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image editor",
+        "photo editor",
+        "photoshop",
+        "painting",
+        "drawing"
+      ]
     },
     {
       "id": "kwave",
@@ -1693,7 +2266,12 @@
       "packages": [
         "kwave"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "audio editor",
+        "record audio",
+        "audio recorder"
+      ]
     },
     {
       "id": "letterpress",
@@ -1704,7 +2282,10 @@
       "packages": [
         "letterpress"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ascii art"
+      ]
     },
     {
       "id": "librecad",
@@ -1715,7 +2296,11 @@
       "packages": [
         "librecad"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cad",
+        "2d"
+      ]
     },
     {
       "id": "lmms",
@@ -1726,7 +2311,12 @@
       "packages": [
         "lmms"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "daw",
+        "music production",
+        "midi"
+      ]
     },
     {
       "id": "lollypop",
@@ -1737,7 +2327,12 @@
       "packages": [
         "lollypop"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "loupe",
@@ -1748,7 +2343,12 @@
       "packages": [
         "loupe"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "luminance-hdr",
@@ -1781,7 +2381,10 @@
       "packages": [
         "mixxx"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "dj"
+      ]
     },
     {
       "id": "mousai",
@@ -1792,7 +2395,11 @@
       "packages": [
         "mousai"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "song recognition",
+        "shazam"
+      ]
     },
     {
       "id": "mpv",
@@ -1808,7 +2415,10 @@
       "keywords": [
         "video",
         "player",
-        "music"
+        "music",
+        "video player",
+        "media player",
+        "movies"
       ],
       "setup": {
         "note": "karchy's screen recorder uses mpv for the webcam overlay and to play recordings."
@@ -1823,7 +2433,12 @@
       "packages": [
         "musescore"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "sheet music",
+        "notation",
+        "midi"
+      ]
     },
     {
       "id": "mypaint",
@@ -1834,7 +2449,11 @@
       "packages": [
         "mypaint"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "painting",
+        "drawing"
+      ]
     },
     {
       "id": "obs-studio",
@@ -1845,7 +2464,16 @@
       "packages": [
         "obs-studio"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "screen recorder",
+        "screen recording",
+        "screencast",
+        "record screen",
+        "streaming",
+        "twitch",
+        "live stream"
+      ]
     },
     {
       "id": "opentoonz",
@@ -1856,7 +2484,11 @@
       "packages": [
         "opentoonz"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "animation",
+        "2d animation"
+      ]
     },
     {
       "id": "parole",
@@ -1867,7 +2499,12 @@
       "packages": [
         "parole"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "peek",
@@ -1880,7 +2517,11 @@
       ],
       "source": "arch",
       "keywords": [
-        "GIF recorder"
+        "GIF recorder",
+        "screen recorder",
+        "screen recording",
+        "screencast",
+        "record screen"
       ]
     },
     {
@@ -1892,7 +2533,11 @@
       "packages": [
         "pencil2d"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "animation",
+        "2d animation"
+      ]
     },
     {
       "id": "photoflare",
@@ -1903,7 +2548,12 @@
       "packages": [
         "photoflare"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image editor",
+        "photo editor",
+        "photoshop"
+      ]
     },
     {
       "id": "pinta",
@@ -1914,7 +2564,14 @@
       "packages": [
         "pinta"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image editor",
+        "photo editor",
+        "photoshop",
+        "paint",
+        "mspaint"
+      ]
     },
     {
       "id": "pitivi",
@@ -1925,7 +2582,12 @@
       "packages": [
         "pitivi"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video editor",
+        "video editing",
+        "premiere"
+      ]
     },
     {
       "id": "qmmp",
@@ -1936,7 +2598,12 @@
       "packages": [
         "qmmp"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "rapid-photo-downloader",
@@ -1947,7 +2614,11 @@
       "packages": [
         "rapid-photo-downloader"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "camera",
+        "import photos"
+      ]
     },
     {
       "id": "rawtherapee",
@@ -1958,7 +2629,12 @@
       "packages": [
         "rawtherapee"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "raw",
+        "lightroom",
+        "photos"
+      ]
     },
     {
       "id": "rhythmbox",
@@ -1969,7 +2645,12 @@
       "packages": [
         "rhythmbox"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "ristretto",
@@ -1980,7 +2661,12 @@
       "packages": [
         "ristretto"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "image viewer",
+        "photo viewer",
+        "pictures"
+      ]
     },
     {
       "id": "rosegarden",
@@ -1991,7 +2677,12 @@
       "packages": [
         "rosegarden"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "daw",
+        "music production",
+        "midi"
+      ]
     },
     {
       "id": "scribus",
@@ -2002,7 +2693,12 @@
       "packages": [
         "scribus"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "desktop publishing",
+        "indesign",
+        "layout"
+      ]
     },
     {
       "id": "shortwave",
@@ -2015,7 +2711,8 @@
       ],
       "source": "arch",
       "keywords": [
-        "radio"
+        "radio",
+        "internet radio"
       ]
     },
     {
@@ -2027,7 +2724,12 @@
       "packages": [
         "shotcut"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video editor",
+        "video editing",
+        "premiere"
+      ]
     },
     {
       "id": "shotwell",
@@ -2038,7 +2740,11 @@
       "packages": [
         "shotwell"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "photos",
+        "photo manager"
+      ]
     },
     {
       "id": "showtime",
@@ -2049,7 +2755,12 @@
       "packages": [
         "showtime"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "smplayer",
@@ -2060,7 +2771,12 @@
       "packages": [
         "smplayer"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "soundconverter",
@@ -2071,7 +2787,11 @@
       "packages": [
         "soundconverter"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "convert audio",
+        "audio converter"
+      ]
     },
     {
       "id": "spotify",
@@ -2082,7 +2802,11 @@
       "packages": [
         "spotify"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "music",
+        "streaming"
+      ]
     },
     {
       "id": "strawberry",
@@ -2093,7 +2817,12 @@
       "packages": [
         "strawberry"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "music player",
+        "audio player",
+        "mp3"
+      ]
     },
     {
       "id": "subtitle-composer",
@@ -2104,7 +2833,10 @@
       "packages": [
         "subtitlecomposer"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "subtitles"
+      ]
     },
     {
       "id": "sweet-home-3d",
@@ -2115,7 +2847,11 @@
       "packages": [
         "sweethome3d"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "floor plan",
+        "interior design"
+      ]
     },
     {
       "id": "switcheroo",
@@ -2140,7 +2876,11 @@
       "packages": [
         "synfigstudio"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "animation",
+        "2d animation"
+      ]
     },
     {
       "id": "tenacity",
@@ -2151,7 +2891,12 @@
       "packages": [
         "tenacity"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "audio editor",
+        "record audio",
+        "audio recorder"
+      ]
     },
     {
       "id": "transmageddon",
@@ -2162,7 +2907,11 @@
       "packages": [
         "transmageddon"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "convert video",
+        "transcode"
+      ]
     },
     {
       "id": "video-trimmer",
@@ -2173,7 +2922,11 @@
       "packages": [
         "video-trimmer"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "trim",
+        "cut video"
+      ]
     },
     {
       "id": "vlc",
@@ -2184,7 +2937,12 @@
       "packages": [
         "vlc"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "video player",
+        "media player",
+        "movies"
+      ]
     },
     {
       "id": "vokoscreenng",
@@ -2195,7 +2953,13 @@
       "packages": [
         "vokoscreen"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "screen recorder",
+        "screen recording",
+        "screencast",
+        "record screen"
+      ]
     },
     {
       "id": "xfburn",
@@ -2206,7 +2970,13 @@
       "packages": [
         "xfburn"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cd",
+        "dvd",
+        "burn",
+        "disc"
+      ]
     },
     {
       "id": "0-a-d",
@@ -2228,7 +2998,11 @@
       "packages": [
         "aisleriot"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "solitaire",
+        "cards"
+      ]
     },
     {
       "id": "bottles",
@@ -2239,7 +3013,12 @@
       "packages": [
         "bottles"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "wine",
+        "windows apps",
+        "exe"
+      ]
     },
     {
       "id": "cartridges",
@@ -2250,7 +3029,11 @@
       "packages": [
         "cartridges"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "games",
+        "game launcher"
+      ]
     },
     {
       "id": "chess-clock",
@@ -2261,7 +3044,10 @@
       "packages": [
         "chess-clock"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "chess"
+      ]
     },
     {
       "id": "controller-udev-rules",
@@ -2273,7 +3059,13 @@
         "steam-devices"
       ],
       "source": "arch",
-      "multilib": true
+      "multilib": true,
+      "keywords": [
+        "controller",
+        "gamepad",
+        "xbox",
+        "playstation"
+      ]
     },
     {
       "id": "dolphin-emulator",
@@ -2284,7 +3076,12 @@
       "packages": [
         "dolphin-emu"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "gamecube",
+        "wii"
+      ]
     },
     {
       "id": "epic-games-launcher",
@@ -2295,7 +3092,11 @@
       "packages": [
         "epic-games-launcher-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "games",
+        "game launcher"
+      ]
     },
     {
       "id": "faugus-launcher",
@@ -2310,7 +3111,11 @@
       "multilib": true,
       "setup": {
         "gpu32": true
-      }
+      },
+      "keywords": [
+        "games",
+        "game launcher"
+      ]
     },
     {
       "id": "flips",
@@ -2342,7 +3147,10 @@
         "groups": [
           "gamemode"
         ]
-      }
+      },
+      "keywords": [
+        "performance"
+      ]
     },
     {
       "id": "gamescope",
@@ -2412,7 +3220,13 @@
       "multilib": true,
       "setup": {
         "gpu32": true
-      }
+      },
+      "keywords": [
+        "games",
+        "game launcher",
+        "epic",
+        "gog"
+      ]
     },
     {
       "id": "itch",
@@ -2423,7 +3237,11 @@
       "packages": [
         "itch-setup-bin"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "games",
+        "game launcher"
+      ]
     },
     {
       "id": "kapman",
@@ -2456,7 +3274,10 @@
       "packages": [
         "knights"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "chess"
+      ]
     },
     {
       "id": "lsfg-vk",
@@ -2481,7 +3302,11 @@
       "packages": [
         "luanti"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "minecraft",
+        "minetest"
+      ]
     },
     {
       "id": "lutris",
@@ -2499,7 +3324,11 @@
       "multilib": true,
       "setup": {
         "gpu32": true
-      }
+      },
+      "keywords": [
+        "games",
+        "game launcher"
+      ]
     },
     {
       "id": "mame",
@@ -2510,7 +3339,11 @@
       "packages": [
         "mame"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "arcade"
+      ]
     },
     {
       "id": "mangohud-goverlay",
@@ -2524,7 +3357,12 @@
         "goverlay"
       ],
       "source": "arch",
-      "multilib": true
+      "multilib": true,
+      "keywords": [
+        "fps counter",
+        "overlay",
+        "performance"
+      ]
     },
     {
       "id": "mangojuice",
@@ -2535,7 +3373,12 @@
       "packages": [
         "mangojuice"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "fps counter",
+        "overlay",
+        "performance"
+      ]
     },
     {
       "id": "mari0",
@@ -2557,7 +3400,10 @@
       "packages": [
         "minecraft-launcher"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "minecraft"
+      ]
     },
     {
       "id": "moonlight",
@@ -2568,7 +3414,11 @@
       "packages": [
         "moonlight-qt"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "game streaming",
+        "remote play"
+      ]
     },
     {
       "id": "mupen-64-plus",
@@ -2579,7 +3429,12 @@
       "packages": [
         "mupen64plus"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "n64",
+        "nintendo 64"
+      ]
     },
     {
       "id": "ntsync-autoload",
@@ -2626,7 +3481,11 @@
       "packages": [
         "ppsspp"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "psp"
+      ]
     },
     {
       "id": "prism-launcher-minecraft",
@@ -2651,7 +3510,11 @@
       "packages": [
         "proton-cachyos-slr"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "proton",
+        "compatibility tool"
+      ]
     },
     {
       "id": "protonplus",
@@ -2662,7 +3525,11 @@
       "packages": [
         "protonplus"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "proton",
+        "compatibility tool"
+      ]
     },
     {
       "id": "protonup-qt",
@@ -2673,7 +3540,11 @@
       "packages": [
         "protonup-qt"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "proton",
+        "compatibility tool"
+      ]
     },
     {
       "id": "retroarch",
@@ -2684,7 +3555,11 @@
       "packages": [
         "retroarch"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "retro"
+      ]
     },
     {
       "id": "retroarch-cores",
@@ -2700,7 +3575,11 @@
         "libretro-mesen",
         "libretro-mgba"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "retro"
+      ]
     },
     {
       "id": "ryujinx",
@@ -2711,7 +3590,12 @@
       "packages": [
         "ryujinx"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "emulator",
+        "switch",
+        "nintendo switch"
+      ]
     },
     {
       "id": "scummvm",
@@ -2722,7 +3606,11 @@
       "packages": [
         "scummvm"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "adventure games",
+        "point and click"
+      ]
     },
     {
       "id": "snes9x",
@@ -2733,7 +3621,12 @@
       "packages": [
         "snes9x-gtk"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "snes",
+        "super nintendo"
+      ]
     },
     {
       "id": "steam",
@@ -2748,7 +3641,11 @@
       "multilib": true,
       "setup": {
         "gpu32": true
-      }
+      },
+      "keywords": [
+        "games",
+        "game launcher"
+      ]
     },
     {
       "id": "steamcmd",
@@ -2770,7 +3667,11 @@
       "packages": [
         "stella"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "atari"
+      ]
     },
     {
       "id": "sunshine",
@@ -2784,7 +3685,11 @@
       "source": "cachyos",
       "setup": {
         "note": "Pair a device from Sunshine's web page at https://localhost:47990."
-      }
+      },
+      "keywords": [
+        "game streaming",
+        "remote play"
+      ]
     },
     {
       "id": "supertux",
@@ -2832,7 +3737,12 @@
         "wine-cachyos-opt"
       ],
       "source": "arch",
-      "multilib": true
+      "multilib": true,
+      "keywords": [
+        "wine",
+        "winetricks",
+        "protontricks"
+      ]
     },
     {
       "id": "xonotic",
@@ -2854,24 +3764,11 @@
       "packages": [
         "dotnet-sdk"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "android-sdk",
-      "name": "Android platform tools",
-      "category": "languages",
-      "description": "adb and fastboot for a phone on a USB cable, and scrcpy to show and control its screen",
-      "icon": "android-sdk",
-      "packages": [
-        "android-tools",
-        "scrcpy"
-      ],
       "source": "arch",
       "keywords": [
-        "adb",
-        "fastboot",
-        "screen mirror",
-        "phone"
+        "c#",
+        "csharp",
+        "dotnet"
       ]
     },
     {
@@ -2883,7 +3780,13 @@
       "packages": [
         "bun"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "js",
+        "typescript",
+        "node"
+      ]
     },
     {
       "id": "clojure",
@@ -2897,6 +3800,22 @@
         "rlwrap"
       ],
       "source": "arch"
+    },
+    {
+      "id": "laravel",
+      "name": "Composer",
+      "category": "languages",
+      "description": "Dependency manager for PHP, as Laravel and Symfony projects use",
+      "icon": "",
+      "packages": [
+        "composer"
+      ],
+      "source": "arch",
+      "keywords": [
+        "php",
+        "laravel",
+        "symfony"
+      ]
     },
     {
       "id": "crystal",
@@ -2929,7 +3848,13 @@
       "packages": [
         "deno"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "js",
+        "typescript",
+        "node"
+      ]
     },
     {
       "id": "elixir",
@@ -2941,18 +3866,10 @@
         "elixir",
         "erlang"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "ghidra",
-      "name": "Ghidra",
-      "category": "languages",
-      "description": "Software reverse engineering framework",
-      "icon": "ghidra",
-      "packages": [
-        "ghidra"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "erlang"
+      ]
     },
     {
       "id": "gleam",
@@ -2975,7 +3892,10 @@
         "go",
         "gopls"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "golang"
+      ]
     },
     {
       "id": "haskell",
@@ -2989,13 +3909,17 @@
         "stack",
         "haskell-language-server"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ghc",
+        "cabal"
+      ]
     },
     {
       "id": "java",
       "name": "Java",
       "category": "languages",
-      "description": "OpenJDK Java 25 development kit",
+      "description": "OpenJDK development kits: Java 25, 21, 17, 11 and 8",
       "icon": "java",
       "packages": [
         "jdk25-openjdk",
@@ -3004,18 +3928,28 @@
         "jdk11-openjdk",
         "jdk8-openjdk"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "jdk",
+        "openjdk",
+        "jvm"
+      ]
     },
     {
       "id": "java-kotlin",
-      "name": "Java/Kotlin",
+      "name": "Java (latest)",
       "category": "languages",
-      "description": "OpenJDK Java 27 development kit",
+      "description": "The newest OpenJDK development kit",
       "icon": "",
       "packages": [
         "jdk-openjdk"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "jdk",
+        "openjdk",
+        "jvm"
+      ]
     },
     {
       "id": "julia",
@@ -3037,7 +3971,11 @@
       "packages": [
         "jupyterlab"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "python",
+        "notebook"
+      ]
     },
     {
       "id": "kotlin",
@@ -3047,17 +3985,6 @@
       "icon": "",
       "packages": [
         "kotlin"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "laravel",
-      "name": "Laravel",
-      "category": "languages",
-      "description": "Dependency Manager for PHP",
-      "icon": "",
-      "packages": [
-        "composer"
       ],
       "source": "arch"
     },
@@ -3094,7 +4021,14 @@
         "npm",
         "pnpm"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "js",
+        "typescript",
+        "node",
+        "npm"
+      ]
     },
     {
       "id": "node-js-lts",
@@ -3105,7 +4039,14 @@
       "packages": [
         "nodejs-lts-krypton"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "js",
+        "typescript",
+        "node",
+        "npm"
+      ]
     },
     {
       "id": "ocaml",
@@ -3134,13 +4075,16 @@
       "id": "older-pythons",
       "name": "Older Pythons",
       "category": "languages",
-      "description": "The Python programming language (version 3.11)",
+      "description": "Python 3.11 and 3.13, beside the system's Python",
       "icon": "",
       "packages": [
         "python311",
         "python313"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "python"
+      ]
     },
     {
       "id": "php",
@@ -3162,7 +4106,11 @@
       "packages": [
         "pnpm"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "package manager"
+      ]
     },
     {
       "id": "pypy",
@@ -3173,7 +4121,10 @@
       "packages": [
         "pypy3"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "python"
+      ]
     },
     {
       "id": "r",
@@ -3184,7 +4135,10 @@
       "packages": [
         "r"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "statistics"
+      ]
     },
     {
       "id": "ruby",
@@ -3211,13 +4165,17 @@
         "run": [
           "rustup default stable"
         ]
-      }
+      },
+      "keywords": [
+        "cargo",
+        "rustup"
+      ]
     },
     {
       "id": "rust-extras",
       "name": "Rust extras",
       "category": "languages",
-      "description": "Shared compilation cache",
+      "description": "sccache (shared compilation cache), cargo-nextest, bacon and cargo-watch",
       "icon": "rust",
       "packages": [
         "sccache",
@@ -3225,7 +4183,11 @@
         "bacon",
         "cargo-watch"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "sccache",
+        "cargo"
+      ]
     },
     {
       "id": "symfony",
@@ -3263,7 +4225,11 @@
       "packages": [
         "yarn"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "package manager"
+      ]
     },
     {
       "id": "zig",
@@ -3286,7 +4252,11 @@
       "packages": [
         "android-studio"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "android",
+        "ide"
+      ]
     },
     {
       "id": "apostrophe",
@@ -3299,7 +4269,9 @@
       ],
       "source": "arch",
       "keywords": [
-        "Markdown"
+        "Markdown",
+        "markdown editor",
+        "writing"
       ]
     },
     {
@@ -3311,7 +4283,11 @@
       "packages": [
         "clion"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "cursor",
@@ -3322,7 +4298,12 @@
       "packages": [
         "cursor-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "code editor",
+        "ide",
+        "ai"
+      ]
     },
     {
       "id": "emacs",
@@ -3333,7 +4314,11 @@
       "packages": [
         "emacs"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal editor",
+        "text editor"
+      ]
     },
     {
       "id": "featherpad",
@@ -3344,7 +4329,26 @@
       "packages": [
         "featherpad"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
+    },
+    {
+      "id": "geany",
+      "name": "Geany",
+      "category": "editors",
+      "description": "Fast and lightweight IDE",
+      "icon": "geany",
+      "packages": [
+        "geany"
+      ],
+      "source": "arch",
+      "keywords": [
+        "code editor",
+        "ide"
+      ]
     },
     {
       "id": "gedit",
@@ -3355,7 +4359,11 @@
       "packages": [
         "gedit"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
     },
     {
       "id": "gnome-builder",
@@ -3366,7 +4374,11 @@
       "packages": [
         "gnome-builder"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "code editor",
+        "ide"
+      ]
     },
     {
       "id": "helix",
@@ -3377,7 +4389,12 @@
       "packages": [
         "helix"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal editor",
+        "text editor",
+        "hx"
+      ]
     },
     {
       "id": "intellij-idea",
@@ -3388,7 +4405,11 @@
       "packages": [
         "intellij-idea-oss"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "jetbrains-toolbox",
@@ -3399,7 +4420,11 @@
       "packages": [
         "jetbrains-toolbox"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "kakoune",
@@ -3410,7 +4435,11 @@
       "packages": [
         "kakoune"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal editor",
+        "text editor"
+      ]
     },
     {
       "id": "kate",
@@ -3421,7 +4450,26 @@
       "packages": [
         "kate"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
+    },
+    {
+      "id": "kdevelop",
+      "name": "KDevelop",
+      "category": "editors",
+      "description": "C++ IDE using KDE technologies",
+      "icon": "kdevelop",
+      "packages": [
+        "kdevelop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "code editor",
+        "ide"
+      ]
     },
     {
       "id": "l3afpad",
@@ -3432,7 +4480,11 @@
       "packages": [
         "l3afpad"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
     },
     {
       "id": "mousepad",
@@ -3443,7 +4495,11 @@
       "packages": [
         "mousepad"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
     },
     {
       "id": "neovim",
@@ -3454,7 +4510,13 @@
       "packages": [
         "neovim"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal editor",
+        "text editor",
+        "nvim",
+        "vi"
+      ]
     },
     {
       "id": "phpstorm",
@@ -3465,7 +4527,11 @@
       "packages": [
         "phpstorm"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "pluma",
@@ -3476,7 +4542,11 @@
       "packages": [
         "pluma"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
     },
     {
       "id": "pycharm",
@@ -3487,7 +4557,11 @@
       "packages": [
         "pycharm-community-edition"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "qt-creator",
@@ -3498,7 +4572,11 @@
       "packages": [
         "qtcreator"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "code editor",
+        "ide"
+      ]
     },
     {
       "id": "rider",
@@ -3509,7 +4587,11 @@
       "packages": [
         "rider"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "sublime-text-4",
@@ -3520,7 +4602,13 @@
       "packages": [
         "sublime-text-4"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "text editor",
+        "notepad",
+        "code editor",
+        "ide"
+      ]
     },
     {
       "id": "vim",
@@ -3531,7 +4619,12 @@
       "packages": [
         "vim"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal editor",
+        "text editor",
+        "vi"
+      ]
     },
     {
       "id": "vs-code",
@@ -3545,7 +4638,9 @@
       "source": "omarchy",
       "keywords": [
         "vscode",
-        "code"
+        "code",
+        "code editor",
+        "ide"
       ]
     },
     {
@@ -3557,7 +4652,14 @@
       "packages": [
         "vscodium-bin"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "code editor",
+        "ide",
+        "vscode",
+        "vs code",
+        "code"
+      ]
     },
     {
       "id": "webstorm",
@@ -3568,7 +4670,11 @@
       "packages": [
         "webstorm"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "ide",
+        "jetbrains"
+      ]
     },
     {
       "id": "xed",
@@ -3579,7 +4685,11 @@
       "packages": [
         "xed"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text editor",
+        "notepad"
+      ]
     },
     {
       "id": "zed",
@@ -3590,7 +4700,11 @@
       "packages": [
         "zed"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "code editor",
+        "ide"
+      ]
     },
     {
       "id": "actionlint",
@@ -3601,7 +4715,10 @@
       "packages": [
         "actionlint"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "lint"
+      ]
     },
     {
       "id": "age",
@@ -3612,7 +4729,29 @@
       "packages": [
         "age"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "encrypt",
+        "encryption"
+      ]
+    },
+    {
+      "id": "android-sdk",
+      "name": "Android platform tools",
+      "category": "devtools",
+      "description": "adb and fastboot for a phone on a USB cable, and scrcpy to show and control its screen",
+      "icon": "android-sdk",
+      "packages": [
+        "android-tools",
+        "scrcpy"
+      ],
+      "source": "arch",
+      "keywords": [
+        "adb",
+        "fastboot",
+        "screen mirror",
+        "phone"
+      ]
     },
     {
       "id": "ast-grep",
@@ -3623,7 +4762,12 @@
       "packages": [
         "ast-grep"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "grep",
+        "search",
+        "refactor"
+      ]
     },
     {
       "id": "atuin",
@@ -3634,7 +4778,10 @@
       "packages": [
         "atuin"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "shell history"
+      ]
     },
     {
       "id": "bat",
@@ -3645,7 +4792,10 @@
       "packages": [
         "bat"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cat"
+      ]
     },
     {
       "id": "beyond-compare",
@@ -3656,7 +4806,27 @@
       "packages": [
         "bcompare"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "diff",
+        "merge"
+      ]
+    },
+    {
+      "id": "commit",
+      "name": "Commit",
+      "category": "devtools",
+      "description": "Editor that helps you write better Git and Mercurial commit messages",
+      "icon": "",
+      "packages": [
+        "commit"
+      ],
+      "source": "arch",
+      "keywords": [
+        "message editor",
+        "git",
+        "commit message"
+      ]
     },
     {
       "id": "delta",
@@ -3667,7 +4837,11 @@
       "packages": [
         "git-delta"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "diff",
+        "merge"
+      ]
     },
     {
       "id": "difftastic",
@@ -3678,7 +4852,11 @@
       "packages": [
         "difftastic"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "diff",
+        "merge"
+      ]
     },
     {
       "id": "direnv",
@@ -3689,7 +4867,11 @@
       "packages": [
         "direnv"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "env",
+        "environment"
+      ]
     },
     {
       "id": "dust",
@@ -3700,7 +4882,11 @@
       "packages": [
         "dust"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "du",
+        "disk usage"
+      ]
     },
     {
       "id": "entr",
@@ -3711,7 +4897,10 @@
       "packages": [
         "entr"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "watch files"
+      ]
     },
     {
       "id": "fd",
@@ -3722,7 +4911,71 @@
       "packages": [
         "fd"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "find"
+      ]
+    },
+    {
+      "id": "forge-sparks",
+      "name": "Forge Sparks",
+      "category": "devtools",
+      "description": "Simple notifier app with support for Github, GitLab, Gitea and Forgejo",
+      "icon": "",
+      "packages": [
+        "forge-sparks"
+      ],
+      "source": "arch",
+      "keywords": [
+        "github",
+        "gitlab",
+        "notifications"
+      ]
+    },
+    {
+      "id": "gaphor",
+      "name": "Gaphor",
+      "category": "devtools",
+      "description": "Simple UML and SysML modeling tool",
+      "icon": "gaphor",
+      "packages": [
+        "gaphor"
+      ],
+      "source": "arch",
+      "keywords": [
+        "uml",
+        "diagram"
+      ]
+    },
+    {
+      "id": "ghex",
+      "name": "GHex",
+      "category": "devtools",
+      "description": "Hex editor for the GNOME desktop",
+      "icon": "ghex",
+      "packages": [
+        "ghex"
+      ],
+      "source": "arch",
+      "keywords": [
+        "hex editor"
+      ]
+    },
+    {
+      "id": "ghidra",
+      "name": "Ghidra",
+      "category": "devtools",
+      "description": "Software reverse engineering framework",
+      "icon": "ghidra",
+      "packages": [
+        "ghidra"
+      ],
+      "source": "arch",
+      "keywords": [
+        "reverse engineering",
+        "decompiler",
+        "disassembler"
+      ]
     },
     {
       "id": "git-lfs",
@@ -3749,7 +5002,11 @@
       "packages": [
         "gitg"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "git client",
+        "git gui"
+      ]
     },
     {
       "id": "github-cli",
@@ -3760,7 +5017,11 @@
       "packages": [
         "github-cli"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "gh",
+        "github"
+      ]
     },
     {
       "id": "gitkraken",
@@ -3771,7 +5032,11 @@
       "packages": [
         "gitkraken"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "git client",
+        "git gui"
+      ]
     },
     {
       "id": "gitlab-cli",
@@ -3782,7 +5047,11 @@
       "packages": [
         "glab"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "glab",
+        "gitlab"
+      ]
     },
     {
       "id": "gitui",
@@ -3793,7 +5062,11 @@
       "packages": [
         "gitui"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "git client",
+        "git gui"
+      ]
     },
     {
       "id": "glow",
@@ -3804,7 +5077,10 @@
       "packages": [
         "glow"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "markdown viewer"
+      ]
     },
     {
       "id": "hexyl",
@@ -3815,7 +5091,10 @@
       "packages": [
         "hexyl"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "hex viewer"
+      ]
     },
     {
       "id": "httpie",
@@ -3826,7 +5105,12 @@
       "packages": [
         "httpie"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "http client",
+        "curl",
+        "api"
+      ]
     },
     {
       "id": "hurl",
@@ -3837,7 +5121,12 @@
       "packages": [
         "hurl"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "http client",
+        "curl",
+        "api"
+      ]
     },
     {
       "id": "hyperfine",
@@ -3859,7 +5148,11 @@
       "packages": [
         "just"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "make",
+        "task runner"
+      ]
     },
     {
       "id": "lazygit",
@@ -3870,7 +5163,11 @@
       "packages": [
         "lazygit"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "git client",
+        "git gui"
+      ]
     },
     {
       "id": "lnav",
@@ -3881,7 +5178,11 @@
       "packages": [
         "lnav"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "log viewer",
+        "logs"
+      ]
     },
     {
       "id": "ltrace",
@@ -3892,7 +5193,12 @@
       "packages": [
         "ltrace"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "debug",
+        "trace",
+        "syscalls"
+      ]
     },
     {
       "id": "meld",
@@ -3903,7 +5209,11 @@
       "packages": [
         "meld"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "diff",
+        "merge"
+      ]
     },
     {
       "id": "mitmproxy",
@@ -3914,7 +5224,12 @@
       "packages": [
         "mitmproxy"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "proxy",
+        "intercept",
+        "https"
+      ]
     },
     {
       "id": "pre-commit",
@@ -3925,7 +5240,10 @@
       "packages": [
         "pre-commit"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "git hooks"
+      ]
     },
     {
       "id": "ripgrep",
@@ -3935,6 +5253,22 @@
       "icon": "",
       "packages": [
         "ripgrep"
+      ],
+      "source": "arch",
+      "keywords": [
+        "rg",
+        "grep",
+        "search"
+      ]
+    },
+    {
+      "id": "share-preview",
+      "name": "Share Preview",
+      "category": "devtools",
+      "description": "Preview and debug websites metadata tags for social media share",
+      "icon": "",
+      "packages": [
+        "share-preview"
       ],
       "source": "arch"
     },
@@ -3947,7 +5281,10 @@
       "packages": [
         "shellcheck"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "lint"
+      ]
     },
     {
       "id": "shfmt",
@@ -3958,7 +5295,11 @@
       "packages": [
         "shfmt"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "format",
+        "shell"
+      ]
     },
     {
       "id": "sops",
@@ -3969,7 +5310,11 @@
       "packages": [
         "sops"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "secrets",
+        "encryption"
+      ]
     },
     {
       "id": "strace",
@@ -3980,7 +5325,12 @@
       "packages": [
         "strace"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "debug",
+        "trace",
+        "syscalls"
+      ]
     },
     {
       "id": "tig",
@@ -3991,7 +5341,11 @@
       "packages": [
         "tig"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "git client",
+        "git gui"
+      ]
     },
     {
       "id": "tldr-pages",
@@ -4007,7 +5361,11 @@
         "run": [
           "tldr --update"
         ]
-      }
+      },
+      "keywords": [
+        "man pages",
+        "cheat sheet"
+      ]
     },
     {
       "id": "tmux",
@@ -4018,7 +5376,10 @@
       "packages": [
         "tmux"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal multiplexer"
+      ]
     },
     {
       "id": "tokei",
@@ -4029,7 +5390,11 @@
       "packages": [
         "tokei"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "count lines",
+        "loc"
+      ]
     },
     {
       "id": "watchexec",
@@ -4040,7 +5405,10 @@
       "packages": [
         "watchexec"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "watch files"
+      ]
     },
     {
       "id": "wireshark",
@@ -4056,7 +5424,12 @@
         "groups": [
           "wireshark"
         ]
-      }
+      },
+      "keywords": [
+        "packet capture",
+        "network analyzer",
+        "sniffer"
+      ]
     },
     {
       "id": "xh",
@@ -4067,7 +5440,12 @@
       "packages": [
         "xh"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "http client",
+        "curl",
+        "api"
+      ]
     },
     {
       "id": "yq",
@@ -4078,7 +5456,12 @@
       "packages": [
         "go-yq"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "yaml",
+        "json",
+        "jq"
+      ]
     },
     {
       "id": "zellij",
@@ -4089,7 +5472,10 @@
       "packages": [
         "zellij"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal multiplexer"
+      ]
     },
     {
       "id": "zoxide",
@@ -4100,7 +5486,11 @@
       "packages": [
         "zoxide"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cd",
+        "jump"
+      ]
     },
     {
       "id": "db-browser-for-sqlite",
@@ -4111,7 +5501,12 @@
       "packages": [
         "sqlitebrowser"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "database",
+        "sql",
+        "db client"
+      ]
     },
     {
       "id": "dbeaver",
@@ -4122,7 +5517,12 @@
       "packages": [
         "dbeaver"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "database",
+        "sql",
+        "db client"
+      ]
     },
     {
       "id": "insomnia",
@@ -4133,7 +5533,13 @@
       "packages": [
         "insomnia-bin"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "api client",
+        "rest",
+        "graphql",
+        "http client"
+      ]
     },
     {
       "id": "mariadb",
@@ -4147,7 +5553,12 @@
       "source": "arch",
       "setup": {
         "note": "Create the data directory before first use: sudo mariadb-install-db --user=mysql --basedir=/usr --datadir=/var/lib/mysql, then sudo systemctl enable --now mariadb."
-      }
+      },
+      "keywords": [
+        "mysql",
+        "database",
+        "sql"
+      ]
     },
     {
       "id": "mongodb-compass",
@@ -4158,7 +5569,12 @@
       "packages": [
         "mongodb-compass"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "mongo",
+        "nosql",
+        "database"
+      ]
     },
     {
       "id": "mysql-workbench",
@@ -4169,7 +5585,12 @@
       "packages": [
         "mysql-workbench"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "database",
+        "sql",
+        "db client"
+      ]
     },
     {
       "id": "pgcli",
@@ -4180,7 +5601,11 @@
       "packages": [
         "pgcli"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "postgres",
+        "psql"
+      ]
     },
     {
       "id": "postgresql",
@@ -4194,7 +5619,12 @@
       "source": "arch",
       "setup": {
         "note": "Create the database cluster before first use: sudo -iu postgres initdb -D /var/lib/postgres/data, then sudo systemctl enable --now postgresql."
-      }
+      },
+      "keywords": [
+        "postgres",
+        "database",
+        "sql"
+      ]
     },
     {
       "id": "postman",
@@ -4205,7 +5635,13 @@
       "packages": [
         "postman-bin"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "api client",
+        "rest",
+        "graphql",
+        "http client"
+      ]
     },
     {
       "id": "valkey",
@@ -4223,7 +5659,9 @@
         ]
       },
       "keywords": [
-        "Redis"
+        "Redis",
+        "database",
+        "cache"
       ]
     },
     {
@@ -4236,7 +5674,13 @@
         "yaak",
         "yaak-cli"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "api client",
+        "rest",
+        "graphql",
+        "http client"
+      ]
     },
     {
       "id": "ansible",
@@ -4247,7 +5691,11 @@
       "packages": [
         "ansible"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "automation",
+        "configuration management"
+      ]
     },
     {
       "id": "aws-cli",
@@ -4258,7 +5706,10 @@
       "packages": [
         "aws-cli-v2"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "amazon"
+      ]
     },
     {
       "id": "azure-cli",
@@ -4269,7 +5720,10 @@
       "packages": [
         "azure-cli"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "az"
+      ]
     },
     {
       "id": "buildah",
@@ -4280,7 +5734,12 @@
       "packages": [
         "buildah"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "docker",
+        "containers",
+        "images"
+      ]
     },
     {
       "id": "cloudflare",
@@ -4292,7 +5751,11 @@
         "wrangler",
         "cloudflared"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "workers",
+        "tunnel"
+      ]
     },
     {
       "id": "digitalocean-cli",
@@ -4303,7 +5766,10 @@
       "packages": [
         "doctl"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "doctl"
+      ]
     },
     {
       "id": "dive",
@@ -4314,7 +5780,12 @@
       "packages": [
         "dive"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "docker",
+        "containers",
+        "images"
+      ]
     },
     {
       "id": "google-cloud-cli",
@@ -4325,7 +5796,11 @@
       "packages": [
         "google-cloud-cli"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "gcloud",
+        "gcp"
+      ]
     },
     {
       "id": "helm",
@@ -4336,7 +5811,11 @@
       "packages": [
         "helm"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "k9s",
@@ -4347,7 +5826,11 @@
       "packages": [
         "k9s"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "kubectl",
@@ -4358,7 +5841,11 @@
       "packages": [
         "kubectl"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "kubectx",
@@ -4369,7 +5856,11 @@
       "packages": [
         "kubectx"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "kustomize",
@@ -4380,7 +5871,11 @@
       "packages": [
         "kustomize"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "lazydocker",
@@ -4391,7 +5886,12 @@
       "packages": [
         "lazydocker"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "docker",
+        "containers",
+        "images"
+      ]
     },
     {
       "id": "local-clusters",
@@ -4403,7 +5903,11 @@
         "kind",
         "minikube"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "ngrok",
@@ -4414,7 +5918,10 @@
       "packages": [
         "ngrok"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "tunnel"
+      ]
     },
     {
       "id": "opentofu",
@@ -4425,7 +5932,11 @@
       "packages": [
         "opentofu"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "iac",
+        "infrastructure as code"
+      ]
     },
     {
       "id": "packer",
@@ -4436,7 +5947,26 @@
       "packages": [
         "packer"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "iac",
+        "infrastructure as code"
+      ]
+    },
+    {
+      "id": "podman-compose",
+      "name": "Podman-compose",
+      "category": "cloud",
+      "description": "A script to run docker-compose.yml using podman",
+      "icon": "",
+      "packages": [
+        "podman-compose"
+      ],
+      "source": "arch",
+      "keywords": [
+        "docker compose",
+        "compose"
+      ]
     },
     {
       "id": "pulumi",
@@ -4447,7 +5977,11 @@
       "packages": [
         "pulumi"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "iac",
+        "infrastructure as code"
+      ]
     },
     {
       "id": "skopeo",
@@ -4458,7 +5992,12 @@
       "packages": [
         "skopeo"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "docker",
+        "containers",
+        "images"
+      ]
     },
     {
       "id": "stern",
@@ -4469,7 +6008,11 @@
       "packages": [
         "stern"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "k8s",
+        "kubernetes"
+      ]
     },
     {
       "id": "terraform",
@@ -4480,7 +6023,11 @@
       "packages": [
         "terraform"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "iac",
+        "infrastructure as code"
+      ]
     },
     {
       "id": "claude-code",
@@ -4491,7 +6038,13 @@
       "packages": [
         "claude-code"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "anthropic"
+      ]
     },
     {
       "id": "claude-desktop",
@@ -4502,7 +6055,13 @@
       "packages": [
         "claude-desktop"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "ai",
+        "assistant",
+        "chat",
+        "anthropic"
+      ]
     },
     {
       "id": "codex-cli",
@@ -4513,7 +6072,14 @@
       "packages": [
         "openai-codex"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "openai",
+        "chatgpt"
+      ]
     },
     {
       "id": "codex-desktop",
@@ -4524,7 +6090,14 @@
       "packages": [
         "openai-codex-desktop"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "assistant",
+        "chat",
+        "openai",
+        "chatgpt"
+      ]
     },
     {
       "id": "crush",
@@ -4535,7 +6108,12 @@
       "packages": [
         "crush-bin"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant"
+      ]
     },
     {
       "id": "cursor-cli",
@@ -4546,7 +6124,12 @@
       "packages": [
         "cursor-cli"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant"
+      ]
     },
     {
       "id": "gemini-cli",
@@ -4557,7 +6140,13 @@
       "packages": [
         "gemini-cli"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "google"
+      ]
     },
     {
       "id": "github-copilot-cli",
@@ -4568,7 +6157,12 @@
       "packages": [
         "github-copilot-cli"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant"
+      ]
     },
     {
       "id": "llama-cpp",
@@ -4580,7 +6174,14 @@
         "llama-cpp",
         "ggml-vulkan"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "llm",
+        "local models",
+        "local ai",
+        "gguf"
+      ]
     },
     {
       "id": "lm-studio",
@@ -4591,7 +6192,14 @@
       "packages": [
         "lmstudio-bin"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "llm",
+        "local models",
+        "local ai",
+        "gguf"
+      ]
     },
     {
       "id": "ollama",
@@ -4607,7 +6215,14 @@
         "services": [
           "ollama.service"
         ]
-      }
+      },
+      "keywords": [
+        "ai",
+        "llm",
+        "local models",
+        "local ai",
+        "gguf"
+      ]
     },
     {
       "id": "opencode",
@@ -4618,7 +6233,30 @@
       "packages": [
         "opencode"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant"
+      ]
+    },
+    {
+      "id": "ramalama",
+      "name": "Ramalama",
+      "category": "ai",
+      "description": "Simple local AI using OCI containers",
+      "icon": "",
+      "packages": [
+        "ramalama"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "llm",
+        "local models",
+        "local ai",
+        "gguf"
+      ]
     },
     {
       "id": "t3-code",
@@ -4629,7 +6267,12 @@
       "packages": [
         "t3code-bin"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant"
+      ]
     },
     {
       "id": "1password",
@@ -4641,7 +6284,11 @@
         "1password",
         "1password-cli"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "password manager",
+        "passwords"
+      ]
     },
     {
       "id": "authenticator",
@@ -4654,7 +6301,10 @@
       ],
       "source": "arch",
       "keywords": [
-        "2FA"
+        "2FA",
+        "otp",
+        "totp",
+        "two-factor"
       ]
     },
     {
@@ -4666,7 +6316,11 @@
       "packages": [
         "bitwarden"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "password manager",
+        "passwords"
+      ]
     },
     {
       "id": "clamui",
@@ -4677,7 +6331,12 @@
       "packages": [
         "clamui"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "virus",
+        "malware",
+        "clamav"
+      ]
     },
     {
       "id": "firewalld",
@@ -4690,7 +6349,8 @@
       ],
       "source": "arch",
       "keywords": [
-        "firewall-config"
+        "firewall-config",
+        "firewall"
       ]
     },
     {
@@ -4702,7 +6362,11 @@
       "packages": [
         "gufw"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "firewall",
+        "ufw"
+      ]
     },
     {
       "id": "keepassxc",
@@ -4713,7 +6377,11 @@
       "packages": [
         "keepassxc"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "password manager",
+        "passwords"
+      ]
     },
     {
       "id": "kwalletmanager",
@@ -4724,7 +6392,11 @@
       "packages": [
         "kwalletmanager"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "kwallet",
+        "passwords"
+      ]
     },
     {
       "id": "metadata-cleaner",
@@ -4735,7 +6407,11 @@
       "packages": [
         "metadata-cleaner"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "exif",
+        "metadata"
+      ]
     },
     {
       "id": "obfuscate",
@@ -4746,7 +6422,11 @@
       "packages": [
         "obfuscate"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "redact",
+        "blur"
+      ]
     },
     {
       "id": "proton-pass",
@@ -4757,7 +6437,11 @@
       "packages": [
         "proton-pass"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "password manager",
+        "passwords"
+      ]
     },
     {
       "id": "raider",
@@ -4782,7 +6466,14 @@
       "packages": [
         "seahorse"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "gpg",
+        "pgp",
+        "ssh keys",
+        "keyring",
+        "keys"
+      ]
     },
     {
       "id": "secrets",
@@ -4795,7 +6486,9 @@
       ],
       "source": "arch",
       "keywords": [
-        "KeePass"
+        "KeePass",
+        "password manager",
+        "passwords"
       ]
     },
     {
@@ -4807,7 +6500,11 @@
       "packages": [
         "deluge-gtk"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "torrent",
+        "bittorrent"
+      ]
     },
     {
       "id": "deskflow",
@@ -4818,7 +6515,13 @@
       "packages": [
         "deskflow"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "kvm switch",
+        "synergy",
+        "barrier",
+        "share mouse"
+      ]
     },
     {
       "id": "dropbox",
@@ -4830,7 +6533,11 @@
         "dropbox",
         "dropbox-cli"
       ],
-      "source": "omarchy"
+      "source": "omarchy",
+      "keywords": [
+        "cloud storage",
+        "sync"
+      ]
     },
     {
       "id": "filezilla",
@@ -4841,7 +6548,11 @@
       "packages": [
         "filezilla"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ftp",
+        "sftp"
+      ]
     },
     {
       "id": "fragments",
@@ -4852,7 +6563,11 @@
       "packages": [
         "fragments"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "torrent",
+        "bittorrent"
+      ]
     },
     {
       "id": "free-download-manager",
@@ -4863,7 +6578,28 @@
       "packages": [
         "freedownloadmanager"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "download manager",
+        "downloader"
+      ]
+    },
+    {
+      "id": "omarchy-windows-vm",
+      "name": "FreeRDP",
+      "category": "network",
+      "description": "Remote Desktop (RDP) client for the command line, as Windows VMs and servers use",
+      "icon": "",
+      "packages": [
+        "freerdp"
+      ],
+      "source": "arch",
+      "keywords": [
+        "rdp",
+        "remote desktop",
+        "xfreerdp",
+        "windows"
+      ]
     },
     {
       "id": "kde-connect",
@@ -4888,17 +6624,6 @@
       }
     },
     {
-      "id": "kopia",
-      "name": "Kopia",
-      "category": "network",
-      "description": "Encrypted, deduplicated backups to disks and cloud storage",
-      "icon": "",
-      "packages": [
-        "kopia"
-      ],
-      "source": "cachyos"
-    },
-    {
       "id": "ktorrent",
       "name": "KTorrent",
       "category": "network",
@@ -4907,7 +6632,11 @@
       "packages": [
         "ktorrent"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "torrent",
+        "bittorrent"
+      ]
     },
     {
       "id": "localsend",
@@ -4922,7 +6651,28 @@
       "default": true,
       "keywords": [
         "airdrop",
-        "share"
+        "share",
+        "file transfer",
+        "send files"
+      ]
+    },
+    {
+      "id": "mullvad-vpn",
+      "name": "Mullvad VPN",
+      "category": "network",
+      "description": "Mullvad VPN client (desktop application)",
+      "icon": "mullvad-vpn",
+      "packages": [
+        "mullvad-vpn"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "mullvad-daemon.service"
+        ]
+      },
+      "keywords": [
+        "vpn"
       ]
     },
     {
@@ -4934,7 +6684,11 @@
       "packages": [
         "nextcloud-client"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cloud storage",
+        "sync"
+      ]
     },
     {
       "id": "nordvpn",
@@ -4953,7 +6707,10 @@
         "groups": [
           "nordvpn"
         ]
-      }
+      },
+      "keywords": [
+        "vpn"
+      ]
     },
     {
       "id": "parsec",
@@ -4964,7 +6721,25 @@
       "packages": [
         "parsec-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "remote desktop",
+        "game streaming"
+      ]
+    },
+    {
+      "id": "proton-vpn",
+      "name": "Proton VPN",
+      "category": "network",
+      "description": "ProtonVPN GTK app, Maintained by Community",
+      "icon": "",
+      "packages": [
+        "proton-vpn-gtk-app"
+      ],
+      "source": "arch",
+      "keywords": [
+        "vpn"
+      ]
     },
     {
       "id": "putty",
@@ -4975,7 +6750,12 @@
       "packages": [
         "putty"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "ssh",
+        "telnet",
+        "serial"
+      ]
     },
     {
       "id": "qbittorrent",
@@ -4986,7 +6766,11 @@
       "packages": [
         "qbittorrent"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "torrent",
+        "bittorrent"
+      ]
     },
     {
       "id": "rclone",
@@ -4997,7 +6781,14 @@
       "packages": [
         "rclone"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "cloud storage",
+        "sync",
+        "google drive",
+        "onedrive",
+        "s3"
+      ]
     },
     {
       "id": "remmina",
@@ -5008,7 +6799,13 @@
       "packages": [
         "remmina"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "remote desktop",
+        "rdp",
+        "vnc",
+        "ssh"
+      ]
     },
     {
       "id": "resilio-sync",
@@ -5019,18 +6816,11 @@
       "packages": [
         "rslsync"
       ],
-      "source": "aur"
-    },
-    {
-      "id": "restic",
-      "name": "restic",
-      "category": "network",
-      "description": "Fast, encrypted, deduplicating backups from the command line",
-      "icon": "restic",
-      "packages": [
-        "restic"
-      ],
-      "source": "arch"
+      "source": "aur",
+      "keywords": [
+        "sync",
+        "file sync"
+      ]
     },
     {
       "id": "rustdesk",
@@ -5041,7 +6831,12 @@
       "packages": [
         "rustdesk-bin"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "remote desktop",
+        "teamviewer",
+        "anydesk"
+      ]
     },
     {
       "id": "syncthing",
@@ -5058,7 +6853,11 @@
         "userServices": [
           "syncthing.service"
         ]
-      }
+      },
+      "keywords": [
+        "sync",
+        "file sync"
+      ]
     },
     {
       "id": "tailscale",
@@ -5074,7 +6873,10 @@
         "services": [
           "tailscaled.service"
         ]
-      }
+      },
+      "keywords": [
+        "vpn"
+      ]
     },
     {
       "id": "transmission",
@@ -5085,18 +6887,11 @@
       "packages": [
         "transmission-gtk"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "vorta",
-      "name": "Vorta",
-      "category": "network",
-      "description": "A desktop app for Borg backups",
-      "icon": "vorta",
-      "packages": [
-        "vorta"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "torrent",
+        "bittorrent"
+      ]
     },
     {
       "id": "warp",
@@ -5107,7 +6902,11 @@
       "packages": [
         "warp"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "file transfer",
+        "send files"
+      ]
     },
     {
       "id": "warpinator",
@@ -5118,7 +6917,26 @@
       "packages": [
         "warpinator"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "file transfer",
+        "send files"
+      ]
+    },
+    {
+      "id": "wireguard-tools",
+      "name": "WireGuard tools",
+      "category": "network",
+      "description": "Next generation secure network tunnel - tools for configuration",
+      "icon": "",
+      "packages": [
+        "wireguard-tools"
+      ],
+      "source": "arch",
+      "keywords": [
+        "vpn",
+        "wg"
+      ]
     },
     {
       "id": "alacritty",
@@ -5129,7 +6947,12 @@
       "packages": [
         "alacritty"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "terminal emulator",
+        "console"
+      ]
     },
     {
       "id": "audio-mixer",
@@ -5140,7 +6963,12 @@
       "packages": [
         "pavucontrol"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "volume",
+        "sound",
+        "pulseaudio"
+      ]
     },
     {
       "id": "catfish",
@@ -5151,25 +6979,10 @@
       "packages": [
         "catfish"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "ckb-next",
-      "name": "Ckb-next",
-      "category": "utilities",
-      "description": "Corsair Keyboard and Mouse RGB Driver",
-      "icon": "ckb-next",
-      "packages": [
-        "ckb-next"
-      ],
       "source": "arch",
-      "setup": {
-        "services": [
-          "ckb-next-daemon.service"
-        ]
-      },
       "keywords": [
-        "Corsair"
+        "file search",
+        "find files"
       ]
     },
     {
@@ -5192,7 +7005,11 @@
       "packages": [
         "clapgrep"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "file search",
+        "find files"
+      ]
     },
     {
       "id": "collision",
@@ -5205,21 +7022,10 @@
       ],
       "source": "arch",
       "keywords": [
-        "hashes"
-      ]
-    },
-    {
-      "id": "commit",
-      "name": "Commit",
-      "category": "utilities",
-      "description": "Editor that helps you write better Git and Mercurial commit messages",
-      "icon": "",
-      "packages": [
-        "commit"
-      ],
-      "source": "arch",
-      "keywords": [
-        "message editor"
+        "hashes",
+        "checksum",
+        "md5",
+        "sha256"
       ]
     },
     {
@@ -5231,24 +7037,27 @@
       "packages": [
         "conky"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "system monitor",
+        "desktop widgets"
+      ]
     },
     {
-      "id": "coolercontrol",
-      "name": "CoolerControl",
+      "id": "cpu-x",
+      "name": "CPU-X",
       "category": "utilities",
-      "description": "A program to monitor and control your cooling devices",
-      "icon": "",
+      "description": "A Free software that gathers information on CPU, motherboard and more",
+      "icon": "cpu-x",
       "packages": [
-        "coolercontrol",
-        "coolercontrold"
+        "cpu-x"
       ],
       "source": "arch",
-      "setup": {
-        "services": [
-          "coolercontrold.service"
-        ]
-      }
+      "keywords": [
+        "hardware info",
+        "cpu info",
+        "system info"
+      ]
     },
     {
       "id": "decoder",
@@ -5261,7 +7070,8 @@
       ],
       "source": "arch",
       "keywords": [
-        "QR"
+        "QR",
+        "qr code"
       ]
     },
     {
@@ -5275,7 +7085,8 @@
       ],
       "source": "arch",
       "keywords": [
-        "translator"
+        "translator",
+        "translate"
       ]
     },
     {
@@ -5287,7 +7098,33 @@
       "packages": [
         "baobab"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "disk space",
+        "baobab"
+      ]
+    },
+    {
+      "id": "disktree",
+      "name": "Disktree",
+      "category": "utilities",
+      "description": "See what fills a disk as a treemap, mark what should go and move it to the trash; karchy's disk usage tool",
+      "icon": "",
+      "packages": [
+        "disktree-bin"
+      ],
+      "source": "omarchy",
+      "default": true,
+      "keywords": [
+        "disk usage",
+        "disk space",
+        "treemap",
+        "cleanup",
+        "du"
+      ],
+      "setup": {
+        "note": "Right-click a folder in Thunar and choose Open in Disktree."
+      }
     },
     {
       "id": "droidcam",
@@ -5314,7 +7151,12 @@
           "snd-aloop"
         ],
         "note": "Its camera is a kernel module built on this computer, now and at each kernel update, with the kernel headers for both of karchy's kernels that come with it. adb and usbmuxd come with it for an Android phone or an iPhone on a USB cable."
-      }
+      },
+      "keywords": [
+        "webcam",
+        "phone camera",
+        "camera"
+      ]
     },
     {
       "id": "elastic",
@@ -5339,17 +7181,6 @@
       "source": "arch"
     },
     {
-      "id": "epson-printer-drivers",
-      "name": "Epson printer drivers",
-      "category": "utilities",
-      "description": "Epson Inkjet Printer Driver (ESC/P-R) for Linux",
-      "icon": "",
-      "packages": [
-        "epson-inkjet-printer-escpr"
-      ],
-      "source": "aur"
-    },
-    {
       "id": "extension-manager",
       "name": "Extension Manager",
       "category": "utilities",
@@ -5372,7 +7203,25 @@
       "packages": [
         "eyedropper"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "color picker"
+      ]
+    },
+    {
+      "id": "filelight",
+      "name": "Filelight",
+      "category": "utilities",
+      "description": "View disk usage information",
+      "icon": "filelight",
+      "packages": [
+        "filelight"
+      ],
+      "source": "arch",
+      "keywords": [
+        "disk usage",
+        "disk space"
+      ]
     },
     {
       "id": "flameshot",
@@ -5383,18 +7232,11 @@
       "packages": [
         "flameshot"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "flatseal",
-      "name": "Flatseal",
-      "category": "utilities",
-      "description": "A permissions manager for Flatpak",
-      "icon": "",
-      "packages": [
-        "flatseal"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "screenshot",
+        "annotate"
+      ]
     },
     {
       "id": "foot",
@@ -5413,50 +7255,6 @@
       ]
     },
     {
-      "id": "forge-sparks",
-      "name": "Forge Sparks",
-      "category": "utilities",
-      "description": "Simple notifier app with support for Github, GitLab, Gitea and Forgejo",
-      "icon": "",
-      "packages": [
-        "forge-sparks"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "gaphor",
-      "name": "Gaphor",
-      "category": "utilities",
-      "description": "Simple UML and SysML modeling tool",
-      "icon": "gaphor",
-      "packages": [
-        "gaphor"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "geany",
-      "name": "Geany",
-      "category": "utilities",
-      "description": "Fast and lightweight IDE",
-      "icon": "geany",
-      "packages": [
-        "geany"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "ghex",
-      "name": "GHex",
-      "category": "utilities",
-      "description": "Hex editor for the GNOME desktop",
-      "icon": "ghex",
-      "packages": [
-        "ghex"
-      ],
-      "source": "arch"
-    },
-    {
       "id": "ghostty",
       "name": "Ghostty",
       "category": "utilities",
@@ -5465,7 +7263,12 @@
       "packages": [
         "ghostty"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "terminal emulator",
+        "console"
+      ]
     },
     {
       "id": "gnome-clocks",
@@ -5476,23 +7279,12 @@
       "packages": [
         "gnome-clocks"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "gnome-disks",
-      "name": "GNOME Disks",
-      "category": "utilities",
-      "description": "Format, partition and check disks, and make or restore disk images",
-      "icon": "gnome-disks",
-      "packages": [
-        "gnome-disk-utility"
-      ],
       "source": "arch",
-      "default": true,
       "keywords": [
-        "partition",
-        "format",
-        "usb"
+        "clock",
+        "alarm",
+        "timer",
+        "stopwatch"
       ]
     },
     {
@@ -5504,7 +7296,11 @@
       "packages": [
         "gnome-maps"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "maps",
+        "navigation"
+      ]
     },
     {
       "id": "gnome-weather",
@@ -5529,6 +7325,22 @@
       "source": "aur"
     },
     {
+      "id": "gpu-viewer",
+      "name": "GPU-Viewer",
+      "category": "utilities",
+      "description": "A frontend to glxinfo and vulkaninfo",
+      "icon": "",
+      "packages": [
+        "gpu-viewer"
+      ],
+      "source": "arch",
+      "keywords": [
+        "vulkaninfo",
+        "glxinfo",
+        "hardware info"
+      ]
+    },
+    {
       "id": "health",
       "name": "Health",
       "category": "utilities",
@@ -5537,18 +7349,12 @@
       "packages": [
         "health"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "hp-printer-drivers",
-      "name": "HP printer drivers",
-      "category": "utilities",
-      "description": "Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet",
-      "icon": "hplip",
-      "packages": [
-        "hplip"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "fitness",
+        "steps",
+        "weight"
+      ]
     },
     {
       "id": "junction",
@@ -5559,18 +7365,11 @@
       "packages": [
         "junction"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "kdevelop",
-      "name": "KDevelop",
-      "category": "utilities",
-      "description": "C++ IDE using KDE technologies",
-      "icon": "kdevelop",
-      "packages": [
-        "kdevelop"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "default apps",
+        "open with"
+      ]
     },
     {
       "id": "kitty",
@@ -5581,7 +7380,12 @@
       "packages": [
         "kitty"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "terminal emulator",
+        "console"
+      ]
     },
     {
       "id": "krename",
@@ -5592,25 +7396,10 @@
       "packages": [
         "krename"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "lact",
-      "name": "LACT",
-      "category": "utilities",
-      "description": "Linux GPU Configuration Tool",
-      "icon": "",
-      "packages": [
-        "lact"
-      ],
       "source": "arch",
-      "setup": {
-        "services": [
-          "lactd.service"
-        ]
-      },
       "keywords": [
-        "GPU control"
+        "rename",
+        "batch rename"
       ]
     },
     {
@@ -5622,18 +7411,13 @@
       "packages": [
         "ttf-liberation"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "liquidctl",
-      "name": "Liquidctl",
-      "category": "utilities",
-      "description": "Cross-platform CLI and Python drivers for AIO liquid coolers and other devices",
-      "icon": "",
-      "packages": [
-        "liquidctl"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "fonts",
+        "arial",
+        "times new roman",
+        "document fonts"
+      ]
     },
     {
       "id": "lorem",
@@ -5644,7 +7428,11 @@
       "packages": [
         "lorem"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "lorem ipsum",
+        "placeholder text"
+      ]
     },
     {
       "id": "mission-center",
@@ -5660,11 +7448,30 @@
       "default": true,
       "keywords": [
         "task manager",
-        "monitor"
+        "monitor",
+        "system monitor",
+        "resource monitor",
+        "htop",
+        "top"
       ],
       "setup": {
         "note": "Ctrl+Shift+Esc opens it. nethogs comes with it, for the network use of each app."
       }
+    },
+    {
+      "id": "nautilus",
+      "name": "Nautilus",
+      "category": "utilities",
+      "description": "Default file manager for GNOME",
+      "icon": "nautilus",
+      "packages": [
+        "nautilus"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Files",
+        "file manager"
+      ]
     },
     {
       "id": "nvtop",
@@ -5675,7 +7482,12 @@
       "packages": [
         "nvtop"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "gpu monitor",
+        "nvidia-smi",
+        "htop"
+      ]
     },
     {
       "id": "omacalc",
@@ -5693,64 +7505,6 @@
       ]
     },
     {
-      "id": "disktree",
-      "name": "Disktree",
-      "category": "utilities",
-      "description": "See what fills a disk as a treemap, mark what should go and move it to the trash; karchy's disk usage tool",
-      "icon": "",
-      "packages": [
-        "disktree-bin"
-      ],
-      "source": "omarchy",
-      "default": true,
-      "keywords": [
-        "disk usage",
-        "disk space",
-        "treemap",
-        "cleanup",
-        "du"
-      ],
-      "setup": {
-        "note": "Right-click a folder in Thunar and choose Open in Disktree."
-      }
-    },
-    {
-      "id": "openrgb",
-      "name": "OpenRGB",
-      "category": "utilities",
-      "description": "Open source RGB lighting control that doesn't depend on manufacturer software",
-      "icon": "openrgb",
-      "packages": [
-        "openrgb"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "piper",
-      "name": "Piper",
-      "category": "utilities",
-      "description": "GTK application to configure gaming mice",
-      "icon": "",
-      "packages": [
-        "piper"
-      ],
-      "source": "arch",
-      "keywords": [
-        "gaming mice"
-      ]
-    },
-    {
-      "id": "podman-compose",
-      "name": "Podman-compose",
-      "category": "utilities",
-      "description": "A script to run docker-compose.yml using podman",
-      "icon": "",
-      "packages": [
-        "podman-compose"
-      ],
-      "source": "arch"
-    },
-    {
       "id": "railway",
       "name": "Railway",
       "category": "utilities",
@@ -5761,19 +7515,10 @@
       ],
       "source": "arch",
       "keywords": [
-        "DieBahn"
+        "DieBahn",
+        "trains",
+        "timetable"
       ]
-    },
-    {
-      "id": "ramalama",
-      "name": "Ramalama",
-      "category": "utilities",
-      "description": "Simple local AI using OCI containers",
-      "icon": "",
-      "packages": [
-        "ramalama"
-      ],
-      "source": "arch"
     },
     {
       "id": "rofi",
@@ -5784,31 +7529,10 @@
       "packages": [
         "rofi"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "share-preview",
-      "name": "Share Preview",
-      "category": "utilities",
-      "description": "Preview and debug websites metadata tags for social media share",
-      "icon": "",
-      "packages": [
-        "share-preview"
-      ],
-      "source": "arch"
-    },
-    {
-      "id": "solaar",
-      "name": "Solaar",
-      "category": "utilities",
-      "description": "Linux device manager for a wide range of Logitech devices",
-      "icon": "solaar",
-      "packages": [
-        "solaar"
-      ],
       "source": "arch",
       "keywords": [
-        "Logitech"
+        "launcher",
+        "dmenu"
       ]
     },
     {
@@ -5834,7 +7558,11 @@
       "packages": [
         "textpieces"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "text tools",
+        "scratchpad"
+      ]
     },
     {
       "id": "thunar",
@@ -5862,7 +7590,10 @@
       "packages": [
         "variety"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "wallpaper"
+      ]
     },
     {
       "id": "webfont-kit-generator",
@@ -5884,7 +7615,12 @@
       "packages": [
         "wezterm"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "terminal emulator",
+        "console"
+      ]
     },
     {
       "id": "wike",
@@ -5927,18 +7663,26 @@
       "packages": [
         "yakuake"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "terminal emulator",
+        "console"
+      ]
     },
     {
       "id": "zsh-prompt",
-      "name": "ZSH Prompt",
+      "name": "Zsh",
       "category": "utilities",
       "description": "A very advanced and programmable command interpreter (shell) for UNIX",
       "icon": "",
       "packages": [
         "zsh"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "shell"
+      ]
     },
     {
       "id": "font-0xproto",
@@ -6219,7 +7963,12 @@
       "packages": [
         "asusctl"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "asus",
+        "rog",
+        "laptop"
+      ]
     },
     {
       "id": "back-in-time",
@@ -6230,7 +7979,12 @@
       "packages": [
         "backintime"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "backup",
+        "backups",
+        "time machine"
+      ]
     },
     {
       "id": "bazaar",
@@ -6243,7 +7997,9 @@
       ],
       "source": "arch",
       "keywords": [
-        "Flatpak store"
+        "Flatpak store",
+        "app store",
+        "software center"
       ]
     },
     {
@@ -6255,7 +8011,11 @@
       "packages": [
         "borg"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "backup",
+        "backups"
+      ]
     },
     {
       "id": "btrfs-assistant",
@@ -6272,6 +8032,28 @@
         "snapper",
         "rollback",
         "restore"
+      ]
+    },
+    {
+      "id": "ckb-next",
+      "name": "Ckb-next",
+      "category": "system",
+      "description": "Corsair Keyboard and Mouse RGB Driver",
+      "icon": "ckb-next",
+      "packages": [
+        "ckb-next"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "ckb-next-daemon.service"
+        ]
+      },
+      "keywords": [
+        "Corsair",
+        "rgb",
+        "lighting",
+        "keyboard lighting"
       ]
     },
     {
@@ -6294,15 +8076,27 @@
       ]
     },
     {
-      "id": "cpu-x",
-      "name": "CPU-X",
+      "id": "coolercontrol",
+      "name": "CoolerControl",
       "category": "system",
-      "description": "A Free software that gathers information on CPU, motherboard and more",
-      "icon": "cpu-x",
+      "description": "A program to monitor and control your cooling devices",
+      "icon": "",
       "packages": [
-        "cpu-x"
+        "coolercontrol",
+        "coolercontrold"
       ],
-      "source": "arch"
+      "source": "arch",
+      "setup": {
+        "services": [
+          "coolercontrold.service"
+        ]
+      },
+      "keywords": [
+        "fan control",
+        "fans",
+        "cooling",
+        "temperature"
+      ]
     },
     {
       "id": "deja-dup",
@@ -6313,7 +8107,12 @@
       "packages": [
         "deja-dup"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "backup",
+        "backups",
+        "time machine"
+      ]
     },
     {
       "id": "distrobox",
@@ -6324,7 +8123,12 @@
       "packages": [
         "distrobox"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "containers",
+        "toolbox",
+        "other distros"
+      ]
     },
     {
       "id": "docker",
@@ -6345,7 +8149,25 @@
         "groups": [
           "docker"
         ]
-      }
+      },
+      "keywords": [
+        "containers"
+      ]
+    },
+    {
+      "id": "epson-printer-drivers",
+      "name": "Epson printer drivers",
+      "category": "system",
+      "description": "Epson Inkjet Printer Driver (ESC/P-R) for Linux",
+      "icon": "",
+      "packages": [
+        "epson-inkjet-printer-escpr"
+      ],
+      "source": "aur",
+      "keywords": [
+        "printer",
+        "printing"
+      ]
     },
     {
       "id": "fcitx5",
@@ -6356,7 +8178,15 @@
       "packages": [
         "fcitx5"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "input method",
+        "ime",
+        "chinese",
+        "japanese",
+        "korean",
+        "pinyin"
+      ]
     },
     {
       "id": "fedora-media-writer",
@@ -6367,18 +8197,15 @@
       "packages": [
         "mediawriter"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "filelight",
-      "name": "Filelight",
-      "category": "system",
-      "description": "View disk usage information",
-      "icon": "filelight",
-      "packages": [
-        "filelight"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "usb writer",
+        "bootable usb",
+        "iso",
+        "etcher",
+        "rufus",
+        "flash"
+      ]
     },
     {
       "id": "flatpak-flathub",
@@ -6391,7 +8218,26 @@
         "flatseal",
         "warehouse"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "flathub",
+        "sandbox",
+        "app store"
+      ]
+    },
+    {
+      "id": "flatseal",
+      "name": "Flatseal",
+      "category": "system",
+      "description": "A permissions manager for Flatpak",
+      "icon": "",
+      "packages": [
+        "flatseal"
+      ],
+      "source": "arch",
+      "keywords": [
+        "flatpak permissions"
+      ]
     },
     {
       "id": "genymotion",
@@ -6402,7 +8248,11 @@
       "packages": [
         "genymotion"
       ],
-      "source": "aur"
+      "source": "aur",
+      "keywords": [
+        "android",
+        "android emulator"
+      ]
     },
     {
       "id": "gnome-boxes",
@@ -6413,7 +8263,30 @@
       "packages": [
         "gnome-boxes"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "virtual machine",
+        "vm",
+        "virtualbox",
+        "vmware"
+      ]
+    },
+    {
+      "id": "gnome-disks",
+      "name": "GNOME Disks",
+      "category": "system",
+      "description": "Format, partition and check disks, and make or restore disk images",
+      "icon": "gnome-disks",
+      "packages": [
+        "gnome-disk-utility"
+      ],
+      "source": "arch",
+      "default": true,
+      "keywords": [
+        "partition",
+        "format",
+        "usb"
+      ]
     },
     {
       "id": "gnome-firmware",
@@ -6424,7 +8297,12 @@
       "packages": [
         "gnome-firmware"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "firmware",
+        "bios update",
+        "fwupd"
+      ]
     },
     {
       "id": "gnome-software",
@@ -6435,7 +8313,11 @@
       "packages": [
         "gnome-software"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "app store",
+        "software center"
+      ]
     },
     {
       "id": "gparted",
@@ -6446,7 +8328,12 @@
       "packages": [
         "gparted"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "partition",
+        "format",
+        "disk"
+      ]
     },
     {
       "id": "gpu-in-containers",
@@ -6457,18 +8344,11 @@
       "packages": [
         "nvidia-container-toolkit"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "gpu-viewer",
-      "name": "GPU-Viewer",
-      "category": "system",
-      "description": "A frontend to glxinfo and vulkaninfo",
-      "icon": "",
-      "packages": [
-        "gpu-viewer"
-      ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "nvidia",
+        "cuda"
+      ]
     },
     {
       "id": "grsync",
@@ -6479,7 +8359,28 @@
       "packages": [
         "grsync"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "backup",
+        "backups",
+        "rsync"
+      ]
+    },
+    {
+      "id": "hp-printer-drivers",
+      "name": "HP printer drivers",
+      "category": "system",
+      "description": "Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet",
+      "icon": "hplip",
+      "packages": [
+        "hplip"
+      ],
+      "source": "arch",
+      "keywords": [
+        "printer",
+        "printing",
+        "hplip"
+      ]
     },
     {
       "id": "impression",
@@ -6492,7 +8393,12 @@
       ],
       "source": "arch",
       "keywords": [
-        "USB writer"
+        "USB writer",
+        "bootable usb",
+        "iso",
+        "etcher",
+        "rufus",
+        "flash"
       ]
     },
     {
@@ -6504,7 +8410,11 @@
       "packages": [
         "discover"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "app store",
+        "software center"
+      ]
     },
     {
       "id": "kde-partition-manager",
@@ -6515,32 +8425,69 @@
       "packages": [
         "partitionmanager"
       ],
-      "source": "arch"
-    },
-    {
-      "id": "nautilus",
-      "name": "Nautilus",
-      "category": "system",
-      "description": "Default file manager for GNOME",
-      "icon": "nautilus",
-      "packages": [
-        "nautilus"
-      ],
       "source": "arch",
       "keywords": [
-        "Files"
+        "partition",
+        "format",
+        "disk"
       ]
     },
     {
-      "id": "omarchy-windows-vm",
-      "name": "Omarchy Windows VM",
+      "id": "kopia",
+      "name": "Kopia",
       "category": "system",
-      "description": "Free implementation of the Remote Desktop Protocol (RDP)",
+      "description": "Encrypted, deduplicated backups to disks and cloud storage",
       "icon": "",
       "packages": [
-        "freerdp"
+        "kopia"
       ],
-      "source": "arch"
+      "source": "cachyos",
+      "keywords": [
+        "backup",
+        "backups"
+      ]
+    },
+    {
+      "id": "lact",
+      "name": "LACT",
+      "category": "system",
+      "description": "Linux GPU Configuration Tool",
+      "icon": "",
+      "packages": [
+        "lact"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "lactd.service"
+        ]
+      },
+      "keywords": [
+        "GPU control",
+        "gpu",
+        "overclock",
+        "fan curve",
+        "undervolt",
+        "amd"
+      ]
+    },
+    {
+      "id": "liquidctl",
+      "name": "Liquidctl",
+      "category": "system",
+      "description": "Cross-platform CLI and Python drivers for AIO liquid coolers and other devices",
+      "icon": "",
+      "packages": [
+        "liquidctl"
+      ],
+      "source": "arch",
+      "keywords": [
+        "aio",
+        "cooling",
+        "fans",
+        "corsair",
+        "nzxt"
+      ]
     },
     {
       "id": "openrazer",
@@ -6556,7 +8503,29 @@
       "source": "arch",
       "setup": {
         "note": "The kernel headers for both of karchy's kernels come with it, so its kernel module is built now and rebuilt at each kernel update."
-      }
+      },
+      "keywords": [
+        "rgb",
+        "lighting",
+        "keyboard lighting",
+        "razer"
+      ]
+    },
+    {
+      "id": "openrgb",
+      "name": "OpenRGB",
+      "category": "system",
+      "description": "Open source RGB lighting control that doesn't depend on manufacturer software",
+      "icon": "openrgb",
+      "packages": [
+        "openrgb"
+      ],
+      "source": "arch",
+      "keywords": [
+        "rgb",
+        "lighting",
+        "keyboard lighting"
+      ]
     },
     {
       "id": "opentabletdriver",
@@ -6567,7 +8536,12 @@
       "packages": [
         "opentabletdriver"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "tablet",
+        "wacom",
+        "drawing tablet"
+      ]
     },
     {
       "id": "pika-backup",
@@ -6578,7 +8552,29 @@
       "packages": [
         "pika-backup"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "backup",
+        "backups",
+        "time machine",
+        "borg"
+      ]
+    },
+    {
+      "id": "piper",
+      "name": "Piper",
+      "category": "system",
+      "description": "GTK application to configure gaming mice",
+      "icon": "",
+      "packages": [
+        "piper"
+      ],
+      "source": "arch",
+      "keywords": [
+        "gaming mice",
+        "mouse",
+        "dpi"
+      ]
     },
     {
       "id": "popsicle",
@@ -6591,7 +8587,13 @@
       ],
       "source": "cachyos",
       "keywords": [
-        "USB flasher"
+        "USB flasher",
+        "usb writer",
+        "bootable usb",
+        "iso",
+        "etcher",
+        "rufus",
+        "flash"
       ]
     },
     {
@@ -6629,7 +8631,11 @@
         "userServices": [
           "psd.service"
         ]
-      }
+      },
+      "keywords": [
+        "browser cache",
+        "ram"
+      ]
     },
     {
       "id": "raspberry-pi-imager",
@@ -6640,7 +8646,30 @@
       "packages": [
         "rpi-imager"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "usb writer",
+        "bootable usb",
+        "iso",
+        "etcher",
+        "rufus",
+        "flash"
+      ]
+    },
+    {
+      "id": "restic",
+      "name": "restic",
+      "category": "system",
+      "description": "Fast, encrypted, deduplicating backups from the command line",
+      "icon": "restic",
+      "packages": [
+        "restic"
+      ],
+      "source": "arch",
+      "keywords": [
+        "backup",
+        "backups"
+      ]
     },
     {
       "id": "sched-ext-schedulers",
@@ -6658,7 +8687,30 @@
         "services": [
           "scx_loader.service"
         ]
-      }
+      },
+      "keywords": [
+        "scheduler",
+        "scx",
+        "performance"
+      ]
+    },
+    {
+      "id": "solaar",
+      "name": "Solaar",
+      "category": "system",
+      "description": "Linux device manager for a wide range of Logitech devices",
+      "icon": "solaar",
+      "packages": [
+        "solaar"
+      ],
+      "source": "arch",
+      "keywords": [
+        "Logitech",
+        "mouse",
+        "keyboard",
+        "unifying",
+        "bolt"
+      ]
     },
     {
       "id": "ventoy",
@@ -6669,7 +8721,12 @@
       "packages": [
         "ventoy-bin"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "bootable usb",
+        "iso",
+        "multiboot"
+      ]
     },
     {
       "id": "virtual-machine-manager",
@@ -6688,7 +8745,17 @@
         "groups": [
           "libvirt"
         ]
-      }
+      },
+      "keywords": [
+        "virtual machine",
+        "vm",
+        "virtualbox",
+        "vmware",
+        "virt-manager",
+        "libvirt",
+        "qemu",
+        "kvm"
+      ]
     },
     {
       "id": "vms",
@@ -6707,7 +8774,27 @@
       "keywords": [
         "qemu",
         "kvm",
-        "windows"
+        "windows",
+        "virtual machine",
+        "vm",
+        "virtualbox",
+        "vmware"
+      ]
+    },
+    {
+      "id": "vorta",
+      "name": "Vorta",
+      "category": "system",
+      "description": "A desktop app for Borg backups",
+      "icon": "vorta",
+      "packages": [
+        "vorta"
+      ],
+      "source": "arch",
+      "keywords": [
+        "backup",
+        "backups",
+        "borg"
       ]
     },
     {
@@ -6719,7 +8806,11 @@
       "packages": [
         "waydroid"
       ],
-      "source": "arch"
+      "source": "arch",
+      "keywords": [
+        "android",
+        "android apps"
+      ]
     },
     {
       "id": "winboat",
@@ -6732,7 +8823,11 @@
         "docker",
         "docker-compose"
       ],
-      "source": "cachyos"
+      "source": "cachyos",
+      "keywords": [
+        "windows apps",
+        "windows"
+      ]
     }
   ]
 }
