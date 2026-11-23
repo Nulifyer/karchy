@@ -142,7 +142,7 @@ ColumnLayout {
     Layout.fillWidth: true
     columns: 2
     columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.lg
+    rowSpacing: Style.spacing.md
 
     SettingsLabel { text: "Now" }
     Text {
@@ -162,7 +162,6 @@ ColumnLayout {
     SearchableDropdown {
       id: zoneDropdown
       Layout.fillWidth: true
-      Layout.maximumWidth: Style.space(320)
       showLabel: false
       enabled: root.busy === ""
       value: root.timezone
@@ -212,13 +211,12 @@ ColumnLayout {
       Layout.fillWidth: true
       columns: 2
       columnSpacing: Style.spacing.xxl
-      rowSpacing: Style.spacing.lg
+      rowSpacing: Style.spacing.md
 
       SettingsLabel { text: "Shows" }
       Dropdown {
         id: clockDropdown
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(320)
         showLabel: false
         value: root.clockFormat
         options: root.clockOptions

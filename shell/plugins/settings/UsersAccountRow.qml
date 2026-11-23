@@ -182,7 +182,6 @@ ColumnLayout {
       TextField {
         id: nameField
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         text: root.user.fullName || ""
         placeholderText: "Shown at the login screen"
         // A long name shows its start, not its end.
@@ -260,7 +259,6 @@ ColumnLayout {
       TextField {
         id: newPassword
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         password: true
         Accessible.name: "New password for " + root.user.name
         onTextEdited: root.passwordError = ""
@@ -270,7 +268,6 @@ ColumnLayout {
       TextField {
         id: repeatPassword
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         password: true
         Accessible.name: "Repeat the new password"
         onTextEdited: root.passwordError = ""

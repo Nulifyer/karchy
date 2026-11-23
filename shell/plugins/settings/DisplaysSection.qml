@@ -336,6 +336,7 @@ ColumnLayout {
     title: "Night light"
     subtitle: root.nightSummary()
     trailing: ToggleSwitch {
+      flush: true
       visible: root.night.installed
       checked: root.night.on
       busy: nightProc.running
@@ -366,6 +367,7 @@ ColumnLayout {
 
       SettingsLabel { text: "On a schedule" }
       ToggleSwitch {
+        flush: true
         checked: root.night.schedule
         busy: nightProc.running
         accessibleName: "Night light on a schedule"
@@ -402,7 +404,7 @@ ColumnLayout {
       SettingsLabel { text: "Warmth" }
       RowLayout {
         Layout.fillWidth: true
-        spacing: Style.spacing.lg
+        spacing: Style.spacing.huge
 
         // Tab reaches the slider; Left and Right move it a step and save.
         PageSlider {
@@ -428,7 +430,9 @@ ColumnLayout {
           font.family: Style.font.family
           font.pixelSize: Style.font.body
           font.features: { "tnum": 1 }
-          Layout.preferredWidth: Style.space(64)
+          // Its end at the page's right edge, where the dropdowns end.
+          horizontalAlignment: Text.AlignRight
+          Layout.preferredWidth: Style.space(56)
         }
       }
     }
@@ -472,6 +476,7 @@ ColumnLayout {
       title: monitor.name
       subtitle: (monitor.key || monitor.description) + (lastOn && root.monitors.length > 1 ? ", the only monitor on" : "")
       trailing: ToggleSwitch {
+        flush: true
         visible: root.monitors.length > 1
         checked: card.monitor.enabled
         enabled: !card.lastOn

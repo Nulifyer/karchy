@@ -124,17 +124,7 @@ ColumnLayout {
 
   NetworkAction { id: act; polkit: true }
 
-  SettingsHeader { text: "DNS" }
-
-  Text {
-    Layout.fillWidth: true
-    wrapMode: Text.Wrap
-    textFormat: Text.PlainText
-    text: "Used on networks you haven't trusted."
-    color: Commons.Color.textSecondary
-    font.family: Style.font.family
-    font.pixelSize: Style.font.body
-  }
+  SettingsHeader { text: "DNS"; info: "These servers are used on networks you haven't trusted." }
 
   InlineMessage {
     kind: "error"
@@ -233,11 +223,12 @@ ColumnLayout {
       onToggled: root.apply({ encrypted: checked ? "no" : "yes" })
     }
 
-    // What each choice costs sits beside its switch, never behind (i).
+    // What the choice costs sits beside its switch while it is on, never
+    // behind (i).
     SettingRow {
       visible: root.dns.encrypted && root.canEncrypt
       label: "Encrypted only"
-      note: "Websites won't load on networks that block encrypted DNS, or on sign-in pages."
+      note: root.dns.fallback_allowed ? "" : "Websites won't load on networks that block encrypted DNS, or on sign-in pages."
       warning: !root.dns.fallback_allowed
       checked: !root.dns.fallback_allowed
       busy: act.running
@@ -269,6 +260,7 @@ ColumnLayout {
     }
     KeyValueGrid {
       Layout.fillWidth: true
+      valueColumn: Style.spacing.formControlColumn
       rows: root.linkRows
     }
   }

@@ -279,6 +279,7 @@ ColumnLayout {
   KeyValueGrid {
     visible: root.packaged && root.facts.length > 0
     Layout.fillWidth: true
+    valueColumn: Style.spacing.formControlColumn
     rows: root.facts
   }
   Text {

@@ -644,7 +644,7 @@ Panel {
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.rightMargin: 0
                 anchors.verticalCenter: parent.verticalCenter
               }
             }
@@ -662,8 +662,8 @@ Panel {
                 id: brightnessSlider
                 bar: root.bar
                 anchors.fill: parent
-                anchors.leftMargin: Style.space(6)
-                anchors.rightMargin: Style.space(6)
+                anchors.leftMargin: -knobSize / 2
+                anchors.rightMargin: -knobSize / 2
                 minimum: 1
                 maximum: 100
                 step: 1
@@ -742,7 +742,7 @@ Panel {
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.rightMargin: 0
                 anchors.verticalCenter: parent.verticalCenter
               }
             }
@@ -760,8 +760,8 @@ Panel {
                 id: textSizeSlider
                 bar: root.bar
                 anchors.fill: parent
-                anchors.leftMargin: Style.space(6)
-                anchors.rightMargin: Style.space(6)
+                anchors.leftMargin: -knobSize / 2
+                anchors.rightMargin: -knobSize / 2
                 minimum: 0
                 maximum: root.textSizeStops.length - 1
                 step: 1
@@ -816,7 +816,7 @@ Panel {
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.rightMargin: 0
                 anchors.verticalCenter: parent.verticalCenter
               }
             }
@@ -884,7 +884,6 @@ Panel {
             visible: root.stayAwakeOffered
             width: parent.width
             label: Commons.I18n.t("power.stayAwake")
-            description: Commons.I18n.t("power.stayAwakeHint")
             checked: root.stayAwake
             hasCursor: root.cursorActive && root.focusSection === "stayawake"
             onHasCursorChanged: if (hasCursor) root.ensureCursorVisible(stayAwakeRow)

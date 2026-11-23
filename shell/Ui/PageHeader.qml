@@ -73,6 +73,9 @@ Item {
         RowLayout {
           spacing: Style.spacing.sm
           Layout.fillWidth: true
+          // A control's height with or without controls beside the title, so
+          // the title and what follows it sit at one place on every page.
+          Layout.minimumHeight: Style.spacing.controlHeight
 
           // Its own width, eliding only when the header can't hold it; the
           // spacer takes the rest, so the (i) sits right after the title.

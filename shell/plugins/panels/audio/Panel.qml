@@ -420,6 +420,7 @@ Panel {
             trailingControl: Component {
               ToggleSwitch {
                 id: powerSwitch
+                flush: true
                 checked: root.anyAudible
                 hasCursor: root.headerHasCursor
                 foreground: root.panelText
@@ -467,7 +468,7 @@ Panel {
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.rightMargin: 0
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: root.outputMuted ? 0.5 : 1.0
               }
@@ -486,8 +487,8 @@ Panel {
                 id: outputSlider
                 bar: root.bar
                 anchors.fill: parent
-                anchors.leftMargin: Style.space(6)
-                anchors.rightMargin: Style.space(6)
+                anchors.leftMargin: -knobSize / 2
+                anchors.rightMargin: -knobSize / 2
                 minimum: 0
                 maximum: 1
                 step: 0.05
@@ -554,7 +555,7 @@ Panel {
                 font.pixelSize: Style.font.caption
                 font.bold: true
                 anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
+                anchors.rightMargin: 0
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: root.inputMuted ? 0.5 : 1.0
               }
@@ -575,8 +576,8 @@ Panel {
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.top: parent.top
-                anchors.leftMargin: Style.space(6)
-                anchors.rightMargin: Style.space(6)
+                anchors.leftMargin: 0
+                anchors.rightMargin: 0
                 // Alone, the slider centres in the row the way the output slider does.
                 anchors.topMargin: root.inputLevelShown ? 0 : Style.spacing.controlGap / 2
                 spacing: Style.space(5)
@@ -584,7 +585,9 @@ Panel {
                 PanelSlider {
                   id: inputSlider
                   bar: root.bar
-                  width: parent.width
+                  // The track from edge to edge, as the output's.
+                  x: -knobSize / 2
+                  width: parent.width + knobSize
                   minimum: 0
                   maximum: 1
                   step: 0.05

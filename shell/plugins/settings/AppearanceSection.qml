@@ -60,7 +60,7 @@ ColumnLayout {
   GridLayout {
     columns: 2
     columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.lg
+    rowSpacing: Style.spacing.md
 
     SettingsLabel { text: "Theme" }
     Button {
@@ -131,6 +131,7 @@ ColumnLayout {
 
     SettingsLabel { text: "Lock screen clock" }
     ToggleSwitch {
+      flush: true
       readonly property var shell: root.settings ? root.settings.shell : null
       accessibleName: "Show the time and date on the lock screen"
       checked: !(shell && shell.shellConfig && shell.shellConfig.lock && shell.shellConfig.lock.clock === false)

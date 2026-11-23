@@ -264,7 +264,7 @@ ColumnLayout {
         if (root.figures) return "Breakdown as counted " + Model.when(root.page.measurement.time, root.page.nowMs)
         if (root.volume.measured && root.volume.measured.error)
           return "The count " + Model.when(root.page.measurement.time, root.page.nowMs) + " failed here: this filesystem " + root.volume.measured.error + "."
-        return "What sharing, compression and snapshots account for is counted only when you ask."
+        return "Breakdown not counted yet"
       }
     }
     Button {

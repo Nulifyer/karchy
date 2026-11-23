@@ -26,8 +26,9 @@ ColumnLayout {
   property string info: ""
   default property alias content: body.data
   property alias trailing: trailingRow.data
-  // The gap between the section's own children.
-  property int contentSpacing: Style.spacing.lg
+  // The gap between the section's own children: the gap between a form's
+  // rows, so rows keep one pitch whether a grid or the section stacks them.
+  property int contentSpacing: Style.spacing.md
 
   Layout.fillWidth: true
   Layout.topMargin: Style.spacing.lg

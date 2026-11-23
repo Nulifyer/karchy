@@ -142,10 +142,9 @@ ColumnLayout {
     label: "SSH server"
     checked: root.server.enabled === true
     warning: root.server.enabled === true && root.server.running !== true
-    // What switching it on does, why it isn't working, or how to reach it.
+    // Why it isn't working, or how to reach it.
     note: {
-      if (root.server.enabled !== true)
-        return "Turning it on opens a terminal to authorize a key. Passwords stay off."
+      if (root.server.enabled !== true) return ""
       if (root.server.running !== true)
         return "Turned on but not running. Turn it off and on again, or check: systemctl status sshd"
       return "Connect with: " + root.server.connect
@@ -290,6 +289,7 @@ ColumnLayout {
 
   KeyValueGrid {
     Layout.fillWidth: true
+    valueColumn: Style.spacing.formControlColumn
     placeholder: "Not set"
     rows: [
       { label: "Name", value: root.git.name || "" },

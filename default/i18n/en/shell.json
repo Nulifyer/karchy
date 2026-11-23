@@ -465,7 +465,6 @@
   "power.profilePerformance": "Performance",
   "power.profilePowerSaver": "Power-saver",
   "power.stayAwake": "Stay Awake",
-  "power.stayAwakeHint": "No screen-off, lock or sleep until you turn it off.",
   "power.threshold": "Threshold",
   "power.timeLeft": "Time left",
   "power.timeToFull": "Time to full",

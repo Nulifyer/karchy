@@ -462,6 +462,7 @@ Panel {
           trailingControl: Component {
             ToggleSwitch {
               id: powerSwitch
+              flush: true
               visible: !!root.adapter
               checked: !!root.adapter && root.adapter.enabled
               hasCursor: root.headerHasCursor

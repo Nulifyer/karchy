@@ -1466,6 +1466,7 @@ Panel {
 
             ToggleSwitch {
               id: powerSwitch
+              flush: true
               visible: root.canToggleWifi
               checked: Networking.wifiEnabled
               hasCursor: root.toggleHeaderHasCursor

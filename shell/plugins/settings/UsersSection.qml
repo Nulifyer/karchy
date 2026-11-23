@@ -270,7 +270,6 @@ ColumnLayout {
       TextField {
         id: addName
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         placeholderText: "lowercase letters, digits, - or _"
         Accessible.name: "Username"
         onTextEdited: root.nameError = ""
@@ -283,7 +282,6 @@ ColumnLayout {
       TextField {
         id: addFullName
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         placeholderText: "Optional"
         Accessible.name: "Full name"
         onTextEdited: root.fullNameError = ""
@@ -296,7 +294,6 @@ ColumnLayout {
       TextField {
         id: addPassword
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         password: true
         Accessible.name: "Password"
         onTextEdited: root.passwordError = ""
@@ -307,7 +304,6 @@ ColumnLayout {
       TextField {
         id: addRepeat
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(300)
         password: true
         Accessible.name: "Repeat the password"
         onTextEdited: root.passwordError = ""

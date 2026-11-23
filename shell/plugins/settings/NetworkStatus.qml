@@ -97,6 +97,9 @@ ColumnLayout {
 
       KeyValueGrid {
         Layout.fillWidth: true
+        // Inside the card's padding, still at the page's control column.
+        valueColumn: Style.spacing.formControlColumn - Style.spacing.panelPadding
+        wrapValues: true
         rows: root.rowsFor(modelData)
         onCopyRequested: function(value) { root.copy(value) }
       }

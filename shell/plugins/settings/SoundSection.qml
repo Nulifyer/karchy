@@ -185,7 +185,6 @@ ColumnLayout {
         id: outputProfile
         visible: !!root.outputPart && root.outputPart.profiles.length > 0
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(400)
         showLabel: false
         value: root.outputPart ? root.outputPart.profile : ""
         options: root.choices(root.outputPart ? root.outputPart.profiles : [])
@@ -197,7 +196,6 @@ ColumnLayout {
         id: outputPort
         visible: !!root.outputPart && root.outputPart.ports.length > 0
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(400)
         showLabel: false
         value: root.outputPart ? root.outputPart.port : ""
         options: root.choices(root.outputPart ? root.outputPart.ports : [])
@@ -272,16 +270,12 @@ ColumnLayout {
         id: level
         visible: AudioControl.inputLevelShown
         Layout.fillWidth: true
-        // As wide as the volume slider above it.
-        Layout.maximumWidth: Style.space(280)
         implicitHeight: Style.space(8)
         Accessible.role: Accessible.ProgressBar
         Accessible.name: "Input level"
 
         Rectangle {
           anchors.fill: parent
-          anchors.leftMargin: Style.spacing.sm
-          anchors.rightMargin: Style.spacing.sm
           color: Style.selectedFillFor(Commons.Color.foreground, Commons.Color.accent)
 
           Rectangle {
@@ -300,7 +294,6 @@ ColumnLayout {
         id: inputProfile
         visible: !!root.inputPart && !root.sharedCard && root.inputPart.profiles.length > 0
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(400)
         showLabel: false
         value: root.inputPart ? root.inputPart.profile : ""
         options: root.choices(root.inputPart ? root.inputPart.profiles : [])
@@ -312,7 +305,6 @@ ColumnLayout {
         id: inputPort
         visible: !!root.inputPart && root.inputPart.ports.length > 0
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(400)
         showLabel: false
         value: root.inputPart ? root.inputPart.port : ""
         options: root.choices(root.inputPart ? root.inputPart.ports : [])
@@ -360,7 +352,6 @@ ColumnLayout {
     Dropdown {
       visible: choice.rows.length > 1
       Layout.fillWidth: true
-      Layout.maximumWidth: Style.space(400)
       showLabel: false
       label: choice.accessibleName
       value: choice.current ? String(choice.current.name || "") : ""
@@ -396,11 +387,9 @@ ColumnLayout {
     signal muteToggled()
 
     Layout.fillWidth: true
-    spacing: Style.spacing.lg
+    spacing: Style.spacing.huge
 
     PageSlider {
-      // Room for what it reads and the button beside it at the window's width.
-      Layout.maximumWidth: Style.space(280)
       accessibleName: control.what + " volume, " + (control.muted ? "muted" : root.percent(control.volume))
       enabled: control.enabled
       opacity: control.muted || !control.enabled ? 0.5 : 1

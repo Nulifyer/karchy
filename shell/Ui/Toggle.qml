@@ -71,20 +71,39 @@ BorderSurface {
   readonly property bool _keyboard: activeFocus || hasCursor
   readonly property var _borderSpec: Border.controlSpec(_keyboard || _hot ? "hover-cursor" : "normal", foreground, accent)
 
-  color: flat && !_hot && !_keyboard ? "transparent" : Style.controlFill(activeFocus, _hot, foreground, accent)
-  borderSpec: flat && !_hot && !_keyboard ? Border.none() : _borderSpec
+  // A flat row's label and switch stand on the panel's two edges, where its
+  // headings, sliders and buttons stand; the fill under the pointer or the
+  // cursor reaches past them into the panel's padding.
+  readonly property int _bleed: flat ? Style.spacing.rowPaddingX : 0
+
+  color: flat ? "transparent" : Style.controlFill(activeFocus, _hot, foreground, accent)
+  borderSpec: flat ? Border.none() : _borderSpec
 
   Behavior on color { ColorAnimation { duration: Style.duration(Style.motion.fast) } }
 
-  FocusRing { shown: root._keyboard }
+  BorderSurface {
+    visible: root.flat && (root._hot || root._keyboard)
+    anchors.fill: parent
+    anchors.leftMargin: -root._bleed
+    anchors.rightMargin: -root._bleed
+    radius: root.radius
+    color: Style.controlFill(root.activeFocus, root._hot, root.foreground, root.accent)
+    borderSpec: root._borderSpec
+  }
+
+  FocusRing {
+    anchors.leftMargin: -root._bleed
+    anchors.rightMargin: -root._bleed
+    shown: root._keyboard
+  }
 
   Row {
     id: content
     anchors.left: parent.left
     anchors.right: parent.right
     anchors.verticalCenter: parent.verticalCenter
-    anchors.leftMargin: root.borderLeft + Style.spacing.rowPaddingX
-    anchors.rightMargin: root.borderRight + Style.spacing.rowPaddingX
+    anchors.leftMargin: root.flat ? 0 : root.borderLeft + Style.spacing.rowPaddingX
+    anchors.rightMargin: root.flat ? 0 : root.borderRight + Style.spacing.rowPaddingX
     spacing: Style.spacing.rowPaddingX
 
     Column {
@@ -133,6 +152,8 @@ BorderSurface {
   MouseArea {
     id: mouse
     anchors.fill: parent
+    anchors.leftMargin: -root._bleed
+    anchors.rightMargin: -root._bleed
     hoverEnabled: true
     cursorShape: root.busy ? Qt.BusyCursor : Qt.PointingHandCursor
     onClicked: if (!root.busy) root.clicked()

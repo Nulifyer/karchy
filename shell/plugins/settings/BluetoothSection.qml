@@ -125,7 +125,6 @@ ColumnLayout {
       TextField {
         id: nameField
         Layout.fillWidth: true
-        Layout.maximumWidth: Style.space(320)
         Accessible.name: "This computer's Bluetooth name"
         // What other devices see. Saved on Enter or when the field is left.
         text: root.adapter ? root.adapter.name : ""

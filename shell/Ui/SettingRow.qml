@@ -39,6 +39,8 @@ ColumnLayout {
 
   RowLayout {
     Layout.fillWidth: true
+    // As tall as a row with a dropdown or a button, so rows keep one pitch.
+    Layout.minimumHeight: Style.spacing.controlHeight
     spacing: Style.spacing.xxl
 
     Text {
@@ -64,9 +66,7 @@ ColumnLayout {
     ToggleSwitch {
       id: toggle
       Layout.alignment: Qt.AlignVCenter
-      // Its focus ring's room sits outside the track; the track lines up
-      // with the controls above and below.
-      Layout.leftMargin: -cursorPad
+      flush: true
       accessibleName: root.label
       checked: root.checked
       busy: root.busy

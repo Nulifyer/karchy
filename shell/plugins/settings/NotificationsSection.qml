@@ -96,31 +96,13 @@ ColumnLayout {
     onDismissed: root.error = ""
   }
 
-  GridLayout {
-    columns: 2
-    columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.md
-
-    SettingsLabel { text: "Do Not Disturb" }
-    ToggleSwitch {
-      accessibleName: "Do Not Disturb"
-      enabled: root.service !== null
-      checked: root.doNotDisturb
-      onToggled: if (root.service) root.service.setDoNotDisturb(!root.doNotDisturb)
-    }
-
+  SettingRow {
+    label: "Do Not Disturb"
+    enabled: root.service !== null
+    checked: root.doNotDisturb
     // What the choice costs, said only while it applies.
-    Item { visible: root.doNotDisturb; Layout.preferredWidth: Style.spacing.formLabelWidth }
-    Text {
-      visible: root.doNotDisturb
-      Layout.fillWidth: true
-      textFormat: Text.PlainText
-      text: "Notifications wait in the panel. Sign-in codes and system alerts still show."
-      color: Commons.Color.textSecondary
-      font.family: Style.font.family
-      font.pixelSize: Style.font.body
-      wrapMode: Text.Wrap
-    }
+    note: root.doNotDisturb ? "Notifications wait in the panel. Sign-in codes and system alerts still show." : ""
+    onToggled: if (root.service) root.service.setDoNotDisturb(!root.doNotDisturb)
   }
 
   SettingsHeader { text: "Apps" }

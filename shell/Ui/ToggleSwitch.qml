@@ -84,12 +84,19 @@ Item {
   property int knobInset: Math.max(1, Math.round((trackHeight - knobSize) / 2))
 
   readonly property int _pad: cursorRing ? cursorPad : 0
+  // In a form's control column the track is the switch's box, so it starts
+  // where the dropdowns and buttons above and below it start and makes a row
+  // no taller than theirs; the ring's room lies outside the box.
+  property bool flush: false
+  readonly property int _room: flush ? 0 : _pad
+  readonly property int _outside: flush ? -_pad : 0
 
-  implicitWidth: trackWidth + _pad * 2
-  implicitHeight: trackHeight + _pad * 2
+  implicitWidth: trackWidth + _room * 2
+  implicitHeight: trackHeight + _room * 2
 
   BorderSurface {
     anchors.fill: parent
+    anchors.margins: root._outside
     visible: root.cursorRing && root.hot
     color: "transparent"
     radius: Style.radius.control
@@ -97,6 +104,7 @@ Item {
   }
 
   FocusRing {
+    anchors.margins: root._outside
     shown: root.cursorRing && (root.hasCursor || root.activeFocus)
     radius: Style.radius.control
   }
@@ -145,6 +153,7 @@ Item {
   MouseArea {
     id: mouse
     anchors.fill: parent
+    anchors.margins: root._outside
     enabled: root.interactive
     hoverEnabled: true
     cursorShape: root.busy ? Qt.BusyCursor : Qt.PointingHandCursor

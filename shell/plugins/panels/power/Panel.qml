@@ -515,7 +515,6 @@ Panel {
           visible: root.idle !== null
           width: parent.width
           label: Commons.I18n.t("power.stayAwake")
-          description: Commons.I18n.t("power.stayAwakeHint")
           checked: root.stayAwake
           hasCursor: root.cursorActive && root.stayAwakeCursor
           foreground: root.panelText

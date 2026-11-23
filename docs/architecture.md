@@ -101,6 +101,14 @@ Don't dim text with `Qt.darker()` or a hand-picked alpha: `Qt.darker()` makes da
 
 `Color.accentText` is the text on a solid accent fill (never name a property `on` + capital: QML binds it as a signal handler and it stays black). Panel content sits on `[popups]` and reads `Panel.panelText` / `panelSurface` (`Color.popups.*`), never the bar's colors; so do the OSD and `PanelSlider`.
 
+### Alignment
+
+A window page has two columns and two edges. Labels start at the page's left edge and are `spacing.formLabelWidth` wide (`SettingsLabel`); controls, and the values of a page's lists (`KeyValueGrid.valueColumn`), start at `spacing.formControlColumn`. Dropdowns, text fields, slider tracks and meters end at the page's right edge; where a value or a button follows a slider, that ends there instead. A button for a whole section stands at the left edge, one that belongs to a field in the control column.
+
+Every control is `spacing.controlHeight` tall (buttons, dropdowns and fields alike), a row that shows only text is as tall, and form rows are `spacing.md` apart whether a grid or a `Section` stacks them. What a control needs around itself lies outside its box, so the visible part starts at the column: a switch's focus ring (`ToggleSwitch.flush`), the half knob at each end of a slider (`PageSlider`). `PageHeader` is a control's height with or without buttons beside the title, so every page's title and first row sit at one place.
+
+A bar panel has no label column, only its two edges: headings, slider tracks, values, switches and buttons stand on them, and a flat `Toggle`'s fill under the pointer reaches past them into the panel's padding.
+
 ### Components
 
 Every component owns its look; a caller places it and never overrides its height, padding, radius, colors or ring. A caller doesn't dim a disabled control either: each shared control draws `Color.disabledText` when `enabled` is false.
@@ -110,7 +118,7 @@ Every component owns its look; a caller places it and never overrides its height
 | `Button` | `variant`: `neutral` (default), `primary` (accent fill; the one action a page or dialog is for), `destructive` (error text and border; keep it apart and confirm it). `busy` spins `ui.busy` and takes no clicks. `focusable: true` in windows. The accessible name is the label, else the tooltip. |
 | `PanelActionButton` | The icon button. Its tooltip is its accessible name. |
 | `SettingRow` | A switch as one line of a form on a window page: label in the label column, switch, optional `info` behind an (i), and one short `note` (with `warning`) for a consequence or why the setting has no effect, shown only while it applies. The form for every switch in Settings and the VM page (D-113). |
-| `ToggleSwitch`, `Toggle` | The switch and the labelled switch row of the bar panels (`flat: true` there: no box inside the panel's own). `busy` pulses the knob (dims it under reduced motion). `accessibleName` wherever no label sits in the control. |
+| `ToggleSwitch`, `Toggle` | The switch and the labelled switch row of the bar panels (`flat: true` there: no box inside the panel's own). `ToggleSwitch.flush` makes the track the switch's box, for a form column or a heading line. `busy` pulses the knob (dims it under reduced motion). `accessibleName` wherever no label sits in the control. |
 | `PanelToolTip` | The one tooltip. `Button` and `PanelActionButton` use it; the bar's own tooltip window in `Bar.qml` does not yet. |
 | `PageHeader` | The top of a window page: title, optional caps status in a status color, optional icon, trailing controls (moved under the title when the page is narrow), and `explanation` behind an (i) button. |
 | `InfoTip` | An (i) for one control or label, opening on click, Enter or Space. Not for errors, warnings or what an action does. |

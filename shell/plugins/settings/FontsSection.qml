@@ -26,9 +26,6 @@ ColumnLayout {
   // `karchy-font-app-list --json`.
   property var appFonts: []
   property string appFamily: ""
-  // What the text size comes to in apps and terminals, in points.
-  property string appPoints: ""
-  property string terminalPoints: ""
 
   // An install in progress, and how the last one ended.
   property string installingId: ""
@@ -42,7 +39,6 @@ ColumnLayout {
   function refresh() {
     fontListProc.running = true
     appListProc.running = true
-    sizeProc.running = true
   }
 
   Component.onCompleted: refresh()
@@ -108,31 +104,12 @@ ColumnLayout {
     }
   }
 
-  // "text size: 12 px", "gtk text-scaling-factor: 1.0", "terminal font: 10 pt".
-  Process {
-    id: sizeProc
-    command: ["karchy-display-text-size"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        var factor = text.match(/text-scaling-factor:\s*([0-9.]+)/)
-        var terminal = text.match(/terminal font:\s*([0-9.]+)/)
-        // GNOME's interface font is 11 pt, which the factor scales.
-        root.appPoints = factor ? String(Math.round(11 * Number(factor[1]))) : ""
-        root.terminalPoints = terminal ? terminal[1] : ""
-      }
-    }
-  }
-
   Process {
     id: appSetProc
     onRunningChanged: if (!running) appListProc.running = true
   }
 
-  Process {
-    id: sizeSetProc
-    onRunningChanged: if (!running) sizeProc.running = true
-  }
+  Process { id: sizeSetProc }
 
   Process {
     id: installProc
@@ -169,7 +146,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Fonts"
-    explanation: "The shell always uses the monospace font. Websites use the fonts they ask for and Brave's own font settings. The boot menu and the disk-password screen always use JetBrains Mono. A font or size line of your own in a terminal's config wins over these."
+    explanation: "The monospace font is for the shell, terminals and code editors; the app font for Files, Disks and other GTK and Qt apps. Websites use the fonts they ask for and Brave's own font settings. The boot menu and the disk-password screen always use JetBrains Mono. A font or size line of your own in a terminal's config wins over these."
     ConfigFileLink {
       closes: root.settings
       file: root.terminalConfig
@@ -226,16 +203,19 @@ ColumnLayout {
   }
 
   GridLayout {
+    Layout.fillWidth: true
     columns: 2
     columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.lg
+    rowSpacing: Style.spacing.md
 
-    SettingsLabel { text: "Monospace font"; Layout.alignment: Qt.AlignTop; Layout.topMargin: Style.spacing.md }
+    SettingsLabel { text: "Monospace font"; Layout.alignment: Qt.AlignTop }
     ColumnLayout {
+      Layout.fillWidth: true
       spacing: Style.spacing.sm
 
       FontPicker {
         objectName: "fontPicker"
+        Layout.fillWidth: true
         fonts: root.fonts
         family: root.family
         enabled: root.installingId === ""
@@ -245,21 +225,18 @@ ColumnLayout {
         onInstall: function(id, name, family) { root.installFont(id, name, family) }
       }
       Text {
+        visible: root.installingId !== ""
         textFormat: Text.PlainText
-        text: root.installingId !== ""
-          ? "Still using " + root.family + " until it finishes."
-          : "The shell, terminals and code editors"
+        text: "Still using " + root.family + " until it finishes."
         color: Commons.Color.textSecondary
         font.family: Style.font.family
         font.pixelSize: Style.font.bodySmall
       }
     }
 
-    SettingsLabel { text: "App font"; Layout.alignment: Qt.AlignTop; Layout.topMargin: Style.spacing.md }
-    ColumnLayout {
-      spacing: Style.spacing.sm
-
-      SearchableDropdown {
+    SettingsLabel { text: "App font" }
+    SearchableDropdown {
+        Layout.fillWidth: true
         showLabel: false
         value: root.appFamily
         // GNOME's default first, then the font that follows the one above.
@@ -270,25 +247,14 @@ ColumnLayout {
           appSetProc.command = ["karchy-font-app-set", value]
           appSetProc.running = true
         }
-      }
-      Text {
-        textFormat: Text.PlainText
-        text: "Files, Disks and other GTK and Qt apps"
-        color: Commons.Color.textSecondary
-        font.family: Style.font.family
-        font.pixelSize: Style.font.bodySmall
-      }
     }
 
     SettingsLabel { text: "Text size" }
-    RowLayout {
-      spacing: Style.spacing.xl
-
-      // A dropdown, not a row of buttons: seven sizes overflow the page at
-      // larger scales.
-      Dropdown {
+    // A dropdown, not a row of buttons: seven sizes overflow the page at
+    // larger scales.
+    Dropdown {
+        Layout.fillWidth: true
         showLabel: false
-        implicitWidth: Style.spacing.searchableDropdownWidth
         options: root.textSizeStops.map(function(px) { return { value: String(px), label: px + " px" } })
         value: {
           var best = root.textSizeStops[0]
@@ -300,17 +266,6 @@ ColumnLayout {
           sizeSetProc.command = ["karchy-display-text-size", String(Number(value))]
           sizeSetProc.running = true
         }
-      }
-      Text {
-        textFormat: Text.PlainText
-        visible: text !== ""
-        text: [root.appPoints !== "" ? "Apps " + root.appPoints + " pt" : "",
-               root.terminalPoints !== "" ? (root.appPoints !== "" ? "terminals " : "Terminals ") + root.terminalPoints + " pt" : ""]
-          .filter(function(part) { return part !== "" }).join(" · ")
-        color: Commons.Color.textSecondary
-        font.family: Style.font.family
-        font.pixelSize: Style.font.bodySmall
-      }
     }
   }
 

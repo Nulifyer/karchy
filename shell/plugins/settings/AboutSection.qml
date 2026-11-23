@@ -68,6 +68,7 @@ ColumnLayout {
 
   KeyValueGrid {
     Layout.fillWidth: true
+    valueColumn: Style.spacing.formControlColumn
     rows: root.facts.concat(root.renderer.renderer
       ? [{ label: "Drawing with", value: root.renderer.software ? "The processor (" + root.renderer.renderer.split(" (")[0] + ")" : root.renderer.renderer }]
       : [])

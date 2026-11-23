@@ -273,6 +273,9 @@ ColumnLayout {
     id: catcher
     width: 0
     height: 0
+    // No room of its own in the page's column: without this the gap after it
+    // put this page's title lower than every other page's.
+    Layout.bottomMargin: -root.spacing
     focus: false
     // It sits at the top of the page; what is being changed is elsewhere
     // (Settings.revealFocused).

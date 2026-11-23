@@ -35,11 +35,18 @@ GridLayout {
   signal copyRequested(string value)
 
   readonly property color labelColor: Commons.Color.secondaryText(foreground, surface)
+  // Where the values start, from the grid's left edge. 0 puts them right
+  // after the longest label (a bar panel); a form page gives its control
+  // column, so the values stand under its dropdowns and buttons.
+  property real valueColumn: 0
+  // A value too long for its line wraps instead of losing its middle: for a
+  // list of addresses, where every one counts.
+  property bool wrapValues: false
   // One label width for the whole grid, so the values line up.
   readonly property real labelWidth: {
     var w = 0
     for (var i = 0; i < rows.length; i++) w = Math.max(w, metrics.advanceWidth(String(rows[i].label || "")))
-    return Math.ceil(w)
+    return Math.max(Math.ceil(w), valueColumn - Style.spacing.lg)
   }
 
   columns: 1
@@ -65,6 +72,7 @@ GridLayout {
 
       Text {
         Layout.preferredWidth: root.justify ? -1 : root.labelWidth
+        Layout.alignment: Qt.AlignTop
         textFormat: Text.PlainText
         text: String(pair.modelData.label || "")
         color: root.labelColor
@@ -83,7 +91,8 @@ GridLayout {
         font.family: root.fontFamily
         font.pixelSize: root.fontSize
         font.features: { "tnum": 1 }
-        elide: Text.ElideMiddle
+        elide: root.wrapValues ? Text.ElideNone : Text.ElideMiddle
+        wrapMode: root.wrapValues ? Text.Wrap : Text.NoWrap
 
         MouseArea {
           id: valueMouse

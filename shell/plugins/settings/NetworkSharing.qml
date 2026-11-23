@@ -57,6 +57,7 @@ ColumnLayout {
 
   KeyValueGrid {
     Layout.fillWidth: true
+    valueColumn: Style.spacing.formControlColumn
     rows: root.rows
   }
 }

@@ -39,7 +39,6 @@ Item {
   }
 
   Layout.fillWidth: true
-  Layout.maximumWidth: Style.space(320)
   implicitWidth: Style.space(200)
   implicitHeight: slider.implicitHeight + Style.spacing.md
   activeFocusOnTab: true
@@ -48,13 +47,24 @@ Item {
   Keys.onLeftPressed: root.stepBy(LayoutMirroring.enabled ? 1 : -1)
   Keys.onRightPressed: root.stepBy(LayoutMirroring.enabled ? -1 : 1)
 
-  FocusRing { shown: root.activeFocus; control: root; radius: Style.radius.control }
+  // The track runs from edge to edge of this item, so it starts where the
+  // dropdowns and buttons above and below it start. The knob's half at each
+  // end, and the focus ring, lie outside.
+  readonly property real overhang: slider.knobSize / 2
+
+  FocusRing {
+    anchors.leftMargin: -(root.overhang + Style.spacing.sm)
+    anchors.rightMargin: -(root.overhang + Style.spacing.sm)
+    shown: root.activeFocus
+    control: root
+    radius: Style.radius.control
+  }
 
   PanelSlider {
     id: slider
     anchors.fill: parent
-    anchors.leftMargin: Style.spacing.sm
-    anchors.rightMargin: Style.spacing.sm
+    anchors.leftMargin: -root.overhang
+    anchors.rightMargin: -root.overhang
     // A window, not a panel: the slider takes the window's colors.
     trackColor: Style.selectedFillFor(Commons.Color.foreground, Commons.Color.accent)
     fillColor: Commons.Color.foreground

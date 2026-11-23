@@ -253,8 +253,8 @@ QtObject {
     readonly property int controlGap: root.spacingToken("control-gap", 8)
     readonly property int controlPaddingX: root.spacingToken("control-padding-x", 10)
     readonly property int controlPaddingY: root.spacingToken("control-padding-y", 6)
-    readonly property int inputPaddingY: root.spacingToken("input-padding-y", 7)
-    readonly property int controlHeight: root.spacingToken("control-height", 28)
+    readonly property int inputPaddingY: root.spacingToken("input-padding-y", 6)
+    readonly property int controlHeight: root.spacingToken("control-height", 30)
     readonly property int popupRowHeight: root.spacingToken("popup-row-height", 28)
     readonly property int dropdownWidth: root.spacingToken("dropdown-width", 240)
     readonly property int searchableDropdownWidth: root.spacingToken("searchable-dropdown-width", 260)
@@ -272,6 +272,9 @@ QtObject {
     readonly property int panelWidthWide: root.spacingToken("panel-width-wide", 560)
     readonly property int sidebarWidth: root.spacingToken("sidebar-width", 200)
     readonly property int formLabelWidth: root.spacingToken("form-label-width", 170)
+    // Where a form's controls start, from the page's left edge: after the
+    // label column and its gap. Values in a page's lists start there too.
+    readonly property int formControlColumn: formLabelWidth + xxl
     readonly property int actionButtonSize: root.spacingToken("action-button-size", 22)
     readonly property int heroGap: root.spacingToken("hero-gap", 14)
   }
