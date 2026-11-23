@@ -54,6 +54,15 @@ pacman -S --noconfirm --needed uv python-pipx >>/tmp/pacman.log 2>&1
 check "uv installed by hand is removed" "$(helper remove uv) [$(have uv)]" "done uv []"
 check "and what the user installed beside it stays" "$(have python-pipx)" "python-pipx"
 
+# An entry that became one package: [karchy] no longer has its package, and
+# the one installed must not hold the app in place.
+helper install go >/dev/null
+jq '(.apps[] | select(.id == "go") | .packages) = ["go"]' "$root/default/karchy/quick-install.json" \
+  >/usr/share/karchy/default/karchy/quick-install.json
+check "an app whose entry became one package goes with its old package" \
+  "$(helper remove go) [$(have karchy-app-go go gopls)]" "done go []"
+install -Dm644 "$root/default/karchy/quick-install.json" /usr/share/karchy/default/karchy/quick-install.json
+
 # The 32-bit driver: with this machine's drivers installed as dependencies
 # (no GPU here: Mesa's software drivers), Steam's package takes them.
 pacman -S --noconfirm --needed --asdeps lib32-mesa lib32-vulkan-swrast vulkan-swrast >>/tmp/pacman.log 2>&1

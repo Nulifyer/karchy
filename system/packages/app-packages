@@ -239,6 +239,9 @@ remove_app() {
   main=$(field "$app" '.packages[0]')
   installed "$target" && gone+=("$target")
   [[ $main != "$target" ]] && installed_explicitly "$main" && gone+=("$main")
+  # A package of its own from when the entry was several packages: [karchy]
+  # dropped it, and it would hold the app in place.
+  [[ $target != "karchy-app-$id" ]] && installed "karchy-app-$id" && gone+=("karchy-app-$id")
   if ((${#gone[@]} == 0)); then
     echo "done $id"
     return 0
