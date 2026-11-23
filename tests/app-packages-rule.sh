@@ -4,8 +4,8 @@
 #   - the rule for which package stands for an app is written the same in the
 #     three places that install apps;
 #   - packaging/pkgbuilds/karchy-apps makes exactly the packages that rule
-#     names, each depending on its entry's packages (an AUR app's first
-#     package left out, a gpu32 app with the driver names), and refuses a
+#     names, each depending on its entry's packages (an AUR app's packages
+#     from the AUR left out, a gpu32 app with the driver names), and refuses a
 #     catalog whose names aren't plain package names;
 #   - `karchy-quick-install status`, against a fake pacman: an app with its
 #     own package counts as installed by that package or by its first
@@ -54,7 +54,7 @@ check "the PKGBUILD makes the packages the rule names" \
 check "and at least thirty of them" "$(($(wc -l <<<"$packages") >= 30))" 1
 expected=$(jq -r '.apps[] | select(.feature | not)
   | select((.packages | length) > 1 or .setup.gpu32 == true)
-  | "karchy-app-\(.id)\t\((if .source == "aur" then .packages[1:] else .packages end
+  | "karchy-app-\(.id)\t\((if .source == "aur" then .packages - (.aur // [.packages[0]]) else .packages end
       + (if .setup.gpu32 == true then ["vulkan-driver", "lib32-vulkan-driver", "lib32-opengl-driver"] else [] end)) | join(" "))"' \
   "$catalog" | sort)
 check "each depends on its entry's packages" "$packages" "$expected"
@@ -63,7 +63,10 @@ check "Lutris brings its parts and a 32-bit driver" \
   "lutris umu-launcher wine-staging winetricks vulkan-driver lib32-vulkan-driver lib32-opengl-driver"
 check "Mission Center brings nethogs" \
   "$(grep -P '^karchy-app-mission-center\t' <<<"$packages" | cut -f2)" "mission-center nethogs"
-# No AUR entry is several packages today, so this one is made up.
+check "DroidCam's package holds the headers its module is built with, not the AUR's two" \
+  "$(grep -P '^karchy-app-droidcam\t' <<<"$packages" | cut -f2)" \
+  "android-tools usbmuxd linux-cachyos-headers linux-cachyos-lts-headers"
+# An AUR entry without an `aur` list: only its first package is the AUR's.
 mkdir "$tmp/aur"
 cp "$root/packaging/pkgbuilds/karchy-apps/PKGBUILD" "$tmp/aur/"
 echo '{"apps":[{"id":"cam","name":"Cam","packages":["cam-aur","v4l-utils","dkms"],"source":"aur"}]}' >"$tmp/aur/quick-install.json"

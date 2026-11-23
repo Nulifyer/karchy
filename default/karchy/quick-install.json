@@ -5290,9 +5290,25 @@
       "description": "A tool to turn your phone/tablet into a wireless/usb webcam",
       "icon": "droidcam",
       "packages": [
-        "droidcam"
+        "droidcam",
+        "v4l2loopback-dc-dkms",
+        "android-tools",
+        "usbmuxd",
+        "linux-cachyos-headers",
+        "linux-cachyos-lts-headers"
       ],
-      "source": "aur"
+      "source": "aur",
+      "aur": [
+        "droidcam",
+        "v4l2loopback-dc-dkms"
+      ],
+      "setup": {
+        "modules": [
+          "v4l2loopback-dc",
+          "snd-aloop"
+        ],
+        "note": "Its camera is a kernel module built on this computer, now and at each kernel update, with the kernel headers for both of karchy's kernels that come with it. adb and usbmuxd come with it for an Android phone or an iPhone on a USB cable."
+      }
     },
     {
       "id": "elastic",

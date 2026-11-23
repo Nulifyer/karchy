@@ -111,6 +111,13 @@ function sourceText(source, feature) {
 // first package only, so a list of several keeps the general wording.
 function installsText(app, info) {
   var packages = app.packages || []
+  // An AUR app that also brings repository packages: say which are which.
+  if (app.source === "aur" && packages.length > 1) {
+    var built = app.aur || packages.slice(0, 1)
+    var rest = packages.filter(function(p) { return built.indexOf(p) < 0 })
+    return built.join(", ") + " from the AUR (built on this computer from a community-maintained script)"
+      + (rest.length > 0 ? ", with " + rest.join(", ") + " " + sourceText("arch", false) : "")
+  }
   var pkgs = packages.join(", ")
   var repo = info && typeof info === "object" ? String(info.repo || "") : ""
   var from = repo !== "" && packages.length === 1 && app.source !== "aur" && !app.feature
@@ -135,6 +142,9 @@ function setupLines(app, multilibOn) {
   var groups = setup.groups || []
   if (groups.length > 0)
     clauses.push("adds you to the " + list(groups) + " group" + (groups.length > 1 ? "s" : "") + " (from your next sign-in)")
+  var modules = setup.modules || []
+  if (modules.length > 0)
+    clauses.push("loads the " + list(modules) + " kernel module" + (modules.length > 1 ? "s" : ""))
   if (clauses.length > 0) lines.push(capitalized(list(clauses)) + ".")
   var run = setup.run || []
   for (var i = 0; i < run.length; i++) lines.push("Runs " + run[i] + " as you.")

@@ -20,7 +20,11 @@ Errors:
     plain package names
   - an AUR entry whose other packages aren't all in a signed repository:
     its karchy-app-<id> package (D-150, packaging/pkgbuilds/karchy-apps)
-    depends on them, and pacman can't resolve a dependency from the AUR
+    depends on them, and pacman can't resolve a dependency from the AUR.
+    An entry that needs more than one package from the AUR names them all
+    in `aur` (the first package among them); those are built with the app
+    and left out of its package, which must still have something to hold
+  - `setup.modules` that aren't kernel module names
   - the apps karchy ships (karchy-desktop's optdepends) and the list's
     `default` entries differ (D-71); an entry of several packages is named
     there by its karchy-app-<id> package, which is what gets installed
@@ -186,6 +190,21 @@ def main():
         src, where = a.get('source'), a.get('id')
         if a.get('feature'):
             continue
+        pkgs = a.get('packages', [])
+        for m in (a.get('setup') or {}).get('modules', []):
+            if not re.fullmatch(r'[a-zA-Z0-9_-]+', m):
+                errors.append(f'{where}: setup.modules: {m!r} is not a kernel module name')
+        if 'aur' in a:
+            listed = a['aur']
+            if src != 'aur':
+                errors.append(f'{where}: an "aur" list, but the source is {src!r}')
+            elif not listed or listed[0] != pkgs[0] or not set(listed) <= set(pkgs) or len(set(listed)) != len(listed):
+                errors.append(f'{where}: "aur" names the entry\'s packages that come from the AUR, the first package first')
+            elif len(listed) == len(pkgs) and len(pkgs) > 1:
+                errors.append(f'{where}: every package is from the AUR, so karchy-app-{where} would hold nothing')
+            for p in listed:
+                if p in every_repo:
+                    errors.append(f'{where}: "aur" names {p}, which a signed repository carries')
         if src == 'karchy':
             # karchy's add-ons: built from this repository and released in
             # [karchy] with karchy itself (D-106).
@@ -207,8 +226,8 @@ def main():
                 errors.append(f'{where}: {p} is not in {src}' + (f' (found in {", ".join(found)})' if found else ''))
             elif p not in every_repo and src != 'aur':
                 errors.append(f'{where}: {p} is in no signed repository')
-            elif p not in every_repo and n > 0:
-                errors.append(f'{where}: {p} is not in a signed repository, so karchy-app-{where} could not depend on it')
+            elif p not in every_repo and p not in a.get('aur', pkgs[:1]):
+                errors.append(f'{where}: {p} is not in a signed repository, so karchy-app-{where} could not depend on it (name it in the entry\'s "aur" list to build it with the app)')
             elif src == 'aur' and p not in every_repo:
                 info = aur.get(p)
                 if not info:

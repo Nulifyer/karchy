@@ -10,7 +10,8 @@
 # non-interactively, and applies each app's declared system setup from the
 # catalog: Arch's 32-bit repository (multilib), the 32-bit graphics driver
 # for this machine's GPUs (gpu32), system services, groups for the calling
-# user, and the firewall rule for apps that need one on trusted networks.
+# user, kernel modules to load now (modules), and the firewall rule for apps
+# that need one on trusted networks.
 # User-level setup (user services, commands run as the user) is the caller's.
 #
 # Output, one line per change on stdout, for the window:
@@ -43,7 +44,9 @@
 #   the caller's files or environment.
 # - Files written: /etc/pacman.conf, only to uncomment the [multilib] section
 #   Arch ships commented out, for an app that declares it. Groups are added
-#   for the user pkexec names (PKEXEC_UID), never another.
+#   for the user pkexec names (PKEXEC_UID), never another. Kernel modules
+#   are loaded by the names the list gives (letters, digits, "_", "-"),
+#   which modprobe finds only under the root-owned /usr/lib/modules.
 # - pacman runs with --noconfirm, so a conflict or anything pacman would ask
 #   about fails that app (reported) rather than prompting. Only packaged,
 #   root-owned programs are run, by absolute path or from a fixed PATH.
@@ -152,7 +155,7 @@ reason_from() {
 
 synced_multilib=0
 install_app() {
-  local id=$1 app=${apps[$1]} target extra=() missing=() sync=-S unit group out failed=()
+  local id=$1 app=${apps[$1]} target extra=() missing=() sync=-S unit group module out failed=()
   target=$(field "$app" "$TARGET")
   if [[ $(field "$app" '.multilib // false') == true ]]; then
     if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
@@ -203,6 +206,11 @@ install_app() {
     id -nG "$user" | tr ' ' '\n' | grep -qxF "$group" && continue
     usermod -aG "$group" "$user" >&2 || failed+=("adding you to $group")
   done < <(field "$app" '.setup.groups[]? // empty')
+  # Loaded now; the app's own package loads them at each start.
+  while read -r module; do
+    [[ $module =~ ^[a-zA-Z0-9_-]+$ ]] || continue
+    modprobe -- "$module" >&2 || failed+=("loading the $module kernel module (it may need a restart)")
+  done < <(field "$app" '.setup.modules[]? // empty')
   if [[ $(field "$app" '.setup.firewall // false') == true && -x $FIREWALL ]]; then
     "$FIREWALL" >&2 || failed+=("opening its ports on trusted networks")
   fi

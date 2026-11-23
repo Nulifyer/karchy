@@ -8,9 +8,11 @@
 # The list is read from the catalog, which stays the only place an app's
 # packages are written down. An entry gets a package when it lists more than
 # one package, or asks for this machine's 32-bit graphics driver (`gpu32`):
-#   - the dependencies are the entry's packages. For an AUR app the first one
-#     (the app itself) is left out: pacman can't resolve a package from the
-#     AUR, so Quick install builds it with paru and it stays the user's own;
+#   - the dependencies are the entry's packages. For an AUR app the ones from
+#     the AUR are left out (the first, the app itself, or the entry's `aur`
+#     list where it is more than one: DroidCam and its kernel module): pacman
+#     can't resolve a package from the AUR, so Quick install builds them with
+#     paru and they stay the user's own;
 #   - a `gpu32` entry also depends on the names every driver provides
 #     (vulkan-driver, lib32-vulkan-driver, lib32-opengl-driver). Quick
 #     install installs the drivers that fit the machine's GPUs first, as
@@ -39,7 +41,7 @@ _entries=$(jq -r '
   | select(.feature | not)
   | select((.packages | length) > 1 or .setup.gpu32 == true)
   | [ .id, .name,
-      ( (if .source == "aur" then .packages[1:] else .packages end)
+      ( (if .source == "aur" then .packages - (.aur // [.packages[0]]) else .packages end)
         + (if .setup.gpu32 == true then ["vulkan-driver", "lib32-vulkan-driver", "lib32-opengl-driver"] else [] end)
         | join(" ") ) ]
   | @tsv' "$_catalog") || exit 1

@@ -26,7 +26,10 @@
 #                 line each: "log <file>", "terminal <id>" for each app the
 #                 terminal takes, then the root helper's "queued|working|
 #                 done|failed <id> [reason]" lines for the rest (an install
-#                 is done once its user-level setup ran too), and "finished"
+#                 is done once its user-level setup ran too; "cancelled
+#                 <id> <reason>" when the password prompt was closed), and
+#                 "finished". The terminal tells the window when it is
+#                 through (`finished terminal`)
 #   install <id>  install the packages and apply the entry's setup:
 #                 multilib    turn on Arch's 32-bit repository first
 #                 gpu32       add the 32-bit graphics driver this machine needs
@@ -227,7 +230,7 @@ gpu32_packages() {
 }
 
 install_app() {
-  local app name feature target pkgs=() extra=() missing=() sync=-S unit group cmd failed=()
+  local app name feature target pkgs=() aur=() extra=() missing=() sync=-S unit group module cmd failed=()
   app=$(entry "$1") || exit 1
   name=$(field "$app" .name)
   feature=$(field "$app" '.feature // empty')
@@ -277,10 +280,13 @@ install_app() {
     fi
   fi
   if [[ $(field "$app" .source) == aur ]]; then
-    # The app itself is built here and stays the user's own package; what it
-    # needs from the repositories comes with its karchy-app package.
+    # The app itself is built here and stays the user's own package, with any
+    # other package of the entry that only the AUR has (`aur`: DroidCam's
+    # kernel module); what it needs from the repositories comes with its
+    # karchy-app package.
     printf '%s%s%s\n' "$DIM" "From the AUR: built on this computer from a community-maintained script." "$RESET"
-    paru --color auto "$sync" --needed "${pkgs[0]}" || die "$name wasn't installed."
+    mapfile -t aur < <(field "$app" '(.aur // [.packages[0]])[]')
+    paru --color auto "$sync" --needed "${aur[@]}" || die "$name wasn't installed."
     sync=-S
     [[ $target == "${pkgs[0]}" ]] && target=""
   fi
@@ -312,6 +318,11 @@ install_app() {
       failed+=("adding you to the $group group")
     fi
   done < <(field "$app" '.setup.groups[]? // empty')
+  # Loaded now; the app's own package loads them at each start. A kernel that
+  # was updated since this start has no modules to load until the next one.
+  while read -r module; do
+    [[ -z $module ]] || sudo modprobe -- "$module" || failed+=("loading the $module kernel module (it may need a restart)")
+  done < <(field "$app" '.setup.modules[]? // empty')
   while read -r cmd; do
     [[ -z $cmd ]] || bash -c "$cmd" || failed+=("running $cmd")
   done < <(field "$app" '.setup.run[]? // empty')
@@ -352,13 +363,17 @@ remove_app() {
   # The app's package, which takes what came with it and nothing else needs
   # (pacman -Rns), and the app itself where it is the user's own: an app of
   # one package, an AUR app, or one installed by hand before its package.
-  local target main needs by
+  local target main needs by pkg
   target=$(field "$app" "$TARGET")
   main=$(field "$app" '.packages[0]')
   [[ -n $main ]] || die "$name lists no packages."
   pacman_free
   installed "$target" && gone+=("$target")
   [[ $main != "$target" ]] && installed_explicitly "$main" && gone+=("$main")
+  # What else of the entry was built from the AUR, the user's own as well.
+  while read -r pkg; do
+    [[ -n $pkg && $pkg != "$main" ]] && installed_explicitly "$pkg" && gone+=("$pkg")
+  done < <(field "$app" '.aur[]? // empty')
   # A package of its own from when the entry was several packages: [karchy]
   # dropped it, and it would hold the app in place.
   [[ $target != "karchy-app-$1" ]] && installed "karchy-app-$1" && gone+=("karchy-app-$1")
