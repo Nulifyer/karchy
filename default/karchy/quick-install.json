@@ -5290,14 +5290,9 @@
       "description": "A tool to turn your phone/tablet into a wireless/usb webcam",
       "icon": "droidcam",
       "packages": [
-        "droidcam",
-        "linux-cachyos-headers",
-        "linux-cachyos-lts-headers"
+        "droidcam"
       ],
-      "source": "aur",
-      "setup": {
-        "note": "The kernel headers for both of karchy's kernels come with it, so its kernel module is built now and rebuilt at each kernel update."
-      }
+      "source": "aur"
     },
     {
       "id": "elastic",
@@ -6700,15 +6695,9 @@
       "description": "A container-based approach to boot a full Android system on a regular Linux system",
       "icon": "waydroid",
       "packages": [
-        "waydroid",
-        "dkms",
-        "linux-cachyos-headers",
-        "linux-cachyos-lts-headers"
+        "waydroid"
       ],
-      "source": "arch",
-      "setup": {
-        "note": "The kernel headers for both of karchy's kernels come with it, for kernel modules built with DKMS."
-      }
+      "source": "arch"
     },
     {
       "id": "winboat",

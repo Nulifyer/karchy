@@ -63,8 +63,12 @@ check "Lutris brings its parts and a 32-bit driver" \
   "lutris umu-launcher wine-staging winetricks vulkan-driver lib32-vulkan-driver lib32-opengl-driver"
 check "Mission Center brings nethogs" \
   "$(grep -P '^karchy-app-mission-center\t' <<<"$packages" | cut -f2)" "mission-center nethogs"
+# No AUR entry is several packages today, so this one is made up.
+mkdir "$tmp/aur"
+cp "$root/packaging/pkgbuilds/karchy-apps/PKGBUILD" "$tmp/aur/"
+echo '{"apps":[{"id":"cam","name":"Cam","packages":["cam-aur","v4l-utils","dkms"],"source":"aur"}]}' >"$tmp/aur/quick-install.json"
 check "an AUR app's package holds only what the repositories carry" \
-  "$(grep -P '^karchy-app-droidcam\t' <<<"$packages" | cut -f2)" "linux-cachyos-headers linux-cachyos-lts-headers"
+  "$(made "$tmp/aur")" $'karchy-app-cam\tv4l-utils dkms'
 check "an app of one package gets none" "$(grep -c '^karchy-app-firefox' <<<"$packages")" 0
 
 # A name that isn't a plain package name never reaches the generated code.
