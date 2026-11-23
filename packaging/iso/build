@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Build the karchy ISO: archiso's releng profile with karchy's installer on
-# it, started on tty1 (docs/installing.md › The karchy ISO).
+# it, started on tty1 (docs/development.md › Building the ISO).
 #
 # Usage:
 #   packaging/iso/build [--out DIR] [--work DIR] [--version V]

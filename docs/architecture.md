@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **approved for phase 1** on 2026-11-13, with Q1–Q4 answered (D-41 to D-44). Q5 is still open, for phase 2. It is based on Omarchy `v4.5.0` (`ac2690cd7`), read at `~/Projects/Omarchy/reference/omarchy-v4.5.0`.
+How karchy's repository, its packages, its shell and its installer fit together, for people who change it. karchy started from Omarchy `v4.5.0` (`ac2690cd7`) and owns that code now (D-46, D-47); `vendor/upstream.tsv` maps each file to where it came from. The decisions behind what is described here are in `.agents/DECISIONS.md`, by their D numbers.
 
 ## Repository layout
 
@@ -304,12 +304,12 @@ require("default.hypr.toggles")
 
 ## Installer
 
-The **form** is a gum TUI in Omarchy's style (D-08), run from the stock Arch ISO. It asks for: disk (with typed confirmation), keyboard, username, one password, name and email, hostname, timezone, Secure Boot when the firmware is in Setup Mode (default yes), and bees (on by default).
+The **form** is a gum TUI in Omarchy's style (D-08). It starts by itself on the karchy ISO and runs the same from the stock Arch ISO. It asks for: keyboard, disk (with typed confirmation), disk encryption (D-130), what to do with each other internal disk (D-132), username, one password, name and email, hostname, timezone, release channel (D-61), Secure Boot when the firmware is in Setup Mode (default yes), and bees (on by default). `docs/installing.md` is the guide for a person; an answer file replaces the form (`karchy-install --config`).
 
 **Disk and base (D-41).** archinstall is not used. archinstall 4.5 replaces `systemd`/`sd-encrypt` with udev/busybox `encrypt` unless the disk uses a hardware security key (`archinstall/lib/installer.py:125`), and its only swap option is zram. Both conflict with D-12 and D-10. karchy's own `install/disk.sh` + `install/base.sh` do:
 
 1. `sgdisk`: 4 GiB ESP plus a LUKS partition.
-2. `cryptsetup luksFormat --type luks2`.
+2. `cryptsetup luksFormat --type luks2` (left out on an install without disk encryption, where btrfs goes straight on the partition).
 3. `mkfs.btrfs` and the D-09 subvolumes.
 4. Mount with `zstd:1,noatime`.
 5. Swap file on `@swap` via `btrfs filesystem mkswapfile`.
@@ -340,63 +340,3 @@ The base pacstrap includes `karchy-settings`, so the sudo policy, the mkinitcpio
 - `tools/vm snap` and `restore` use qcow2 snapshots for quick retries.
 
 Host check: `qemu-desktop` 11.1.3, libvirt 12.9, `edk2-ovmf` (including `OVMF_CODE.secboot.4m.fd`), swtpm and `/dev/kvm` are present. libvirt runs QEMU as `libvirt-qemu`; `tools/vm` adds an execute-only ACL for it only on directories under `$HOME` that it can't already enter.
-
-## Milestone 1 scope
-
-**In:**
-- installer, disk and base
-- setup with the Always tier (Detected tier for the VM's hardware only)
-- greetd → Hyprland → shell
-- karchy bindings and menu
-- nulifyer and theme switching
-- `karchy update`
-
-**Deferred to phase 2:**
-- the Settings window, GTK color template and VS Code theme extension
-- the Thunar actions and NAS flow
-- LocalSend firewall hook
-- bees and Secure Boot
-- the keyring choice (decided: D-57)
-- the dotfiles user layer: milestone 1 uses karchy's stubs only
-
-## Questions
-
-- **Q1. Disk and base:** karchy's own pacstrap scripts (D-41).
-- **Q2. Themes:** committed (D-42).
-- **Q3. Command names:** vendored commands keep their `omarchy-*` names; karchy's own are `karchy-*`, with a `karchy` router for `karchy update` and `karchy vm`; the `omarchy` router stays (D-43).
-- **Q4. DNS switch:** removed (D-44).
-- **Q5. Dotfiles checkout location** (phase 2, still open): `~/.local/share/karchy-user` or `~/Projects/dotfiles`?
-
-## Appendix: commands taken from Omarchy v4.5.0
-
-Historical: the selection before the ownership audit (`docs/ownership-audit.md`) dropped more, and before the rebrand to `karchy-*`. The 205 found by tracing, by group (the `omarchy-` prefix is omitted):
-
-- **apply:** `apply-lock`
-- **audio:** `audio-input-mute`, `audio-input-set-default`, `audio-output-set-default`, `audio-output-sink`, `audio-output-switch`, `audio-output-volume`, `audio-sink-availability`, `audio-source-switch`, `audio-tuning`
-- **bar:** `bar`, `bar-text-color`
-- **battery:** `battery-low`, `battery-status`
-- **bluetooth:** `bluetooth-device`, `bluetooth-power`
-- **brightness:** `brightness-display`, `brightness-display-apple`, `brightness-display-ddc`, `brightness-keyboard`, `brightness-keyboard-mute`
-- **capture:** `capture-region`, `capture-screenrecording`, `capture-screenrecording-process`, `capture-screenshot`, `capture-webcam-list`, `capture-webcam-resize`
-- **clipboard:** `clipboard-open`, `clipboard-paste-file`, `clipboard-paste-text`
-- **cmd:** `cmd-browser-handoff`, `cmd-default-browser`, `cmd-missing`, `cmd-present`, `cmd-terminal-cwd`
-- **default:** `default-browser`, `default-editor`, `default-terminal`
-- **disk, display, drive:** `disk-speedtest`, `display-text-size`, `drive-info`, `drive-password`, `drive-select`
-- **font:** `font-current`, `font-list`, `font-set` (override per D-23; rewritten for D-120, with karchy's `font-app-current`, `font-app-list`, `font-app-set`)
-- **misc:** `disk-health`, `sleep-shares`, `snapshot-boot`, `git-url-check`, `hibernation-available`, `hook`, `i18n`, `language`, `lifecycle-dispatch`, `locale-generate`, `monitor-state`, `notification-send`, `osd`, `reminder`, `screensaver`, `show-done`, `sleep-disabled`, `state`, `sudo-keepalive`, `update-firmware`, `update-time`
-- **hw:** `hw-clamshell`, `hw-display`, `hw-external-monitors`, `hw-fingerprint`, `hw-laptop`, `hw-laptop-closed`, `hw-match`, `hw-nvidia`, `hw-nvidia-display`, `hw-nvidia-gsp`, `hw-nvidia-without-gsp`, `hw-platform`
-- **hyprland:** `hyprland-corners`, `hyprland-focus-app`, `hyprland-monitor-clamshell`, `hyprland-monitor-external-active`, `hyprland-monitor-focused`, `hyprland-monitor-focused-apple`, `hyprland-monitor-internal`, `hyprland-monitor-internal-mirror`, `hyprland-monitor-laptop`, `hyprland-monitor-modeless`, `hyprland-monitor-scaling`, `hyprland-monitor-watch`, `hyprland-reload-guard`, `hyprland-session-lock-stranded`, `hyprland-session-locked`, `hyprland-toggle`, `hyprland-toggle-disabled`, `hyprland-toggle-enabled`, `hyprland-window-close-all`, `hyprland-window-minimize`, `hyprland-window-transparency`, `hyprland-workspace-layout-current`, `hyprland-workspace-layout-default`, `hyprland-workspace-layout-toggle`
-- **launch:** `launch-about`, `launch-browser`, `launch-config-editor`, `launch-editor`, `launch-or-focus`, `launch-or-focus-tui`, `launch-or-focus-webapp`, `launch-screensaver`, `launch-shell`, `launch-terminal`, `launch-tui`, `launch-webapp`
-- **menu:** `menu`, `menu-images`, `menu-select`, `menu-timezone`
-- **network:** `network-band`, `network-captive-portal`, `network-qr`, `network-speedtest`, `network-status`
-- **pkg:** `pkg-add`, `pkg-aur-install` (the AUR part of `pkg-install`, through paru), `pkg-drop`, `pkg-install` (one list: repositories first, then the AUR; D-135), `pkg-missing`, `pkg-present`, `pkg-remove`
-- **plugin:** `plugin-disable`, `plugin-enable`, `plugin-list` (installed plugins; add-ons are packages, D-106)
-- **powerprofiles:** `powerprofiles-init`, `powerprofiles-list`, `powerprofiles-set`
-- **remove/setup:** `remove-launcher-entry`, `remove-security-fido2`, `remove-security-fingerprint`, `remove-security-ssh-agent`, `remove-security-sshd`, `setup-git`, `setup-input`, `setup-keyboard`, `setup-security-fido2`, `setup-security-fingerprint`, `setup-security-ssh-agent`, `setup-security-sshd`
-- **restart:** `restart-audio`, `restart-bluetooth`, `restart-btop`, `restart-hyprctl`, `restart-shell`, `restart-terminal`, `restart-trackpad`, `restart-wifi`, `restart-xcompose`
-- **router/shell/system:** `omarchy`, `shell`, `shell-config`, `system`, `system-lid-inhibit`, `system-lock`, `system-sleep-lock`, `system-stats`, `system-wake`
-- **theme:** `theme-bg-boot-intro`, `theme-bg-cache`, `theme-bg-next`, `theme-bg-set`, `theme-bg-switcher`, `theme-color`, `theme-colors-from-alacritty`, `theme-extras`, `theme-install`, `theme-list`, `theme-osc`, `theme-refresh`, `theme-remove`, `theme-set`, `theme-set-browser`, `theme-set-browser-policy`, `theme-set-claude`, `theme-set-foot`, `theme-set-glass`, `theme-set-gnome`, `theme-set-t3code`, `theme-set-templates`, `theme-set-tmux`, `theme-set-vscode` (override per D-23), `theme-switcher`
-- **toggle:** `toggle`, `toggle-animations`, `toggle-bar`, `toggle-enabled`, `toggle-input-device`, `toggle-touchpad`
-- **webapp:** `webapp-install`, `webapp-remove`, `webapp-window-class`
-
-Plus 11 commands that `theme-set` calls and that exit early when their app is absent: `theme-set-hunk`, `-pi`, `-hermes`, `-obsidian`, `-keyboard`, `-keyboard-asus-rog`, `-keyboard-f16`, `-fcitx5`, `-herdr-machines`, plus `restart-opencode` and `restart-helix`. The exact count is settled by `tools/vendor-sync --closure`.

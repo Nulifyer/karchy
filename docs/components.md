@@ -97,7 +97,6 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | File manager | Thunar + gvfs, gvfs-smb, gvfs-mtp, tumbler; right-click actions per D-36 and D-76; Send To › LocalSend; Create Document offers Text File and Markdown Document; Desktop is home (no desktop icons) | [New] |
 | Default apps | Settings › Default apps, writing `mimeapps.list` (D-37) | [New] |
 | Editor | None in the base (D-88): the user picks one in Quick install (VS Code, Zed and others). micro is the terminal editor (D-58) and Omawrite the notepad | [New] |
-| Terminal editor | micro or nano, still open | |
 | Images | imv | [O] |
 | Media | mpv with hardware decoding config | [O] |
 | Task manager | Mission Center (Ctrl+Shift+Esc), with nethogs for its per-app network column: one app, `karchy-app-mission-center`, so both go when it is removed (D-150); btop in a terminal | [New] + [O] |
@@ -181,8 +180,7 @@ karchy tells AI coding agents (Claude Code, Codex, Gemini CLI and others) how th
 - Printers & scanners (package `karchy-printing`, D-67): CUPS with Omarchy's hardened cups-browsed (own user, sandboxed, driverless queues only), `system-config-printer`, `sane`, `sane-airscan`, `simple-scan`, and `ipp-usb` for driverless USB printers and scanners (D-38).
 - Containers (package `karchy-containers`, D-67): rootless Podman (`podman`, `crun`, `netavark`, `aardvark-dns`, `passt`), `podman-docker` for the `docker` command, `docker-compose` against the user's Podman socket (`DOCKER_HOST` via `/usr/lib/environment.d`, the socket enabled for every user by the package), and `nvidia-container-toolkit` with karchy-nvidia; the Containers panel and window (D-63).
 - Virtual machines: `qemu-desktop`, `edk2-ovmf`, `swtpm`, `spice-gtk`; `karchy vm`, VMs in `~/VMs` (no copy-on-write), no libvirt; the VMs panel and window (D-63).
-- Home backup to the NAS (phase 7).
 
 ## Installed later by the user (not in base)
 
-dotnet, go, zig, rust, bun, AI CLIs (from pacman, `[omarchy]` or the AUR), Steam, Flatpak, a password manager (the user's is Proton Pass).
+dotnet, go, zig, rust, bun, AI CLIs (from pacman, `[omarchy]` or the AUR), Steam, Flatpak, a password manager. Quick install lists them.

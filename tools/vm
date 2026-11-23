@@ -74,7 +74,7 @@
 #                               guest, which reads it at http://127.0.0.1:8090
 #                               (no firewall change here). Runs until Ctrl+C or
 #                               the guest reboots; run it again after a reboot.
-# Install on Proxmox (docs/installing.md):
+# Install on Proxmox (docs/development.md):
 #   tools/vm --pve root@host --name test new; ... run --iso
 #   ... ssh 'echo ok' (once the ISO has booted), then push, then in one
 #   terminal: ... repo; in another:

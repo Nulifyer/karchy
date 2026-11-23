@@ -53,12 +53,10 @@ write it to a USB stick and boot it. The installer starts by itself.
 ## Docs
 
 - [Installing](docs/installing.md)
+- [Using karchy](docs/using.md)
 - [Recovery](docs/recovery.md)
-- [Components](docs/components.md)
-- [Menu](docs/menu.md)
 - [Keybindings](docs/keybindings.md)
-- [Maintenance](docs/maintenance.md)
-- [Architecture](docs/architecture.md)
+- [Everything else](docs/README.md), including how karchy is built
 
 ## License
 

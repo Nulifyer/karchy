@@ -26,9 +26,9 @@ The LUKS header is the first 16 MiB of partition 2. It holds the key slots. If i
    sudo cryptsetup luksHeaderBackup /dev/nvme0n1p2 --header-backup-file karchy-luks-header.img
    ```
 
-3. Move the file off the computer, to the NAS or a USB stick. Delete the local copy.
+3. Move the file off the computer, to a USB stick or another computer. Delete the local copy.
 
-Keep the backup away from the laptop. A backup on the encrypted disk is lost together with the disk. Treat the file as a secret: with the file and the password, someone can open a copy of the disk.
+Keep the backup away from the computer. A backup on the encrypted disk is lost together with the disk. Treat the file as a secret: with the file and the password, someone can open a copy of the disk.
 
 Make a new backup after you change the disk password. Then destroy the old backup, because the old backup still opens the disk with the old password.
 
@@ -138,7 +138,7 @@ Boot the karchy ISO or the Arch Linux ISO. On the karchy ISO, press Esc at the i
    lsblk -o NAME,SIZE,FSTYPE,PARTLABEL
    ```
 
-   Set the two partitions. On a laptop with one NVMe disk they are:
+   Set the two partitions. On a computer with one NVMe disk they are:
 
    ```sh
    esp=/dev/nvme0n1p1
