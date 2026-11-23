@@ -19,6 +19,7 @@ set -eEuo pipefail
 KARCHY_SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 source "$KARCHY_SRC/install/lib.sh"
 source "$KARCHY_SRC/install/ui.sh"
+source "$KARCHY_SRC/install/network.sh"
 source "$KARCHY_SRC/install/form.sh"
 source "$KARCHY_SRC/install/disk.sh"
 source "$KARCHY_SRC/install/base.sh"
@@ -49,8 +50,16 @@ done
 preflight() {
   ((EUID == 0)) || die "run as root (the live ISO logs in as root)"
   [[ -d /sys/firmware/efi/efivars ]] || die "karchy needs UEFI boot; this system booted in BIOS mode"
-  curl -fsS --max-time 10 -o /dev/null https://archlinux.org || die "no network connection"
+  # With answers from a file nobody is there to pick a network; otherwise
+  # the Wi-Fi list is offered (install/network.sh).
+  if [[ -n $config_file || $KARCHY_UI != tui ]]; then
+    curl -fsS --max-time 10 -o /dev/null https://archlinux.org || die "no network connection"
+  else
+    net_wait || die "no network connection; connect (iwctl joins Wi-Fi) and run karchy-install again"
+  fi
   timedatectl set-ntp true
+  # The live system's pacman keyring must be ready before keys are added.
+  net_keyring_ready || die "the live system's pacman keyring could not be prepared (systemctl status pacman-init.service)"
 }
 
 # What is about to happen, before anything is written: the answers, and what

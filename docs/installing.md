@@ -41,16 +41,9 @@ On Windows or macOS, use a tool that writes the image unchanged, such as balenaE
 
 1. Plug the stick in and start the computer. Open the firmware's boot menu (often F12, F10 or Esc) and choose the stick's UEFI entry.
 2. Choose **karchy installer**. The installer starts by itself.
-3. The installer waits for the network. A cable connects by itself. For Wi-Fi, choose **Connect to Wi-Fi (iwctl)** and type:
+3. The installer needs the network. A cable, or a phone sharing its connection over USB, connects by itself. Without one the installer says **No network connection**: choose **Connect to Wi-Fi**, pick your network from the list and type its password. A wrong password asks again; **Look again** scans once more; a network that hides its name can be typed in.
 
-   ```
-   station list                       # shows your Wi-Fi device, for example wlan0
-   station wlan0 get-networks
-   station wlan0 connect "Network name"
-   exit
-   ```
-
-   The installed system keeps that Wi-Fi network and its password, so the first start is online. Enterprise (802.1X) networks are not copied; connect to those again from the network panel.
+   The installed system keeps that Wi-Fi network and its password, so the first start is online. A network with a work or school sign-in (802.1X) can't be joined from the list: use another network, a cable or a phone for the install, and join it from the network panel afterwards.
 
 ## 4. Answer the form
 

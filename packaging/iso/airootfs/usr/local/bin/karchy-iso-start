@@ -24,6 +24,8 @@ KARCHY_INSTALL_LOG=/dev/null
 source "$KARCHY_SRC/install/lib.sh"
 # shellcheck source=/dev/null
 source "$KARCHY_SRC/install/ui.sh"
+# shellcheck source=/dev/null
+source "$KARCHY_SRC/install/network.sh"
 ui_init
 # ui_init keeps the kernel's messages off these screens; the shell that
 # follows gets them back.
@@ -37,49 +39,15 @@ boot_param() {
   return 1
 }
 
-# The check the installer's preflight makes.
-online() {
-  curl -fsS --max-time 5 -o /dev/null https://archlinux.org
-}
-
-# The installer needs the network for packages. Wired networks connect by
-# themselves, so wait a little before asking.
-wait_for_network() {
-  local i
-  ui_line "Waiting for the network..." "$UI_DIM"
-  for ((i = 0; i < 15; i++)); do
-    online && return 0
-    sleep 2
-  done
-  while ! online; do
-    ui_header "karchy installer"
-    ui_line "No network connection." "$UI_RED$UI_BOLD"
-    ui_line
-    ui_line "The installer downloads karchy's packages. Plug in a cable, or connect"
-    ui_line "to Wi-Fi with iwctl:"
-    ui_line "  station wlan0 scan" "$UI_DIM"
-    ui_line "  station wlan0 get-networks" "$UI_DIM"
-    ui_line "  station wlan0 connect <name>" "$UI_DIM"
-    ui_line "  exit" "$UI_DIM"
-    ui_line
-    case "$(gum choose "Try again" "Connect to Wi-Fi (iwctl)" "Open a shell")" in
-      "Try again") ;;
-      "Connect to Wi-Fi (iwctl)") iwctl || true ;;
-      *) return 1 ;;
-    esac
-  done
-}
-
 ui_header "karchy installer"
 ui_line "Esc or Ctrl-C at a question stops the installer and leaves a root shell;" "$UI_DIM"
 ui_line "karchy-install starts it again. Alt+F2 opens another console." "$UI_DIM"
 ui_line
 
-# The live system's pacman keyring (karchy's key included) must be ready
-# before the installer adds keys to it.
-systemctl start pacman-init.service
-
-wait_for_network || { ui_line "Run karchy-install when the network is up."; exit 0; }
+# The network first: a cable connects by itself, a laptop without one gets
+# the Wi-Fi list (install/network.sh). The installer then waits for the live
+# system's pacman keyring, which can't be made before the network is there.
+net_wait || { ui_line "Run karchy-install when the network is up."; exit 0; }
 
 args=()
 if config=$(boot_param karchy.config); then

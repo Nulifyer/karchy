@@ -38,6 +38,13 @@ jobs:
       - name: Mirrors that fail a download go last, and nothing else is touched (D-124)
         run: tests/mirrors-demote.sh
 
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The installer's Wi-Fi list, and the network before the keyring (D-152)
+        run: tests/installer-network.sh
+
   fonts:
     runs-on: ubuntu-latest
     steps:
