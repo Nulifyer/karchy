@@ -61,6 +61,8 @@ check "each depends on its entry's packages" "$packages" "$expected"
 check "Lutris brings its parts and a 32-bit driver" \
   "$(grep -P '^karchy-app-lutris\t' <<<"$packages" | cut -f2)" \
   "lutris umu-launcher wine-staging winetricks vulkan-driver lib32-vulkan-driver lib32-opengl-driver"
+check "Mission Center brings nethogs" \
+  "$(grep -P '^karchy-app-mission-center\t' <<<"$packages" | cut -f2)" "mission-center nethogs"
 check "an AUR app's package holds only what the repositories carry" \
   "$(grep -P '^karchy-app-droidcam\t' <<<"$packages" | cut -f2)" "linux-cachyos-headers linux-cachyos-lts-headers"
 check "an app of one package gets none" "$(grep -c '^karchy-app-firefox' <<<"$packages")" 0

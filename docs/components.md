@@ -100,7 +100,7 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | Terminal editor | micro or nano, still open | |
 | Images | imv | [O] |
 | Media | mpv with hardware decoding config | [O] |
-| Task manager | Mission Center (Ctrl+Shift+Esc); btop in a terminal | [New] + [O] |
+| Task manager | Mission Center (Ctrl+Shift+Esc), with nethogs for its per-app network column: one app, `karchy-app-mission-center`, so both go when it is removed (D-150); btop in a terminal | [New] + [O] |
 | About | fastfetch, with karchy's config (`/etc/xdg/fastfetch/config.jsonc`: the mark, no Terminal Font row) for a terminal and for Settings › About alike; `~/.config/fastfetch/config.jsonc` replaces it | [O] |
 | Screenshots | Omasnap (screenshot + annotation, `[omarchy]`), plus screen recording | [O] |
 | Calculator | omacalc (`[omarchy]`) | [O] |

@@ -48,7 +48,7 @@ setup_packages() {
   # can be removed in Quick install (D-71). The list is the installed
   # catalog's default entries; the ones karchy needs are dependencies above.
   # An app that is more than one package is installed as its karchy-app-<id>
-  # package, which depends on them (D-150); the
+  # package, which depends on them (D-150: Mission Center with nethogs); the
   # rule is written the same in bin/karchy-quick-install and
   # system/packages/app-packages (tests/app-packages-rule.sh).
   local -a apps

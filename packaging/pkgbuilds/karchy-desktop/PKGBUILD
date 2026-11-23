@@ -39,9 +39,6 @@ depends=(
   'karchy-hyprland-titlebars'
   # Login keyring: the Secret Service for passwords and sign-ins (D-57)
   'oo7' 'libsecret'
-  # Mission Center's per-app network column (limited capabilities:
-  # 95-karchy-nethogs.hook)
-  'nethogs'
   # Command-line basics scripts and installers expect
   'openssh' 'rsync' 'unzip'
   # System health and updates (D-28, D-29)
@@ -60,7 +57,9 @@ depends=(
 # The apps karchy ships (D-34). The installer installs them explicitly and
 # Quick install lists them as installed, so each can be removed like any app
 # (D-71). They are the `default` entries of default/karchy/quick-install.json;
-# tools/catalog-check keeps this list and those entries the same.
+# tools/catalog-check keeps this list and those entries the same. An entry of
+# several packages is named by its karchy-app-<id> package (D-150), which is
+# what the installer installs.
 optdepends=(
   'brave-origin-bin: the default web browser'
   'localsend-bin: send files to nearby devices'
@@ -69,6 +68,8 @@ optdepends=(
   'disktree-bin: see what fills a disk (Open in Disktree on folders)'
   'imv: the image viewer'
   'mpv: the video and audio player'
-  'mission-center: the task manager (Ctrl+Shift+Esc)'
+  # With nethogs, for its per-app network column (limited capabilities:
+  # 95-karchy-nethogs.hook in karchy-settings); both go when the app does.
+  'karchy-app-mission-center: Mission Center, the task manager (Ctrl+Shift+Esc)'
   'gnome-disk-utility: GNOME Disks, for disks and partitions'
 )

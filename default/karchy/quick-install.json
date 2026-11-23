@@ -5636,7 +5636,8 @@
       "description": "Task manager: processor, memory, disk, network and GPU use, apps and services",
       "icon": "io.missioncenter.MissionCenter",
       "packages": [
-        "mission-center"
+        "mission-center",
+        "nethogs"
       ],
       "source": "arch",
       "default": true,
@@ -5645,7 +5646,7 @@
         "monitor"
       ],
       "setup": {
-        "note": "Ctrl+Shift+Esc opens it."
+        "note": "Ctrl+Shift+Esc opens it. nethogs comes with it, for the network use of each app."
       }
     },
     {
