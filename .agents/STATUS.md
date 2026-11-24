@@ -291,6 +291,14 @@ Branch `t3/floating-window-mode-switcher` (worktree, not merged), on `73854cd`. 
 - **Not seen:** two real monitors (the second was headless, at scale 2), a monitor above or below, a touchpad or touch drag, more windows than fit one row of the switcher (the rows are checked in `tests/window-switcher.js` only), a window without an icon in the VM (the letter tile), an XWayland window, a fractional scale, the fade with animations on (a screenshot cannot show it).
 - **For the user:** (1) Hyprland tells the config nothing about a drag, so a window dragged off its half keeps the half's size until Super+Down; giving the size back as the drag starts, as Windows does, needs a change to the titlebars plugin or a Hyprland event. (2) Alt+Escape is now taken by karchy at all times (it does nothing outside a walk); it can be unbound in Settings › Keybindings. (3) "Reveal active window on top" is gone from Alt+Tab; a saved change to it shows as no longer applying.
 
+## Display follows the viewer in a karchy guest (D-174), 2026-11-24
+
+Branch `t3/vm-guest-display-resize` (worktree, not merged). Hyprland 0.57.2 still keeps the start size when a viewer's window changes size (Aquamarine reads a connected output's modes once; no option).
+- **Built:** in `karchy-vm`, a Hyprland drop-in (`hypr.d/50-karchy-vm-display.lua`) and a session watcher (`/usr/lib/karchy-vm/display-watch`, udev DRM hotplug events, settles 0.5 s). `Virtual-N` outputs whose rule says `preferred` take the viewer's size; a size set by hand wins; the scale is kept; a reload keeps the size. Only in a guest (`systemd-detect-virt`). Docs, `karchy-vms` and the `karchy` skill's Hyprland page follow.
+- **Seen in VM `inst`** with the package built from the tree, on virtio-gpu and QXL (`out/vm-guest-resize/` in the worktree; the VM is back on snapshot `pre-guest-resize`, its virtio display restored, shut off): see D-174's evidence.
+- **For the user to try:** open `karchy-inst` in virt-manager (View › Scale Display › Auto resize VM with window on), drag the window's edge and maximize it; the desktop should take the new size about half a second after the drag stops, without changing size during it.
+- **Found, not fixed:** Settings › Displays can't save for a monitor without EDID (QXL in a VM): its key is the empty description.
+
 ## Current batch
 
 None: everything is merged.
