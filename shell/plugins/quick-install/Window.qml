@@ -37,7 +37,8 @@ import "Search.js" as Search
 // across the headings; Enter installs
 // or opens the focused app, or installs the picked apps when some are
 // picked (D-151); Space picks it, except in the middle of typing
-// a search, where it is a space and Ctrl+Space picks (`spacePicks`); Tab
+// a search, where it is a space, and on a button, which it presses as
+// everywhere (`spacePicks`, D-178); Ctrl+Space picks from anywhere; Tab
 // walks the search, the category list (one stop, j/k or the arrows to
 // choose), the focused row's buttons and the bar under the list (Install N
 // apps for what was picked); Escape clears the search, then closes.
@@ -106,9 +107,20 @@ Item {
   // have moved the highlight (`browsing`, until the text is edited again).
   // So "visual studio" types as it reads, and Down, Space, Down, Space picks
   // two results. The footer names the key that picks right now.
+  //
+  // A button that has the keyboard is pressed by Space, as by Enter, on
+  // every desktop, and so here (D-178): the menu button of a narrow window,
+  // the buttons of the bar under the list, a row's Remove. The one button
+  // Space doesn't press is the highlighted row's Install or Open
+  // (`standsForRow`): the keyboard rests on it while Up and Down move
+  // through the list, so it is the row there. Space ticks the row's box, as
+  // in any list with checkboxes, and Enter runs the button. Ctrl+Space picks
+  // from anywhere.
   property bool browsing: false
   property bool searchFocused: true
-  readonly property bool spacePicks: !searchFocused || !searching || browsing
+  readonly property bool spaceOnButton: frame.focusedItem instanceof Button && frame.focusedItem.visible
+    && frame.focusedItem.standsForRow !== true
+  readonly property bool spacePicks: searchFocused ? !searching || browsing : !spaceOnButton
   readonly property var categoryRows: Model.categories(catalog, installed)
   // Each row is { app, positions, section }. A category lists its apps under
   // headings that say what they are for (D-158); All, Installed and Picked
@@ -517,9 +529,11 @@ Item {
       enabled: root.opened && !confirmDialog.opened && !switcher.popupOpen
       onActivated: searchField.forceActiveFocus(Qt.ShortcutFocusReason)
     }
-    // Picking from anywhere (`spacePicks`). The search field handles its own
-    // Space, as a text field keeps plain keys from shortcuts; on a row's
-    // button or the category list this comes before the control's Space.
+    // Picking (`spacePicks`). Ctrl+Space from anywhere. The search field
+    // handles its own Space, as a text field keeps plain keys from
+    // shortcuts; on the highlighted row's Install or Open and on the
+    // category list the shortcut takes it. On any other button it is off,
+    // and the button gets its Space.
     Shortcut {
       sequence: "Ctrl+Space"
       enabled: root.opened && !confirmDialog.opened && !switcher.popupOpen
@@ -527,7 +541,7 @@ Item {
     }
     Shortcut {
       sequence: "Space"
-      enabled: root.opened && !confirmDialog.opened && !root.searchFocused && !switcher.popupOpen
+      enabled: root.opened && !confirmDialog.opened && !root.searchFocused && root.spacePicks && !switcher.popupOpen
       onActivated: root.toggleSelected(root.current)
     }
     Shortcut {
@@ -546,12 +560,18 @@ Item {
 
       // A focused button that goes away (Remove after a removal, a row that
       // leaves the list) would leave the keyboard nowhere: back to the search.
+      // So would one that is hidden while it has the keyboard (Clear, once
+      // nothing is picked): the keyboard doesn't leave a hidden item by
+      // itself, and its Space and Enter would go on pressing it unseen.
       readonly property Item focusedItem: frame.Window.activeFocusItem
-      onFocusedItemChanged: Qt.callLater(function() {
+      readonly property bool focusedItemHidden: focusedItem !== null && !focusedItem.visible
+      function keepKeyboard() {
         if (!root.opened || confirmDialog.opened) return
         var item = frame.Window.activeFocusItem
         if (!item || item === frame.Window.contentItem || !item.visible) searchField.forceActiveFocus()
-      })
+      }
+      onFocusedItemChanged: Qt.callLater(keepKeyboard)
+      onFocusedItemHiddenChanged: if (focusedItemHidden) Qt.callLater(keepKeyboard)
 
       // Keys the focused control leaves unhandled end up here: Escape
       // clears the search, then closes; typing goes to the search.
@@ -822,8 +842,8 @@ Item {
           ScrollBar.vertical: ListScrollBar {}
 
           // Row buttons hand Up/Down and j/k to the list; the keyboard stays
-          // on the focused row's first button. Space is the window's
-          // shortcut above, which comes before a button's own Space.
+          // on the focused row's first button, where Space is the window's
+          // shortcut above and picks the row (`standsForRow`).
           Keys.onPressed: function(event) {
             var dy = event.key === Qt.Key_Down || event.text === "j" ? 1
               : event.key === Qt.Key_Up || event.text === "k" ? -1
@@ -1262,6 +1282,9 @@ Item {
 
         Button {
           id: actionButton
+          // The keyboard rests here while the list is walked: Space picks
+          // the row and Enter presses this (see `spacePicks`).
+          readonly property bool standsForRow: true
           visible: !row.installedHere || row.hasWindow || row.running
           focusable: row.current
           bordered: true
