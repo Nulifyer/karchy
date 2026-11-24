@@ -48,6 +48,7 @@ The PKGBUILDs live in `packaging/pkgbuilds/`, next to the code they package, so 
 
 | `karchy-vpn` | add-on (Quick install): the VPN's policy service, kill switch and bar widget | `addons/vpn` |
 | `karchy-project-picker` | add-on (Quick install): the project picker overlay and its Ctrl+Alt+P binding | `addons/project-picker` |
+| `guget`, `sqlgo` | apps (Quick install): the user's NuGet and SQL TUIs, `/usr/bin/guget` and `/usr/bin/sqlgo` from a pinned GitHub release (D-155) | `packaging/pkgbuilds/guget`, `packaging/pkgbuilds/sqlgo` |
 
 `karchy-keyring` is planned, with signing (D-52).
 

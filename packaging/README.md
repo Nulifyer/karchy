@@ -17,6 +17,7 @@
 | `karchy-bees` | Native: bees, the btrfs deduplicator, built from a pinned tag of karchy's fork Nulifyer/bees (D-85); provides and conflicts with Arch's `bees`; a `karchy-settings` dependency; `karchy-bees.service` runs it (D-86) |
 | `karchy-vpn` | Add-on (D-106): the VPN (D-68), its policy service, kill switch, sign-in pause, polkit rule and bar widget, built from `addons/vpn`; offered in Quick install › karchy |
 | `karchy-project-picker` | Add-on (D-106): the project picker overlay and its Ctrl+Alt+P binding, built from `addons/project-picker`; offered in Quick install › karchy |
+| `guget`, `sqlgo` | Native: the user's own tools, repackaged from a pinned GitHub release's `linux_amd64` binary with its checksum (D-155); offered in Quick install › Developer tools and › Databases & APIs |
 | `karchy-app-<id>` | Meta, one per Quick install app of several packages (D-150): no files, depends on the app's packages, so pacman removes them with the app. All made by one PKGBUILD, `pkgbuilds/karchy-apps`, from `default/karchy/quick-install.json` |
 
 ## Channels and versions (D-61)
@@ -43,6 +44,8 @@ packaging/build karchy-themes                     # only some packages
 ```
 
 Releasing bees: tag `v<version>` on the fork's `karchy` branch (Nulifyer/bees) and push it, then in `pkgbuilds/karchy-bees/PKGBUILD` set `pkgver` and `_commit` to the tag's commit (`git rev-parse v<version>^{commit}`). Versions use `_` where a tag would use `-` (`0.11_karchy1`). It is a native package: `packaging/build --native karchy-bees`.
+
+Releasing guget or sqlgo into `[karchy]`: in `pkgbuilds/<name>/PKGBUILD` set `pkgver` to the GitHub release's tag without the `v` and `sha256sums` to the `linux_amd64` line of that release's `checksums.txt`. Each channel publishes it with its next build (`packaging/build --native guget sqlgo` locally).
 
 `tools/vm repo` serves `out/` so test VMs reach `http://10.0.2.2:8090/repo-<channel>`; `tests/vm-install.conf` installs from `dev`.
 

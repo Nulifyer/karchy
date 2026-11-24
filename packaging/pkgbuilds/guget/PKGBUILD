@@ -1,0 +1,28 @@
+# guget: the user's NuGet TUI (Nulifyer/guget), packaged from its GitHub
+# release binary and offered in Quick install › Developer tools.
+#
+# Native package: packaging/build builds it only with --native.
+#
+# A release: set pkgver to the release tag without the v, and sha256sums to
+# the linux_amd64 line of the release's checksums.txt. Only published
+# releases, not drafts or pre-releases.
+
+# karchy:version-cmd=sed -n 's/^pkgver=//p' packaging/pkgbuilds/guget/PKGBUILD
+
+pkgname=guget
+pkgver=1.11.0
+pkgrel=1
+pkgdesc="A TUI for managing NuGet packages across .NET projects"
+arch=('x86_64')
+url="https://github.com/Nulifyer/guget"
+license=('GPL-3.0-only')
+optdepends=('dotnet-sdk: restore and build the projects it manages')
+options=('!strip' '!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/${pkgname}_${pkgver}_linux_amd64.tar.gz")
+sha256sums=('4e100f5b0938927ef8d31612356b7fec40965e223db22aea8dd2e047a38bdbc0')
+
+package() {
+  install -Dm755 "$srcdir/guget" "$pkgdir/usr/bin/guget"
+  install -Dm644 "$srcdir/README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

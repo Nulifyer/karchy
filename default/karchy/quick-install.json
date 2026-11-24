@@ -5083,6 +5083,24 @@
       ]
     },
     {
+      "id": "guget",
+      "name": "Guget",
+      "category": "devtools",
+      "description": "A TUI for managing NuGet packages across .NET projects: search, add, update and remove package references",
+      "icon": "",
+      "packages": [
+        "guget"
+      ],
+      "source": "karchy",
+      "keywords": [
+        "nuget",
+        "dotnet",
+        ".net",
+        "csharp",
+        "packages"
+      ]
+    },
+    {
       "id": "hexyl",
       "name": "Hexyl",
       "category": "devtools",
@@ -5641,6 +5659,26 @@
         "rest",
         "graphql",
         "http client"
+      ]
+    },
+    {
+      "id": "sqlgo",
+      "name": "sqlgo",
+      "category": "databases",
+      "description": "A fast, keyboard-driven TUI SQL client for PostgreSQL, MySQL, SQL Server and SQLite",
+      "icon": "",
+      "packages": [
+        "sqlgo"
+      ],
+      "source": "karchy",
+      "keywords": [
+        "sql",
+        "database",
+        "postgres",
+        "mysql",
+        "sql server",
+        "sqlite",
+        "db client"
       ]
     },
     {

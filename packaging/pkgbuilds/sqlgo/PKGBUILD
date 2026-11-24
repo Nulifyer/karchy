@@ -1,0 +1,28 @@
+# sqlgo: the user's TUI SQL client (Nulifyer/sqlgo), packaged from its GitHub
+# release binary and offered in Quick install › Databases & APIs.
+#
+# Native package: packaging/build builds it only with --native.
+#
+# A release: set pkgver to the release tag without the v, and sha256sums to
+# the linux_amd64 line of the release's checksums.txt. Only published
+# releases, not drafts or pre-releases.
+
+# karchy:version-cmd=sed -n 's/^pkgver=//p' packaging/pkgbuilds/sqlgo/PKGBUILD
+
+pkgname=sqlgo
+pkgver=0.10.0
+pkgrel=1
+pkgdesc="A fast, keyboard-driven TUI SQL client for PostgreSQL, MySQL, SQL Server and SQLite"
+arch=('x86_64')
+url="https://github.com/Nulifyer/sqlgo"
+license=('MIT')
+depends=('glibc')
+options=('!strip' '!debug')
+source=("$pkgname-$pkgver.tar.gz::$url/releases/download/v$pkgver/${pkgname}_${pkgver}_linux_amd64.tar.gz")
+sha256sums=('110fe66463a23295fa46f288a9a101ba5b8fef536747151e807c4eff86c44ef3')
+
+package() {
+  install -Dm755 "$srcdir/sqlgo" "$pkgdir/usr/bin/sqlgo"
+  install -Dm644 "$srcdir/README.md" "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
