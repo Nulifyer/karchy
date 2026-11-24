@@ -26,6 +26,7 @@ KeyValueGrid 1.0 KeyValueGrid.qml
 NumberField 1.0 NumberField.qml
 OpticalGlyph 1.0 OpticalGlyph.qml
 OverlayWindow 1.0 OverlayWindow.qml
+OwnSize 1.0 OwnSize.qml
 PageHeader 1.0 PageHeader.qml
 PageSlider 1.0 PageSlider.qml
 PasswordDots 1.0 PasswordDots.qml

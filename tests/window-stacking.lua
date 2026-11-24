@@ -1,8 +1,9 @@
--- Which window is in front, where Alt+Tab goes (D-159) and the halves of a
--- floating workspace (D-165): karchy's real default/hypr/stacking.lua,
--- window-switch.lua, snap.lua and workspace-modes.lua under a stand-in for
--- Hyprland's `hl` that keeps the windows' stacking order, focus history,
--- place and size the way Hyprland does.
+-- Which window is in front, where Alt+Tab goes (D-159), the halves of a
+-- floating workspace (D-165) and which rules karchy's own windows get
+-- (D-175): karchy's real default/hypr/stacking.lua, window-switch.lua,
+-- snap.lua, workspace-modes.lua and the window rules of apps/system.lua and
+-- apps/vms.lua under a stand-in for Hyprland's `hl` that keeps the windows'
+-- stacking order, focus history, place and size the way Hyprland does.
 --
 --   lua tests/window-stacking.lua        (from the checkout)
 
@@ -18,6 +19,7 @@ local rules = {} -- every hl.window_rule call
 local workspace = { id = 1 }
 local executed = {} -- every hl.exec_cmd
 local said = {} -- every custom event: what the shell's switcher is told
+local floated = {} -- every float dispatch: "<address> on" or "<address> off"
 local alt_down = true -- whether the key that ends an Alt+Tab walk is held
 -- Two monitors side by side, the bar's 31 pixels reserved on each.
 local monitors = {
@@ -127,6 +129,10 @@ local actions = {
   event = function(text)
     table.insert(said, text)
   end,
+  -- Recorded, not applied: the windows here say themselves whether they float.
+  float = function(args)
+    table.insert(floated, selected(args.window).address .. " " .. args.action)
+  end,
   fullscreen = function(args)
     local window = args.window and selected(args.window) or (find(history[1]))
     if window then
@@ -174,6 +180,7 @@ hl = setmetatable({
     event = action("event"),
     window = setmetatable({
       alter_zorder = action("zorder"),
+      float = action("float"),
       tag = action("tag"),
       bring_to_top = action("none"),
       fullscreen = action("fullscreen"),
@@ -270,6 +277,9 @@ require("default.hypr.snap")
 local workspace_modes = require("default.hypr.workspace-modes")
 o.OVER_GAME_TAG = "karchy-over-game"
 require("default.hypr.stacking")
+require("default.hypr.apps.system")
+require("default.hypr.apps.vms")
+local static_rules = rules
 
 local ALT, RELEASED = 64, 0
 local next_window, previous_window = o.switch_window(1), o.switch_window(-1)
@@ -412,6 +422,57 @@ eq(small.allowed_over_fullscreen, true, "a window given the keyboard comes in fr
 focus(big, 48)
 eq(small.allowed_over_fullscreen, false, "the maximized window, clicked, has the others behind it")
 eq(prompt.allowed_over_fullscreen, true, "and keeps its own dialog in front")
+
+-- karchy's own windows are app windows with a size of their own (D-175). No
+-- float rule names them, so on a tiling workspace they tile like any app.
+local own_titles = { "^karchy Settings$", "^Quick install$", "^Updates$", "^Virtual machines$", "^Containers$" }
+eq(#o.own_size_apps, #own_titles, "the five windows of karchy's own are app windows with a size of their own")
+for index, title in ipairs(own_titles) do
+  local named = 0
+  for _, rule in ipairs(static_rules) do
+    if rule.match and rule.match.title == title then
+      named = named + 1
+    end
+  end
+  eq(named, 0, "no rule floats or places " .. title .. " on a tiling workspace")
+  eq(o.own_size_apps[index].class, "^org.quickshell$", title .. " is matched as a shell window")
+end
+
+-- On a floating workspace a rule of their own floats them in the middle at
+-- the size they give themselves, and the rule that sizes app windows there
+-- leaves them out.
+local function rule_named(name)
+  local found
+  for _, rule in ipairs(rules) do
+    if rule.name == name then
+      found = rule
+    end
+  end
+  return found
+end
+local own_rule = rule_named("karchy-floating-own-size-1")
+eq(own_rule ~= nil and own_rule.enabled and own_rule.match.title, "^karchy Settings$", "a floating workspace has a rule for karchy Settings")
+eq(own_rule.match.workspace, "r[1-2147483647]", "on every floating workspace")
+eq(tostring(own_rule.float) .. " " .. tostring(own_rule.center), "true true", "floating, in the middle")
+eq(own_rule.size, "min(900,monitor_w*0.85) min(680,monitor_h*0.85)", "at the size Settings gives itself, 85% of a smaller screen")
+eq(rule_named("karchy-floating-own-size-3").size, "min(760,monitor_w*0.85) min(640,monitor_h*0.85)", "each at its own")
+eq(own_rule.tag, "+" .. workspace_modes.OPENED_TAG, "claimed by the mode like any app window")
+eq(rule_named("karchy-floating-own-size-5").match.title, "^Containers$", "and one for each of the five")
+eq(rule_named("karchy-floating-own-size-6"), nil, "and no more")
+eq(open_rule.match.title:find("karchy Settings", 1, true) ~= nil, true, "the rule that sizes app windows leaves karchy's own out")
+
+-- Claimed, it tiles when it is carried to a workspace that tiles.
+reset()
+floated = {}
+local settings = open("settings", { floating = true, pid = 5, tags = { workspace_modes.OPENED_TAG .. "*" } })
+eq(tagged(settings, workspace_modes.FLOATED_TAG), true, "the mode claims a window of karchy's own it floated")
+eq(tagged(settings, "karchy-dialog"), false, "and it is no dialog")
+o.workspace_mode({ workspace = 3, mode = "dwindle" })
+eq(rule_named("karchy-floating-own-size-10").match.workspace, "r[4-2147483647]", "a workspace that tiles is left out of its rules")
+fire("window.move_to_workspace", settings, { id = 3 })
+eq(floated[#floated], "settings off", "carried to a tiling workspace, it tiles")
+eq(tagged(settings, workspace_modes.FLOATED_TAG), false, "and is the mode's no longer")
+o.workspace_mode({ workspace = 3, mode = "floating" })
 
 -- Halves (D-165). Still on the floating workspace: Super+Left and Super+Right
 -- put a window on a half, the tile two windows would share on a tiling one.

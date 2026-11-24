@@ -52,14 +52,14 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 
 ### Window modes (D-159)
 
-A workspace tiles or floats (Settings › Appearance › Workspace layout sets the default for new workspaces). The two modes share one rule for which window is in front and one Alt+Tab (D-159, D-165).
+A workspace tiles or floats (Settings › Appearance › Workspace layout sets the default for new workspaces). The two modes share one rule for which window is in front and one Alt+Tab (D-159, D-165). karchy's own windows are app windows in both (D-175).
 
 **Tiling**
 
 - App windows share the workspace and never overlap.
-- A floating window is drawn in front of every tiled one, and nothing can put a tiled window in front of it. So only a window you deal with and close floats here: a dialog, a file chooser, karchy's floating terminal, About, the calculator. A window you keep open and switch to tiles, the image viewer, the video player and the document viewer among them (D-165). karchy's own windows (Settings, Quick install, Updates, Virtual machines, Containers) float too (D-114).
+- A floating window is drawn in front of every tiled one, and nothing can put a tiled window in front of it. So only a window you deal with and close floats here: a dialog, a file chooser, karchy's floating terminal, About, the calculator. A window you keep open and switch to tiles, the image viewer, the video player and the document viewer among them (D-165), and karchy's own windows: Settings, Quick install, Updates, Virtual machines and Containers (D-175, which replaces D-114's "every shell window floats" here). Each of the five lays itself out for the width its tile has: under 720 wide its sidebar is one dropdown across the top, under 560 a page's labels go above their controls, and it stays whole down to a fourth window on a 1280×800 screen (`architecture.md`, "Narrow windows").
 - Among the floating windows, the one with the keyboard is in front, whether a click, Alt+Tab or a command gave it the keyboard. Focus follows the pointer here, and focus that only followed the pointer raises nothing.
-- Super+T floats one window, or tiles it again.
+- Super+T floats one window, or tiles it again. A floated window gets a comfortable size in the middle of the screen, karchy's own windows too, and is then in front of the tiles until it is tiled or closed.
 
 **Floating (as on Windows)**
 
@@ -75,11 +75,12 @@ A workspace tiles or floats (Settings › Appearance › Workspace layout sets t
   - The bar docks while a window on its monitor is maximized and floats again afterwards, which moves the top of a half by the bar's margin. A window on a half follows it, a moment after a window enters or leaves maximized.
 - A dialog keeps the size its app gave it and stays in front of its app's windows. The portal's file chooser stays in front of every window on its workspace until it is answered.
 - Nothing else stays on top. karchy's own windows and its floating terminal go behind the window you click, like any other.
+- karchy's own windows open in the middle at the size they give themselves, not the size other app windows open at. They belong to the mode like any app window: carried to a tiling workspace, or when the workspace is set to tile, they tile.
 
 **Both**
 
 - Alt+Tab goes to the window used before this one, and further back while Alt is held ([keybindings.md](keybindings.md)); the next part says how.
-- Asking for one of karchy's windows while it is open (Super+K, the menu, `karchy settings`) brings it to the front, from another workspace too.
+- Asking for one of karchy's windows while it is open (Super+K, the menu, `karchy settings`, the "Open as a window" button of a bar panel) goes to it and gives it the keyboard, from another workspace too: a floating one comes to the front, a tile is already in view. What was asked for is shown: the Settings page, the Quick install category or search, the VM, the container.
 - Picture-in-picture and the webcam overlay are pinned: in front of everything, on every workspace.
 
 Which kind a window is:
@@ -90,7 +91,7 @@ Which kind a window is:
 | A dialog (it has a parent window, or cannot be resized): confirmations, Preferences, a toolkit's own file chooser | dialog | floats | own size, in front of its app |
 | The portal's file chooser and permission prompts (`xdg-desktop-portal-gtk`) | dialog of another app | floats | in front of every window, tag `stay-in-front` |
 | karchy's floating terminal (`org.karchy.terminal`), About, `TUI.float`, btop, the calculator, the captive portal sign-in, LocalSend | short-lived | floats | floats, stacks by use |
-| Settings, Quick install, Updates, Virtual machines, Containers | karchy's own | float (D-114) | float at their own size, stack by use |
+| Settings, Quick install, Updates, Virtual machines, Containers | karchy's own: app windows with a size of their own (D-175) | tile, in their narrow layout where the tile is narrow | float at their own size, stack by use |
 | Steam | app window that Omarchy floats | floats | floats at its own size, stacks by use |
 | Picture-in-picture, the webcam overlay | overlay | pinned | pinned |
 | The password prompt (polkit), the menu, notifications, the lock screen | not windows: shell layers above all windows | | |
@@ -104,7 +105,7 @@ Which kind a window is:
 - The walk is kept in one place, `default/hypr/window-switch.lua`, in Hyprland. It sends every change as one event on Hyprland's event socket (`custom>>karchy-window-switch show <place of the target> <address> <address>* …`, a star for minimized, and `… hide`), and the shell plugin `shell/plugins/window-switcher` draws what the last event said and decides nothing. So the picture cannot name one window while the keys go to another, and with the plugin off or the shell not running Alt+Tab works the same, unseen.
 - Run without a modifier held (`hyprctl dispatch`, or a key of your own without one), the action switches at once, since nothing would be let go to end a walk.
 
-A window rule keeps a window of your own in front of the others on its workspace: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. The code is `default/hypr/stacking.lua`, `default/hypr/window-switch.lua`, `default/hypr/snap.lua` and `default/hypr/workspace-modes.lua`; it runs on Hyprland's focus and open events and on the keys.
+A window rule keeps a window of your own in front of the others on its workspace: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. karchy's own windows have no float rule; `o.own_size_window({ class = …, title = …, size = { 900, 680 } })` (`default/hypr/apps/system.lua`, `vms.lua`) names them as app windows that open at their own size on a floating workspace, and the window itself corrects the size where a larger text size makes it want more (`shell/Ui/OwnSize.qml`). The code is `default/hypr/stacking.lua`, `default/hypr/window-switch.lua`, `default/hypr/snap.lua` and `default/hypr/workspace-modes.lua`; it runs on Hyprland's focus and open events and on the keys.
 
 ## Shell (Omarchy Quickshell)
 

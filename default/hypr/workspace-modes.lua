@@ -22,6 +22,7 @@ local FLOATED_TAG = "karchy-mode-floated"
 local WORKSPACE_TAG = "karchy-floating-workspace"
 local OPENED_TAG = "karchy-mode-opened"
 local OPEN_RULE = "karchy-floating-open-"
+local OWN_SIZE_RULE = "karchy-floating-own-size-"
 local LAST_WORKSPACE = 2147483647
 local TITLEBARS_DIR = "/usr/lib/karchy-hyprland-titlebars"
 local TITLEBARS = TITLEBARS_DIR .. "/titlebars.so"
@@ -36,6 +37,7 @@ local floating_ready = false
 local set_up_floating
 local cascade = 0
 local open_rules = 0
+local own_size_rules = 0
 
 local function set_floating(window, floating)
   hl.dispatch(hl.dsp.window.float({ action = floating and "on" or "off", window = window }))
@@ -239,6 +241,14 @@ local function not_floating_on_their_own(match)
       table.insert(excluded[tagged.key], tagged.pattern)
     end
   end
+  -- Windows with a size of their own have a rule of their own below. Their
+  -- title names them; the class is the shell's, which other windows share.
+  for _, own in ipairs(o.own_size_apps or {}) do
+    local key = own.title and "title" or "class"
+    if type(own[key]) == "string" then
+      table.insert(excluded[key], own[key])
+    end
+  end
 
   for _, key in ipairs({ "class", "title" }) do
     local patterns = excluded[key]
@@ -258,8 +268,41 @@ end
 -- window does, instead of opening tiled and shrinking into place. Dialogs,
 -- and apps with float rules of their own, float on their own account and are
 -- left to it, at their own size and outside the mode's claim.
+--
+-- karchy's own windows (o.own_size_window) are app windows too, claimed by
+-- the mode like the rest, so they tile again when the workspace does or when
+-- they are carried to one that tiles; they only open at their own size, in
+-- the middle.
 local function sync_open_rules()
   local ranges = floating_ranges()
+  local own = o.own_size_apps or {}
+  local used = 0
+
+  for _, range in ipairs(ranges) do
+    for _, app in ipairs(own) do
+      used = used + 1
+      hl.window_rule({
+        name = OWN_SIZE_RULE .. used,
+        enabled = true,
+        match = {
+          class = app.class,
+          title = app.title,
+          workspace = string.format("r[%d-%d]", range[1], range[2]),
+          float = false,
+        },
+        float = true,
+        size = string.format("min(%d,monitor_w*0.85) min(%d,monitor_h*0.85)", app.size[1], app.size[2]),
+        center = true,
+        tag = "+" .. OPENED_TAG,
+      })
+    end
+  end
+
+  for i = used + 1, own_size_rules do
+    hl.window_rule({ name = OWN_SIZE_RULE .. i, enabled = false })
+  end
+
+  own_size_rules = math.max(own_size_rules, used)
 
   for i, range in ipairs(ranges) do
     hl.window_rule({

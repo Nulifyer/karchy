@@ -4,9 +4,10 @@ o.window({ tag = "floating-window" }, { center = true })
 o.window({ tag = "floating-window" }, { size = { 875, 600 } })
 
 -- Windows that are dealt with and closed. The image viewer, the video player
--- and the document viewer are not among them: they are kept open and switched
--- to, so they are app windows, which tile on a tiling workspace (D-165). A
--- floating window there would sit in front of every tiled one.
+-- and the document viewer are not among them, nor are karchy's own windows
+-- below: they are kept open and switched to, so they are app windows, which
+-- tile on a tiling workspace (D-165, D-175). A floating window there would
+-- sit in front of every tiled one.
 o.window(
   "(org.karchy.btop|org.karchy.terminal|org.karchy.bash|org.codeberg.dnkl.foot|org.gnome.NautilusPreviewer|Karchy|About|TUI.float)",
   {
@@ -39,20 +40,16 @@ o.window("org.karchy.about", { size = { 920, 560 } })
 
 o.window("omacalc", { float = true })
 
--- karchy Settings is a shell window (Quickshell's class), so match its title.
--- It sizes itself to fit the screen it opens on.
-o.window({ title = "^karchy Settings$" }, { float = true })
-o.window({ title = "^karchy Settings$" }, { center = true })
-
--- Quick install is a shell window too. Tiled beside another window, its rows
--- and key hints are cut short.
-o.window({ title = "^Quick install$" }, { float = true })
-o.window({ title = "^Quick install$" }, { center = true })
-
--- The Updates window: every shell window floats at the size it gives itself
--- (Settings, Quick install, Virtual machines and Containers in vms.lua).
-o.window({ class = "^org.quickshell$", title = "^Updates$" }, { float = true })
-o.window({ class = "^org.quickshell$", title = "^Updates$" }, { center = true })
+-- karchy's own windows are shell windows (Quickshell's class), so they are
+-- matched by title too. They are kept open and switched to, so they are app
+-- windows (D-175): on a tiling workspace they tile, with a layout for the
+-- width a tile gives them, and no float rule names them; on a floating one
+-- they float at the size they give themselves (workspace-modes.lua).
+-- Virtual machines and Containers are in vms.lua.
+-- The sizes are the ones each window gives itself (its FloatingWindow).
+o.own_size_window({ class = "^org.quickshell$", title = "^karchy Settings$", size = { 900, 680 } })
+o.own_size_window({ class = "^org.quickshell$", title = "^Quick install$", size = { 1000, 740 } })
+o.own_size_window({ class = "^org.quickshell$", title = "^Updates$", size = { 760, 640 } })
 
 -- Fullscreen screensaver.
 o.window("org.karchy.screensaver", { fullscreen = true })

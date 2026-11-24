@@ -102,7 +102,8 @@ ColumnLayout {
       variant: "primary"
       text: "Updates and Channel…"
       // The Updates window: what's waiting, Install, and the release channel.
-      // Settings floats above it, so Settings steps aside.
+      // It takes Settings' place: Settings steps aside, where it would float
+      // in front of it or halve its tile.
       onClicked: {
         Quickshell.execDetached(["karchy-updates"])
         if (root.settings) root.settings.close()

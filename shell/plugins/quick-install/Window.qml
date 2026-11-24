@@ -474,6 +474,14 @@ Item {
   // for while open (shell.qml, summon), and Hyprland's rules match it.
   readonly property string windowTitle: "Quick install"
 
+  // On a floating workspace the window opens at its own size (D-175).
+  OwnSize {
+    title: root.windowTitle
+    active: root.opened
+    width: window.implicitWidth
+    height: window.implicitHeight
+  }
+
   FloatingWindow {
     id: window
     visible: root.opened

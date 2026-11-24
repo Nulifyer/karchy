@@ -50,7 +50,7 @@ The bar has quick panels for the things you change often: sound, microphone, net
 
 ## Windows and workspaces
 
-- New windows tile: they share the workspace without overlapping. `Super` + `T` makes one window float.
+- New windows tile: they share the workspace without overlapping. `Super` + `T` makes one window float. Settings, Quick install, Updates, Virtual machines and Containers tile too, and fold into a narrower layout beside other windows: their list of pages becomes one dropdown at the top.
 - **Settings › Appearance › Workspace layout** chooses whether new workspaces tile or float. On a floating workspace windows overlap as on Windows: each has a title bar with minimize, maximize and close, a click brings a window to the front, and a dialog stays in front of its app.
 - `Super` + `Left` / `Right` moves the focus. With `Shift`, the arrows swap windows.
 - On a floating workspace `Super` + `Left` / `Right` put the window on the left or right half of the screen instead. The arrow the other way, or `Super` + `Down`, brings it back to the size it had.

@@ -11,7 +11,8 @@ import "Model.js" as Model
 
 // The Containers window (D-63): every container including stopped ones,
 // Compose projects, images, logs, remove and prune. A normal application
-// window like Settings, so it tiles, floats and closes like any other.
+// window like Settings: a tile on a tiling workspace, floating at its own
+// size on a floating one (D-175).
 // Open it with `karchy containers open [name]` or "Manage containers…" in the
 // bar panel, which opens it at the container under the panel's cursor.
 // It reads through `karchy-containers` while open: on container events, and
@@ -312,6 +313,14 @@ Item {
   // The shell brings the window to the front by this title when it is asked
   // for while open (shell.qml, summon), and Hyprland's rules match it.
   readonly property string windowTitle: "Containers"
+
+  // On a floating workspace the window opens at its own size (D-175).
+  OwnSize {
+    title: root.windowTitle
+    active: root.opened
+    width: window.implicitWidth
+    height: window.implicitHeight
+  }
 
   FloatingWindow {
     id: window

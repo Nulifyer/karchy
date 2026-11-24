@@ -7,8 +7,9 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// karchy Settings window (D-27). A normal application window, so it tiles,
-// floats and closes like any other. Each section reads and writes through a
+// karchy Settings window (D-27). A normal application window: a tile on a
+// tiling workspace, floating at the size it gives itself on a floating one
+// (D-175). Each section reads and writes through a
 // karchy-settings-* command, which saves JSON under ~/.config/karchy and
 // generates config under ~/.local/state/karchy; the user's own files load
 // after that and always win.
@@ -128,28 +129,21 @@ Item {
   // floating window keeps its old size and place, so it could end up off the
   // screen with the controls that undo the change. Size it to the screen
   // again and center it, once Hyprland has reported the new monitor size.
-  function fitSize() {
-    var m = Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
-    var w = m ? m.width / m.scale : 1280
-    var h = m ? m.height / m.scale : 800
-    if (m && (m.transform || 0) % 2 === 1) { var t = w; w = h; h = t }
-    return { width: Math.round(Math.min(Style.space(900), w * 0.85)), height: Math.round(Math.min(Style.space(680), h * 0.85)) }
-  }
-
+  // A tile is left alone: the layout already gave it its place.
   Timer {
     id: refitTimer
     interval: 400
-    onTriggered: {
-      var size = root.fitSize()
-      var target = '"title:^karchy Settings$"'
-      refitProc.command = ["sh", "-c",
-        "hyprctl dispatch 'hl.dsp.window.resize({ x = " + size.width + ", y = " + size.height + ", relative = false, window = " + target + " })' >/dev/null && " +
-        "hyprctl dispatch 'hl.dsp.window.center({ window = " + target + " })' >/dev/null"]
-      refitProc.running = true
-    }
+    onTriggered: ownSize.refit(true)
   }
 
-  Process { id: refitProc }
+  // On a floating workspace the window opens at its own size (D-175).
+  OwnSize {
+    id: ownSize
+    title: root.windowTitle
+    active: root.opened
+    width: window.implicitWidth
+    height: window.implicitHeight
+  }
 
   function toggle() {
     if (root.opened) root.close()

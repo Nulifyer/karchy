@@ -312,6 +312,25 @@ o.DIALOG_TAG = "karchy-dialog"
 -- Helpers reload before workspace modes, so discard the previous config's hook.
 o.floating_apps_changed = nil
 
+-- App windows that give themselves a size: karchy's own shell windows
+-- (D-175). They are kept open and switched to, so on a tiling workspace they
+-- tile like any app window. On a floating one they open floating and centered
+-- at their own size, which workspace-modes.lua's rule for them does; its rule
+-- that sizes every other window there leaves them out. Each entry is a match
+-- by class and title, and `size`: the width and height the window gives
+-- itself where the screen has room (it takes 85% of a smaller screen). A
+-- rule that depends on the workspace has to say the size, or Hyprland floats
+-- the window at the screen's; the window puts right what a larger text size
+-- makes it want (shell/Ui/OwnSize.qml).
+o.own_size_apps = {}
+
+function o.own_size_window(match)
+  table.insert(o.own_size_apps, match)
+  if o.floating_apps_changed then
+    o.floating_apps_changed()
+  end
+end
+
 function o.window(match, rules)
   local floating_changed = false
   rules.match = rules.match or {}

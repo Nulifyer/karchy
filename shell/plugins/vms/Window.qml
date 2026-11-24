@@ -10,7 +10,8 @@ import "Model.js" as Model
 
 // The "Virtual machines" window (D-63): every VM, creating one, its settings
 // while it is off, snapshots, forcing off and deleting it. A normal
-// application window, like Settings. Everything goes through karchy-vm; this
+// application window, like Settings: a tile on a tiling workspace, floating
+// at its own size on a floating one (D-175). Everything goes through karchy-vm; this
 // window only reads `karchy-vm list --json` (every two seconds while it is
 // open) and runs karchy-vm commands.
 //
@@ -294,6 +295,14 @@ Item {
   // The shell brings the window to the front by this title when it is asked
   // for while open (shell.qml, summon), and Hyprland's rules match it.
   readonly property string windowTitle: "Virtual machines"
+
+  // On a floating workspace the window opens at its own size (D-175).
+  OwnSize {
+    title: root.windowTitle
+    active: root.opened
+    width: window.implicitWidth
+    height: window.implicitHeight
+  }
 
   FloatingWindow {
     id: window
