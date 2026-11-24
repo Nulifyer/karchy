@@ -47,6 +47,10 @@
 #                             network change; remove closes them the same way
 #                 A failed setup step is reported and the command fails; running
 #                 install again retries the setup (pacman skips what's there)
+#                 An entry's `conflicts` are packages the app can't be
+#                 installed beside: install refuses while one is there,
+#                 naming the app it belongs to (Docker beside karchy's Podman
+#                 setup, whose podman-docker stands in for docker)
 #   remove <id>   remove the app, and with it the packages that came with it
 #                 and nothing else needs, after pacman confirms nothing else
 #                 needs the app; apps karchy needs (`required`) can't be
@@ -317,6 +321,15 @@ install_app() {
   ((${#pkgs[@]})) || die "$name lists no packages."
   target=$(field "$app" "$TARGET")
   pacman_free
+
+  # Packages the entry says the app can't be installed beside (the root
+  # helper has the same check and the reason for it).
+  local other owner
+  while read -r other; do
+    [[ -n $other ]] && installed "$other" || continue
+    owner=$(jq -r --arg p "$other" '[.apps[] | select(.packages | index($p)) | .name][0] // empty' "$CATALOG")
+    die "$name can't be installed beside ${owner:-$other}${owner:+ ($other)}. Remove that first. Nothing was changed."
+  done < <(field "$app" '.conflicts[]? // empty')
 
   if [[ $(field "$app" '.multilib // false') == true ]]; then
     if ! grep -q '^\[multilib\]' /etc/pacman.conf; then

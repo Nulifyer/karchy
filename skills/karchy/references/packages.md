@@ -70,6 +70,7 @@ Quick install is the catalog of apps and karchy features. The catalog is `/usr/s
 - `karchy-quick-install status` prints which catalog apps are installed, as JSON.
 - `karchy-quick-install install <id>` and `remove <id>` work in a terminal for one catalog id. They also apply the entry's declared setup: multilib, the 32-bit graphics driver, services, groups, kernel modules to load and firewall ports.
 - An entry that lists several packages is installed as one package, `karchy-app-<id>` (for example `karchy-app-lutris`). It has no files and depends on the entry's packages, so `remove <id>` also removes what came with the app, unless something else needs it or the user installed it by name. `pacman -R` on one of those parts is refused while the app is installed; remove the app instead.
+- An entry's `conflicts` are packages the app can't be installed beside. Install refuses while one is installed and names the app it belongs to: Docker is refused beside `podman-docker`, which is part of Podman. Remove that app first.
 - An AUR entry builds its AUR packages with paru (the first package, or the ones its `aur` list names: DroidCam and its kernel module `v4l2loopback-dc-dkms`); the rest come with its `karchy-app-<id>` package.
 - Such an app counts as installed when `karchy-app-<id>` is installed, or when its first package was installed by hand.
 - Prefer a catalog id over raw package names when the catalog has the app. Find the id with `jq '.apps[] | select(.name | test("<name>"; "i")) | .id' <catalog>`.

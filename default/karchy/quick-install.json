@@ -12157,6 +12157,9 @@
         "docker-compose",
         "docker-buildx"
       ],
+      "conflicts": [
+        "podman-docker"
+      ],
       "source": "arch",
       "setup": {
         "services": [

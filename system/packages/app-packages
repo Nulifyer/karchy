@@ -146,17 +146,42 @@ gpu32_packages() {
   tr ' ' '\n' <<<"$chosen" | grep . | sort -u
 }
 
-# The last line pacman printed as an error, for the window.
+# An installed package is in the way: say so by the name of the app in the
+# list that it belongs to ("Podman (podman-docker)").
+beside() {
+  local name
+  name=$(jq -r --arg p "$1" '[.apps[] | select(.packages | index($p)) | .name][0] // empty' "$CATALOG" 2>/dev/null)
+  echo "It can't be installed beside ${name:-$1}${name:+ ($1)}. Remove that first"
+}
+
+# The last line pacman printed as an error, for the window. A conflict with
+# an installed package is said as that instead (":: tlp-1.8.0-1 and
+# power-profiles-daemon-0.30-1 are in conflict").
 reason_from() {
-  local text
+  local text pkg
+  for pkg in $(sed -n 's/^:: \(.*\) and \(.*\) are in conflict.*/\1 \2/p' "$1" | head -n 1); do
+    pkg=$(sed -E 's/-[^-]+-[^-]+$//' <<<"$pkg")
+    installed "$pkg" || continue
+    beside "$pkg"
+    return
+  done
   text=$(grep -E '^error: ' "$1" | tail -n 1 | sed 's/^error: //')
   echo "${text:-pacman stopped with an error (see the log)}"
 }
 
 synced_multilib=0
 install_app() {
-  local id=$1 app=${apps[$1]} target extra=() missing=() sync=-S unit group module out failed=()
+  local id=$1 app=${apps[$1]} target extra=() missing=() sync=-S unit group module out failed=() other
   target=$(field "$app" "$TARGET")
+  # Packages the entry says the app can't be installed beside (`conflicts`).
+  # pacman wouldn't refuse these itself: Docker's own package depends on
+  # docker, and podman-docker (karchy's Podman setup) provides that name, so
+  # the app would count as installed without Docker ever arriving.
+  while read -r other; do
+    [[ $other =~ ^[a-z0-9@_+][a-z0-9@._+-]*$ ]] && installed "$other" || continue
+    echo "failed $id $(beside "$other")"
+    return 1
+  done < <(field "$app" '.conflicts[]? // empty')
   if [[ $(field "$app" '.multilib // false') == true ]]; then
     if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
       sed -i '/^#\[multilib\]$/,/^#Include/ s/^#//' /etc/pacman.conf

@@ -24,6 +24,12 @@ Errors:
     An entry that needs more than one package from the AUR names them all
     in `aur` (the first package among them); those are built with the app
     and left out of its package, which must still have something to hold
+  - `conflicts` that aren't packages of a signed repository, or that the
+    entry itself installs: the packages an app can't be installed beside,
+    where pacman wouldn't refuse (Docker beside podman-docker, which provides
+    the docker that Docker's own package depends on). Quick install refuses
+    the install and names the app; the app's package doesn't carry them, so
+    an update never stops on one
   - `setup.modules` that aren't kernel module names
   - entries out of order: the list is grouped by category, in the order of
     `categories`, and sorted by name within each, which is the order the
@@ -245,6 +251,11 @@ def main():
         if a.get('feature'):
             continue
         pkgs = a.get('packages', [])
+        for p in a.get('conflicts', []):
+            if not isinstance(p, str) or not re.fullmatch(r'[a-z0-9@_+][a-z0-9@._+-]*', p) or p not in every_repo:
+                errors.append(f'{where}: conflicts: {p!r} is not a package of a signed repository')
+            elif p in pkgs:
+                errors.append(f'{where}: conflicts: {p} is one of its own packages')
         for m in (a.get('setup') or {}).get('modules', []):
             if not re.fullmatch(r'[a-zA-Z0-9_-]+', m):
                 errors.append(f'{where}: setup.modules: {m!r} is not a kernel module name')
