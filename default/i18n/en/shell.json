@@ -168,17 +168,37 @@
   "clipboard.clearAll": "Clear all",
   "clipboard.deleteHistory": "Clear the clipboard history? Pinned entries stay.",
   "clipboard.empty": "Nothing copied yet",
+  "clipboard.emptyBody": "What you copy shows here, to paste again.",
   "clipboard.files": {
     "one": "%1 file",
     "other": "%1 files"
   },
-  "clipboard.historyOffBody": "Copies are not recorded: clipboard.history is off in shell.json.",
+  "clipboard.historyOff": "History is off",
+  "clipboard.historyOffBody": "Copies are not recorded. Turn on Keep a history in the bar's clipboard panel.",
   "clipboard.image": "Image",
   "clipboard.imageFrom": "Image from %1",
+  "clipboard.keepHistory": "Keep a history",
+  "clipboard.keepHistoryBody": "Off: nothing more is recorded, and only pinned entries stay.",
+  "clipboard.kept": {
+    "one": "%1 entry",
+    "other": "%1 entries"
+  },
   "clipboard.keys": "Enter pastes · Shift+Enter copies · Alt+Enter opens · Ctrl+P pins · Delete removes · Shift+Delete clears all",
+  "clipboard.more": {
+    "one": "%1 more in the history",
+    "other": "%1 more in the history"
+  },
+  "clipboard.openHistory": "Search the whole history",
   "clipboard.pin": "Pin",
+  "clipboard.pinned": "Pinned",
+  "clipboard.pinnedCount": {
+    "one": "%1 pinned",
+    "other": "%1 pinned"
+  },
+  "clipboard.recent": "Recent",
   "clipboard.screenshotFrom": "Screenshot from %1",
   "clipboard.search": "Search clipboard…",
+  "clipboard.title": "Clipboard",
   "clipboard.unpin": "Unpin",
   "clock.backToToday": "Back to today",
   "clock.born": "BORN",

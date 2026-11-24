@@ -1,5 +1,5 @@
-// The clipboard history's rules (D-167), for Service.qml and the picker
-// (Clipboard.qml).
+// The clipboard history's rules (D-167), for Service.qml, the picker
+// (Clipboard.qml) and the bar panel (Panel.qml).
 //
 // An entry is one copy, kept as a file (capture.sh writes it):
 //   { id, type, mime, path, size, preview, count, capturedAt, time, pinned }
@@ -365,6 +365,26 @@ function displayRows(history, query, limit, tr, trn, fmt) {
   return rows
 }
 
+// The bar panel's rows: the pinned entries, then the newest of the rest, a
+// few of each. more counts what only the picker shows.
+function panelRows(history, limit, tr, trn, fmt) {
+  var values = Array.isArray(history) ? history : []
+  var max = Math.max(0, Number(limit) || 0)
+  var pinned = []
+  var recent = []
+  var total = 0
+
+  for (var i = 0; i < values.length; i++) {
+    var entry = normalizeEntry(values[i])
+    if (!entry) continue
+    total += 1
+    var list = entry.pinned ? pinned : recent
+    if (list.length < max) list.push(row(entry, tr, trn, fmt))
+  }
+
+  return { pinned: pinned, recent: recent, more: total - pinned.length - recent.length }
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     defaultLimits: defaultLimits,
@@ -387,6 +407,7 @@ if (typeof module !== "undefined") {
     previewText: previewText,
     fullText: fullText,
     searchableText: searchableText,
-    displayRows: displayRows
+    displayRows: displayRows,
+    panelRows: panelRows
   }
 }

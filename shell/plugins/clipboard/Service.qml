@@ -4,7 +4,8 @@ import QtQuick
 import "ClipboardHistory.js" as ClipboardHistory
 
 // The clipboard history (D-167): what was copied, for the picker
-// (Clipboard.qml, Super+Ctrl+V) to paste from, as Win+V does on Windows. It only records; the clipboard itself is kept
+// (Clipboard.qml, Super+Ctrl+V) and the bar panel (Panel.qml) to paste from,
+// as Win+V does on Windows. It only records; the clipboard itself is kept
 // alive after an app closes by karchy-clipboard-persist.service.
 //
 // Every copy becomes an entry: text, an image, or a file manager's list of
@@ -19,7 +20,8 @@ import "ClipboardHistory.js" as ClipboardHistory
 //
 // One `wl-paste --watch` tells it about copies; nothing polls.
 //
-// `clipboard.history: false` in shell.json turns the recording off: the watcher stops and what is not pinned is
+// `clipboard.history` in shell.json (the bar panel's "Keep a history" switch)
+// turns the recording off: the watcher stops and what is not pinned is
 // forgotten. Copy and paste go on as before.
 Item {
   id: root

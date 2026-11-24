@@ -92,7 +92,11 @@
           "id": "karchy.power"
         }
       ],
-      "tray": []
+      "tray": [
+        {
+          "id": "karchy.clipboard"
+        }
+      ]
     }
   },
   "plugins": []

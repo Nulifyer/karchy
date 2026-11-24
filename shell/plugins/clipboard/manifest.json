@@ -4,14 +4,23 @@
   "name": "Clipboard",
   "version": "2.0.0",
   "author": "Karchy",
-  "description": "Clipboard history: what was copied, to search, pin and paste again",
+  "description": "Clipboard history: what was copied, to search, pin and paste again, with a bar panel",
   "kinds": [
     "service",
-    "overlay"
+    "overlay",
+    "bar-widget"
   ],
   "keepLoaded": true,
   "entryPoints": {
     "service": "Service.qml",
-    "overlay": "Clipboard.qml"
+    "overlay": "Clipboard.qml",
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Clipboard",
+    "description": "The clipboard history: paste, pin or delete what was copied",
+    "category": "System",
+    "defaultSection": "tray",
+    "allowMultiple": false
   }
 }

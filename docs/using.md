@@ -46,7 +46,7 @@ Its pages:
 - Users, Security, SSH & Git
 - About
 
-The bar has quick panels for the things you change often: sound, microphone, network, Bluetooth, brightness and power. Click an icon to open its panel.
+The bar has quick panels for the things you change often: sound, microphone, network, Bluetooth, brightness and power. Click an icon to open its panel. The arrow beside the tray opens a drawer with more, the clipboard among them.
 
 ## Windows and workspaces
 
@@ -64,8 +64,9 @@ The clipboard works as on Windows.
 - In a terminal `Ctrl` + `C` stops the running program, so copy and paste are `Ctrl` + `Shift` + `C` and `Ctrl` + `Shift` + `V` there.
 - `Super` + `Ctrl` + `V` opens the clipboard history: everything you copied since you logged in, text, pictures and files. Type to search, and press `Enter` or click an entry to paste it where your cursor is.
 - In the history, `Ctrl` + `P` pins an entry, `Delete` removes it and `Shift` + `Delete` clears everything that is not pinned.
+- The same list is in the bar: point at the arrow beside the tray and click the clipboard icon.
 
-The history is kept in memory and is empty again after a restart or after you log out. A pinned entry stays until you unpin or delete it. What a password manager copies is never put in the history.
+The history is kept in memory and is empty again after a restart or after you log out. A pinned entry stays until you unpin or delete it. What a password manager copies is never put in the history. To stop recording altogether, turn off "Keep a history" in the bar's clipboard panel.
 
 ## Install and remove apps
 

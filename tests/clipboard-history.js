@@ -161,4 +161,13 @@ assert.deepStrictEqual(H.displayRows(history, "nothing like it"), [])
 assert.strictEqual(H.displayRows(history, "", 2).length, 2)
 assert.deepStrictEqual(H.displayRows(history, "", 0), [])
 
+// ---- the bar panel's rows: pinned, then the newest, a few of each
+let panel = H.panelRows(history, 2)
+assert.deepStrictEqual(panel.pinned.map(row => row.id), ["text:old"])
+assert.deepStrictEqual(panel.recent.map(row => row.id), ["text:new", "files:one"])
+assert.strictEqual(panel.more, 1)
+panel = H.panelRows(history, 5)
+assert.strictEqual(panel.more, 0)
+assert.deepStrictEqual(H.panelRows([], 5), { pinned: [], recent: [], more: 0 })
+
 console.log("clipboard-history: ok")

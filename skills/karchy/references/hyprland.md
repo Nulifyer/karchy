@@ -55,6 +55,8 @@ Use the commands. They edit `shell.json` and tell the running shell.
 
 If you edit `shell.json` by hand, keep it a JSON object and write only differing keys. Objects merge key by key. An array, such as a bar section's widget list, replaces the default list whole.
 
+The clipboard history is the plugin `karchy.clipboard`: a service that records copies, the picker on Super+Ctrl+V and a bar widget in the tray's drawer (the `tray` section). The history is switched off with "Keep a history" in the bar panel, which is `"clipboard": { "history": false }` in `shell.json`; copy and paste keep working. `karchy plugin disable karchy.clipboard` only takes the icon off the bar, and `karchy plugin enable karchy.clipboard` puts it back in the tray's drawer. To put a copy on the clipboard from a script use `wl-copy`, and for files `karchy clipboard copy files <path>...`, which a file manager can paste. A password manager's copy is never in the history, so do not look for one there.
+
 Plugins come from packages only: the built-in ones in `/usr/share/karchy/shell/plugins` and add-on ones in `/usr/share/karchy/plugins`. Do not write a plugin into the home folder. The shell does not load it.
 
 ## Restart and talk to the shell

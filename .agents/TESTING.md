@@ -33,7 +33,7 @@ lua tests/window-stacking.lua      # which window is in front and where Alt+Tab 
 bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, what loose typing no longer finds (D-136), en/menu.json agrees
 bun tests/notifications-panel.js "$PWD"   # the notifications panel: sections, groups, the names apps are listed under
 bun tests/storage-model.js "$PWD"  # Settings › Storage: sizes, the live figures, the overview's tiles, the stack and subvolume rows
-bun tests/clipboard-history.js "$PWD"   # the clipboard history's rules (D-167): one entry per copy, pins, the limits, which files go, the picker's rows
+bun tests/clipboard-history.js "$PWD"   # the clipboard history's rules (D-167): one entry per copy, pins, the limits, which files go, the picker's and the panel's rows
 tests/clipboard-capture.sh         # what a copy becomes (shell/plugins/clipboard/capture.sh) against a stand-in wl-paste: text, image or files, the size limit, a stalled app, and that a password manager's copy is left out
 bun tests/network-model.js "$PWD"  # the network panel: the internet through the VPN (never "No internet" while it protects), a WireGuard tunnel's health and its words
 tests/settings-power.sh            # Settings › Power (D-160, D-162): karchy-settings-power, karchy-powerprofiles-set, karchy-power-source, karchy-battery-running-low, the screensaver's launcher and the root helper on a made-up laptop and desktop in a user namespace (stand-in UPower, logind, power-profiles-daemon and backlight; the real systemd-analyze; UPower's files read by UPower's own rules). `--machine <dir> laptop|desktop <command>` keeps such a machine to try a command or the page on
