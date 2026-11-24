@@ -17,6 +17,13 @@
 # Limine skips a font it can't load or verify and uses its built-in one, so a
 # damaged or missing font file never stops a boot.
 #
+# Limine draws only fonts 8 dots wide and enlarges them by whole numbers. The
+# font is 8x32 and drawn at 2x1 (D-154, tools/console-font): a dot is two
+# pixels wide and one tall, so a letter is 16x32 pixels, as an 8x16 font
+# doubled both ways would be, but its curves and diagonals keep every row.
+# When Limine skips the font, its own 8x16 one is drawn at 2x1 too: wide, low
+# letters that still read.
+#
 # When limine.conf's hash is enrolled in the Limine binary (Secure Boot), a
 # changed limine.conf must be enrolled again: limine-update does that through
 # its hooks, so this runs it after a change.
@@ -32,18 +39,21 @@ setting() {
 esp=$(setting ESP_PATH)
 esp=${esp:-/boot}
 config=$esp/limine.conf
-font_src=/usr/share/karchy/limine/karchy-8x16.bin
+font_src=/usr/share/karchy/limine/karchy-8x32.bin
 font_dir=$esp/karchy
+font="font-8x32.bin"
 begin="### karchy: begin (written by /usr/lib/karchy/limine-brand, which replaces this block)"
 end="### karchy: end"
 
 [[ -f $config ]] || { echo "limine-brand: $config not found; run limine-update first" >&2; exit 1; }
 
-font_lines=""
-if [[ -f $font_src ]] && install -Dm644 "$font_src" "$font_dir/font-8x16.bin"; then
-  hash=$(b2sum "$font_dir/font-8x16.bin" | cut -d' ' -f1)
-  font_lines="term_font: boot():/karchy/font-8x16.bin#$hash
-term_font_size: 8x16
+# Without karchy's font: Limine's own, doubled both ways.
+font_lines="term_font_scale: 2x2"
+if [[ -f $font_src ]] && install -Dm644 "$font_src" "$font_dir/$font"; then
+  hash=$(b2sum "$font_dir/$font" | cut -d' ' -f1)
+  font_lines="term_font: boot():/karchy/$font#$hash
+term_font_size: 8x32
+term_font_scale: 2x1
 term_font_spacing: 0"
 fi
 
@@ -60,7 +70,6 @@ term_background: 202020
 term_foreground: ddc7a1
 term_background_bright: 7c6f64
 term_foreground_bright: ebdbb2
-term_font_scale: 2x2
 $font_lines
 $end"
 
@@ -77,12 +86,16 @@ awk -v begin="$begin" -v end="$end" -v block="$block" '
   END { if (!placed) print block }
 ' "$config" >"$new"
 
-if cmp -s "$new" "$config"; then
-  exit 0
+changed=0
+if ! cmp -s "$new" "$config"; then
+  cat "$new" >"$config"
+  sync -f "$config"
+  echo "limine-brand: $config updated"
+  changed=1
 fi
-cat "$new" >"$config"
-sync -f "$config"
-echo "limine-brand: $config updated"
+# The font of karchy before D-154, which no line names now.
+rm -f "$font_dir/font-8x16.bin"
+((changed)) || exit 0
 
 if [[ $(setting ENABLE_ENROLL_LIMINE_CONFIG) == "yes" ]]; then
   limine-update
