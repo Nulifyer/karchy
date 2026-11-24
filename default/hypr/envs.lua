@@ -16,6 +16,14 @@ hl.env("MOZ_ENABLE_WAYLAND", "1")
 hl.env("OZONE_PLATFORM", "wayland")
 hl.env("XDG_SESSION_TYPE", "wayland")
 
+-- GTK 4 apps draw with OpenGL (D-170). GTK 4.16 and newer pick the Vulkan
+-- renderer by itself, which on NVIDIA leaves windows blank or crashing, and on
+-- AMD made scrolling a long list stutter (Mission Center's Apps and Services
+-- pages on a Framework 13 AMD, smooth with this set). To choose another
+-- renderer, set GSK_RENDERER with hl.env in your Hyprland config, which loads
+-- after this.
+hl.env("GSK_RENDERER", "gl")
+
 -- Allow better support for screen sharing (Google Meet, Discord, etc).
 hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
 hl.env("XDG_SESSION_DESKTOP", "Hyprland")

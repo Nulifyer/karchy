@@ -9,12 +9,8 @@ local nvidia_without_gsp = paths.karchy_path .. "/bin/karchy-hw-nvidia-without-g
 -- lspci reads PCI config space, which resumes a runtime-suspended GPU, and on a
 -- hybrid laptop that wake alone outlasts Hyprland's 1.5s config reload budget.
 if o.shell_succeeds(o.shell_quote(nvidia)) then
-  -- GTK 4.16+ defaults to the Vulkan renderer, which leaves GTK4 apps
-  -- (Mission Center, GNOME Disks) as blank windows or crashing on NVIDIA machines, most
-  -- reliably when GTK's Vulkan device isn't the GPU Hyprland composites on.
-  -- The OpenGL renderer avoids that. To choose another renderer, set
-  -- GSK_RENDERER with hl.env in your Hyprland config, which loads after this.
-  hl.env("GSK_RENDERER", "gl")
+  -- GTK 4's OpenGL renderer, which NVIDIA machines need, is set for every
+  -- machine in envs.lua (GSK_RENDERER).
 
   -- On hybrid laptops the display is wired to the iGPU, so forcing NVIDIA's
   -- VA-API/GLX drivers globally breaks Chromium-based browsers (black video).
