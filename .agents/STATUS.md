@@ -253,6 +253,14 @@ Branch `t3/containers-app-package-decoupling` (worktree, not merged), four commi
 - **Not tested:** GPU containers; the build's removal of the old package in CI (`ci/publish`); WinBoat.
 - **For the user** (nothing built): (1) with both engines installed, Docker's running containers are not in the window or the bar, which breaks the bar's promise that a running container is never forgotten; recommended: list both engines' containers, each marked with its engine, or failing that a switch in the window. (2) Should removing the Containers app also take the bar icon and `karchy containers`? Then the plugin and command move into `karchy-containers-app`, as the project picker's do. Recommended: leave as is, since the icon only shows while containers run. (3) WinBoat depends on `docker` and, beside karchy's Podman setup, installs without Docker as Docker's entry did; recommended: give it the same `conflicts` once it is confirmed that WinBoat doesn't work with Podman. (4) The app's icon is Podman Desktop's (`podman-desktop`), and Podman and Docker have letter tiles: Papirus has no neutral container icon and none named `podman` or `docker`.
 
+## Plymouth at scale 1 (D-173), 2026-11-24
+
+Branch `t3/plymouth-scale-one` (worktree, not merged). The splash was blurred on screens Plymouth takes for high-resolution (scale 2: the script saw half the height and its small pictures were enlarged).
+- **Built:** `DeviceScale=1` in `/etc/plymouth/plymouthd.conf`, by the installer before the first images and by `migrations/1795547760-plymouth-scale-one.sh` on installed machines (keeps a `DeviceScale` of the user's; one `limine-mkinitcpio` while an image is older than the file). Docs, the troubleshoot skill and the maintenance register follow.
+- **Confirmed in Plymouth 26.134.222's source:** the kernel line's `plymouth.force-scale=` is read before the file and wins over it; the shutdown splash reads the file from `/etc`; `plymouth-set-default-theme` touches only `Theme=`.
+- **Seen in VM `inst`** (`out/plymouth-scale/` in the worktree; the VM is back on its state before, snapshot `pre-plymouth-scale`, shut off): the fault with `plymouth.force-scale=2` before the fix and the same after it (kernel line wins), a normal boot unchanged, scale 2 from `plymouthd.defaults` beaten by the file at boot and shutdown, the migration twice.
+- **Not checked:** a real 2880x1920 panel and simpledrm's guess (TESTING has the line), a full fresh install.
+
 ## Current batch
 
 None: everything is merged.
