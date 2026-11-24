@@ -143,11 +143,15 @@ Item {
               return toplevel.lastIpcObject && toplevel.lastIpcObject.class ? String(toplevel.lastIpcObject.class) : ""
             }
             readonly property string title: Model.label(toplevel ? toplevel.title : "", app)
+            // One of the shell's own windows (Settings, Updates): no desktop
+            // entry is theirs, and the icon map has their icon.
+            readonly property bool own: app !== "" && app === Quickshell.appId
+            readonly property string ownIcon: own ? Model.ownIcon(title) : ""
             // The app's own icon: its desktop entry's, else one the icon
             // theme has under the app's name. Nothing found: a letter.
             readonly property string iconSource: {
               var revision = DesktopEntries.applications.values.length
-              if (app === "") return ""
+              if (app === "" || own) return ""
               var entry = DesktopEntries.heuristicLookup(app)
               var name = entry && entry.icon ? String(entry.icon) : ""
               if (name.charAt(0) === "/") return Util.fileUrl(name)
@@ -191,13 +195,25 @@ Item {
                 color: Style.normalFillFor(Commons.Color.popups.text, Commons.Color.accent, Commons.Color.urgent)
 
                 Text {
+                  visible: tile.ownIcon === ""
                   textFormat: Text.PlainText
                   anchors.centerIn: parent
-                  text: Model.initial(tile.app, tile.title)
+                  // The shell's class says nothing about which window it is.
+                  text: Model.initial(tile.own ? "" : tile.app, tile.title)
                   color: Commons.Color.popups.text
                   font.family: Style.font.family
                   font.pixelSize: Style.font.display
                   font.weight: Font.DemiBold
+                }
+
+                Text {
+                  visible: tile.ownIcon !== ""
+                  textFormat: Text.PlainText
+                  anchors.centerIn: parent
+                  text: tile.ownIcon !== "" ? Icons.glyph(tile.ownIcon) : ""
+                  color: Commons.Color.popups.text
+                  font.family: Icons.family
+                  font.pixelSize: Style.font.display
                 }
               }
             }

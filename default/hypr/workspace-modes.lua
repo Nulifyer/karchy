@@ -241,11 +241,15 @@ local function not_floating_on_their_own(match)
       table.insert(excluded[tagged.key], tagged.pattern)
     end
   end
-  -- Windows with a size of their own have a rule of their own below. Their
-  -- title names them; the class is the shell's, which other windows share.
+  -- Windows with a size of their own have a rule of their own below. They
+  -- are left out by their class, the shell's, which only karchy's windows
+  -- have: a rule can't say "not this class with this title", and a title
+  -- alone ("Settings") would leave out another app's window of that name.
+  local seen = {}
   for _, own in ipairs(o.own_size_apps or {}) do
-    local key = own.title and "title" or "class"
-    if type(own[key]) == "string" then
+    local key = own.class and "class" or "title"
+    if type(own[key]) == "string" and not seen[key .. own[key]] then
+      seen[key .. own[key]] = true
       table.insert(excluded[key], own[key])
     end
   end

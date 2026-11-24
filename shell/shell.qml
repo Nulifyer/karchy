@@ -1,4 +1,14 @@
 //@ pragma KarchyLoadPatch
+// The shell's windows are karchy's, not the app "Quickshell": with
+// Quickshell's own app id every one of them is claimed by Quickshell's
+// desktop entry, and a floating window's titlebar, which shows the name of
+// the app a window's class belongs to, read "Quickshell" on Settings, Quick
+// install, Updates, Virtual machines and Containers alike (D-178). No desktop
+// entry has this id, and none may be given this file name, so the titlebar
+// shows each window's own title. Hyprland's rules match it as the class
+// (default/hypr/apps). Not org.karchy.<name>: that is the class of karchy's
+// terminal windows, which the rules treat as terminals.
+//@ pragma AppId karchy-shell
 import QtQuick
 import QtQml.Models
 import Quickshell
@@ -465,11 +475,19 @@ ShellRoot {
 
   // Hyprland goes to the window's workspace and gives it the keyboard, and a
   // floating window that gets the keyboard is raised (default/hypr/stacking.lua).
+  // The window is found by the shell's class and its title together: a
+  // title alone ("Settings") can be another app's window.
   function focusPluginWindow(pluginId) {
     var loader = panelLoaders[pluginId]
     var title = loader && loader.item ? loader.item.windowTitle : ""
     if (!title) return
-    Hyprland.dispatch('hl.dsp.focus({ window = "title:^' + title + '$" })')
+    var toplevels = Hyprland.toplevels.values
+    for (var i = 0; i < toplevels.length; i++) {
+      var toplevel = toplevels[i]
+      if (toplevel.title !== title || !toplevel.wayland || toplevel.wayland.appId !== Quickshell.appId) continue
+      Hyprland.dispatch('hl.dsp.focus({ window = "address:0x' + toplevel.address + '" })')
+      return
+    }
   }
 
   function hide(pluginId) {

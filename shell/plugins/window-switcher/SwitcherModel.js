@@ -47,6 +47,25 @@ function label(title, app) {
   return text !== "" ? text : String(app || "").trim()
 }
 
+// karchy's own windows are the shell's: one app id for all of them and no
+// desktop entry (shell/shell.qml), so the title says which window it is. Each
+// gets the icon the menu and its own pages show for it, from the icon map.
+// The titles are the plugins' names (their manifest.json); the test holds
+// this list to them and to the map.
+var OWN_ICONS = {
+  "Settings": "settings",
+  "Quick install": "quick-install",
+  "Updates": "update",
+  "Virtual machines": "vms",
+  "Containers": "containers"
+}
+
+// The icon map's name for one of the shell's own windows, "" for any other.
+function ownIcon(title) {
+  var name = String(title || "").trim()
+  return Object.prototype.hasOwnProperty.call(OWN_ICONS, name) ? OWN_ICONS[name] : ""
+}
+
 // The letter drawn for an app that has no icon.
 function initial(app, title) {
   var text = String(app || "").trim() || String(title || "").trim()

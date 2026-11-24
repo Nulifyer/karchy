@@ -40,16 +40,17 @@ o.window("org.karchy.about", { size = { 920, 560 } })
 
 o.window("omacalc", { float = true })
 
--- karchy's own windows are shell windows (Quickshell's class), so they are
--- matched by title too. They are kept open and switched to, so they are app
+-- karchy's own windows are shell windows: one class for all of them (the
+-- app id shell/shell.qml gives the shell), so they are matched by title too.
+-- The title is the window's name, which a floating window's titlebar shows. They are kept open and switched to, so they are app
 -- windows (D-175): on a tiling workspace they tile, with a layout for the
 -- width a tile gives them, and no float rule names them; on a floating one
 -- they float at the size they give themselves (workspace-modes.lua).
 -- Virtual machines and Containers are in vms.lua.
 -- The sizes are the ones each window gives itself (its FloatingWindow).
-o.own_size_window({ class = "^org.quickshell$", title = "^karchy Settings$", size = { 900, 680 } })
-o.own_size_window({ class = "^org.quickshell$", title = "^Quick install$", size = { 1000, 740 } })
-o.own_size_window({ class = "^org.quickshell$", title = "^Updates$", size = { 760, 640 } })
+o.own_size_window({ class = "^karchy-shell$", title = "^Settings$", size = { 900, 680 } })
+o.own_size_window({ class = "^karchy-shell$", title = "^Quick install$", size = { 1000, 740 } })
+o.own_size_window({ class = "^karchy-shell$", title = "^Updates$", size = { 760, 640 } })
 
 -- Fullscreen screensaver.
 o.window("org.karchy.screensaver", { fullscreen = true })

@@ -1,3 +1,4 @@
+import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import QtQuick
@@ -26,8 +27,10 @@ import QtQuick
 Item {
   id: root
 
-  // The window's title, as Hyprland's rules match it.
+  // The window's title, as Hyprland's rules match it, together with the
+  // shell's class: a title alone ("Settings") can be another app's window.
   property string title: ""
+  readonly property string windowClass: Quickshell.appId
   // The window is open.
   property bool active: false
 
@@ -36,13 +39,14 @@ Item {
   function refit(always) {
     if (root.title === "" || root.width <= 0 || root.height <= 0) return
     var w = Math.round(root.width), h = Math.round(root.height)
-    var target = '"title:^' + root.title + '$"'
+    // The address is Hyprland's own writing of it (0x and hex digits).
     proc.command = ["sh", "-c",
-      "hyprctl -j clients | jq -e --arg t \"$1\" --argjson w \"$2\" --argjson h \"$3\" --argjson always \"$4\" "
-        + "'any(.[]; .title == $t and .floating and .fullscreen == 0 and ($always or .size != [$w, $h]))' >/dev/null || exit 0; "
-        + "hyprctl dispatch 'hl.dsp.window.resize({ x = " + w + ", y = " + h + ", relative = false, window = " + target + " })' >/dev/null && "
-        + "hyprctl dispatch 'hl.dsp.window.center({ window = " + target + " })' >/dev/null",
-      "own-size", root.title, String(w), String(h), always === true ? "true" : "false"]
+      "address=$(hyprctl -j clients | jq -r --arg c \"$5\" --arg t \"$1\" --argjson w \"$2\" --argjson h \"$3\" --argjson always \"$4\" "
+        + "'first(.[] | select(.class == $c and .title == $t and .floating and .fullscreen == 0 and ($always or .size != [$w, $h])) | .address) // empty'); "
+        + "case $address in 0x*) ;; *) exit 0 ;; esac; "
+        + "hyprctl dispatch \"hl.dsp.window.resize({ x = $2, y = $3, relative = false, window = 'address:$address' })\" >/dev/null && "
+        + "hyprctl dispatch \"hl.dsp.window.center({ window = 'address:$address' })\" >/dev/null",
+      "own-size", root.title, String(w), String(h), always === true ? "true" : "false", root.windowClass]
     proc.running = true
   }
 
@@ -53,7 +57,8 @@ Item {
       // openwindow>>ADDRESS,WORKSPACE,CLASS,TITLE
       if (String(event.name) !== "openwindow") return
       var data = String(event.data)
-      if (data.slice(-(root.title.length + 1)) === "," + root.title) root.refit()
+      var ours = "," + root.windowClass + "," + root.title
+      if (data.slice(-ours.length) === ours) root.refit()
     }
   }
 

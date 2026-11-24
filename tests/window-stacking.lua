@@ -425,7 +425,7 @@ eq(prompt.allowed_over_fullscreen, true, "and keeps its own dialog in front")
 
 -- karchy's own windows are app windows with a size of their own (D-175). No
 -- float rule names them, so on a tiling workspace they tile like any app.
-local own_titles = { "^karchy Settings$", "^Quick install$", "^Updates$", "^Virtual machines$", "^Containers$" }
+local own_titles = { "^Settings$", "^Quick install$", "^Updates$", "^Virtual machines$", "^Containers$" }
 eq(#o.own_size_apps, #own_titles, "the five windows of karchy's own are app windows with a size of their own")
 for index, title in ipairs(own_titles) do
   local named = 0
@@ -435,7 +435,7 @@ for index, title in ipairs(own_titles) do
     end
   end
   eq(named, 0, "no rule floats or places " .. title .. " on a tiling workspace")
-  eq(o.own_size_apps[index].class, "^org.quickshell$", title .. " is matched as a shell window")
+  eq(o.own_size_apps[index].class, "^karchy-shell$", title .. " is matched as a shell window")
 end
 
 -- On a floating workspace a rule of their own floats them in the middle at
@@ -451,7 +451,8 @@ local function rule_named(name)
   return found
 end
 local own_rule = rule_named("karchy-floating-own-size-1")
-eq(own_rule ~= nil and own_rule.enabled and own_rule.match.title, "^karchy Settings$", "a floating workspace has a rule for karchy Settings")
+eq(own_rule ~= nil and own_rule.enabled and own_rule.match.title, "^Settings$", "a floating workspace has a rule for Settings")
+eq(own_rule.match.class, "^karchy-shell$", "of the shell's class: another app's window named Settings is not it")
 eq(own_rule.match.workspace, "r[1-2147483647]", "on every floating workspace")
 eq(tostring(own_rule.float) .. " " .. tostring(own_rule.center), "true true", "floating, in the middle")
 eq(own_rule.size, "min(900,monitor_w*0.85) min(680,monitor_h*0.85)", "at the size Settings gives itself, 85% of a smaller screen")
@@ -459,7 +460,10 @@ eq(rule_named("karchy-floating-own-size-3").size, "min(760,monitor_w*0.85) min(6
 eq(own_rule.tag, "+" .. workspace_modes.OPENED_TAG, "claimed by the mode like any app window")
 eq(rule_named("karchy-floating-own-size-5").match.title, "^Containers$", "and one for each of the five")
 eq(rule_named("karchy-floating-own-size-6"), nil, "and no more")
-eq(open_rule.match.title:find("karchy Settings", 1, true) ~= nil, true, "the rule that sizes app windows leaves karchy's own out")
+eq(open_rule.match.class:find("(?:^karchy-shell$)", 1, true) ~= nil, true, "the rule that sizes app windows leaves karchy's own out, by the shell's class")
+local _, shell_classes = open_rule.match.class:gsub("karchy%-shell", "")
+eq(shell_classes, 1, "named once for the five")
+eq(open_rule.match.title == nil or open_rule.match.title:find("Settings", 1, true) == nil, true, "and not by a title another app's window can have")
 
 -- Claimed, it tiles when it is carried to a workspace that tiles.
 reset()

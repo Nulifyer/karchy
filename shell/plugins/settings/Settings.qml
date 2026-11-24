@@ -246,9 +246,11 @@ Item {
       content.contentY = Math.min(maxY, fits ? bottom + margin - content.height : top - margin)
   }
 
-  // The shell brings the window to the front by this title when it is asked
-  // for while open (shell.qml, summon), and Hyprland's rules match it.
-  readonly property string windowTitle: "karchy Settings"
+  // The window's name, as a floating window's titlebar, the Alt+Tab switcher
+  // and the bar show it. The shell brings the window to the front by this
+  // title when it is asked for while open (shell.qml, summon), and Hyprland's
+  // rules match it, both together with the shell's class.
+  readonly property string windowTitle: "Settings"
 
   FloatingWindow {
     id: window

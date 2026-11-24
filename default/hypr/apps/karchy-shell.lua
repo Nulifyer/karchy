@@ -18,4 +18,4 @@ hl.layer_rule({ match = { namespace = "^(karchy-background|owe-background)$" }, 
 
 -- Dev gallery is the main shell workbench; open it maximized like
 -- SUPER+ALT+F so component previews have the whole workspace.
-o.window({ class = "^org.quickshell$", title = "^Karchy shell – dev gallery$" }, { maximize = true })
+o.window({ class = "^karchy-shell$", title = "^Karchy shell – dev gallery$" }, { maximize = true })
