@@ -2022,10 +2022,10 @@ Panel {
     elide: Text.ElideRight
   }
 
+  // The font is TextField's own (the text font at body size): a password
+  // field has to leave it alone, or its dots leave the rule (Ui/PasswordDots).
   component PromptField: TextField {
     Layout.fillWidth: true
-    font.family: Style.font.family
-    font.pixelSize: Style.font.body
     foreground: root.panelText
     horizontalPadding: Style.spacing.controlGap
     verticalPadding: Style.spacing.controlPaddingY
