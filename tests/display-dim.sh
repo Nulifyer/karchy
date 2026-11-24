@@ -9,15 +9,31 @@
 # The real karchy-brightness-display, karchy-hw-display and karchy-power-source
 # run against a made-up backlight (a folder with `brightness` and
 # `max_brightness`) through a stand-in brightnessctl; hyprctl records what it
-# is asked. Nothing on the machine is touched.
+# is asked. Root's side, the real system/power/backlight-dim that
+# karchy-backlight-dim@.service runs around systemd-backlight's save and
+# restore, runs against the same folder. All of it happens in a user
+# namespace where this user plays root, with a fresh /var/lib (the notes'
+# folder made as tmpfiles.d makes it), the made-up backlight over
+# /sys/class/backlight and a boot id of the test's own over
+# /proc/sys/kernel/random/boot_id, so a reboot is a new id. Nothing on the
+# machine is touched.
 # shellcheck disable=SC2016 # the quoted scripts are for the stand-ins
 set -u
 root=$(cd "$(dirname "$0")/.." && pwd)
 command -v jq >/dev/null || { echo "display-dim: jq is needed"; exit 2; }
 
+if [[ ${KARCHY_DISPLAY_DIM_INSIDE:-} != 1 ]]; then
+  exec unshare -rm env KARCHY_DISPLAY_DIM_INSIDE=1 bash "$0" "$@"
+fi
+
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work"/{bin,run,home,sys/fake_bl}
+mount -t tmpfs tmpfs /var/lib || { echo "display-dim: can't mount /var/lib in the namespace"; exit 2; }
+install -d -m 1733 /var/lib/karchy/brightness-dim
+echo "boot-one" >"$work/boot_id"
+mount --bind "$work/boot_id" /proc/sys/kernel/random/boot_id || { echo "display-dim: can't stand in for the boot id"; exit 2; }
+mount --bind "$work/sys" /sys/class/backlight || { echo "display-dim: can't stand in for /sys/class/backlight"; exit 2; }
 stub() { cat >"$work/bin/$1" && chmod 755 "$work/bin/$1"; }
 
 # get, max, -m and set (raw or percent) on the made-up backlight. A file
@@ -82,7 +98,7 @@ export PATH=$work/bin:$root/bin:/usr/bin
 unset XDG_CONFIG_HOME XDG_STATE_HOME
 
 bl=$work/sys/fake_bl
-note=$work/run/karchy-brightness-display-dim
+note=/var/lib/karchy/brightness-dim/$UID
 fails=0
 ok() { echo "ok   $1"; }
 bad() { echo "FAIL $1"; fails=1; }
@@ -229,6 +245,153 @@ for wrong in "" 0 100 x 5% "10 20"; do
   display dim $wrong 2>/dev/null; code=$?
   is "dim '$wrong' is refused" "$code $(state)" "1 600 none"
 done
+
+# ------------------------------------- the note, kept where a reboot keeps it
+screen 637
+display dim 10
+is "the note: this user's own, private, with the levels and the boot" "$(stat -c '%a %u' "$note") $(<"$note")" "600 $UID fake_bl 637 100 boot-one"
+is "…in the folder tmpfiles.d makes, none under \$XDG_RUNTIME_DIR" "$(stat -c %a /var/lib/karchy/brightness-dim) $([[ -e $XDG_RUNTIME_DIR/karchy-brightness-display-dim ]] && echo there)" "1733 "
+display undim
+
+# The way down: root's helper just before systemd-backlight saves the level.
+helper=$root/system/power/backlight-dim
+reboot() { echo "$1" >"$work/boot_id"; }
+screen 637
+display dim 10
+"$helper" stop backlight:fake_bl
+is "shutdown while dimmed: the level is back before the save, the note gone" "$(state)" "637 none"
+screen 600
+display dim 10
+brightnessctl -q -d fake_bl set 300
+"$helper" stop backlight:fake_bl
+is "shutdown after a level set by hand: that level is saved, the note gone" "$(state)" "300 none"
+screen 600
+display dim 10
+brightnessctl -q -d fake_bl set 40
+"$helper" stop backlight:fake_bl
+is "…also a darker one" "$(state)" "40 none"
+screen 600
+display dim 10
+brightnessctl -q -d fake_bl set 101
+"$helper" stop backlight:fake_bl
+is "in the boot that dimmed it, one step off is a level set since" "$(state)" "101 none"
+screen 600
+"$helper" stop backlight:fake_bl; code=$?
+is "shutdown with nothing dimmed: nothing happens" "$code $(state) [$(log)]" "0 600 none []"
+screen 600
+display dim 10
+"$helper" stop leds:input3::capslock; "$helper" stop backlight:other_bl
+is "another backlight's or a keyboard light's stop leaves this one's note" "$(state)" "100 noted"
+"$helper" stop backlight:fake_bl
+
+# A boot that still finds a dimming: saved dim (a save this did not get to),
+# then restored by systemd-backlight, maybe rounded by the driver.
+for restored in 100 99 101 110 90; do
+  screen 600
+  reboot boot-one
+  display dim 10
+  reboot boot-two
+  echo "$restored" >"$bl/brightness"
+  "$helper" start backlight:fake_bl
+  is "boot after a dimming was saved, restored at $restored: the level it had" "$(state)" "600 none"
+done
+for restored in 111 89 400 30; do
+  screen 600
+  reboot boot-one
+  display dim 10
+  reboot boot-two
+  echo "$restored" >"$bl/brightness"
+  "$helper" start backlight:fake_bl
+  is "boot at $restored, more than a step from the dim level: left as it is, the note gone" "$(state)" "$restored none"
+done
+screen 600
+reboot boot-one
+display dim 2
+is "dimmed to 2%, under systemd's 5% floor" "$(state)" "20 noted"
+reboot boot-two
+echo 50 >"$bl/brightness"
+"$helper" start backlight:fake_bl
+is "…restored at that floor (50 of 1000): still the dimming, the level back" "$(state)" "600 none"
+screen 600
+reboot boot-two
+display dim 10
+"$helper" start backlight:fake_bl
+is "at boot, this boot's own note (a backlight that came late) is the session's: left" "$(state)" "100 noted"
+display undim
+
+# The session's start (the shell's idle service, karchy-brightness-restore)
+# finds a leftover the helper did not see.
+screen 600
+reboot boot-one
+display dim 10
+reboot boot-three
+echo 101 >"$bl/brightness"
+display undim
+is "undim of a note from an earlier boot: within a step is still the dimming" "$(state)" "600 none"
+screen 600
+reboot boot-one
+display dim 10
+reboot boot-three
+echo 450 >"$bl/brightness"
+display undim
+is "…a level set since stays" "$(state)" "450 none"
+screen 600
+reboot boot-one
+display dim 10
+reboot boot-three
+echo 500 >"$bl/brightness"
+display dim 10
+is "dim over a leftover note: it is settled first, then this dimming is noted" "$(state) $(cut -d' ' -f2,4 "$note")" "100 noted 500 boot-three"
+display undim
+is "…and undone to this boot's level" "$(state)" "500 none"
+reboot boot-one
+
+# What else may be in a folder every user can write to.
+screen 600
+ln -s "$work/elsewhere" "$note"
+display dim 10
+is "a link where the note goes: not followed, no dimming" "$(level) $([[ -e $work/elsewhere ]] && echo written || echo untouched)" "600 untouched"
+display undim
+is "…and undim leaves it" "$([[ -L $note ]] && echo link)" link
+rm -f "$note"
+screen 600
+mkfifo "$note"
+display dim 10
+is "a pipe where the note goes: no dimming, nothing hangs" "$(level)" 600
+timeout 5 "$helper" stop backlight:fake_bl; code=$?
+is "…and root's helper skips it" "$code $([[ -p $note ]] && echo pipe)" "0 pipe"
+rm -f "$note"
+screen 600
+echo "fake_bl 900 600 boot-zero" >/var/lib/karchy/brightness-dim/1000
+"$helper" start backlight:fake_bl
+is "a note under another uid's name that the uid does not own: not read, not removed" "$(level) $(ls /var/lib/karchy/brightness-dim)" "600 1000"
+rm -f /var/lib/karchy/brightness-dim/1000
+for junk in "fake_bl 99999 600 boot-zero" "fake_bl 900 x boot-zero" "../fake_bl 900 600 boot-zero" "fake_bl 0900 0600 boot-zero"; do
+  screen 600
+  echo "$junk" >"$note"
+  "$helper" start backlight:fake_bl
+  # Another device's note is not this backlight's to drop.
+  case $junk in
+    *0900*) want="900 none" ;;
+    ../*) want="600 noted" ;;
+    *) want="600 none" ;;
+  esac
+  is "root's helper on '$junk'" "$(state)" "$want"
+done
+screen 600
+head -c 100000 /dev/zero | tr '\0' 7 >"$note"
+"$helper" start backlight:fake_bl
+is "…on a huge note: read 256 bytes, no device of this name, nothing done" "$(state)" "600 noted"
+display undim
+is "…and the user's own undim drops it" "$(state)" "600 none"
+rmdir /var/lib/karchy/brightness-dim
+display dim 10
+is "no notes folder: no dimming" "$(state)" "600 none"
+"$helper" stop backlight:fake_bl; code=$?
+is "…and root's helper does nothing" "$code" 0
+install -d -m 1733 /var/lib/karchy/brightness-dim
+"$helper" restart backlight:fake_bl 2>/dev/null; code=$?
+is "root's helper wants start or stop" "$code" 64
 
 # ------------------------------------------------- at the same moment
 # dim and undim started together, as when somebody comes back the instant

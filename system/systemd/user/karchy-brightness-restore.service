@@ -1,0 +1,18 @@
+# karchy: a screen the idle service dimmed gets its level back when the
+# session ends (a logout, the compositor ending) and when it starts (a dimming
+# left from before: a crash, or a session that ended without this). With
+# nothing dimmed this is one file test (karchy-brightness-display undim).
+# Started with every session (graphical-session.target.wants). A shutdown is
+# covered as root as well, whatever happens here: karchy-backlight-dim@.service
+# (D-172).
+[Unit]
+Description=Put back the level of a dimmed screen
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/karchy-brightness-display undim
+ExecStop=/usr/bin/karchy-brightness-display undim
+Slice=session.slice

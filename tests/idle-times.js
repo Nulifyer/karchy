@@ -62,8 +62,8 @@ for (const [off, lock, sleep] of [[300, 300, 900], [60, 0, 0], [10, 10, 10], [0,
 
 // The order of the dim and undim commands. Walk events and collect what is
 // started; a command "exits" when the walk says so.
-function walk(events) {
-  let state = {}, started = []
+function walk(events, start) {
+  let state = start || {}, started = []
   for (const event of events) {
     const [name, allowed] = Array.isArray(event) ? event : [event, undefined]
     const step = M.dimStep(state, name, allowed)
@@ -73,6 +73,12 @@ function walk(events) {
   return started.join(",") + "|" + (M.dimPending(state) ? "pending" : "clear")
 }
 eq(walk([]), "|clear")
+// The service's start runs an undim of a dimming it doesn't know of (D-172):
+// a dim timer that fires before it ends is not started over it.
+const starting = { undimRunning: true }
+eq(walk(["undimExited"], starting), "|clear", "the start's undim ends: nothing owed")
+eq(walk(["dim", "undimExited"], starting), "|clear", "a dim while the start's undim runs is not started")
+eq(walk(["undimExited", "dim"], starting), "dim|pending", "…and the next one is")
 eq(walk(["undim"]), "|clear", "activity without a dimming: nothing to run")
 eq(walk(["dim"]), "dim|pending")
 eq(walk(["dim", "dimExited"]), "dim|pending", "dimmed until somebody comes back")

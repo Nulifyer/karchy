@@ -151,7 +151,9 @@ Item {
   //   the charger going in or out (karchy-power-source then sets that
   //   source's brightness, if it has one). The screen turning off and waking
   //   undim by themselves (karchy-brightness-display off and on), and so does
-  //   the lock before every sleep (karchy-system-sleep-lock).
+  //   the lock before every sleep (karchy-system-sleep-lock), the service's
+  //   own start, the session's start and end (karchy-brightness-restore), and
+  //   root before systemd saves the backlight at shutdown (D-172).
   // One undim follows every dim and never overtakes it: IdleModel.dimStep
   // holds that order, and this only starts the commands it names.
   property var dimState: ({})
@@ -677,6 +679,12 @@ Item {
 
   Component.onCompleted: {
     logEvent("service-ready")
+    // A dimming this service no longer knows of (the shell restarted, or a
+    // session or boot ended while dimmed) is undone at once; with none noted
+    // this is one file test. Started as an undim of dimStep's, so a dim that
+    // comes before it ends waits for it.
+    root.dimState = ({ undimRunning: true })
+    undimProcess.running = true
     retimeIdleMonitor()
     refreshStayAwakeState()
   }

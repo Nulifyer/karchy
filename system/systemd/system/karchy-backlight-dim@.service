@@ -1,0 +1,29 @@
+# karchy: a screen the idle service dimmed is never saved, or left, at its dim
+# level (D-172; /usr/lib/karchy/backlight-dim says how). One per
+# systemd-backlight instance, pulled in by that unit's drop-in
+# (systemd-backlight@.service.d/10-karchy-dim.conf) and bound to it.
+#
+# Started after systemd-backlight has restored the level at boot, and so
+# stopped before it saves the level: at shutdown, reboot, kexec, or when the
+# backlight goes away. Before=sysinit.target, as systemd-backlight is, is what
+# places the stop after every user manager's: user@.service is
+# After=sysinit.target and sysinit.target conflicts with shutdown.target, so a
+# shutdown stops user@*.service, then sysinit.target, then this, then
+# systemd-backlight. Nothing in a session can dim the screen again between
+# this and the save.
+[Unit]
+Description=Keep a dimmed screen from being saved dim (%i)
+DefaultDependencies=no
+BindsTo=systemd-backlight@%i.service
+After=systemd-backlight@%i.service
+Conflicts=shutdown.target
+Before=sysinit.target shutdown.target
+RequiresMountsFor=/var/lib/karchy/brightness-dim
+ConditionPathExists=!/etc/initrd-release
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/karchy/backlight-dim start %i
+ExecStop=/usr/lib/karchy/backlight-dim stop %i
+TimeoutSec=30s

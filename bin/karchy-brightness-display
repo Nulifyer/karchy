@@ -18,9 +18,25 @@
 # - Whatever sets the backlight here undims first: a brightness key steps
 #   from the level the screen had, and `off` and `on` put it back, `off`
 #   after the screen is dark, so the screen never comes back dim.
-# The note is kept under $XDG_RUNTIME_DIR, so a restarted shell still undoes
-# a dimming it no longer knows of. The levels are the kernel's raw values, so
-# what comes back is exactly what was there.
+# The levels are the kernel's raw values, so what comes back is exactly what
+# was there.
+#
+# The note is /var/lib/karchy/brightness-dim/<uid> (made by tmpfiles.d,
+# sticky and open to every user, like /tmp), "<device> <level before> <level
+# dimmed> <boot id>", so it outlives the session and the boot. That is what
+# keeps a dimming from ever being saved as the screen's level (D-172):
+# - At every shutdown, reboot or stop of the backlight, root's
+#   /usr/lib/karchy/backlight-dim (karchy-backlight-dim@.service) puts the
+#   level back by this same rule just before systemd-backlight saves it,
+#   after every user manager has stopped, and drops the note.
+# - Anything that still finds a note from an earlier boot (that helper after
+#   systemd-backlight has restored the level at boot, and `undim` here: the
+#   session's start runs it) counts the screen as still dimmed when it is
+#   within a step of the dimmed level, because a driver may round the level
+#   systemd saved and restored, and raised to systemd's 5% floor. A level
+#   set since is still left alone.
+# - The session's end (karchy-brightness-restore.service) and the shell's
+#   start undim too, so a logout or a restarted shell leaves nothing dim.
 
 no_osd=0
 monitor=""
@@ -42,13 +58,21 @@ while (( $# > 0 )); do
   esac
 done
 
-dim_note="${XDG_RUNTIME_DIR:-/tmp}/karchy-brightness-display-dim"
+dim_note="/var/lib/karchy/brightness-dim/$UID"
+dim_lock="${XDG_RUNTIME_DIR:-/tmp}/karchy-brightness-display-dim.lock"
+
+# The boot a note was written in: a note from another one is a leftover.
+boot_id() {
+  local id=""
+  read -r id </proc/sys/kernel/random/boot_id 2>/dev/null || true
+  printf '%s' "${id:-unknown}"
+}
 
 # dim, undim and whatever else undims can overlap (the idle service, the lock
 # screen, a brightness key): one at a time.
 dim_locked() {
   local fd
-  exec {fd}>"$dim_note.lock" || return 1
+  exec {fd}>"$dim_lock" || return 1
   flock "$fd" || return 1
   "$@"
   local code=$?
@@ -56,9 +80,30 @@ dim_locked() {
   return "$code"
 }
 
+# The folder is open to every user, so only a plain file of this user's own
+# under this user's name is a note. Anything else there (left by somebody
+# else) means no dimming for this user, rather than following it.
+note_usable() {
+  [[ ! -e $dim_note && ! -L $dim_note ]] || [[ -f $dim_note && ! -L $dim_note && -O $dim_note ]]
+}
+
+# Written whole, private to this user; a failure leaves no half note.
+write_note() {
+  ( umask 077; printf '%s %s %s %s\n' "$@" >"$dim_note" ) 2>/dev/null
+}
+
 dim_now() {
-  local percent="$1" device before max target dimmed
-  [[ ! -s $dim_note ]] || return 0
+  local percent="$1" device before max target dimmed boot
+  boot=$(boot_id)
+  note_usable || return 0
+  # A note from an earlier boot is a leftover: settle it first, so it can't
+  # stand in the way of this dimming.
+  if [[ -s $dim_note ]]; then
+    local noted_boot=""
+    read -r _ _ _ noted_boot <"$dim_note" 2>/dev/null || true
+    [[ $noted_boot == "$boot" ]] && return 0
+    undim_now || return 0
+  fi
   device="$(karchy-hw-display)" || return 0
   before="$(brightnessctl -d "$device" get 2>/dev/null)" || return 0
   max="$(brightnessctl -d "$device" max 2>/dev/null)" || return 0
@@ -69,26 +114,49 @@ dim_now() {
   (( target >= 1 )) || target=1
   (( before > target )) || return 0
 
-  # Noted before the write, so a dimming is never left without its note. The
-  # level read back is the one to compare with later: a driver may round.
-  printf '%s %s %s\n' "$device" "$before" "$target" >"$dim_note" || { rm -f "$dim_note"; return 0; }
+  # Noted before the write, so a dimming is never left without its note: no
+  # note, no dimming. The level read back is the one to compare with later:
+  # a driver may round.
+  write_note "$device" "$before" "$target" "$boot" || { rm -f "$dim_note"; return 0; }
   if ! brightnessctl -q -d "$device" set "$target"; then
     rm -f "$dim_note"
     return 0
   fi
   dimmed="$(brightnessctl -d "$device" get 2>/dev/null)"
   [[ $dimmed =~ ^[0-9]+$ ]] || dimmed=$target
-  printf '%s %s %s\n' "$device" "$before" "$dimmed" >"$dim_note" || true
+  write_note "$device" "$before" "$dimmed" "$boot" || true
+}
+
+# Whether the screen is still at the level a note dimmed it to. In the boot
+# that dimmed it, exactly. After a reboot the level is the one systemd-backlight
+# saved and restored, which a driver may have rounded and systemd raises to
+# 5% of the range at the least (its clamp): within 1% of the range (one step
+# at the least) of that. /usr/lib/karchy/backlight-dim has the same rule.
+still_dimmed() {
+  local current="$1" dimmed="$2" max="$3" same_boot="$4" floor slack
+  if (( same_boot )); then
+    (( current == dimmed ))
+    return
+  fi
+  [[ $max =~ ^[0-9]+$ ]] && (( max > 0 )) || return 1
+  floor=$(( (max * 5 + 99) / 100 ))
+  (( dimmed >= floor )) || dimmed=$floor
+  slack=$(( max / 100 ))
+  (( slack >= 1 )) || slack=1
+  (( current >= dimmed - slack && current <= dimmed + slack ))
 }
 
 undim_now() {
-  local device before dimmed current
-  [[ -s $dim_note ]] || return 0
-  read -r device before dimmed <"$dim_note" || true
+  local device before dimmed noted_boot current max same_boot=0
+  [[ -s $dim_note ]] && note_usable || return 0
+  read -r device before dimmed noted_boot <"$dim_note" || true
   if [[ -n $device && $device != */* && $before =~ ^[0-9]+$ && $dimmed =~ ^[0-9]+$ ]]; then
+    [[ $noted_boot == "$(boot_id)" ]] && same_boot=1
     current="$(brightnessctl -d "$device" get 2>/dev/null)"
+    max="$(brightnessctl -d "$device" max 2>/dev/null)"
     # Kept when the write fails, so the next wake tries again.
-    if [[ $current == "$dimmed" ]] && ! brightnessctl -q -d "$device" set "$before"; then
+    if [[ $current =~ ^[0-9]+$ ]] && still_dimmed "$current" "$dimmed" "$max" "$same_boot" &&
+      ! brightnessctl -q -d "$device" set "$before"; then
       return 1
     fi
   fi

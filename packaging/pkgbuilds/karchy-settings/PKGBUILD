@@ -225,6 +225,15 @@ package() {
   # password. Its drop-ins sort after karchy-laptop's (30) and karchy-nvidia's
   # (40), and before a file the user numbers higher.
   install -Dm755 power/power-settings "$pkgdir/usr/lib/karchy/power-settings"
+  # A screen the idle service dimmed is put back before systemd-backlight
+  # saves its level, and a dimming left from an earlier boot is undone
+  # (D-172): root's helper, its unit beside every systemd-backlight instance,
+  # and the session's own undim at its start and end (below).
+  install -Dm755 power/backlight-dim "$pkgdir/usr/lib/karchy/backlight-dim"
+  install -Dm644 systemd/system/karchy-backlight-dim@.service \
+    "$pkgdir/usr/lib/systemd/system/karchy-backlight-dim@.service"
+  install -Dm644 systemd/system/systemd-backlight@.service.d/10-karchy-dim.conf \
+    "$pkgdir/usr/lib/systemd/system/systemd-backlight@.service.d/10-karchy-dim.conf"
   install -Dm644 polkit/actions/org.karchy.power-settings.policy \
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.power-settings.policy"
   install -Dm644 polkit/rules.d/50-karchy-power-settings.rules \
@@ -296,11 +305,12 @@ package() {
   install -d "$pkgdir/usr/lib/systemd/user"
   cp -a default/systemd/user/. "$pkgdir/usr/lib/systemd/user/"
   # ...and the ones that start with every session without being enabled: the
-  # disk-health watcher, and disconnecting network shares before sleep.
+  # disk-health watcher, disconnecting network shares before sleep, and
+  # putting back a dimmed screen's level when the session ends.
   install -Dm644 -t "$pkgdir/usr/lib/systemd/user" system/systemd/user/karchy-disk-health.service \
-    system/systemd/user/karchy-sleep-shares.service
+    system/systemd/user/karchy-sleep-shares.service system/systemd/user/karchy-brightness-restore.service
   install -d "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants"
-  for unit in karchy-disk-health.service karchy-sleep-shares.service; do
+  for unit in karchy-disk-health.service karchy-sleep-shares.service karchy-brightness-restore.service; do
     ln -s "../$unit" "$pkgdir/usr/lib/systemd/user/graphical-session.target.wants/$unit"
   done
 

@@ -57,7 +57,7 @@ Use `set` so that each value lands where the system reads it. The files matter w
 ## Session commands
 
 - `karchy system lock` locks and turns off the display. `karchy system wake` wakes the displays.
-- `karchy-brightness-display dim <percent>` and `karchy-brightness-display undim` are the idle service's. Do not call `dim` yourself. If the built-in screen stays dark after an idle stretch, `karchy-brightness-display undim` puts back the level noted in `$XDG_RUNTIME_DIR/karchy-brightness-display-dim`, and `karchy-shell idle status` shows `dimAfter` (seconds idle before dimming, 0 for never) and `dimmed`.
+- `karchy-brightness-display dim <percent>` and `karchy-brightness-display undim` are the idle service's. Do not call `dim` yourself. If the built-in screen stays dark after an idle stretch, `karchy-brightness-display undim` puts back the level noted in `/var/lib/karchy/brightness-dim/<uid>`. That note survives a reboot. Root's `karchy-backlight-dim@.service` (`/usr/lib/karchy/backlight-dim`) puts the level back before systemd saves the backlight at shutdown, and undoes a dimming an earlier boot left. The session undims when it starts and ends (`karchy-brightness-restore.service`). A level set since the dimming is never changed. Do not edit or remove the note by hand. `karchy-shell idle status` shows `karchy-shell idle status` shows `dimAfter` (seconds idle before dimming, 0 for never) and `dimmed`.
 - `karchy system logout`, `karchy system reboot` and `karchy system shutdown` close applications first. Never run reboot, shutdown or logout without the user's request in the same turn. They end the session that runs the agent.
 
 ## Power profiles

@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# karchy: keeps a screen the idle service dimmed from being saved, or left,
+# at its dim level (D-172). Installed as /usr/lib/karchy/backlight-dim and run
+# only by karchy-backlight-dim@.service, as root, for one systemd-backlight
+# instance:
+#
+#   backlight-dim stop backlight:<device>
+#       just before systemd-backlight saves the level (shutdown, reboot, or
+#       the backlight going away): every note for <device> still in force is
+#       undone, and every note for it is dropped. The unit's ordering puts
+#       this after every user manager has stopped, so nothing dims again
+#       before the save.
+#   backlight-dim start backlight:<device>
+#       just after systemd-backlight has restored the saved level at boot:
+#       a note left by an earlier boot (a crash, a power cut, a forced reset,
+#       or a save this did not get to) is undone if the screen is still at
+#       its level, and dropped. A note of this boot is the session's own (a
+#       backlight that appeared late) and is left alone.
+#
+# The notes are karchy-brightness-display's: /var/lib/karchy/brightness-dim/
+# <uid>, "<device> <level before> <level dimmed> <boot id>", one per user.
+# The rule is that command's: the level before is written back only while the
+# screen is still at the level the dimming set; exactly that level in the boot
+# that dimmed it, and after a reboot within 1% of the range (one step at the
+# least) of it, raised to systemd-backlight's 5% floor, because a driver may
+# round what systemd saved and restored. A level somebody set since stays.
+#
+# The folder is open to every user, so what is in it is not trusted: only a
+# plain file named by a uid and owned by that uid is read, at most 256 bytes
+# and for at most a second, and only a device name equal to this instance's
+# and levels within the backlight's range are acted on. Nothing is printed
+# from it. It never fails the unit: systemd-backlight saves either way.
+
+set -u
+
+notes_dir=/var/lib/karchy/brightness-dim
+mode="${1:-}"
+instance="${2:-}"
+
+[[ $mode == start || $mode == stop ]] || { echo "usage: backlight-dim start|stop backlight:<device>" >&2; exit 64; }
+# Keyboard and other LED backlights are not dimmed.
+[[ $instance == backlight:* ]] || exit 0
+device=${instance#backlight:}
+[[ -n $device && $device != */* && $device != . && $device != .. ]] || exit 0
+sys=/sys/class/backlight/$device
+[[ -d $notes_dir && -r $sys/max_brightness && -w $sys/brightness ]] || exit 0
+
+read -r boot </proc/sys/kernel/random/boot_id 2>/dev/null || boot=""
+read -r max <"$sys/max_brightness" 2>/dev/null || exit 0
+[[ $max =~ ^[0-9]+$ ]] && (( max > 0 )) || exit 0
+
+current_level() {
+  local value=""
+  read -r value <"$sys/brightness" 2>/dev/null || true
+  [[ $value =~ ^[0-9]+$ ]] && printf '%s' "$value"
+}
+
+# karchy-brightness-display's still_dimmed: keep the two in step.
+still_dimmed() {
+  local current="$1" dimmed="$2" same_boot="$3" floor slack
+  if (( same_boot )); then
+    (( current == dimmed ))
+    return
+  fi
+  floor=$(( (max * 5 + 99) / 100 ))
+  (( dimmed >= floor )) || dimmed=$floor
+  slack=$(( max / 100 ))
+  (( slack >= 1 )) || slack=1
+  (( current >= dimmed - slack && current <= dimmed + slack ))
+}
+
+shopt -s nullglob
+for note in "$notes_dir"/*; do
+  name=${note##*/}
+  [[ $name =~ ^[0-9]{1,10}$ ]] || continue
+  [[ -f $note && ! -L $note ]] || continue
+  [[ $(stat -c %u -- "$note" 2>/dev/null) == "$name" ]] || continue
+
+  content=$(timeout 1s head -c 256 -- "$note" 2>/dev/null) || content=""
+  noted_device="" before="" dimmed="" noted_boot=""
+  read -r noted_device before dimmed noted_boot _ <<<"$content"
+  [[ $noted_device == "$device" ]] || continue
+
+  same_boot=0
+  [[ -n $boot && $noted_boot == "$boot" ]] && same_boot=1
+  # At boot, this boot's notes belong to a running session.
+  [[ $mode == start ]] && (( same_boot )) && continue
+
+  [[ $before =~ ^[0-9]{1,9}$ && $dimmed =~ ^[0-9]{1,9}$ ]] && before=$((10#$before)) dimmed=$((10#$dimmed))
+  if [[ $before =~ ^[0-9]+$ && $dimmed =~ ^[0-9]+$ ]] && (( before <= max && dimmed <= max )); then
+    current=$(current_level)
+    if [[ -n $current ]] && still_dimmed "$current" "$dimmed" "$same_boot"; then
+      printf '%s\n' "$before" >"$sys/brightness" 2>/dev/null || true
+    fi
+  fi
+  rm -f -- "$note"
+done
+
+exit 0
