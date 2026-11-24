@@ -20,6 +20,7 @@ Item {
   property color borderError: Commons.Color.polkit.borderError
   property var borderSpec: Border.surfaceSpec("polkit", errorFlash ? "border-error" : "border", errorFlash ? borderError : border, Math.max(1, Style.space(2)), "border-alpha")
   property color scrim: Commons.Color.polkit.scrim
+  readonly property color selectionTint: Util.alpha(accent, 0.45)
   readonly property int cornerRadius: Style.cornerRadius
   property int contentMargin: Style.spacing.panelPadding
   property int fieldHeight: Math.max(Style.space(42), Style.spacing.controlHeight)
@@ -325,17 +326,20 @@ Item {
             verticalAlignment: TextInput.AlignVCenter
             activeFocusOnPress: true
             clip: true
-            selectionColor: Util.alpha(root.accent, 0.45)
+            selectionColor: root.responseVisible ? root.selectionTint : "transparent"
             selectedTextColor: root.foreground
-            // A hidden answer is dots from the icon font, the same in every
-            // text font; one UTF-16 unit, as passwordCharacter takes (see
-            // Ui/PasswordInput).
-            font.family: root.responseVisible ? root.fontFamily : Icons.family
-            font.pixelSize: Style.font.iconLarge
+            // A hidden answer is the dots every password field draws
+            // (Ui/PasswordDots), sized from this field's text and the same
+            // in every text font.
+            font.family: root.responseVisible ? root.fontFamily : dots.family
+            font.pixelSize: root.responseVisible ? Style.font.iconLarge : dots.size
+            font.letterSpacing: root.responseVisible ? 0 : dots.gap
             echoMode: root.responseVisible ? TextInput.Normal : TextInput.Password
-            passwordCharacter: Icons.glyph("ui.password-dot")
+            passwordCharacter: dots.glyph
             color: root.errorFlash ? Commons.Color.polkit.textError : root.foreground
             cursorVisible: activeFocus && !root.submitted && !root.errorFlash
+            cursorDelegate: root.responseVisible ? null : dots.cursor
+            topPadding: dots.offGrid(height - contentHeight) ? 1 : 0
             readOnly: root.submitted || root.errorFlash
             enabled: root.dialogVisible
             onAccepted: root.submitResponse()
@@ -344,6 +348,19 @@ Item {
                 root.cancelRequest()
                 event.accepted = true
               }
+            }
+
+            // The cursor is a bar of the size the empty field of a shown
+            // answer has (below), before the first character and after.
+            PasswordDots {
+              id: dots
+              active: !root.responseVisible
+              textSize: Style.font.iconLarge
+              lineHeight: Style.space(24)
+              color: passwordInput.color
+              selectionColor: root.selectionTint
+              cursorWidth: Math.max(1, Style.space(2))
+              blink: false
             }
           }
 
@@ -361,13 +378,15 @@ Item {
             visible: passwordInput.text.length === 0
           }
 
+          // The empty field's cursor when the answer is shown as typed. A
+          // hidden answer has its own (PasswordDots), where the dots begin.
           Rectangle {
             width: Math.max(1, Style.space(2))
             height: Style.space(24)
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             color: root.errorFlash ? Commons.Color.polkit.textError : root.foreground
-            visible: passwordInput.visible && passwordInput.activeFocus && passwordInput.text.length === 0 && !root.submitted && !root.errorFlash
+            visible: root.responseVisible && passwordInput.visible && passwordInput.activeFocus && passwordInput.text.length === 0 && !root.submitted && !root.errorFlash
           }
 
           MouseArea {

@@ -199,7 +199,8 @@ Item {
         checking: root.authenticatingPassword
         cursorShown: root.showPasswordCursor
         textColor: Commons.Color.lock.text
-        selectionColor: Commons.Color.lock.selection
+        selectionTint: Commons.Color.lock.selection
+        textSize: root.fieldFontSize
 
         onKeyPressed: root.wakeRequested()
 

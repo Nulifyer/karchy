@@ -188,9 +188,9 @@ Item {
       enabled: !root.leaving && root.user !== null
       checking: root.leaving
       textColor: root.busy ? Commons.Color.muted : Commons.Color.foreground
-      selectionColor: Util.alpha(Commons.Color.accent, 0.45)
-      dotSize: 20
-      dotGap: 3
+      selectionTint: Util.alpha(Commons.Color.accent, 0.45)
+      // The box holds no text of its own; its caption is the text beside it.
+      textSize: root.captionSize
       Accessible.name: root.user
         ? Commons.I18n.t("greeter.passwordFor").arg(root.user.label)
         : Commons.I18n.t("greeter.enterPassword")

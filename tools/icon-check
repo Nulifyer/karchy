@@ -12,10 +12,15 @@ This fails on:
     shell's QML and JS, JSON and JSONC, Lua and the bash commands, outside the
     map
   - a map entry that breaks the family rule: every name outside brand.* is a
-    Material Design icon (nf "md-*", U+F0001-U+F1AF0). The names in
-    SINGLE_UNIT are the one more exception: TextInput.passwordCharacter takes
-    one UTF-16 unit, a Material Design glyph takes two, so the password dots
-    are Nerd Font glyphs of U+E000-F8FF
+    Material Design icon (nf "md-*", U+F0001-U+F1AF0). The name in
+    SINGLE_UNIT is the one more exception: TextInput.passwordCharacter takes
+    one UTF-16 unit, a Material Design glyph takes two, so the password dot
+    is a Nerd Font glyph of U+E000-F8FF
+  - a password field that draws its own dots: the shell's QML masks what is
+    typed only through Ui/PasswordDots (the dot's glyph, size and spacing in
+    one place, D-169), so a file that sets echoMode to Password or names a
+    passwordCharacter holds a PasswordDots, and nothing else uses the dot's
+    name
   - an icon name used in code that the map doesn't have: Icons.glyph("x"),
     "iconName": "x", karchy-icon x and karchy-notification-send -g x
   - a symbol written as a character in the shell's QML and JS (shell/,
@@ -45,10 +50,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAP = "default/karchy/icons.json"
 NAME = re.compile(r"^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$")
 MD_RANGE = (0xF0001, 0xF1AF0)
-# Names that must be one UTF-16 unit, so can't be Material Design: the dot a
+# The name that must be one UTF-16 unit, so can't be Material Design: the dot a
 # password field shows for each character (TextInput.passwordCharacter).
-SINGLE_UNIT = {"ui.password-dot", "ui.password-dot.large"}
+SINGLE_UNIT = {"ui.password-dot"}
 SINGLE_UNIT_RANGE = (0xE000, 0xF8FF)
+# The one component that knows the dot, and what makes a file a masked field.
+PASSWORD_DOTS = "shell/Ui/PasswordDots.qml"
+PASSWORD_DOT_NAME = re.compile(r"""["']ui\.password-dot["']""")
+MASKS = re.compile(r"\bTextInput\.Password\b|\bpasswordCharacter\s*:")
+USES_PASSWORD_DOTS = re.compile(r"\bPasswordDots\s*\{")
 
 # Symbols a text font draws its own way, so they change with the font:
 # Arrows; Miscellaneous Technical; Box Drawing, Block Elements and Geometric
@@ -175,6 +185,18 @@ def check_shell_code(rel, text, problems):
             problems.append(
                 f"{rel}:{number}: U+{cp:04X} ({chr(cp)}) is drawn in the text font and changes with it;"
                 f" use an icon from {MAP} in Icons.family, or words")
+    if rel != PASSWORD_DOTS:
+        for m in PASSWORD_DOT_NAME.finditer(code):
+            number = code.count("\n", 0, m.start()) + 1
+            problems.append(
+                f"{rel}:{number}: the password dot belongs to Ui/PasswordDots;"
+                " a field takes its glyph, size and spacing from there")
+        m = MASKS.search(code)
+        if m and not USES_PASSWORD_DOTS.search(code):
+            number = code.count("\n", 0, m.start()) + 1
+            problems.append(
+                f"{rel}:{number}: a field that hides what is typed without Ui/PasswordDots;"
+                " its dots would not follow the rule every password field shares")
     if rel in JOIN_EXEMPT:
         return
     for m in GLYPH_CALL.finditer(code):

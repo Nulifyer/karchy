@@ -13,13 +13,13 @@ import qs.Commons as Commons
 //   }
 //
 // One dot per character, shrinking to fit once the password outgrows the
-// field, so every keystroke stays visible. The dots are a glyph of the icon
-// font, a disc that fills its em, so they are the same size and shape in
-// every text font: `dotSize` is the disc's diameter and `dotGap` the space
-// between two. Escape or Ctrl+U clears it. A held
-// key types nothing (see dropsAutoRepeat). `checking` freezes it while a
-// password is being tried; `keyPressed` reports every key for a screen that
-// wakes its display on input.
+// field, so every keystroke stays visible. The dots are the ones every
+// password field draws (Ui/PasswordDots): their size and spacing follow
+// `textSize`, the size of the text the screen shows for this field (its
+// placeholder or caption), and are the same in every text font. Escape or
+// Ctrl+U clears it. A held key types nothing (see dropsAutoRepeat).
+// `checking` freezes it while a password is being tried; `keyPressed` reports
+// every key for a screen that wakes its display on input.
 TextInput {
   id: root
 
@@ -27,12 +27,10 @@ TextInput {
   // Whether the cursor may show at all (a screen hides it beside a message).
   property bool cursorShown: true
   property color textColor: Commons.Color.foreground
-  property int dotSize: Math.round(Style.font.heading * 1.19)
-  property int dotGap: Math.round(Style.font.heading * 0.31)
-  // TextInput.passwordCharacter takes one UTF-16 unit, and the icon map's
-  // Material Design glyphs take two; this name is one of the two the map
-  // keeps outside them for that reason (tools/icon-check).
-  readonly property string dot: Icons.glyph("ui.password-dot.large")
+  property real textSize: Style.font.heading
+  // The selection's colour (PasswordDots draws it; `selectionColor` is the
+  // low band TextInput would draw).
+  property color selectionTint: Style.selectionFill
 
   // How far the dots shrink so the whole password fits the field.
   readonly property real dotScale: dotMetrics.advanceWidth > 0
@@ -54,26 +52,19 @@ TextInput {
   clip: true
   readOnly: checking
   echoMode: TextInput.Password
-  passwordCharacter: dot
+  passwordCharacter: dots.glyph
   passwordMaskDelay: 0
   color: textColor
   selectedTextColor: textColor
-  font.family: Icons.family
-  font.pixelSize: Math.max(1, Math.floor(dotSize * dotScale))
-  font.letterSpacing: dotGap * dotScale
+  selectionColor: "transparent"
+  font.family: dots.family
+  font.pixelSize: dots.size
+  font.letterSpacing: dots.gap
   cursorVisible: activeFocus && cursorShown && !checking && text.length > 0
-  // The icon font's line is as high as a dot; the cursor stands taller, as
-  // it does beside text.
-  cursorDelegate: Item {
-    width: 2
-    visible: root.cursorVisible
-    Rectangle {
-      anchors.verticalCenter: parent.verticalCenter
-      width: parent.width
-      height: Math.round(root.font.pixelSize * 1.7)
-      color: root.textColor
-    }
-  }
+  cursorDelegate: dots.cursor
+  // Keeps the row on whole pixels, up and down and where a screen centres it.
+  topPadding: dots.offGrid(height - contentHeight) ? 1 : 0
+  leftPadding: effectiveHorizontalAlignment === TextInput.AlignHCenter && dots.offGrid(width - contentWidth) ? 1 : 0
 
   Accessible.role: Accessible.EditableText
   Accessible.passwordEdit: true
@@ -90,13 +81,23 @@ TextInput {
     }
   }
 
+  PasswordDots {
+    id: dots
+    textSize: root.textSize
+    fit: root.dotScale
+    color: root.textColor
+    selectionColor: root.selectionTint
+    cursorWidth: 2
+    blink: false
+  }
+
   // Measures the masked password at full size; dotScale compares this against
   // the field's width.
   TextMetrics {
     id: dotMetrics
-    font.family: Icons.family
-    font.pixelSize: root.dotSize
-    font.letterSpacing: root.dotGap
-    text: root.dot.repeat(root.text.length)
+    font.family: dots.family
+    font.pixelSize: dots.fullSize
+    font.letterSpacing: dots.fullGap
+    text: dots.glyph.repeat(root.text.length)
   }
 }
