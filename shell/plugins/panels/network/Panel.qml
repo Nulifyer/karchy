@@ -539,10 +539,13 @@ Panel {
   // a second curl loop or mistaking an ordinary timeout for a captive portal.
   readonly property bool connectivityChecksEnabled: networkManagerAvailable
     && Networking.canCheckConnectivity && Networking.connectivityCheckEnabled
-  readonly property string connectivity: Model.connectivityState(kind, Networking.connectivity, {
+  // "vpn" while the internet goes through a working VPN: NetworkManager's
+  // own check runs outside the tunnel, and the VPN's kill switch stops it
+  // (Model.internetState).
+  readonly property string connectivity: Model.internetState(Model.connectivityState(kind, Networking.connectivity, {
     Portal: NetworkConnectivity.Portal, Limited: NetworkConnectivity.Limited,
     Full: NetworkConnectivity.Full, None: NetworkConnectivity.None
-  }, connectivityChecksEnabled, limitedSettled)
+  }, connectivityChecksEnabled, limitedSettled), vpn, info.vpn_full === "yes")
   // A network switch passes through Limited for a fraction of a second while
   // NetworkManager's first probe is in flight. Wait that out rather than flash
   // the outage warning on every connect.
@@ -707,11 +710,13 @@ Panel {
     bar.shell.summon("karchy.settings", JSON.stringify(payload))
   }
 
-  // ---- The VPN (karchy-vpn, D-68) ----
+  // ---- The VPN (D-68, docs/vpn.md) ----
   // Its status file is rewritten on every change and watched here; nothing
-  // polls. Without the package the file doesn't exist and the VPN row hides.
+  // polls. Until the VPN is set up the file doesn't exist and the row hides.
   property var vpn: Model.parseVpnStatus("")
-  readonly property bool vpnVisible: vpn.present
+  // Not while its profile is gone: there is nothing to switch on until it
+  // is set up with another (Settings › Network › VPN).
+  readonly property bool vpnVisible: vpn.present && vpn.reason !== "no-profile"
   readonly property bool vpnFailed: vpn.present && vpn.state === "failed"
   readonly property string vpnTone: Model.vpnTone(vpn)
   readonly property color vpnToneColor: vpnTone === "error" ? Commons.Color.status.error
@@ -734,13 +739,58 @@ Panel {
   }
 
   // A watch can't see the file appear when its folder is created after the
-  // shell started (the VPN package installed in a running session), so look
+  // shell started (an update bringing the VPN, in a running session), so look
   // again every 30 seconds while it is missing.
   Timer {
     id: vpnStatusRetry
     interval: 30000
     repeat: true
     onTriggered: vpnStatusFile.reload()
+  }
+
+  // The tunnel's health while it is up or trying (Model.wireguardHealth):
+  // the kernel tells only root, so it is read through pkexec (no password in
+  // the active session), while the panel is open, every 5 seconds, since
+  // WireGuard sends no event for a handshake.
+  readonly property string vpnInterface: vpn.tunnel ? vpn.tunnel.interface : ""
+  readonly property bool vpnTunnelUp: vpn.present && vpnInterface !== ""
+    && ["protecting", "connecting", "failed"].indexOf(vpn.state) >= 0
+  property var vpnPeer: null
+  property real vpnPeerNow: 0
+  onVpnTunnelUpChanged: if (!vpnTunnelUp) vpnPeer = null
+  readonly property var vpnHealth: Model.wireguardHealth(vpnPeer, vpnPeerNow)
+  readonly property var vpnHealthRows: {
+    if (!vpnTunnelUp || !vpnPeer) return []
+    var tone = vpnHealth.tone === "error" ? Commons.Color.status.error : root.panelText
+    return [
+      { label: Commons.I18n.t("network.vpnHandshake"), color: tone,
+        value: vpnHealth.age < 0 ? Commons.I18n.t("network.vpnHandshakeNever") : Model.formatAge(vpnHealth.age) },
+      { label: Commons.I18n.t("network.vpnServer"), value: vpnPeer.endpoint || "", copyable: true, mono: true,
+        tooltip: Commons.I18n.t("network.vpnCopyServer") },
+      { label: Commons.I18n.t("network.vpnReceived"), value: Model.formatBytes(vpnPeer.rx_bytes) },
+      { label: Commons.I18n.t("network.vpnSent"), value: Model.formatBytes(vpnPeer.tx_bytes) }
+    ]
+  }
+  Process {
+    id: vpnHealthProc
+    command: ["pkexec", "/usr/lib/karchy/wireguard-status", root.vpnInterface]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          var status = JSON.parse(text)
+          root.vpnPeer = Model.wireguardPeer(status, root.vpnInterface)
+          root.vpnPeerNow = Number(status.now) || 0
+        } catch (e) { root.vpnPeer = null }
+      }
+    }
+  }
+  Timer {
+    interval: 5000
+    repeat: true
+    triggeredOnStart: true
+    running: root.opened && root.vpnTunnelUp
+    onTriggered: if (!vpnHealthProc.running) vpnHealthProc.running = true
   }
 
   function setVpnMode(mode) {
@@ -1588,6 +1638,21 @@ Panel {
           font.pixelSize: Style.font.bodySmall
         }
 
+        // The tunnel's health: what the VPN's own bar widget used to show.
+        KeyValueGrid {
+          visible: root.vpnHealthRows.length > 0
+          width: parent.width
+          columns: 2
+          justify: true
+          fontSize: Style.font.bodySmall
+          foreground: root.panelText
+          surface: root.panelSurface
+          fontFamily: root.bar.fontFamily
+          placeholder: "--"
+          rows: root.vpnHealthRows
+          onCopyRequested: function(value) { root.copyToClipboard(value) }
+        }
+
         InlineMessage {
           width: parent.width
           kind: "error"
@@ -2054,6 +2119,7 @@ Panel {
       if (isBusy && root.actionKind === "forget") return Commons.I18n.t("network.forgetting")
       if (isFailed) return root.failureReason || Commons.I18n.t("network.failed")
       if (isConnected && root.kind === "wifi" && root.hasCaptivePortal) return Commons.I18n.t("network.signInRequired")
+      if (isConnected && root.kind === "wifi" && root.connectivity === "vpn") return Commons.I18n.t("network.connectedThroughVpn")
       if (isConnected) return Commons.I18n.t("network.connected")
       return ""
     }

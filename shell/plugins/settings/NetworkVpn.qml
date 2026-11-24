@@ -7,12 +7,15 @@ import qs.Commons as Commons
 import qs.Ui
 import "../panels/network/Model.js" as NetModel
 
-// Settings › Network › VPN. With the VPN package (karchy-vpn): its mode,
-// what it is doing and since when, and "Allow local devices on trusted
-// networks". Without it: NetworkManager's own VPN and WireGuard profiles,
-// each with a switch. Either way, a WireGuard file from a VPN provider can be
-// imported. The status is the package's file, read the way the panel reads
-// it (Model.js).
+// Settings › Network › VPN (docs/vpn.md): once set up with a WireGuard
+// profile, the VPN's mode, what it is doing and since when, and "Local
+// devices on trusted networks". Then NetworkManager's VPN and WireGuard
+// profiles, a card each: while a WireGuard tunnel is connected its health
+// (the last handshake, the server, the data); "Use for the VPN" on another
+// WireGuard profile; a switch on other kinds of VPN (OpenVPN and the like,
+// which the VPN doesn't run); Remove on every one. A WireGuard file from a
+// VPN provider is imported here. The status is the VPN's own file, read the
+// way the network panel reads it (Model.js).
 ColumnLayout {
   id: root
   Layout.fillWidth: true
@@ -39,7 +42,7 @@ ColumnLayout {
   readonly property bool setupNeedsDns: !!setupProfile && setupProfile.has_dns !== true
 
   // karchy-network-vpn prepares the profile and hands the configuration to
-  // the package's root helper, which checks it and asks for an
+  // the VPN's root helper, which checks it and asks for an
   // administrator's password. Its last line says why when it refuses.
   function setUp(profile) {
     if (!profile || setupAct.running) return
@@ -109,6 +112,93 @@ ColumnLayout {
     return rows
   }
 
+  // ---- each profile: health and Remove ----
+  // The WireGuard tunnels' health, read as root (pkexec; the active session
+  // needs no password) while the page shows a connected tunnel: when it
+  // comes up and every 10 seconds, since WireGuard sends no event for a
+  // handshake. Between reads the ages count on from the clock.
+  readonly property bool tunnelUp: wireguardProfiles.some(function(p) { return p.active })
+  property var health: null
+  property bool healthFailed: false
+  property real healthAt: 0
+  property real clock: Date.now() / 1000
+  readonly property real healthNow: health ? Math.max(health.now, health.now + clock - healthAt) : 0
+
+  function profileSubtitle(p) {
+    var parts = [p.type === "wireguard" ? "WireGuard" : "VPN"]
+    if (root.info.configured && p.in_use) parts.push("used by the VPN")
+    if (p.active) parts.push("connected")
+    return parts.join(", ")
+  }
+
+  // Rows under a connected WireGuard profile. Its addresses and DNS are in
+  // the Status cards above.
+  function healthRows(p) {
+    if (!p || !p.active || p.type !== "wireguard") return []
+    if (root.healthFailed) return [{ label: "Health", value: "Can't be read in this session", color: Commons.Color.textSecondary }]
+    if (!root.health) return [{ label: "Health", value: "Checking…", color: Commons.Color.textSecondary }]
+    var peer = NetModel.wireguardPeer(root.health, p.device)
+    if (!peer) return [{ label: "Health", value: "No server in this profile", color: Commons.Color.status.error }]
+    var state = NetModel.wireguardHealth(peer, root.healthNow)
+    var rows = [{ label: "Health", value: NetModel.wireguardHealthText(state),
+      color: state.tone === "error" ? Commons.Color.status.error : undefined }]
+    if (peer.endpoint) rows.push({ label: "Server", value: peer.endpoint, copyable: true, mono: true, tooltip: "Copy" })
+    rows.push({ label: "Received", value: NetModel.formatBytes(peer.rx_bytes) })
+    rows.push({ label: "Sent", value: NetModel.formatBytes(peer.tx_bytes) })
+    return rows
+  }
+
+  function copy(value) {
+    Quickshell.execDetached(["bash", "-c", "printf %s \"$1\" | wl-copy", "copy", value])
+  }
+
+  function askRemove(p) {
+    if (!p || !p.uuid || removeAct.running || !root.page || !root.page.settings) return
+    var used = root.info.configured && p.in_use
+    root.page.settings.ask("Remove " + p.name + "? "
+      + (used ? "The VPN turns off, and its keys and settings are deleted. To use the VPN again, import a WireGuard file and set it up."
+              : "Its keys and settings are deleted. Importing its WireGuard file again brings it back."),
+      "Remove", function() {
+        removeAct.tag = p.uuid
+        removeAct.start(["karchy-network-vpn", "remove", p.uuid], function() {
+          if (root.setupUuid === p.uuid) root.setupUuid = ""
+          root.refresh()
+          if (root.page) root.page.refreshConnections()
+        })
+      })
+  }
+
+  Process {
+    id: healthQuery
+    command: ["pkexec", "/usr/lib/karchy/wireguard-status"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          root.health = JSON.parse(text)
+          root.healthAt = Date.now() / 1000
+          root.clock = root.healthAt
+          root.healthFailed = false
+        } catch (e) {}
+      }
+    }
+    // pkexec refused (a remote or inactive session), or the reader is gone.
+    onExited: function(code) { if (code !== 0) { root.health = null; root.healthFailed = true } }
+  }
+  Timer {
+    interval: 10000
+    repeat: true
+    triggeredOnStart: true
+    running: root.visible && root.tunnelUp
+    onTriggered: if (!healthQuery.running) healthQuery.running = true
+  }
+  Timer {
+    interval: 1000
+    repeat: true
+    running: root.visible && root.tunnelUp && root.health !== null
+    onTriggered: root.clock = Date.now() / 1000
+  }
+
   function importFile() {
     if (chooser.running || importAct.running) return
     root.imported = ""
@@ -158,6 +248,7 @@ ColumnLayout {
   NetworkAction { id: modeAct; polkit: true }
   NetworkAction { id: homeAct; polkit: true }
   NetworkAction { id: switchAct }
+  NetworkAction { id: removeAct }
   NetworkAction { id: chooser }
   NetworkAction { id: importAct }
   NetworkAction { id: setupAct; polkit: true }
@@ -277,13 +368,13 @@ ColumnLayout {
   // What it is doing now: rows under the VPN heading, not a section of
   // their own (a rule inside a section reads as a new one).
   KeyValueGrid {
-    visible: root.packaged && root.facts.length > 0
+    visible: root.packaged && root.info.configured && root.facts.length > 0
     Layout.fillWidth: true
     valueColumn: Style.spacing.formControlColumn
     rows: root.facts
   }
   Text {
-    visible: root.packaged && root.facts.length > 0 && root.vpn.mode !== "off"
+    visible: root.packaged && root.info.configured && root.facts.length > 0 && root.vpn.mode !== "off"
     Layout.fillWidth: true
     Layout.maximumWidth: Style.space(620)
     wrapMode: Text.Wrap
@@ -310,31 +401,64 @@ ColumnLayout {
     onDismissed: homeAct.error = ""
   }
 
-  // ---- without it: NetworkManager's VPN profiles ----
-  EmptyState {
-    visible: !root.packaged && root.info.profiles.length === 0
-    Layout.fillWidth: true
-    iconName: "net.vpn"
-    title: "No VPN yet"
-    body: "Import the WireGuard file your VPN provider gives you."
-  }
-
+  // ---- every profile ----
+  // Keyed by UUID and rebuilt only when the set changes, so a switch keeps
+  // the keyboard after it is flipped. The VPN starts and stops the WireGuard
+  // profile it uses itself; other kinds of VPN have a switch.
   Repeater {
-    model: root.packaged ? [] : root.profileIds
-    Toggle {
+    model: root.profileIds
+    Card {
+      id: card
       required property var modelData
       readonly property var profile: root.profileMap[modelData] || ({})
       Layout.fillWidth: true
-      label: profile.name || ""
-      description: (profile.type === "wireguard" ? "WireGuard" : "VPN") + (profile.active ? ", connected" : "")
-      checked: !!profile.active
-      busy: switchAct.running && switchAct.tag === modelData
-      onClicked: {
-        switchAct.tag = modelData
-        switchAct.start(["karchy-network-vpn", "switch", modelData, profile.active ? "off" : "on"], function() {
-          root.refresh()
-          if (root.page) root.page.refreshConnections()
-        })
+      iconName: "net.vpn"
+      iconColor: card.profile.active ? Commons.Color.status.success : Commons.Color.foreground
+      title: card.profile.name || ""
+      subtitle: root.profileSubtitle(card.profile)
+      trailing: [
+        Button {
+          visible: card.profile.type === "wireguard" && root.info.configured && !card.profile.in_use
+          focusable: true
+          bordered: true
+          text: "Use for the VPN"
+          busy: setupAct.running && root.setupUuid === card.modelData
+          onClicked: { root.setupUuid = card.modelData; root.setUp(card.profile) }
+        },
+        ToggleSwitch {
+          visible: card.profile.type !== "wireguard"
+          flush: true
+          checked: !!card.profile.active
+          busy: switchAct.running && switchAct.tag === card.modelData
+          accessibleName: card.profile.name || "VPN"
+          onToggled: {
+            switchAct.tag = card.modelData
+            switchAct.start(["karchy-network-vpn", "switch", card.modelData, card.profile.active ? "off" : "on"], function() {
+              root.refresh()
+              if (root.page) root.page.refreshConnections()
+            })
+          }
+        },
+        Button {
+          focusable: true
+          variant: "destructive"
+          bordered: true
+          text: "Remove"
+          accessibleName: "Remove " + (card.profile.name || "VPN")
+          busy: removeAct.running && removeAct.tag === card.modelData
+          onClicked: root.askRemove(card.profile)
+        }
+      ]
+
+      KeyValueGrid {
+        readonly property var healthRows: root.healthRows(card.profile)
+        visible: healthRows.length > 0
+        Layout.fillWidth: true
+        // Inside the card's padding, still at the page's control column.
+        valueColumn: Style.spacing.formControlColumn - Style.spacing.panelPadding
+        wrapValues: true
+        rows: healthRows
+        onCopyRequested: function(value) { root.copy(value) }
       }
     }
   }
@@ -344,6 +468,13 @@ ColumnLayout {
     details: switchAct.error
     dismissible: true
     onDismissed: switchAct.error = ""
+  }
+  InlineMessage {
+    kind: "error"
+    text: removeAct.error !== "" ? "Couldn't remove the VPN profile." : ""
+    details: removeAct.error
+    dismissible: true
+    onDismissed: removeAct.error = ""
   }
 
   Button {

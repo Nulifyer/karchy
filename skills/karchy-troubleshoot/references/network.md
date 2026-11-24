@@ -1,6 +1,6 @@
 # Network diagnosis
 
-One owner per job on karchy: NetworkManager connects, systemd-resolved resolves, avahi answers `.local`, ufw owns incoming rules, karchy owns the trusted-network list and upstream DNS, and karchy-vpn (when installed) owns its tunnel and its outgoing block. Find which owner fails before changing anything.
+One owner per job on karchy: NetworkManager connects, systemd-resolved resolves, avahi answers `.local`, ufw owns incoming rules, karchy owns the trusted-network list and upstream DNS, and karchy's VPN (once set up) owns its tunnel and its outgoing block. Find which owner fails before changing anything.
 
 ## Read the state
 
@@ -24,7 +24,7 @@ rfkill list
 4. Internet without names: `ping -c 3 1.1.1.1`.
 5. Names: `resolvectl query archlinux.org`.
 6. A sign-in page: `nmcli networking connectivity` prints `portal`.
-7. A VPN: if `karchy-vpn` is installed, `karchy-vpn status`. States `connecting`, `failed` and `paused` block ordinary traffic on purpose. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in its bar panel or in Settings › Network › VPN.
+7. A VPN: `karchy-vpn status`. States `connecting`, `failed` and `paused` block ordinary traffic on purpose. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in the network panel or in Settings › Network › VPN. `protecting` with NetworkManager saying the link is "limited" is normal: NetworkManager's check runs outside the tunnel and the kill switch stops it. `off (no-profile)`: the VPN's profile was removed, and nothing is blocked.
 
 ## DNS
 
@@ -47,7 +47,7 @@ Changing DNS settings (`karchy-network-dns set key=value...`) or trust (`karchy-
 
 ## Sign-in pages
 
-The network panel's "Sign in to network" runs `karchy-network-captive-portal <url>`, which opens the page in a floating window and closes it once the internet is reachable. With karchy-vpn connecting, failed or paused, it also runs the VPN's sign-in pause. If the page does not load under `fallback=no`, the network's DNS is blocked by the user's own "encrypted only" choice.
+The network panel's "Sign in to network" runs `karchy-network-captive-portal <url>`, which opens the page in a floating window and closes it once the internet is reachable. With the VPN connecting, failed or paused, it also runs the VPN's sign-in pause. If the page does not load under `fallback=no`, the network's DNS is blocked by the user's own "encrypted only" choice.
 
 ## Incoming connections and local discovery
 

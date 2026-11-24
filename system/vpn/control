@@ -1,7 +1,7 @@
 #!/bin/bash
 # Root side of the karchy-vpn command.
 #
-# Through pkexec (the package's polkit rule lets local, active members of
+# Through pkexec (karchy's polkit rule lets local, active members of
 # wheel run these without a password):
 #   mode off|auto|on   set the mode and apply it
 #   portal-pause       let a captive portal's sign-in through for at most
@@ -15,7 +15,7 @@
 #   shutdown           package removal: tunnel down, guard off, DNS restored,
 #                      and the policy does nothing more until start or boot
 set -euo pipefail
-# shellcheck source=lib/common.sh
+# shellcheck source-path=SCRIPTDIR source=common.sh
 source /usr/lib/karchy-vpn/common.sh
 nv_require_root
 [[ -r $NV_CONFIG ]] || { printf 'karchy-vpn is not set up yet: run karchy-vpn setup.\n' >&2; exit 1; }

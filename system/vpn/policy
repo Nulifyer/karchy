@@ -16,7 +16,7 @@
 # Usage: policy [event|check]   (check: a timer's health check, which reuses
 #                                the last answer about trust)
 set -euo pipefail
-# shellcheck source=lib/common.sh
+# shellcheck source-path=SCRIPTDIR source=common.sh
 source /usr/lib/karchy-vpn/common.sh
 nv_require_root
 nv_load_config
@@ -209,6 +209,20 @@ clear_attempt() {
 }
 
 # ---- the decision -----------------------------------------------------------
+
+# Its profile is gone (removed in Settings, or with nmcli): nothing to
+# connect, so nothing is blocked, whatever the mode, until it is set up with
+# another profile.
+if ! nmcli -t -f connection.id connection show "$VPN_CONNECTION" >/dev/null 2>&1; then
+  "$NV_LIB/guard" off
+  clear_attempt
+  rm -f "$NV_RUN/pause" "$NV_RUN/home-dns"
+  upstream=$(nv_upstream)
+  [[ -n $upstream ]] && read_network "$upstream"
+  publish off no-profile
+  unschedule
+  exit 0
+fi
 
 [[ $kind == event ]] && no_autoconnect
 

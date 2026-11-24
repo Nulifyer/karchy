@@ -262,7 +262,7 @@ set_trusted() {
   /usr/bin/karchy-localsend-firewall || true
   [[ ! -x /usr/bin/karchy-network-privacy ]] || /usr/bin/karchy-network-privacy || true
   [[ ! -x /usr/bin/karchy-network-dns ]] || /usr/bin/karchy-network-dns apply || true
-  # The VPN package (karchy-vpn) asks this command too; tell it to ask again.
+  # The VPN asks this command too; tell it to ask again.
   [[ ! -x /usr/lib/karchy-vpn/control ]] || /usr/lib/karchy-vpn/control refresh || true
 }
 

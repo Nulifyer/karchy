@@ -72,6 +72,23 @@ function connectivityState(kind, connectivity, states, checksEnabled, limitedSet
   return "unknown"
 }
 
+// The internet as the person has it, from NetworkManager's check and the VPN.
+// NetworkManager checks the Wi-Fi or Ethernet link itself, outside any tunnel.
+// The VPN's kill switch lets nothing leave that link but the tunnel, so the
+// check can't get out and NetworkManager says Limited while the internet
+// works through the VPN. "vpn": the internet works, through the VPN. The
+// VPN's "protecting" is its own proof (a fresh handshake, and its DNS
+// answering through the tunnel, checked every minute); another VPN that
+// carries all traffic (vpnFull: one switched on in Settings, or a WireGuard
+// profile started by hand) counts once NetworkManager's check passes too. A
+// sign-in page still comes first.
+function internetState(connectivity, vpn, vpnFull) {
+  if (connectivity === "portal") return "portal"
+  if (vpn && vpn.present && vpn.state === "protecting") return "vpn"
+  if (vpnFull && connectivity === "full") return "vpn"
+  return connectivity
+}
+
 // The bar's one network icon. While the VPN protects the connection it gets
 // the VPN variant of the same glyph (a lock on the Wi-Fi strength, a shield on
 // Ethernet), so a protected link reads as such at a glance. With nothing
@@ -79,14 +96,14 @@ function connectivityState(kind, connectivity, states, checksEnabled, limitedSet
 function connectionIcon(kind, signalStrength, connectivity, vpnState, airplane) {
   if (kind === "disconnected" && airplane) return "net.airplane"
   var restricted = connectivity === "portal" || connectivity === "limited"
-  var vpn = vpnState === "protecting" && !restricted ? ".vpn" : ""
+  var vpn = (vpnState === "protecting" || connectivity === "vpn") && !restricted ? ".vpn" : ""
   if (kind === "wifi") return restricted ? "net.wifi.restricted" : wifiIconFor(signalStrength) + vpn
   if (kind === "ethernet") return restricted ? "net.ethernet.restricted" : "net.ethernet" + vpn
   return "net.wifi.off"
 }
 
-// ---- The VPN (karchy-vpn, D-68) -------------------------------------------
-// The VPN package publishes /run/karchy-vpn/status (JSON, rewritten
+// ---- The VPN (D-68, docs/vpn.md) ------------------------------------------
+// The VPN publishes /run/karchy-vpn/status (JSON, rewritten
 // atomically on every change): mode off|auto|on; state standing-by,
 // connecting, protecting, failed, paused or off; reason; network (the link
 // it applies to, with trust); until (a sign-in pause's end, epoch seconds).
@@ -94,7 +111,7 @@ function connectionIcon(kind, signalStrength, connectivity, vpnState, airplane) 
 var vpnStates = ["off", "standing-by", "connecting", "protecting", "failed", "paused"]
 
 function parseVpnStatus(raw) {
-  var none = { present: false, mode: "", state: "", reason: "", network: null, until: 0 }
+  var none = { present: false, mode: "", state: "", reason: "", network: null, tunnel: null, until: 0 }
   var text = String(raw || "").trim()
   if (text === "") return none
   try {
@@ -106,6 +123,7 @@ function parseVpnStatus(raw) {
       state: value.state,
       reason: String(value.reason || ""),
       network: value.network || null,
+      tunnel: value.tunnel && value.tunnel.interface ? { name: String(value.tunnel.name || ""), interface: String(value.tunnel.interface) } : null,
       until: Number(value.until) || 0
     }
   } catch (error) {
@@ -160,6 +178,75 @@ function vpnTooltip(vpn, tr) {
   if (vpn.state === "failed") return t("network.vpnFailedTooltip", "VPN can't connect: internet blocked")
   if (vpn.state === "paused") return t("network.vpnPausedTooltip", "VPN paused while you sign in")
   return ""
+}
+
+// ---- A WireGuard tunnel's health --------------------------------------------
+// /usr/lib/karchy/wireguard-status (run through pkexec: the kernel tells only
+// root) gives each peer's last handshake (epoch seconds, 0 before the first),
+// its server and the data it carried. WireGuard shakes hands again every two
+// minutes while traffic flows and drops a session's keys after three
+// (REJECT_AFTER_TIME); a tunnel that carries all traffic, or sends keepalives,
+// always has traffic, so an older handshake means the server stopped
+// answering. A tunnel for a few networks may just be idle.
+var handshakeFreshSeconds = 180
+
+// The peer's entry for `iface` in the helper's output, or null.
+function wireguardPeer(status, iface) {
+  var list = status && Array.isArray(status.interfaces) ? status.interfaces : []
+  for (var i = 0; i < list.length; i++)
+    if (list[i] && list[i].interface === iface) return (list[i].peers || [])[0] || null
+  return null
+}
+
+function peerCarriesAll(peer) {
+  var ips = peer && Array.isArray(peer.allowed_ips) ? peer.allowed_ips : []
+  return ips.indexOf("0.0.0.0/0") >= 0 || ips.indexOf("::/0") >= 0
+}
+
+// { state, age, tone }: state "healthy", "stale" (the server stopped
+// answering), "idle" (a tunnel for a few networks with nothing to send),
+// "no-handshake" or "unknown"; age in seconds since the handshake, -1 for
+// none; tone "error", "warning" or "".
+function wireguardHealth(peer, now) {
+  if (!peer) return { state: "unknown", age: -1, tone: "" }
+  var last = Number(peer.latest_handshake) || 0
+  if (last <= 0) return { state: "no-handshake", age: -1, tone: "error" }
+  var age = Math.max(0, Math.round(Number(now) - last))
+  if (age <= handshakeFreshSeconds) return { state: "healthy", age: age, tone: "" }
+  if (peerCarriesAll(peer) || Number(peer.keepalive) > 0) return { state: "stale", age: age, tone: "error" }
+  return { state: "idle", age: age, tone: "" }
+}
+
+// "12 s ago", "4 min ago", "2 h ago", "3 days ago".
+function formatAge(seconds) {
+  var s = Math.max(0, Math.round(Number(seconds) || 0))
+  if (s < 5) return "just now"
+  if (s < 60) return s + " s ago"
+  if (s < 3600) return Math.floor(s / 60) + " min ago"
+  if (s < 172800) return Math.floor(s / 3600) + " h ago"
+  return Math.floor(s / 86400) + " days ago"
+}
+
+// One line for the health row.
+function wireguardHealthText(health) {
+  var h = health || {}
+  switch (h.state) {
+  case "healthy": return "Working, last handshake " + formatAge(h.age)
+  case "stale": return "The server stopped answering, last handshake " + formatAge(h.age)
+  case "idle": return "Idle, last handshake " + formatAge(h.age)
+  case "no-handshake": return "No handshake with the server yet"
+  }
+  return ""
+}
+
+// "1.2 GB", "340 kB": decimal units, three significant figures.
+function formatBytes(bytes) {
+  var b = Number(bytes)
+  if (!isFinite(b) || b < 0) return ""
+  var units = ["B", "kB", "MB", "GB", "TB"]
+  var i = 0
+  while (b >= 1000 && i < units.length - 1) { b /= 1000; i++ }
+  return (i === 0 ? String(Math.round(b)) : String(Number(b.toPrecision(3)))) + " " + units[i]
 }
 
 // ---- Radios and airplane mode (rfkill) --------------------------------------
@@ -239,6 +326,7 @@ function heroState(s, tr) {
   if (state.dns === "blocked") return { title: title, status: t("network.statusDnsBlocked", "DNS blocked"), tone: "warning" }
   var status = t("network.statusConnected", "Connected")
   if (vpn.present && vpn.state === "protecting") status = t("network.statusVpnProtecting", "VPN protecting")
+  else if (state.connectivity === "vpn") status = t("network.statusConnectedVpn", "Connected through VPN")
   else if (vpn.present && vpn.state === "standing-by" && vpn.reason === "trusted") status = t("network.statusTrusted", "Trusted network")
   else if (state.airplane) status = t("network.statusAirplane", "Airplane mode")
   return { title: title, status: status, tone: "" }
@@ -675,6 +763,12 @@ if (typeof module !== "undefined") {
     vpnTone: vpnTone,
     vpnStatusLine: vpnStatusLine,
     vpnTooltip: vpnTooltip,
+    wireguardPeer: wireguardPeer,
+    peerCarriesAll: peerCarriesAll,
+    wireguardHealth: wireguardHealth,
+    wireguardHealthText: wireguardHealthText,
+    formatAge: formatAge,
+    formatBytes: formatBytes,
     applyRfkillEvent: applyRfkillEvent,
     radioState: radioState,
     heroState: heroState,
@@ -684,6 +778,7 @@ if (typeof module !== "undefined") {
     connectedSignalStrength: connectedSignalStrength,
     parseActiveApSignal: parseActiveApSignal,
     connectivityState: connectivityState,
+    internetState: internetState,
     captivePortalUrl: captivePortalUrl,
     formatHeaderSpeed: formatHeaderSpeed,
     formatHeaderFreq: formatHeaderFreq,

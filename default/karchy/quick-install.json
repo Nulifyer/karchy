@@ -94,28 +94,6 @@
       }
     },
     {
-      "id": "karchy-vpn",
-      "name": "WireGuard VPN",
-      "category": "karchy",
-      "icon": "network-vpn",
-      "description": "Your own WireGuard VPN with a kill switch: on by itself on networks you don't trust, off at home, with a sign-in pause for café Wi-Fi. A shield in the bar shows whether you're protected.",
-      "packages": [
-        "karchy-vpn"
-      ],
-      "source": "karchy",
-      "keywords": [
-        "wireguard",
-        "vpn",
-        "kill switch"
-      ],
-      "setup": {
-        "run": [
-          "karchy-plugin-enable karchy.vpn --after karchy.network"
-        ],
-        "note": "Next: in Settings › Network › VPN, import your provider's WireGuard file and choose Set up VPN."
-      }
-    },
-    {
       "id": "brave",
       "name": "Brave",
       "category": "browsers",
@@ -6959,21 +6937,6 @@
       "keywords": [
         "file transfer",
         "send files"
-      ]
-    },
-    {
-      "id": "wireguard-tools",
-      "name": "WireGuard tools",
-      "category": "network",
-      "description": "Next generation secure network tunnel - tools for configuration",
-      "icon": "",
-      "packages": [
-        "wireguard-tools"
-      ],
-      "source": "arch",
-      "keywords": [
-        "vpn",
-        "wg"
       ]
     },
     {

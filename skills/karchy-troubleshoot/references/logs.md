@@ -13,7 +13,7 @@
 | The previous boot | add `-b -1` in place of `-b` |
 | DNS changes by karchy | `journalctl -t karchy-network-dns` |
 | The Wi-Fi country helper | `journalctl -t karchy-wifi-regdomain` |
-| The VPN policy, when karchy-vpn is installed | `journalctl -t karchy-vpn` |
+| The VPN policy, once the VPN is set up | `journalctl -t karchy-vpn` |
 | Package changes | `/var/log/pacman.log` |
 
 The shell logs to the journal because `karchy-launch-shell` starts Quickshell through `systemd-cat -t karchy-shell`. Quickshell's own log file lives in a runtime folder that a reboot clears, so use the journal. The same tag carries the launcher's lines: "Karchy shell exited with status N; relaunching." and "Giving up on the Karchy shell after N relaunches in under a minute." The second line means the shell stays down until `karchy-restart-shell` or the next login.

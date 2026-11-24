@@ -8,3 +8,7 @@
 # v0.1.0-rc.11: udiskie mounts drives; thunar-volman's actions are all off by
 # default and karchy never turned them on.
 thunar-volman
+
+# v0.1.0-rc.14: the VPN is part of karchy-settings (D-156); karchy-vpn is the
+# empty package the add-on became, marked as a dependency by a migration.
+karchy-vpn

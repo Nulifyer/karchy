@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  Reading the WireGuard tunnels' health: the last handshake, the server and
+  the data counters, which the kernel tells only root. Settings › Network ›
+  VPN and the VPN's bar widget run /usr/lib/karchy/wireguard-status through
+  pkexec, which picks this action by the exec.path below. The helper only
+  reads and never prints a key that is a secret, and NetworkManager already
+  shows every local user the same profiles, so the person at the computer
+  needs no password. Remote and inactive sessions are refused without a
+  prompt: the pages read it every few seconds and would ask again each time.
+-->
+<policyconfig>
+  <vendor>karchy</vendor>
+  <vendor_url>https://github.com/Nulifyer/karchy</vendor_url>
+
+  <action id="org.karchy.wireguard-status">
+    <description>Read the WireGuard VPN's health</description>
+    <message>Read when the WireGuard VPN last reached its server, and how much data it carried.</message>
+    <icon_name>network-vpn</icon_name>
+    <defaults>
+      <allow_any>no</allow_any>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>yes</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/lib/karchy/wireguard-status</annotate>
+  </action>
+</policyconfig>

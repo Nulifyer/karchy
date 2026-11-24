@@ -11,8 +11,9 @@
 #                                      (asks for an administrator's password)
 #
 # mode, portal-pause and reconnect run the root helper through pkexec; the
-# package's polkit rule allows exactly those for local members of wheel
-# without a password. on, off and auto are short for mode on, off and auto.
+# polkit rule (50-karchy-vpn.rules) allows exactly those for local members of
+# wheel without a password. on, off and auto are short for mode on, off and
+# auto.
 set -euo pipefail
 
 readonly LIB=/usr/lib/karchy-vpn

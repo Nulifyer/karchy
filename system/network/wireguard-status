@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# karchy: the live state of the WireGuard tunnels, for Settings › Network ›
+# VPN and the VPN's bar widget: each peer's last handshake, its server
+# (endpoint) and the data it carried. The kernel tells only root, so they run
+#   pkexec /usr/lib/karchy/wireguard-status [interface]
+# (polkit action org.karchy.wireguard-status: the active local session, no
+# password). It only reads, takes nothing but an interface name, and never
+# prints a secret: the private and preshared keys are left out.
+#
+# Prints one JSON object:
+#   {"now": <epoch>, "interfaces": [{"interface", "public_key", "listen_port",
+#     "peers": [{"public_key", "endpoint", "allowed_ips", "latest_handshake",
+#                "rx_bytes", "tx_bytes", "keepalive"}]}]}
+# latest_handshake is epoch seconds, 0 before the first one; "now" is the
+# clock it was read against.
+
+set -euo pipefail
+export PATH=/usr/bin
+
+(( EUID == 0 )) || { echo "This command must run as root." >&2; exit 1; }
+only=${1:-}
+[[ -z $only || $only =~ ^[A-Za-z0-9_=+.-]{1,15}$ ]] || { echo "Not an interface name: $only" >&2; exit 2; }
+
+now=$(date +%s)
+# `wg show all dump`: an interface's line has 5 fields (name, private key,
+# public key, listen port, fwmark); a peer's has 9 (name, public key,
+# preshared key, endpoint, allowed IPs, latest handshake, received, sent,
+# keepalive).
+if [[ -n $only ]]; then
+  dump=$(wg show "$only" dump 2>/dev/null | sed "s/^/$only\t/" || true)
+else
+  dump=$(wg show all dump 2>/dev/null || true)
+fi
+
+jq -R -s -c --argjson now "$now" '
+  def num: tonumber? // 0;
+  [split("\n")[] | select(. != "") | split("\t")] as $rows
+  | {now: $now, interfaces: [
+      $rows[] | select(length == 5) | .[0] as $name
+      | {interface: $name, public_key: .[2], listen_port: (.[3] | num),
+         peers: [$rows[] | select(length == 9 and .[0] == $name)
+           | {public_key: .[1],
+              endpoint: (if .[3] == "(none)" then "" else .[3] end),
+              allowed_ips: (if .[4] == "(none)" then [] else (.[4] | split(",")) end),
+              latest_handshake: (.[5] | num), rx_bytes: (.[6] | num), tx_bytes: (.[7] | num),
+              keepalive: (if .[8] == "off" then 0 else (.[8] | num) end)}]}
+    ]}' <<<"$dump"

@@ -32,6 +32,8 @@ bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture,
 bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, what loose typing no longer finds (D-136), en/menu.json agrees
 bun tests/notifications-panel.js "$PWD"   # the notifications panel: sections, groups, the names apps are listed under
 bun tests/storage-model.js "$PWD"  # Settings › Storage: sizes, the live figures, the overview's tiles, the stack and subvolume rows
+bun tests/network-model.js "$PWD"  # the network panel: the internet through the VPN (never "No internet" while it protects), a WireGuard tunnel's health and its words
+tests/vpn-setup.sh                 # karchy-network-vpn: setup's configuration and refusals, and remove turning the VPN off first for its own profile (stand-in nmcli and karchy-vpn)
 tests/storage-helpers.sh system/storage   # Storage's root side: what the helpers refuse, and how they read bees, SMART and the subvolume list
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
 tests/users-settings.sh system/users/users-settings   # Settings › Users' root helper as a user: what it turns away, and, in a user namespace with a made-up /etc, the rules between several people and the greetd file automatic login writes

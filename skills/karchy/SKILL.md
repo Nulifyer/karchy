@@ -1,6 +1,6 @@
 ---
 name: karchy
-description: Use when customizing, configuring or operating a karchy system (the Arch-based Hyprland desktop with a Quickshell shell). Covers files in ~/.config/karchy, ~/.config/hypr and ~/.local/state/karchy, the karchy-* commands and the `karchy` router, the Settings window and its karchy-settings-* commands, themes, fonts, backgrounds, keybindings, the bar and shell plugins, updates, release channels, packages, Quick install and the AUR, network, trusted networks, DNS and sharing, storage, disks and kept mounts, power, idle and notifications, privilege (pkexec helpers, sudo) and snapshots. Use it before editing anything under /usr/share/karchy. For faults, crashes, logs, boot failures and bug reports use karchy-troubleshoot. Virtual machines, containers and the VPN have their own skills (karchy-vms, karchy-containers, karchy-vpn) when those features are installed.
+description: Use when customizing, configuring or operating a karchy system (the Arch-based Hyprland desktop with a Quickshell shell). Covers files in ~/.config/karchy, ~/.config/hypr and ~/.local/state/karchy, the karchy-* commands and the `karchy` router, the Settings window and its karchy-settings-* commands, themes, fonts, backgrounds, keybindings, the bar and shell plugins, updates, release channels, packages, Quick install and the AUR, network, trusted networks, DNS and sharing, storage, disks and kept mounts, power, idle and notifications, privilege (pkexec helpers, sudo) and snapshots. Use it before editing anything under /usr/share/karchy. For faults, crashes, logs, boot failures and bug reports use karchy-troubleshoot. Virtual machines and containers have their own skills (karchy-vms, karchy-containers) when those features are installed.
 ---
 
 # karchy
@@ -36,7 +36,7 @@ If you cannot tell which kind a change is, treat it as large.
 
 ## Leave the VPN alone
 
-If `karchy-vpn` is installed, don't change it: not its mode, its configuration, its kill switch or its units, and don't work around the kill switch. You may read `karchy-vpn status` to explain why the internet is blocked (`connecting`, `failed` or `paused` blocks ordinary traffic on purpose). Then tell the user, who changes the VPN in its bar panel or in Settings › Network › VPN.
+karchy's VPN (WireGuard with a kill switch, part of karchy) is the user's to change: not its mode, its configuration, its profiles, its kill switch or its units, and don't work around the kill switch. You may read `karchy-vpn status` to explain why the internet is blocked (`connecting`, `failed` or `paused` blocks ordinary traffic on purpose). Then tell the user, who changes the VPN in the network panel or in Settings › Network › VPN.
 
 ## Never write under /usr/share/karchy
 

@@ -1,32 +1,37 @@
 #!/bin/bash
 
-# karchy:summary=VPN profiles and the VPN package's options for Settings › Network
+# karchy:summary=VPN profiles and the VPN's options for Settings › Network
 # karchy:group=network
-# karchy:args=status [--json] | import <file.conf> | setup <uuid> [dns] | switch <uuid> on|off | home-lan yes|no
+# karchy:args=status [--json] | import <file.conf> | setup <uuid> [dns] | switch <uuid> on|off | remove <uuid> | home-lan yes|no
 # karchy:examples=karchy network vpn import ~/Downloads/wg0.conf
 # karchy:hidden=true
 
 # NetworkManager holds the VPN profiles (WireGuard, and VPN plugins such as
 # OpenVPN); nmcli changes them without a password for local members of wheel.
 #   import      adds a WireGuard .conf as a profile that doesn't start by
-#               itself (the VPN package, or the switch in Settings, starts it)
-#   setup       makes the VPN package use a WireGuard profile: prepares the
-#               profile the way the package needs it (a fixed listen port,
-#               its DNS for every name), writes the package's configuration
+#               itself (the VPN, or the switch in Settings, starts it)
+#   setup       makes the VPN use a WireGuard profile: prepares the
+#               profile the way the VPN needs it (a fixed listen port,
+#               its DNS for every name), writes the VPN's configuration
 #               from the profile and hands it to `karchy-vpn setup`, which
 #               checks it as root and asks for an administrator's password.
 #               The optional dns is a DNS server inside the VPN, for a
 #               profile that names none. Exit 3: that address is needed
-#   switch      connects or disconnects a profile (without the VPN package)
-#   home-lan    the VPN package's "Allow local devices on trusted networks"
+#   switch      connects or disconnects a profile: other kinds of VPN
+#               (OpenVPN and the like), which the VPN doesn't run
+#   remove      deletes a profile, its keys with it. The one the VPN
+#               uses is turned off first (`karchy-vpn mode off`), so the kill
+#               switch doesn't block the internet waiting for a tunnel that
+#               is gone; the VPN then waits to be set up with another
+#   home-lan    the VPN's "Allow local devices on trusted networks"
 #               (HOME_LAN): its configuration is handed to `karchy-vpn
 #               setup`, which checks it as root and asks for a password
-# With the VPN package (karchy-vpn) installed, its mode and status live in
+# The VPN (docs/vpn.md) keeps its mode and status in
 # /run/karchy-vpn/status and `karchy-vpn mode`; Settings reads those itself.
 
 set -euo pipefail
 
-CONFIG=/etc/karchy-vpn/config
+CONFIG=${KARCHY_VPN_CONFIG:-/etc/karchy-vpn/config}
 UUID_RE='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
 
 refuse() { echo "$*" >&2; exit 2; }
@@ -36,22 +41,36 @@ config_value() {
   sed -n "s/^$1=//p" "$CONFIG" | head -n 1 | sed "s/^'\(.*\)'$/\1/"
 }
 
+# The profile the VPN uses: VPN_CONNECTION names it by its name, or
+# by its UUID when the name had characters the VPN's configuration
+# doesn't take.
+in_use() {  # in_use <uuid> <name>
+  local connection
+  connection=$(config_value VPN_CONNECTION)
+  [[ -n $connection && ( $connection == "$1" || $connection == "$2" ) ]]
+}
+
 status() {
-  local rows="" uuid type device name autoconnect
+  local rows="" uuid type device name autoconnect used="" iface
   declare -A active=()
   while IFS=: read -r uuid device; do
     [[ -n $uuid && -n $device ]] && active[$uuid]=$device
   done < <(nmcli -t -e no -f UUID,DEVICE connection show --active 2>/dev/null)
   while IFS=: read -r uuid type autoconnect name; do
     [[ $type == "wireguard" || $type == "vpn" ]] || continue
+    iface=""
+    [[ $type == wireguard ]] && iface=$(nmcli -g connection.interface-name connection show uuid "$uuid" 2>/dev/null || true)
+    in_use "$uuid" "$name" && used=yes
     rows+=$(jq -cn --arg uuid "$uuid" --arg type "$type" --arg name "$name" --arg device "${active[$uuid]:-}" \
-      --arg auto "$autoconnect" \
+      --arg auto "$autoconnect" --arg iface "$iface" --arg inUse "$(in_use "$uuid" "$name" && echo yes)" \
       --arg dns "$([[ $type == wireguard ]] && nmcli -g ipv4.dns connection show uuid "$uuid" 2>/dev/null)" \
       '{uuid: $uuid, name: $name, type: $type, active: ($device != ""), device: $device, autoconnect: ($auto == "yes"),
-        has_dns: ($dns != "")}')$'\n'
+        interface: $iface, has_dns: ($dns != ""), in_use: ($inUse == "yes")}')$'\n'
   done < <(nmcli -t -e no -f UUID,TYPE,AUTOCONNECT,NAME connection show 2>/dev/null)
+  # Set up means a configuration naming a profile that still exists: after
+  # its profile is removed, the VPN waits to be set up with another.
   jq -s --arg package "$([[ -x /usr/lib/karchy-vpn/control ]] && echo yes)" \
-    --arg configured "$([[ -r $CONFIG ]] && echo yes)" --arg homeLan "$(config_value HOME_LAN)" \
+    --arg configured "$([[ -r $CONFIG && -n $used ]] && echo yes)" --arg homeLan "$(config_value HOME_LAN)" \
     --arg connection "$(config_value VPN_CONNECTION)" --arg timeout "$(config_value CONNECT_TIMEOUT)" '{
       package: ($package == "yes"), configured: ($configured == "yes"),
       home_lan: ($homeLan != "no"), connection: $connection,
@@ -86,16 +105,30 @@ import_conf() {
   uuid=$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' <<<"$out" | head -n 1)
   [[ -n $uuid ]] || refuse "NetworkManager didn't say which profile it made: $out"
   # Imported profiles connect at once and on every boot; this one waits to
-  # be switched on (or for the VPN package to start it).
+  # be switched on (or for the VPN to start it).
   nmcli connection down uuid "$uuid" >/dev/null 2>&1 || true
   nmcli connection modify uuid "$uuid" connection.autoconnect no
   jq -cn --arg uuid "$uuid" --arg name "$base" '{uuid: $uuid, name: $name}'
 }
 
+remove() {
+  local uuid=${1:-} name type
+  [[ $uuid =~ $UUID_RE ]] || refuse "Not a connection UUID: $uuid"
+  type=$(profile_field "$uuid" connection.type)
+  [[ $type == wireguard || $type == vpn ]] || refuse "That isn't a VPN profile."
+  name=$(profile_field "$uuid" connection.id)
+  if command -v karchy-vpn >/dev/null && [[ -r $CONFIG ]] && in_use "$uuid" "$name" &&
+    [[ $(karchy-vpn mode 2>/dev/null) != off ]]; then
+    karchy-vpn mode off >/dev/null || refuse "Couldn't turn the VPN off, so the profile it uses stays."
+  fi
+  local out
+  out=$(nmcli connection delete uuid "$uuid" 2>&1) || refuse "NetworkManager couldn't remove it: ${out#Error: }"
+}
+
 home_lan() {
   local value=${1:-} tmp
   [[ $value =~ ^(yes|no)$ ]] || refuse "Allow local devices is yes or no."
-  command -v karchy-vpn >/dev/null || refuse "The VPN package (karchy-vpn) isn't installed."
+  command -v karchy-vpn >/dev/null || refuse "The VPN isn't installed (karchy-settings is too old)."
   [[ -r $CONFIG ]] || refuse "The VPN isn't set up yet: run karchy-vpn setup."
   tmp=$(mktemp)
   trap "rm -f '$tmp'" EXIT
@@ -107,15 +140,15 @@ home_lan() {
 # One field of a profile, as NetworkManager has it.
 profile_field() { nmcli --escape no -g "$2" connection show uuid "$1" 2>/dev/null; }
 
-# The VPN package's configuration, written from a WireGuard profile. The
-# package wants one IPv4 full-tunnel peer, a fixed listen port and the VPN's
+# The VPN's configuration, written from a WireGuard profile. The
+# VPN wants one IPv4 full-tunnel peer, a fixed listen port and the VPN's
 # DNS for every name; what a provider's file leaves open is set on the
 # profile here (no password: it is the user's own profile), and what can't be
 # set is refused in plain words before anyone is asked for a password.
 setup() {
   local uuid=${1:-} dns=${2:-} name interface port peers endpoint host endpoint_port tmp key value
   [[ $uuid =~ $UUID_RE ]] || refuse "Not a connection UUID: $uuid"
-  command -v karchy-vpn >/dev/null || refuse "The VPN package (karchy-vpn) isn't installed."
+  command -v karchy-vpn >/dev/null || refuse "The VPN isn't installed (karchy-settings is too old)."
   [[ $(profile_field "$uuid" connection.type) == wireguard ]] || refuse "Choose a WireGuard profile."
   name=$(profile_field "$uuid" connection.id)
   interface=$(profile_field "$uuid" connection.interface-name)
@@ -177,6 +210,7 @@ case "${1:-}" in
       *) refuse "switch is on or off." ;;
     esac
     ;;
+  remove) remove "${2:-}" ;;
   home-lan) home_lan "${2:-}" ;;
   *) sed -n 's/^# karchy:args=/Usage: karchy-network-vpn /p' "$0" >&2; exit 1 ;;
 esac

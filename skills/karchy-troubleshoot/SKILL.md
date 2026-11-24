@@ -1,6 +1,6 @@
 ---
 name: karchy-troubleshoot
-description: Use when something on a karchy system is broken, crashes, hangs, fails to boot or needs a bug report. Covers logs (journalctl, journalctl -t karchy-shell for the Quickshell shell, the Hyprland unit, ~/.local/state/karchy update, migration and Quick install logs, /var/log/pacman.log), core dumps (coredumpctl), boot failures, booting and restoring a snapshot (Limine Snapshots entries, snapper, limine-snapper-restore, karchy-snapshot-boot), hardware checks (karchy-hw-*, karchy-disk-health, karchy-secureboot), network diagnosis (karchy-network-status, karchy-network-dns, karchy-trusted-networks, nmcli), the karchy-restart-* commands, and reporting a bug to github.com/Nulifyer/karchy. Do not use to customize or configure a working system (karchy), or for VPN tunnel faults when karchy-vpn is installed (karchy-vpn).
+description: Use when something on a karchy system is broken, crashes, hangs, fails to boot or needs a bug report. Covers logs (journalctl, journalctl -t karchy-shell for the Quickshell shell, the Hyprland unit, ~/.local/state/karchy update, migration and Quick install logs, /var/log/pacman.log), core dumps (coredumpctl), boot failures, booting and restoring a snapshot (Limine Snapshots entries, snapper, limine-snapper-restore, karchy-snapshot-boot), hardware checks (karchy-hw-*, karchy-disk-health, karchy-secureboot), network diagnosis (karchy-network-status, karchy-network-dns, karchy-trusted-networks, nmcli), the karchy-restart-* commands, and reporting a bug to github.com/Nulifyer/karchy. Do not use to customize or configure a working system (karchy), or to change karchy's VPN (the user's to change).
 ---
 
 # karchy-troubleshoot
@@ -39,7 +39,7 @@ Ask what changed last: an update, a new package, a config edit, new hardware. `g
 | No internet, no name lookups, a sign-in page that does not open, a blocked port, slow network | [references/network.md](references/network.md) |
 | The user wants to file a bug, or the cause is karchy's own code | [references/reporting.md](references/reporting.md) |
 
-If `karchy-vpn` is installed and `karchy-vpn status` shows `connecting`, `failed` or `paused`, a blocked internet connection is the VPN's kill switch. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in its bar panel or in Settings › Network › VPN.
+If `karchy-vpn status` shows `connecting`, `failed` or `paused`, a blocked internet connection is the VPN's kill switch. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in the network panel or in Settings › Network › VPN. While it shows `protecting`, NetworkManager calls the physical link "limited" (its check can't leave past the kill switch); the internet works through the tunnel.
 
 ## Quick restarts
 

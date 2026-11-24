@@ -1,32 +1,25 @@
-# karchy-vpn: WireGuard with a kill switch (D-68), one of karchy's add-ons:
-# the system half (policy service, kill switch, sign-in pause, polkit rule)
-# and the bar widget, built from addons/vpn in karchy's tree and released with
-# karchy on every channel. Nothing installs it but the user: Quick install ›
-# karchy › WireGuard VPN. Its controls also live in karchy's network panel;
-# the contract (status file, commands, trust and DNS) is in
-# docs/architecture.md, "Networking ownership".
-#
-# The polkit rule lets a local, active wheel session run exactly
-# /usr/lib/karchy-vpn/control mode (off|auto|on), portal-pause or reconnect
-# without a password; everything else asks for one.
+# karchy-vpn: transitional, empty (D-156). The VPN was an add-on of this
+# name; it is part of karchy now, installed by karchy-settings at the same
+# paths. A machine that had the add-on upgrades it to this package in the
+# same transaction that brings karchy-settings with the VPN's files, so the
+# files move from one package to the other and nothing of the VPN stops or
+# is removed: the add-on's own removal script (which took the tunnel down and
+# deleted /etc/karchy-vpn) never runs, because an upgrade runs the new
+# package's scripts, and this one has none. The migration
+# 1795539895-vpn-in-core.sh then marks it as a dependency, and the next
+# `karchy update` removes it (default/karchy/retired-packages). Keep it in
+# the repository while machines may still skip to a release with it.
 
 pkgname=karchy-vpn
 pkgver=0
 pkgrel=1
-pkgdesc="WireGuard VPN policy with a kill switch: Auto on untrusted networks, captive-portal sign-in pause"
+pkgdesc="Transitional package: karchy's VPN is part of karchy-settings now"
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
-depends=('karchy' 'bash' 'networkmanager' 'wireguard-tools' 'nftables' 'iproute2' 'jq' 'polkit' 'python' 'systemd' 'util-linux')
-makedepends=('make')
-install=karchy-vpn.install
 source=("karchy-src.tar.gz")
 sha256sums=('SKIP')
 
 package() {
-  cd "$srcdir/karchy/addons/vpn"
-  make DESTDIR="$pkgdir" install
-  # The bar widget, loaded by the shell from the root-owned add-on folder.
-  install -Dm644 -t "$pkgdir/usr/share/karchy/plugins/karchy.vpn" manifest.json Panel.qml
-  # No agent skill: agents leave the VPN alone (D-115).
+  :
 }

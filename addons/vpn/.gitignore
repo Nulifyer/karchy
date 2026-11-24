@@ -1,7 +1,0 @@
-__pycache__/
-*.pyc
-.env
-config.local
-*.key
-*.nmconnection
-*.conf.local

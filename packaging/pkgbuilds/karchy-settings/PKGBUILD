@@ -13,6 +13,9 @@ depends=('sudo' 'pam' 'systemd' 'rate-mirrors' 'pacman-contrib' 'iw' 'wireless-r
   # Settings › Storage's "Measure now": compsize counts what files hold
   # against what they take on a btrfs disk; jq writes the result.
   'compsize' 'jq'
+  # The VPN (docs/vpn.md): wg reads a tunnel's handshake and data
+  # (wireguard-tools, a few hundred kB); the kill switch is an nftables table.
+  'wireguard-tools' 'nftables' 'iproute2' 'polkit' 'python' 'networkmanager'
   # The login keyring (D-142): keyring-login gives a keyring another secret
   # with oo7-cli (`--secret -` is 0.7.2's; 0.7.3 moved the options behind
   # the command, where keyring-rekey puts them) on a bus of its own
@@ -116,6 +119,27 @@ package() {
     "$pkgdir/usr/lib/systemd/system/karchy-network-privacy.service"
   install -Dm755 NetworkManager/dispatcher.d/95-karchy-dns \
     "$pkgdir/usr/lib/NetworkManager/dispatcher.d/95-karchy-dns"
+  # The WireGuard VPN with a kill switch (D-68, part of karchy since D-156;
+  # docs/vpn.md): the root helpers the policy, the guard and the commands
+  # run, its units (nothing starts until `karchy-vpn setup` writes
+  # /etc/karchy-vpn/config), the dispatcher hook that asks the policy to look
+  # again (also in pre-up.d, so the guard closes before a new link carries
+  # anything), and the polkit rule letting the person at the computer switch
+  # modes, reconnect and pause for a sign-in page without a password. The
+  # paths are the ones the karchy-vpn add-on used, so a VPN set up with it
+  # carries on.
+  install -Dm644 vpn/common.sh -t "$pkgdir/usr/lib/karchy-vpn"
+  install -Dm755 vpn/control vpn/policy vpn/guard vpn/configure -t "$pkgdir/usr/lib/karchy-vpn"
+  install -Dm644 -t "$pkgdir/usr/lib/systemd/system" vpn/karchy-vpn-check.service vpn/karchy-vpn-guard.service \
+    vpn/karchy-vpn-policy.path vpn/karchy-vpn-policy.service
+  install -Dm644 vpn/karchy-vpn.tmpfiles "$pkgdir/usr/lib/tmpfiles.d/karchy-vpn.conf"
+  install -Dm644 vpn/config.example "$pkgdir/usr/share/karchy-vpn/config.example"
+  install -Dm755 NetworkManager/dispatcher.d/90-karchy-vpn "$pkgdir/usr/lib/NetworkManager/dispatcher.d/90-karchy-vpn"
+  install -d "$pkgdir/usr/lib/NetworkManager/dispatcher.d/pre-up.d"
+  ln -sf ../90-karchy-vpn "$pkgdir/usr/lib/NetworkManager/dispatcher.d/pre-up.d/90-karchy-vpn"
+  install -Dm644 polkit/actions/org.karchy.vpn.policy -t "$pkgdir/usr/share/polkit-1/actions"
+  install -Dm644 polkit/rules.d/50-karchy-vpn.rules -t "$pkgdir/usr/share/polkit-1/rules.d"
+
   # Network tuning: Wi-Fi power save off, ARP, MTU probing, BBR + fq, and
   # avahi as the only .local responder. In /usr/lib, so files in /etc win.
   install -Dm644 -t "$pkgdir/usr/lib/NetworkManager/conf.d" NetworkManager/conf.d/*.conf
@@ -218,6 +242,14 @@ package() {
     "$pkgdir/usr/share/polkit-1/actions/org.karchy.storage-settings.policy"
   install -Dm644 polkit/rules.d/50-karchy-storage-settings.rules \
     "$pkgdir/usr/share/polkit-1/rules.d/50-karchy-storage-settings.rules"
+
+  # Settings › Network › VPN and the VPN's bar widget: the reader of the
+  # WireGuard tunnels' health (last handshake, server, data), which the
+  # kernel tells only root, with its polkit action (the active local session,
+  # no password; nothing it prints is a secret).
+  install -Dm755 network/wireguard-status "$pkgdir/usr/lib/karchy/wireguard-status"
+  install -Dm644 polkit/actions/org.karchy.wireguard-status.policy \
+    "$pkgdir/usr/share/polkit-1/actions/org.karchy.wireguard-status.policy"
 
   # Settings › Users (D-139): the root helper that owns what an account is
   # and when the computer logs in by itself, with its polkit action (an
