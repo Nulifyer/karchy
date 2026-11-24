@@ -1070,9 +1070,10 @@ Item {
           }
         }
 
-        // Installed with no window: a quiet word instead of a button.
+        // Every installed app says so, before its Open button when it has a
+        // window: Open alone reads like Install at a glance.
         RowLayout {
-          visible: row.installedHere && !row.hasWindow && !row.running
+          visible: row.installedHere && !row.running
           spacing: Style.spacing.sm
           Text {
             text: Icons.glyph("ui.check")
