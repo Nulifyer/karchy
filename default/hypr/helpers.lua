@@ -364,6 +364,29 @@ function o.window_tagged(window, tag)
   return false
 end
 
+-- The tags rules gave a window as it opened. A rule that matches a window by
+-- a state it then changes (float = false, and floats it) stops matching once
+-- the window is open, and its tag has left by window.open. At
+-- window.open_early the tag is still there, so it is kept from then.
+local tags_at_open = {}
+
+hl.on("window.open_early", function(window)
+  local tags = {}
+  for _, name in ipairs(window.tags or {}) do
+    tags[(name:gsub("%*$", ""))] = true
+  end
+  tags_at_open[window.address] = tags
+end)
+
+hl.on("window.close", function(window)
+  tags_at_open[window.address] = nil
+end)
+
+function o.tagged_at_open(window, tag)
+  local tags = window and tags_at_open[window.address]
+  return tags ~= nil and tags[tag] == true
+end
+
 -- Opt a window in to Karchy's standard active/inactive transparency. The tag
 -- lets Appearance > Windows > Window Opacity turn these windows opaque or glassy.
 function o.transparent_window(match, opacity)

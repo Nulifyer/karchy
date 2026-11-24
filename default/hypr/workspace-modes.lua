@@ -207,9 +207,12 @@ local function open_position()
   return string.format("(monitor_w-%s)/2+(%d) (monitor_h-%s)/2+(%d)", OPEN_WIDTH, step, OPEN_HEIGHT, step)
 end
 
--- Matches every window but those of apps with float rules of their own,
--- directly or through a tag a float rule matches.
+-- Matches every window that would tile: not those of apps with float rules of
+-- their own, directly or through a tag a float rule matches, and not the ones
+-- Hyprland floats itself because they belong to another window or cannot be
+-- resized (a dialog). `float` is read before any rule has floated the window.
 local function not_floating_on_their_own(match)
+  match.float = false
   local floating = o.floating_apps or { class = {}, title = {}, tags = {}, tagged = {} }
   local excluded = { class = {}, title = {} }
   for _, key in ipairs({ "class", "title" }) do
@@ -238,9 +241,9 @@ end
 
 -- A window opening on a floating workspace floats from its first frame, at the
 -- size the mode gives it, so it pops in from its own middle the way a tiled
--- window does, instead of opening tiled and shrinking into place. Modal
--- dialogs, and apps with float rules of their own, float on their own account
--- and are left to it, at their own size and outside the mode's claim.
+-- window does, instead of opening tiled and shrinking into place. Dialogs,
+-- and apps with float rules of their own, float on their own account and are
+-- left to it, at their own size and outside the mode's claim.
 local function sync_open_rules()
   local ranges = floating_ranges()
 
@@ -268,23 +271,21 @@ end
 o.floating_apps_changed = sync_open_rules
 
 M.not_floating_on_their_own = not_floating_on_their_own
+M.floating_workspace = floating_workspace
 M.OPEN_WIDTH = OPEN_WIDTH
 M.OPEN_HEIGHT = OPEN_HEIGHT
 M.FLOATED_TAG = FLOATED_TAG
+M.OPENED_TAG = OPENED_TAG
 
--- A rule's tag leaves with the rule, so a window the open rule floated is
--- claimed for good as it opens, and the mode tiles it again when it ends. A
--- rule's tags are listed with a trailing "*", and a strict tag query passes
--- them over, so the window's own list is read.
+-- A rule's tag leaves with the rule, and the open rule stops matching a window
+-- the moment it has floated it, so a window the rule floated is claimed for
+-- good as it opens, and the mode tiles it again when it ends.
 local function claim_opened(window)
-  for _, tag in ipairs(window.tags or {}) do
-    if tag == OPENED_TAG or tag == OPENED_TAG .. "*" then
-      set_claimed(window, true)
-      -- The next window the rule opens steps on from this one.
-      cascade = (cascade + 1) % 5
-      sync_open_rules()
-      return
-    end
+  if o.tagged_at_open(window, OPENED_TAG) then
+    set_claimed(window, true)
+    -- The next window the rule opens steps on from this one.
+    cascade = (cascade + 1) % 5
+    sync_open_rules()
   end
 end
 

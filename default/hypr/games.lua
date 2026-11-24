@@ -46,8 +46,8 @@ end
 --     leaving a window with the pointer would hide it.
 --   - when the game leaves fullscreen or closes, the windows this floated
 --     tile again, as does one carried to another workspace.
--- Apps with float rules of their own and modal dialogs float anyway and are
--- left alone, as on a floating workspace (workspace-modes.lua).
+-- Apps with float rules of their own and dialogs float anyway and are left
+-- alone, as on a floating workspace (workspace-modes.lua).
 local OVER_RULE = "karchy-over-game-"
 -- On a window through the rule, so it goes when the rule is turned off.
 local OVER_TAG = "karchy-over-game"
@@ -122,10 +122,10 @@ hl.on("window.fullscreen", sync_soon)
 hl.on("window.close", sync_soon)
 hl.on("window.move_to_workspace", sync_soon)
 
--- The rule's tag leaves with the rule, so what it floated is marked for good
--- as it opens.
+-- The rule's tag leaves with the rule, and the rule stops matching a window
+-- once it has floated it, so what it floated is marked for good as it opens.
 hl.on("window.open", function(window)
-  if o.window_tagged(window, OVER_TAG) and not o.fullscreen_game(window) then
+  if o.tagged_at_open(window, OVER_TAG) and not o.fullscreen_game(window) then
     hl.dispatch(hl.dsp.window.tag({ tag = "+" .. FLOATED_TAG, window = window }))
   end
 end)
