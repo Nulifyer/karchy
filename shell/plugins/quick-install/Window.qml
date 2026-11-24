@@ -75,6 +75,9 @@ Item {
   }), root.applyVerb)
   property bool applying: false
   property string applyVerb: ""
+  // The running install is the picked apps' (the bar's button spins for it),
+  // not one row's.
+  property bool applyingPicked: false
   property string logPath: ""
   property bool multilibOn: false
   property var pendingRemove: null
@@ -241,7 +244,9 @@ Item {
   }
 
   function installSelected() {
+    if (root.applying || root.selectedToInstall.length === 0) return
     root.applyIds("install", root.selectedToInstall.map(function(a) { return a.id }))
+    root.applyingPicked = true
   }
 
   function showLog() {
@@ -374,6 +379,7 @@ Item {
       stdout: SplitParser { onRead: function(line) { root.applyLine(line) } }
       onExited: {
         root.applying = false
+        root.applyingPicked = false
         // A run that ended without a word for an app leaves nothing hanging.
         var next = Object.assign({}, root.progress), changed = false
         for (var id in next) {
@@ -835,13 +841,16 @@ Item {
             }
             Button {
               id: installPickedButton
-              visible: root.selectedToInstall.length > 0
-              enabled: !root.applying
+              // Kept while its run goes on, though the apps leave the
+              // selection as they finish; busy, it takes no clicks itself,
+              // so it stays enabled and draws its spinner in full color.
+              visible: root.selectedToInstall.length > 0 || busy
+              enabled: !root.applying || busy
               focusable: true
-              busy: root.applying && root.applyVerb === "install"
+              busy: root.applyingPicked
               bordered: true
               variant: "primary"
-              text: "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
+              text: busy ? "Installing…" : "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
               Keys.onTabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
               Keys.onBacktabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
               onClicked: root.installSelected()
@@ -857,7 +866,8 @@ Item {
           KeyHint { keys: "↑↓"; label: "move" }
           KeyHint {
             keys: "Enter"
-            label: root.selectedToInstall.length > 0
+            label: root.applyingPicked ? "installing picked…"
+              : root.selectedToInstall.length > 0
                 ? (root.applying ? "install picked, once this is done" : "install " + root.selectedToInstall.length + " picked")
               : !root.current ? "install or open"
               : root.isBusy(root.current.id) ? (root.applyVerb === "remove" ? "removing…" : "installing…")
