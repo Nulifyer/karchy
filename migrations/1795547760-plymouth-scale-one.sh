@@ -11,6 +11,9 @@ plymouthd=/etc/plymouth/plymouthd.conf
 
 command -v plymouth-set-default-theme >/dev/null || { echo "plymouth is not installed"; exit 1; }
 [[ -f $limine ]] || { echo "$limine not found: not a karchy boot setup, nothing to do"; exit 0; }
+# The file and the ESP need root. Without sudo (no password to give it) this
+# fails here rather than taking images it can't see for new ones.
+sudo true
 
 if ! grep -Eqs '^[[:space:]]*DeviceScale[[:space:]]*=' "$plymouthd"; then
   if grep -qs '^\[Daemon\]' "$plymouthd"; then

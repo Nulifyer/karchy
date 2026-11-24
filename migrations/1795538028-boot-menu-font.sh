@@ -11,6 +11,9 @@ brand=/usr/lib/karchy/limine-brand
 
 esp=$(sed -n 's/^ESP_PATH=["'\'']\?\([^"'\'']*\).*/\1/p' "$limine" | tail -n 1)
 config=${esp:-/boot}/limine.conf
+# Reading the ESP needs root. Without sudo (no password to give it) this
+# fails here rather than taking an unreadable menu for one without a block.
+sudo true
 # A menu without karchy's block was never branded, or someone took the block
 # out: it stays as it is.
 sudo grep -qs '^### karchy: begin' "$config" || { echo "$config has no karchy block: the menu stays as it is"; exit 0; }
