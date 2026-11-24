@@ -72,6 +72,7 @@ A workspace tiles or floats (Settings › Appearance › Workspace layout sets t
 **Both**
 
 - Alt+Tab goes to the window used before this one, and further back while Alt is held ([keybindings.md](keybindings.md)).
+- Asking for one of karchy's windows while it is open (Super+K, the menu, `karchy settings`) brings it to the front, from another workspace too.
 - Picture-in-picture and the webcam overlay are pinned: in front of everything, on every workspace.
 
 Which kind a window is:

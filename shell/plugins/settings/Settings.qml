@@ -231,10 +231,14 @@ Item {
       content.contentY = Math.min(maxY, fits ? bottom + margin - content.height : top - margin)
   }
 
+  // The shell brings the window to the front by this title when it is asked
+  // for while open (shell.qml, summon), and Hyprland's rules match it.
+  readonly property string windowTitle: "karchy Settings"
+
   FloatingWindow {
     id: window
     visible: root.opened
-    title: "karchy Settings"
+    title: root.windowTitle
     color: Commons.Color.background
     // Fit the screen it opens on: 900×680 where there is room (the height
     // that shows every page in the list), less where not.

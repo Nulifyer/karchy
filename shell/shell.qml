@@ -441,6 +441,7 @@ ShellRoot {
       if (!summoned) console.warn("summon: no live bar widget for:", id)
       return summoned === true
     }
+    var wasOpen = isPluginOpen(id)
     var next = ({})
     for (var k in openPanelIds) next[k] = openPanelIds[k]
     next[id] = true
@@ -456,7 +457,19 @@ ShellRoot {
 
     // If the plugin is keepLoaded and already mounted, deliver immediately.
     deliverIfLoaded(id)
+    // A window asked for while it is open comes to the front where it is, as
+    // on Windows: it can be on another workspace or behind other windows.
+    if (wasOpen) focusPluginWindow(id)
     return true
+  }
+
+  // Hyprland goes to the window's workspace and gives it the keyboard, and a
+  // floating window that gets the keyboard is raised (default/hypr/stacking.lua).
+  function focusPluginWindow(pluginId) {
+    var loader = panelLoaders[pluginId]
+    var title = loader && loader.item ? loader.item.windowTitle : ""
+    if (!title) return
+    Hyprland.dispatch('hl.dsp.focus({ window = "title:^' + title + '$" })')
   }
 
   function hide(pluginId) {

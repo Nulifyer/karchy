@@ -266,10 +266,14 @@ Item {
       content.contentY = Math.min(maxY, bottom + margin - content.height)
   }
 
+  // The shell brings the window to the front by this title when it is asked
+  // for while open (shell.qml, summon), and Hyprland's rules match it.
+  readonly property string windowTitle: "Virtual machines"
+
   FloatingWindow {
     id: window
     visible: root.opened
-    title: "Virtual machines"
+    title: root.windowTitle
     color: Commons.Color.background
     readonly property var fitScreen: Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
       ? Hyprland.focusedMonitor.lastIpcObject : null

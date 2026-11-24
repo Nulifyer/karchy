@@ -435,10 +435,14 @@ Item {
 
   // --------------------------------------------------------------- window
 
+  // The shell brings the window to the front by this title when it is asked
+  // for while open (shell.qml, summon), and Hyprland's rules match it.
+  readonly property string windowTitle: "Quick install"
+
   FloatingWindow {
     id: window
     visible: root.opened
-    title: "Quick install"
+    title: root.windowTitle
     color: Commons.Color.background
     // Fit the screen it opens on: 1000×740 where there is room, less where not.
     readonly property var fitScreen: Hyprland.focusedMonitor && Hyprland.focusedMonitor.lastIpcObject
