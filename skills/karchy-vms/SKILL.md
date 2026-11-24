@@ -138,4 +138,4 @@ The bar shows a VMs icon only while a VM runs. Its panel lists up to six VMs wit
 
 ## karchy as a guest
 
-When karchy itself is installed inside a VM, the installer adds the `karchy-vm` package, which is the SPICE and QEMU guest agents. That package is unrelated to running VMs on this machine.
+When karchy itself is installed inside a VM, the installer adds the `karchy-vm` package: the SPICE and QEMU guest agents, and a display that follows the viewer's window (D-174). Resizing the viewer's window resizes the guest's desktop, keeping its scale, unless a size was chosen in the guest's Settings › Displays or its `~/.config/hypr/monitors.lua`; set the size back to Preferred (`karchy-settings-displays set <monitor> mode preferred`) to follow again. A watcher in the guest's session (`/usr/lib/karchy-vm/display-watch`) applies it through `/usr/share/karchy/hypr.d/50-karchy-vm-display.lua`. That package is unrelated to running VMs on this machine.

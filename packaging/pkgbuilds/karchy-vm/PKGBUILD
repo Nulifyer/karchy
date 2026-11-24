@@ -1,14 +1,25 @@
 # karchy-vm: what a virtual machine adds (detected tier). The SPICE agent
-# shares the clipboard (the display does not follow the viewer's window size:
-# Hyprland keeps its mode when the connector's preferred one changes); the
-# QEMU guest agent lets the host shut down and freeze the guest cleanly. Both
-# start from udev when their virtio port exists, so nothing needs enabling.
+# shares the clipboard; the QEMU guest agent lets the host shut down and freeze
+# the guest cleanly. Both start from udev when their virtio port exists, so
+# nothing needs enabling. The display follows the viewer's window size (D-174):
+# Hyprland keeps its mode when the virtual connector's preferred one changes,
+# so a watcher started with the session applies the new size.
 
 pkgname=karchy-vm
 pkgver=0
 pkgrel=1
-pkgdesc="karchy virtual machine additions: SPICE and QEMU guest agents"
+pkgdesc="karchy virtual machine additions: SPICE and QEMU guest agents, a display that follows the viewer's window"
 arch=('any')
 url="https://github.com/Nulifyer/karchy"
 license=('MIT')
 depends=('karchy-desktop' 'spice-vdagent' 'qemu-guest-agent')
+source=("karchy-src.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/karchy/system/vm"
+  # karchy/hypr/init.lua loads hypr.d before Settings › Displays and the
+  # person's monitors.lua, so their rules are recorded and win.
+  install -Dm644 display.lua "$pkgdir/usr/share/karchy/hypr.d/50-karchy-vm-display.lua"
+  install -Dm755 display-watch "$pkgdir/usr/lib/karchy-vm/display-watch"
+}

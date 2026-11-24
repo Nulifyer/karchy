@@ -22,7 +22,7 @@ karchy has a keybinding system with layers and an editor (Settings › Keybindin
 
 ## Monitors, input, look, autostart
 
-- Monitors: `hl.monitor({ output = "DP-2", mode = "2560x1440@144", position = "0x0", scale = 1 })` in `monitors.lua`. List outputs with `hyprctl monitors all`. A rule here wins over Settings › Displays, so tell the user when you add one.
+- Monitors: `hl.monitor({ output = "DP-2", mode = "2560x1440@144", position = "0x0", scale = 1 })` in `monitors.lua`. List outputs with `hyprctl monitors all`. A rule here wins over Settings › Displays, so tell the user when you add one. In a virtual machine (package `karchy-vm`), an output named `Virtual-N` whose rule asks for `mode = "preferred"` follows the viewer's window size; a rule with a size stops that.
 - Look and feel: `hl.config({ general = { gaps_in = 5, gaps_out = 10 } })` in `looknfeel.lua`. Write only the keys that change.
 - Autostart: `o.launch_on_start("my-app")` in `autostart.lua`.
 - Window rules: `o.window(match, rules)`. Read `default/hypr/windows.lua` and `default/hypr/apps/` for working examples before you write one.
