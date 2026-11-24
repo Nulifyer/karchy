@@ -677,6 +677,21 @@ saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver
 close(saver)
 eq(history[1], "later", "a screensaver that ends with nothing new leaves the keyboard to Hyprland")
 
+-- Super+Enter while the screensaver shows (the rc.14 release gate's case):
+-- the bound key never reaches the screensaver, and the binding starts a
+-- terminal with no workspace of its own, so the rule above places it on the
+-- workspace the monitor shows; the screensaver keeps the keyboard, and the
+-- terminal gets it once the screensaver is gone (seen in VM win, out/pre-rc14).
+saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
+o.launch_terminal()()
+eq(executed[#executed], "karchy-launch-terminal --pid=1", "Super+Enter under the screensaver starts a terminal")
+eq(executed[#executed]:find("workspace", 1, true), nil, "with no workspace of its own, so the screensaver's rule places it")
+local terminal = open_under_screensaver("terminal")
+eq(history[1], "saver", "the screensaver keeps the keyboard")
+close(saver)
+eq(history[1], "terminal", "and the terminal gets it once the screensaver is gone")
+close(terminal)
+
 -- The shell's summon of a window that is already open waits the same way.
 saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
 hl.dispatch(o.focus_window("address:other"))
