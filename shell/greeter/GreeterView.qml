@@ -234,16 +234,28 @@ Item {
   }
 
   // The layout the password is typed in, when it is not plain US.
-  Text {
+  Row {
     anchors.left: parent.left
     anchors.bottom: parent.bottom
     anchors.margins: 24
     visible: root.keyboardLayout.length > 0
-    textFormat: Text.PlainText
-    text: Icons.glyph("input.keyboard") + "  " + Commons.I18n.t("greeter.keyboardLayout").arg(root.keyboardLayout)
-    color: root.quietText
-    font.family: Style.font.family
-    font.pixelSize: Style.font.body
+    spacing: Style.spacing.md
+    Text {
+      anchors.verticalCenter: parent.verticalCenter
+      textFormat: Text.PlainText
+      text: Icons.glyph("input.keyboard")
+      color: root.quietText
+      font.family: Icons.family
+      font.pixelSize: Style.font.body
+    }
+    Text {
+      anchors.verticalCenter: parent.verticalCenter
+      textFormat: Text.PlainText
+      text: Commons.I18n.t("greeter.keyboardLayout").arg(root.keyboardLayout)
+      color: root.quietText
+      font.family: Style.font.family
+      font.pixelSize: Style.font.body
+    }
   }
 
   // Power, apart from signing in and quiet until wanted.

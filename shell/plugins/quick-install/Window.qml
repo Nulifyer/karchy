@@ -863,7 +863,7 @@ Item {
           Layout.fillWidth: true
           spacing: Style.spacing.xxl
           KeyHint { keys: "type"; label: "search" }
-          KeyHint { keys: "↑↓"; label: "move" }
+          KeyHint { icons: [Icons.glyph("ui.arrow.up"), Icons.glyph("ui.arrow.down")]; label: "move" }
           KeyHint {
             keys: "Enter"
             label: root.applyingPicked ? "installing picked…"
@@ -1299,12 +1299,17 @@ Item {
 
   // One key and what it does, for the footer.
   component KeyHint: Row {
+    id: hint
     property string keys: ""
+    // Keys that have no name to write (the arrow keys), as glyphs: drawn in
+    // the icon font, so they look the same in every text font.
+    property var icons: []
     property string label: ""
     spacing: Style.spacing.md
     BorderSurface {
       anchors.verticalCenter: parent.verticalCenter
-      width: keyText.implicitWidth + Style.spacing.md * 2
+      width: (hint.icons.length > 0 ? keyIcons.implicitWidth : keyText.implicitWidth) + Style.spacing.md * 2
+      // The text font's line, with or without text, so every key is one height.
       height: keyText.implicitHeight + Style.spacing.xxs * 2
       radius: Style.radius.control
       color: "transparent"
@@ -1313,10 +1318,27 @@ Item {
         id: keyText
         anchors.centerIn: parent
         textFormat: Text.PlainText
-        text: parent.parent.keys
+        text: hint.keys
         color: Commons.Color.foreground
         font.family: Style.font.family
         font.pixelSize: Style.font.caption
+      }
+      Row {
+        id: keyIcons
+        anchors.centerIn: parent
+        // Each fills its em, so two would touch.
+        spacing: Style.spacing.xxs
+        Repeater {
+          model: hint.icons
+          Text {
+            required property string modelData
+            textFormat: Text.PlainText
+            text: modelData
+            color: Commons.Color.foreground
+            font.family: Icons.family
+            font.pixelSize: Style.font.iconSmall
+          }
+        }
       }
     }
     Text {

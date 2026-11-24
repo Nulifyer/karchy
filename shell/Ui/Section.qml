@@ -10,6 +10,7 @@ import qs.Commons as Commons
 //
 //   Section {
 //     title: "Night light"
+//     titleTo: "0.2.0"                     // "karchy 0.1.0 → 0.2.0": what it becomes
 //     subtitle: "On until 07:00"          // status, or what the choice costs
 //     info: "…"                            // read once, behind an (i)
 //     trailing: ToggleSwitch { … }         // at the end of the heading line
@@ -22,6 +23,9 @@ ColumnLayout {
   id: root
 
   property string title: ""
+  // What the titled thing becomes, after an arrow: a release and the next.
+  // The arrow is an icon, so it looks the same in every text font.
+  property string titleTo: ""
   property string subtitle: ""
   property string info: ""
   default property alias content: body.data
@@ -44,11 +48,31 @@ ColumnLayout {
     PanelSectionHeader {
       id: header
       Layout.alignment: Qt.AlignVCenter
-      Layout.maximumWidth: Math.max(0, root.width - trailingRow.implicitWidth - Style.space(40))
+      Layout.maximumWidth: Math.max(0, root.width - trailingRow.implicitWidth - Style.space(40)
+        - (root.titleTo !== "" ? headerArrow.implicitWidth + headerTo.implicitWidth + 2 * parent.spacing : 0))
       text: root.title
       font.capitalization: Font.AllUppercase
       elide: Text.ElideRight
       Accessible.role: Accessible.Heading
+      Accessible.name: root.titleTo !== "" ? root.title + " to " + root.titleTo : root.title
+    }
+    Text {
+      id: headerArrow
+      visible: root.titleTo !== ""
+      Layout.alignment: Qt.AlignVCenter
+      topPadding: header.topPadding
+      textFormat: Text.PlainText
+      text: Icons.glyph("ui.arrow.right")
+      color: header.color
+      font.family: Icons.family
+      font.pixelSize: Style.font.iconSmall
+    }
+    PanelSectionHeader {
+      id: headerTo
+      visible: root.titleTo !== ""
+      Layout.alignment: Qt.AlignVCenter
+      text: root.titleTo
+      Accessible.ignored: true
     }
     InfoTip {
       visible: root.info !== ""

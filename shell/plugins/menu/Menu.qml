@@ -1727,12 +1727,11 @@ Item {
                 Text {
                   textFormat: Text.PlainText
                   visible: !row.marked
-                  text: row.kind === "menu" || row.kind === "link" ? (Commons.I18n.rightToLeft ? "‹" : "›") : ""
+                  text: row.kind === "menu" || row.kind === "link" ? Icons.glyph(Commons.I18n.rightToLeft ? "ui.chevron.left" : "ui.chevron.right") : ""
                   color: row.hasCursor ? root.selectedText : root.foreground
                   opacity: row.kind === "menu" || row.kind === "link" ? 0.55 : 0
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.heading
-                  font.weight: Font.Normal
+                  font.family: Icons.family
+                  font.pixelSize: Style.font.iconSmall
                   anchors.verticalCenter: parent.verticalCenter
                 }
               }

@@ -226,10 +226,11 @@ Item {
       }
       Text {
         id: arrow
-        text: "→"
+        textFormat: Text.PlainText
+        text: Icons.glyph("ui.arrow.right")
         color: Commons.Color.textSecondary
-        font.family: Style.font.family
-        font.pixelSize: Style.font.body
+        font.family: Icons.family
+        font.pixelSize: Style.font.iconSmall
       }
       Text {
         text: versions.pair.next
@@ -384,9 +385,8 @@ Item {
           Section {
             Layout.fillWidth: true
             visible: root.karchyChanges.length > 0
-            title: root.plan && root.plan.release.available
-              ? "karchy " + root.plan.release.installed + " → " + root.plan.release.available
-              : "karchy"
+            title: root.plan && root.plan.release.available ? "karchy " + root.plan.release.installed : "karchy"
+            titleTo: root.plan && root.plan.release.available ? root.plan.release.available : ""
             subtitle: Model.plural(root.karchyChanges.length, "package", "packages")
               + (root.plan && root.plan.release.available ? ": a new release" : ": updated parts of this release")
             trailing: Button {

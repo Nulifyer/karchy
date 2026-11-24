@@ -687,7 +687,16 @@ ColumnLayout {
                   required property var modelData
                   required property int index
                   spacing: Style.spacing.sm
-                  Quiet { anchors.verticalCenter: parent.verticalCenter; text: (index > 0 ? "→  " : "") + modelData.source + ":" }
+                  Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: index > 0
+                    textFormat: Text.PlainText
+                    text: Icons.glyph("ui.arrow.right")
+                    color: Commons.Color.textSecondary
+                    font.family: Icons.family
+                    font.pixelSize: Style.font.iconSmall
+                  }
+                  Quiet { anchors.verticalCenter: parent.verticalCenter; text: modelData.source + ":" }
                   KeyCaps { anchors.verticalCenter: parent.verticalCenter; labels: modelData.labels; faded: modelData.state !== "wins"; struck: modelData.state !== "wins" }
                   Quiet { anchors.verticalCenter: parent.verticalCenter; text: "(" + Model.chainNote(modelData) + ")" }
                 }

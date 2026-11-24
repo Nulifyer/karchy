@@ -52,8 +52,9 @@ function portUrl(port) {
   return scheme + "://" + host + ":" + port.host
 }
 
+// "8080:80", host port then container port, as `docker run -p` writes it.
 function portLabel(port) {
-  return port.host + "→" + port.container + (port.proto && port.proto !== "tcp" ? "/" + port.proto : "")
+  return port.host + ":" + port.container + (port.proto && port.proto !== "tcp" ? "/" + port.proto : "")
 }
 
 function portsText(ports) {

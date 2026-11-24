@@ -628,10 +628,10 @@ BarWidget {
             horizontalAlignment: Text.AlignHCenter
             textFormat: Text.PlainText
             // Back points against the reading direction.
-            text: Commons.I18n.rightToLeft ? "\u203a" : "\u2039"
+            text: Icons.glyph(Commons.I18n.rightToLeft ? "ui.chevron.right" : "ui.chevron.left")
             color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.bodySmall
+            font.family: Icons.family
+            font.pixelSize: Style.font.iconSmall
           }
 
           Text {
@@ -790,10 +790,10 @@ BarWidget {
                 anchors.right: parent.right
                 anchors.rightMargin: Style.space(10)
                 textFormat: Text.PlainText
-                text: Commons.I18n.rightToLeft ? "\u2039" : "\u203a"
+                text: Icons.glyph(Commons.I18n.rightToLeft ? "ui.chevron.left" : "ui.chevron.right")
                 color: root.foreground
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
+                font.family: Icons.family
+                font.pixelSize: Style.font.iconSmall
               }
 
               MouseArea {
