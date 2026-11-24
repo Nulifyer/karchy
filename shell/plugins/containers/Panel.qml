@@ -14,13 +14,15 @@ import "Model.js" as Model
 // opens the window (Window.qml) at the container under the cursor; logs,
 // Compose projects, images, removing and pruning live there. Both read the
 // same Model.js and draw the same ContainerRow. Everything goes through
-// `karchy-containers`, which answers for Podman, or Docker when that is the
-// engine.
+// `karchy-containers`, which answers for Podman or Docker, whichever is
+// installed, and for Podman when both are (D-164); the panel then says that
+// Docker's containers aren't the ones listed.
 //
 // No polling while closed: `karchy-containers watch` streams container
 // events, and the count is read again after each burst. With neither engine
 // installed the watcher exits at once and the icon stays hidden until
-// `karchy-shell karchy.containers refresh` (the Containers feature calls it).
+// `karchy-shell karchy.containers refresh` (the Podman feature calls it), or
+// the next start of the shell.
 Panel {
   id: root
   moduleName: "karchy.containers"
@@ -31,6 +33,10 @@ Panel {
 
   property bool engineAvailable: false
   property string engine: ""
+  // The other engine, when both are installed, and the command to type for
+  // the one in use (karchy-containers summary).
+  property string also: ""
+  property string cli: ""
   property var running: []
   // The full list, read only while the panel is open.
   property var containers: []
@@ -199,6 +205,8 @@ Panel {
       // No answer means no engine (any more): nothing runs.
       var data = Model.parse(text, null)
       root.engine = data ? data.engine || "" : ""
+      root.also = data ? data.also || "" : ""
+      root.cli = data ? data.cli || "" : ""
       root.running = data ? data.running || [] : []
     }
   }
@@ -274,7 +282,7 @@ Panel {
           iconText: Icons.glyph("containers")
           title: "Containers"
           meta: (root.runningCount === 0 ? "None running" : root.runningCount + " running")
-            + (root.engine ? " · " + root.engine : "")
+            + (root.engine ? " · " + Model.engineName(root.engine) : "")
           metaColor: root.runningCount > 0 ? Commons.Color.status.success : dim
           fontFamily: root.bar.fontFamily
           // Pop out: the same things, and everything else, as a window.
@@ -344,10 +352,22 @@ Panel {
           width: parent.width
           iconName: "containers"
           title: listProc.loaded ? "Nothing is running" : "Reading containers…"
-          body: listProc.loaded ? "Containers you start with docker run or docker compose up show here." : ""
+          body: listProc.loaded ? "Containers you start with " + Model.startHint(root.cli) + " show here." : ""
           foreground: root.panelText
           surface: root.panelSurface
           fontFamily: root.bar.fontFamily
+        }
+
+        // Both engines: which one this is, and why.
+        Text {
+          visible: text !== ""
+          width: parent.width
+          textFormat: Text.PlainText
+          wrapMode: Text.Wrap
+          text: Model.bothNote(root.engine, root.also)
+          color: Commons.Color.secondaryText(root.panelText, root.panelSurface)
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.caption
         }
       }
     }

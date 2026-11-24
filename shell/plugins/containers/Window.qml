@@ -17,6 +17,12 @@ import "Model.js" as Model
 // It reads through `karchy-containers` while open: on container events, and
 // every 15 seconds for the status text.
 //
+// The engine is the person's choice (D-164): the window works with Podman or
+// Docker, whichever is installed. With neither it says so and opens Quick
+// install at the two; with both it shows Podman's and says why under its
+// name; with one that doesn't answer (Docker before its group applies) it
+// shows karchy-containers' sentence about it.
+//
 // Layout (docs/architecture.md, "Panels and windows"): a sidebar of
 // containers drawn with the bar panel's ContainerRow (same names, icons,
 // status lines and run switch), with Compose projects and images below it;
@@ -40,7 +46,13 @@ Item {
   property string filter: ""
 
   property string engine: ""
+  // The other engine, when both are installed, and the command to type for
+  // the one in use (karchy-containers list).
+  property string also: ""
+  property string cli: ""
   property bool noEngine: false
+  // Why the installed engine gave no list; "" while it answers.
+  property string engineError: ""
   property bool loaded: false
   property var containers: []
   property var projects: []
@@ -166,8 +178,12 @@ Item {
     command: ["karchy-containers", "engine"]
     stdout: StdioCollector { waitForEnd: true; onStreamFinished: root.engine = text.trim() }
     onExited: function(code) {
+      var arrived = root.noEngine && code === 0
       root.noEngine = code !== 0
-      if (!root.noEngine && root.opened && !watchProc.running) watchProc.running = true
+      if (root.noEngine || !root.opened) return
+      if (!watchProc.running) watchProc.running = true
+      // An engine was installed while the window said there was none.
+      if (arrived) root.refresh()
     }
   }
 
@@ -177,16 +193,35 @@ Item {
     stdout: SplitParser { onRead: function(line) { if (line !== "ready") eventSettle.restart() } }
   }
   Timer { id: eventSettle; interval: 400; onTriggered: root.refresh() }
-  Timer { interval: 15000; repeat: true; running: root.opened && !root.noEngine; onTriggered: root.refresh() }
+  // With no engine, the same tick looks for one instead (Quick install may
+  // be adding it right now).
+  Timer {
+    interval: 15000; repeat: true; running: root.opened
+    onTriggered: {
+      if (root.noEngine) engineProc.running = true
+      else root.refresh()
+    }
+  }
   Timer { interval: 3000; repeat: true; running: root.opened && root.current !== null && root.logsFollow; onTriggered: logsProc.request() }
 
   Query {
     id: listProc
     command: ["karchy-containers", "list"]
+    onFailed: function(code, reason) {
+      // 3: the engine was removed while the window was open.
+      if (code === 3) { root.noEngine = true; root.engine = ""; root.also = "" }
+      else root.engineError = reason || (Model.engineName(root.engine) || "The engine") + " did not answer."
+      root.containers = []
+      root.projects = []
+    }
     onResult: function(text) {
       var data = Model.parse(text, null)
       if (!data) return
+      root.noEngine = false
+      root.engineError = ""
       root.engine = data.engine || root.engine
+      root.also = data.also || ""
+      root.cli = data.cli || ""
       root.containers = data.containers || []
       root.projects = data.projects || []
       root.loaded = true
@@ -316,13 +351,25 @@ Item {
             Text {
               visible: root.engine !== ""
               Layout.fillWidth: true
-              text: (root.runningCount + " running · " + root.engine).toUpperCase()
+              // No count from an engine that didn't answer.
+              text: (root.engineError !== "" ? root.engine : root.runningCount + " running · " + root.engine).toUpperCase()
               color: root.runningCount > 0 ? Commons.Color.status.success : Commons.Color.textSecondary
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
               font.bold: true
               font.letterSpacing: Style.font.labelSpacing
               elide: Text.ElideRight
+            }
+            // Both engines: which one this is, and why.
+            Text {
+              visible: text !== ""
+              Layout.fillWidth: true
+              Layout.topMargin: Style.spacing.xs
+              text: Model.bothNote(root.engine, root.also)
+              wrapMode: Text.Wrap
+              color: Commons.Color.textSecondary
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
             }
           }
 
@@ -454,6 +501,7 @@ Item {
             Layout.fillWidth: true
             active: root.opened
             sourceComponent: root.noEngine ? noEnginePage
+              : root.engineError !== "" ? engineErrorPage
               : root.section === "projects" ? projectsPage
               : root.section === "images" ? imagesPage
               : root.current ? containerPage
@@ -493,10 +541,24 @@ Item {
       centered: true
       Layout.fillWidth: true
       iconName: "containers"
-      title: "Containers aren't set up"
-      body: "Install Containers from Quick install › System."
+      title: "No container engine is installed"
+      body: "Install Podman or Docker from Quick install › System, and your containers show here."
       actionText: "Open Quick install"
-      onAction: Quickshell.execDetached(["karchy-quick-install", "window", "@system"])
+      // A search that finds exactly the two.
+      onAction: Quickshell.execDetached(["karchy-quick-install", "window", "container engine"])
+    }
+  }
+
+  Component {
+    id: engineErrorPage
+    EmptyState {
+      centered: true
+      Layout.fillWidth: true
+      iconName: "containers"
+      title: (Model.engineName(root.engine) || "The engine") + " isn't answering"
+      body: root.engineError
+      actionText: "Try again"
+      onAction: root.refresh()
     }
   }
 
@@ -507,7 +569,7 @@ Item {
       Layout.fillWidth: true
       iconName: "containers"
       title: root.loaded ? "No containers yet" : "Reading containers…"
-      body: root.loaded ? "Start one with docker run or docker compose up and it shows here." : ""
+      body: root.loaded ? "Start one with " + Model.startHint(root.cli) + " and it shows here." : ""
     }
   }
 
@@ -863,6 +925,9 @@ Item {
     id: query
     property bool again: false
     signal result(string text)
+    // The command failed: its exit code and what it said, which for
+    // karchy-containers is one sentence for a person.
+    signal failed(int code, string reason)
 
     function request() {
       if (running) again = true
@@ -873,9 +938,13 @@ Item {
       waitForEnd: true
       onStreamFinished: query.result(text)
     }
-    onExited: if (again) {
-      again = false
-      running = true
+    stderr: StdioCollector { id: queryError; waitForEnd: true }
+    onExited: function(code) {
+      if (code !== 0) query.failed(code, queryError.text.trim())
+      if (again) {
+        again = false
+        running = true
+      }
     }
   }
 }

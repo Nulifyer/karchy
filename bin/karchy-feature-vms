@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Add or remove virtual machines (Quick install › System, D-63)
+# karchy:summary=Add or remove virtual machines (Quick install › karchy, D-63)
 # karchy:args=status | install | remove
 # karchy:hidden=true
 
@@ -9,6 +9,10 @@
 # systemd gives /dev/kvm mode 0666, so no group is needed unless this machine
 # says otherwise. VMs live in ~/VMs, marked no-copy-on-write on btrfs so disk
 # images don't fragment. Remove takes the packages away and keeps ~/VMs.
+#
+# The Virtual machines window is one of karchy's own apps in Quick install
+# (D-164), and QEMU comes with it: karchy runs no other kind of VM, so the
+# app without it would be an empty window.
 
 set -euo pipefail
 

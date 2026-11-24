@@ -6,6 +6,26 @@
 // data comes from `karchy-containers list|summary|images` (see that command's
 // header).
 
+// The engine in use, as people write it: karchy-containers says "podman".
+function engineName(engine) {
+  return engine === "podman" ? "Podman" : engine === "docker" ? "Docker" : ""
+}
+
+// How to start a container with the engine in use. `cli` is the command that
+// reaches it: "docker" for Docker and for Podman with podman-docker.
+function startHint(cli) {
+  var c = cli || "docker"
+  return c + " run or " + c + " compose up"
+}
+
+// Both engines are installed: which one this shows, and why
+// (bin/karchy-containers, "The engine"). "" with one engine.
+function bothNote(engine, also) {
+  if (!also) return ""
+  return engineName(also) + " is installed too, and its containers aren't listed here. Containers uses "
+    + engineName(engine) + " when it has both, because " + engineName(engine) + " needs no service running."
+}
+
 function parse(text, fallback) {
   try {
     var value = JSON.parse(text)

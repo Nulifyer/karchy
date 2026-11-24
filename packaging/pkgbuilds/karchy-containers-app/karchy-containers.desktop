@@ -1,0 +1,13 @@
+[Desktop Entry]
+# The Containers window as an app (D-116, D-164); it comes and goes with this
+# package, karchy-containers-app, whichever container engine is installed.
+# Removing it from the launcher uninstalls that package and nothing else.
+Type=Application
+Name=Containers
+Comment=See and manage containers, images and Compose projects
+Exec=karchy-containers open
+Icon=podman-desktop
+Terminal=false
+Categories=System;Monitor;
+Keywords=docker;podman;compose;container;
+StartupNotify=false

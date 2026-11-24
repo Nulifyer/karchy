@@ -153,12 +153,13 @@ Every app below shows in Quick install as installed (D-71). Most can be removed 
 | Web apps | Omarchy web-app mechanism; icons from the site, then Dashboard Icons (D-82) | [O] + [New] |
 | Shell | fish, native config from the dotfiles user layer | [New] |
 | Add-ons | Pacman packages built from karchy's `addons/` and offered in Quick install › karchy (D-106): `karchy-project-picker` (Ctrl+Alt+P, only while installed). No plugins from git | [New] |
+| karchy's own apps | Also in Quick install › karchy, each installed and removed on its own (D-164): Containers (package `karchy-containers-app`: the window's launcher entry and its skill, with no container engine) and Virtual machines (with QEMU, below) | [New] |
 
 ## Agent skills
 
 karchy tells AI coding agents (Claude Code, Codex, Gemini CLI and others) how this system works, so you can ask one to change a setting, add a keybinding or find a fault, and it uses karchy's own commands instead of guessing.
 
-- The skills are `karchy` (customizing and running the system), `karchy-troubleshoot` (logs, crashes, boot problems, bug reports) and one for each of Virtual machines and Containers while that feature is installed. Agents are told to leave the VPN alone; you change it in its panel or in Settings › Network › VPN.
+- The skills are `karchy` (customizing and running the system), `karchy-troubleshoot` (logs, crashes, boot problems, bug reports) and one each for Virtual machines, the Containers app and karchy's Podman setup while that one is installed. Agents are told to leave the VPN alone; you change it in its panel or in Settings › Network › VPN.
 - `~/.agents/skills` is the one real skills folder, and every skill is managed there. Most agents read it themselves. For the ones that don't (Claude Code's `~/.claude/skills`, Antigravity, Kiro), karchy makes their skills folder a link to it, so a skill you put in `~/.agents/skills` reaches every agent. Run `karchy agent skills status` to see the links.
 - If one of those folders is already a real folder (you used Claude Code before), `karchy update` brings it in: what it holds moves into `~/.agents/skills`, and the folder becomes the link. The update says what moved. Nothing is overwritten or deleted. If a skill of the same name is already in `~/.agents/skills` and differs, both are kept: the agent's copy goes to `~/.agents/skill-clashes/<agent>/`. A folder on another filesystem, or one that is a link to somewhere else, is left as it is, and karchy says so. `karchy agent skills keep ~/.claude/skills` gives the folder back what was moved and keeps it a folder of its own; `karchy agent skills share ~/.claude/skills` brings it in again.
 - The skills ask an agent to make a small change (a setting, a keybinding, a theme) directly and tell you how to undo it, and to plan a large one (many packages, `/etc`, services, disks, the VPN) with you and take a snapshot first.
@@ -219,8 +220,11 @@ karchy tells AI coding agents (Claude Code, Codex, Gemini CLI and others) how th
 
 **Optional (Quick install › System, D-70):**
 - Printers & scanners (package `karchy-printing`, D-67): CUPS with Omarchy's hardened cups-browsed (own user, sandboxed, driverless queues only), `system-config-printer`, `sane`, `sane-airscan`, `simple-scan`, and `ipp-usb` for driverless USB printers and scanners (D-38).
-- Containers (package `karchy-containers`, D-67): rootless Podman (`podman`, `crun`, `netavark`, `aardvark-dns`, `passt`), `podman-docker` for the `docker` command, `docker-compose` against the user's Podman socket (`DOCKER_HOST` via `/usr/lib/environment.d`, the socket enabled for every user by the package), and `nvidia-container-toolkit` with karchy-nvidia; the Containers panel and window (D-63).
-- Virtual machines: `qemu-desktop`, `edk2-ovmf`, `swtpm`, `spice-gtk`; `karchy vm`, VMs in `~/VMs` (no copy-on-write), no libvirt; the VMs panel and window (D-63).
+- Podman (package `karchy-podman`, D-67, D-164): rootless Podman (`podman`, `crun`, `netavark`, `aardvark-dns`, `passt`), `podman-docker` for the `docker` command, `docker-compose` against the user's Podman socket (`DOCKER_HOST` via `/usr/lib/environment.d`, the socket enabled for every user by the package), and `nvidia-container-toolkit` with karchy-nvidia. Docker itself is the entry beside it; the two can't be installed together (`podman-docker` conflicts with `docker`), and Quick install says which one is in the way.
+
+**karchy's own apps (Quick install › karchy, D-164):**
+- Containers (package `karchy-containers-app`): the Containers window as an app in the launcher, and its agent skill. It depends on no container engine and works with Podman or Docker, whichever is installed: with neither the window says so and opens Quick install at the two; with both it shows Podman's containers and says why (Podman needs no service running). The bar icon and panel (D-63) are part of karchy and show while containers run.
+- Virtual machines: `qemu-desktop`, `edk2-ovmf`, `swtpm`, `spice-gtk`; `karchy vm`, VMs in `~/VMs` (no copy-on-write), no libvirt; the VMs panel and window (D-63). QEMU comes with the app: karchy runs no other kind of VM.
 
 ## Installed later by the user (not in base)
 

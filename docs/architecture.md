@@ -43,7 +43,8 @@ The PKGBUILDs live in `packaging/pkgbuilds/`, next to the code they package, so 
 | `karchy-laptop` | meta: power-profiles-daemon, bolt (USB4 docks), sof-firmware; lid and sleep drop-ins | `system/laptop` |
 | `karchy-nvidia` | meta: NVIDIA modules for both kernels, utils, VA-API | — |
 | `karchy-nvidia-580xx` | meta: the same for Maxwell, Pascal and Volta, with NVIDIA's 580xx driver; provides and conflicts with `karchy-nvidia` | — |
-| `karchy-containers` | optional (Quick install): Podman's user socket enabled for all, DOCKER_HOST, compose and docker-notice settings | `packaging/pkgbuilds/karchy-containers` |
+| `karchy-podman` | optional (Quick install › System › Podman): rootless Podman with `podman-docker` and `docker-compose`, Podman's user socket enabled for all, DOCKER_HOST, compose and docker-notice settings; replaces `karchy-containers` (D-164) | `packaging/pkgbuilds/karchy-podman` |
+| `karchy-containers-app` | karchy's own app (Quick install › karchy › Containers): the Containers window's launcher entry and its skill; no container engine; replaces `karchy-containers` (D-164) | `packaging/pkgbuilds/karchy-containers-app` |
 | `karchy-printing` | optional (Quick install): cups-browsed user and sandbox drop-in, ipp-usb | `packaging/pkgbuilds/karchy-printing` |
 
 | `karchy-vpn` | transitional and empty (D-156): what the VPN add-on became when the VPN moved into `karchy-settings`; retired | `packaging/pkgbuilds/karchy-vpn` |
@@ -139,7 +140,8 @@ A bar panel answers "what's running, and is it OK?" and allows one-step actions.
 
 - **One model per plugin** (`Model.js`) feeds both: the item's name, icon, status line, status color (`statusRole`: success running, warning on its way, secondary text stopped) and what the run switch does. **One row component** (`ContainerRow.qml`, `VmRow.qml`) draws the item in the panel and in the window's sidebar, with the same `ToggleSwitch` for run state.
 - **Panel:** `PanelHero` (count in the success color), a separator, a section header, at most six rows (running first, then "N more in the window"), an `EmptyState`, and a pop-out icon button in the hero (`ui.open-external`, "Open as a window"; the same in both panels) that opens the window at the item under the panel's cursor (`karchy containers open <name>`, `karchy vm manage <name>`). Rows carry the run switch and the commonest action (open the port, show the screen). No forms, logs or destructive actions.
-- **Ways in:** the bar icon shows only while something runs, so each window is also an app in the launcher while its feature is installed (D-116): `karchy-vms.desktop` ships in `karchy` with `TryExec=qemu-system-x86_64` (VMs have no package; the launcher honors TryExec and looks again each time the menu opens), `karchy-containers.desktop` ships in `karchy-containers`. Removing either app from the launcher runs the feature's own removal (`X-Karchy-Feature`).
+- **Ways in:** the bar icon shows only while something runs, so each window is also an app in the launcher while it is installed (D-116), and both are in Quick install › karchy (D-164): `karchy-vms.desktop` ships in `karchy` with `TryExec=qemu-system-x86_64` (VMs have no package; the launcher honors TryExec and looks again each time the menu opens), and removing it from the launcher runs the feature's own removal (`X-Karchy-Feature`); `karchy-containers.desktop` ships in `karchy-containers-app`, and removing it from the launcher uninstalls that package and nothing else.
+- **The container engine is the person's choice (D-164):** the Containers plugin and `karchy-containers` are part of `karchy` and work with Podman or Docker, whichever is installed; no karchy package that carries the window depends on one. `karchy-containers engines` answers `{engine, also, cli}`, and `list` and `summary` carry the same three, so the window and the panel word themselves from one place: neither engine (the window says so and opens Quick install at Podman and Docker; the bar icon stays hidden), one (used; `cli` is the command to type for it, `docker` when that reaches it), both (Podman, which needs no service running; `also` names Docker and both say so), and one that doesn't answer (exit 4 with a sentence the window shows: Docker before its service runs or its group applies).
 - **Window:** a sidebar listing the items with the same rows, then a page: a `PageHeader` with one `primary` button, `Card`s, and a "Can't be undone" section at the bottom whose `destructive` buttons confirm with Cancel focused.
 - **Window keyboard:** Tab goes from the sidebar (filter, the list as one stop, its buttons) to the page; j/k or the arrows move through the list and the page follows; Ctrl+F filters; Escape closes. The focused control scrolls into view.
 
@@ -247,7 +249,8 @@ karchy ships [Agent Skills](https://agentskills.io) so an AI coding agent on the
 | `karchy` | `karchy` | Customizing and running the system; holds the change rules the other skills refer to |
 | `karchy-troubleshoot` | `karchy` | Logs, core dumps, boot problems and rollback, hardware and network checks, bug reports |
 | `karchy-vms` | `karchy`, linked only while QEMU is installed | `karchy vm` and `~/VMs` |
-| `karchy-containers` | `karchy-containers` | Rootless Podman, the `docker` command and Compose |
+| `karchy-containers` | `karchy-containers-app` | The Containers window, the bar panel, `karchy containers`, and which engine is in use |
+| `karchy-podman` | `karchy-podman` | Rootless Podman, the `docker` command, Compose, `DOCKER_HOST`, subordinate IDs, GPU containers |
 
 Every package installs its skills into one folder, `/usr/share/karchy/agents/skills/<name>`. VMs are not a karchy package (Quick install adds QEMU itself, D-67), so `karchy-vms` ships in `karchy` with a `.requires` file naming `qemu-system-x86_64`; a skill with that file is linked only while each command in it is installed.
 

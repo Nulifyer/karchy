@@ -1,0 +1,47 @@
+# karchy-podman: karchy's Podman setup, an optional feature (D-63, D-67,
+# D-164): rootless Podman with podman-docker for the `docker` command and
+# docker-compose talking to the user's Podman socket. Installed from Quick
+# install › System › Podman by karchy-feature-podman, which also
+# gives the user subordinate IDs and, with karchy-nvidia, adds GPU containers.
+# The Containers window is a package of its own (karchy-containers-app) and
+# needs neither this nor Podman.
+#
+# Podman's Docker-compatible socket is enabled for every user here, in
+# /usr/lib, so no user's files change (D-23) and removing the package turns
+# it off. DOCKER_HOST is set only while this package is installed, so a real
+# Docker setup is never pointed at Podman (podman-docker conflicts with
+# docker anyway). The one file in /etc is podman-docker's switch for its
+# "Emulate Docker CLI" notice, which it looks for only there.
+#
+# Until D-164 this and the Containers window were one package,
+# karchy-containers. Both packages replace it, so pacman installs the two in
+# its place in one transaction, each with the old one's install reason:
+# Podman stays a dependency of an installed package, and the socket,
+# DOCKER_HOST and the window carry on. No `provides`: two packages providing
+# the name they conflict with would conflict with each other.
+
+pkgname=karchy-podman
+pkgver=0
+pkgrel=1
+pkgdesc="karchy's Podman setup: rootless Podman with the docker command and Compose"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('podman' 'crun' 'netavark' 'aardvark-dns' 'passt' 'podman-docker' 'docker-compose')
+optdepends=('nvidia-container-toolkit: GPU containers with the NVIDIA driver')
+replaces=('karchy-containers')
+conflicts=('karchy-containers')
+backup=('etc/containers/nodocker')
+source=('containers.conf' 'environment.conf' 'karchy-src.tar.gz')
+sha256sums=('SKIP' 'SKIP' 'SKIP')
+
+package() {
+  install -Dm644 containers.conf "$pkgdir/usr/share/containers/containers.conf.d/50-karchy.conf"
+  install -Dm644 environment.conf "$pkgdir/usr/lib/environment.d/50-karchy-podman.conf"
+  install -d "$pkgdir/usr/lib/systemd/user/sockets.target.wants"
+  ln -s ../podman.socket "$pkgdir/usr/lib/systemd/user/sockets.target.wants/podman.socket"
+  install -Dm644 /dev/null "$pkgdir/etc/containers/nodocker"
+  # Its agent skill, linked for each user by karchy-agent-skills.
+  install -d "$pkgdir/usr/share/karchy/agents/skills"
+  cp -a "$srcdir/karchy/skills/karchy-podman" "$pkgdir/usr/share/karchy/agents/skills/"
+}

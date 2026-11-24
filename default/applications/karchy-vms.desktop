@@ -1,7 +1,8 @@
 [Desktop Entry]
-# The Virtual machines window as an app (D-116). VMs are a Quick install
-# feature with no package of their own, so TryExec ties this entry to QEMU:
-# launchers leave it out until `karchy-feature-vms install` has run.
+# The Virtual machines window as an app (D-116), one of karchy's own in Quick
+# install › karchy (D-164). It has no package of its own, so TryExec ties
+# this entry to QEMU: launchers leave it out until `karchy-feature-vms
+# install` has run.
 Type=Application
 Name=Virtual Machines
 Comment=Create and run virtual machines

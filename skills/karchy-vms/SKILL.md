@@ -1,6 +1,6 @@
 ---
 name: karchy-vms
-description: Use on a karchy system when creating, starting, stopping, editing, snapshotting, deleting or debugging a virtual machine run by `karchy vm` (`karchy-vm`), or when the task touches `~/VMs/<name>/` (`vm.conf`, `disk.qcow2`, `vars.fd`, `tpm/`), a `karchy-vm-<name>.service` user unit, the sockets in `$XDG_RUNTIME_DIR/karchy-vm/`, a Windows 11 guest (TPM, Secure Boot), the SPICE viewer (`spicy`), `/dev/kvm`, the VMs bar panel or VMs window, or adding and removing the Virtual machines feature (`karchy-feature-vms`). Do not use for libvirt, virsh or virt-manager domains, for containers (use karchy-containers), or for karchy itself installed as a guest inside a VM.
+description: Use on a karchy system when creating, starting, stopping, editing, snapshotting, deleting or debugging a virtual machine run by `karchy vm` (`karchy-vm`), or when the task touches `~/VMs/<name>/` (`vm.conf`, `disk.qcow2`, `vars.fd`, `tpm/`), a `karchy-vm-<name>.service` user unit, the sockets in `$XDG_RUNTIME_DIR/karchy-vm/`, a Windows 11 guest (TPM, Secure Boot), the SPICE viewer (`spicy`), `/dev/kvm`, the VMs bar panel or VMs window, or adding and removing the Virtual machines feature (`karchy-feature-vms`). Do not use for libvirt, virsh or virt-manager domains, for containers (use karchy-containers or karchy-podman), or for karchy itself installed as a guest inside a VM.
 ---
 
 # karchy virtual machines
@@ -37,14 +37,14 @@ A VM name starts with a letter or digit and uses letters, digits, `.`, `_` and `
 
 ## Check the feature first
 
-VMs are an optional feature. Check before anything else:
+Virtual machines is one of karchy's own apps, installed from Quick install, and QEMU comes with it. Check before anything else:
 
 ```bash
 karchy-feature-vms status     # installed | available
 ls -l /dev/kvm
 ```
 
-If the status is `available`, the user adds it from Quick install › System › Virtual machines (`karchy quick-install window @system`), or with `karchy quick-install install vms` in a terminal. It installs `qemu-desktop`, `edk2-ovmf`, `swtpm` and `spice-gtk` with `sudo`. Removing it (`karchy quick-install remove vms`) refuses while a VM runs and keeps `~/VMs`.
+If the status is `available`, the user adds it from Quick install › karchy › Virtual machines (`karchy quick-install window @karchy`), or with `karchy quick-install install vms` in a terminal. It installs `qemu-desktop`, `edk2-ovmf`, `swtpm` and `spice-gtk` with `sudo`. Removing it (`karchy quick-install remove vms`) refuses while a VM runs and keeps `~/VMs`.
 
 `karchy vm start` needs a writable `/dev/kvm`. If the device is missing, virtualization (Intel VT-x or AMD-V) is off in the firmware settings, and only the user can turn it on. If the device exists but is not writable, the feature's install step adds the user to the `kvm` group, which takes effect at the next login.
 

@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# karchy:summary=Add or remove containers: rootless Podman with the docker command and Compose (Quick install › System, D-63)
+# karchy:summary=Add or remove karchy's Podman setup: rootless Podman with the docker command and Compose (Quick install › System, D-63)
 # karchy:args=status | install | remove
 # karchy:hidden=true
 
-# install: the karchy-containers package (D-67): rootless Podman,
+# install: the karchy-podman package (D-67): rootless Podman,
 # podman-docker for the `docker` command, and docker-compose talking to the
 # user's Podman socket. The package holds the system files: DOCKER_HOST for
 # every session (environment.d), Podman's socket enabled for every user, and
@@ -15,14 +15,20 @@
 # current after driver updates. Quick install runs install and remove in a
 # floating terminal, so pacman's progress and sudo's password prompt are
 # visible. Nothing is written into the user's own config files (D-23).
+#
+# This is the engine, not the Containers window (D-164): that is the app
+# karchy-containers-app (Quick install › karchy), which works with Podman or
+# Docker and is installed and removed on its own. Neither needs the other.
 
 set -euo pipefail
 
-PACKAGE=karchy-containers
+PACKAGE=karchy-podman
 GPU_PACKAGES=(nvidia-container-toolkit)
 # What install added besides the package (subordinate IDs, GPU packages), so
 # remove takes away only that.
-STATE=/var/lib/karchy/feature-containers
+STATE=/var/lib/karchy/feature-podman
+# Where it was kept while this was the Containers feature (before D-164).
+OLD_STATE=/var/lib/karchy/feature-containers
 # Files an earlier version of this command wrote; the package's own copies
 # (in /usr) replace them.
 LEGACY=(/etc/environment.d/50-karchy-containers.conf /etc/containers/containers.conf.d/50-karchy.conf
@@ -39,7 +45,9 @@ status() {
 }
 
 state_get() {
-  [[ -r $STATE ]] && sed -n "s/^$1=//p" "$STATE" | head -n 1
+  local file=$STATE
+  [[ -r $file ]] || file=$OLD_STATE
+  [[ -r $file ]] && sed -n "s/^$1=//p" "$file" | head -n 1
   return 0
 }
 
@@ -84,7 +92,7 @@ install_gpu() {
   echo
   echo "This machine has the NVIDIA driver (karchy-nvidia): adding GPU containers."
   mapfile -t GPU_ADDED < <(pacman -T "${GPU_PACKAGES[@]}" || true)
-  sudo pacman --color auto -S --needed --noconfirm "${GPU_PACKAGES[@]}" || install_failed "GPU containers weren't added; containers themselves are."
+  sudo pacman --color auto -S --needed --noconfirm "${GPU_PACKAGES[@]}" || install_failed "GPU containers weren't added; Podman itself is."
   # The toolkit's nvidia-cdi-refresh units write /var/run/cdi/nvidia.yaml at
   # boot, when the driver module loads and after driver updates.
   sudo systemctl start nvidia-cdi-refresh.service || echo "The GPU spec is written once the NVIDIA driver is loaded (after a reboot)."
@@ -94,13 +102,16 @@ install_gpu() {
 install_feature() {
   # pacman -Q answers for provides too, and podman-docker provides docker.
   if [[ $(pacman -Qq docker 2>/dev/null) == docker ]]; then
-    echo "Docker is installed, and the Containers panel already works with it."
-    echo "To use Podman instead, remove the docker package first. Nothing was changed."
+    echo "Docker is installed, and karchy's Podman setup would replace its docker command."
+    echo "To use Podman instead, remove Docker first (Quick install › System)."
+    echo "Nothing was changed."
     exit 1
   fi
-  echo "Adding containers ($PACKAGE)."
+  echo "Adding Podman ($PACKAGE)."
   remove_legacy
-  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE" || install_failed "Containers weren't added."
+  sudo pacman --color auto -S --needed --noconfirm "$PACKAGE" || install_failed "Podman wasn't added."
+  # Asked for by name: a copy that came with something else is the user's now.
+  [[ $(pacman -Qeq -- "$PACKAGE" 2>/dev/null) == "$PACKAGE" ]] || sudo pacman -D --asexplicit -- "$PACKAGE" >/dev/null
 
   local subids
   subids=$(add_subids)
@@ -120,13 +131,21 @@ install_feature() {
     install_gpu
   fi
 
+  # Running this again (to add GPU containers later, say) adds nothing the
+  # second time; what the first run added stays on record.
+  [[ -n $subids ]] || subids=$(state_get subids)
+  ((${#GPU_ADDED[@]} > 0)) || read -ra GPU_ADDED <<<"$(state_get gpu_packages)"
   printf 'subids=%s\nsubids_user=%s\ngpu_packages=%s\n' \
-    "$subids" "$USER_NAME" "${GPU_ADDED[*]}" | sudo install -Dm644 /dev/stdin "$STATE"
+    "$subids" "$(state_get subids_user | grep . || echo "$USER_NAME")" "${GPU_ADDED[*]}" | sudo install -Dm644 /dev/stdin "$STATE"
+  sudo rm -f "$OLD_STATE"
 
   karchy-shell -q karchy.containers refresh
-  karchy-notification-send -g "$ICON" "Containers added" "Use podman or docker; docker compose works too. Open terminals pick it up after you sign in again." || true
+  karchy-notification-send -g "$ICON" "Podman added" "Use podman or docker; docker compose works too. Open terminals pick it up after you sign in again." || true
   echo
   echo "Done. Try: docker run --rm docker.io/library/hello-world"
+  if ! pacman -Q karchy-containers-app >/dev/null 2>&1; then
+    echo "To see and manage containers in a window, add Containers from Quick install › karchy."
+  fi
 }
 
 # The user's containers, images and volumes stay unless they say otherwise.
@@ -169,7 +188,7 @@ removable() {
 }
 
 remove_feature() {
-  echo "Removing containers."
+  echo "Removing Podman."
   local packages subids subids_user gpu_packages
   # packages=: what an earlier version of this command installed itself.
   packages=$(state_get packages)
@@ -187,7 +206,7 @@ remove_feature() {
   # Check first that pacman can remove them all, so a refusal leaves
   # everything as it was.
   if ((${#installed[@]} > 0)) && ! pacman -Rs --print "${installed[@]}" >/dev/null 2>&1; then
-    echo "Another installed package needs part of containers:"
+    echo "Another installed package needs part of Podman:"
     pacman -Rs --print "${installed[@]}" 2>&1 | grep -i "required by\|breaks dependency" || true
     echo "Remove that package first, then try again. Nothing was changed."
     exit 1
@@ -214,14 +233,14 @@ remove_feature() {
   fi
 
   ((${#installed[@]} == 0)) || sudo pacman --color auto -Rns --noconfirm "${installed[@]}"
-  sudo rm -f "$STATE"
+  sudo rm -f "$STATE" "$OLD_STATE"
 
   karchy-shell -q karchy.containers refresh
-  karchy-notification-send -g "$ICON" "Containers removed" || true
+  karchy-notification-send -g "$ICON" "Podman removed" || true
   echo
   if [[ $data == kept ]]; then
     echo "Kept: your containers, images and volumes in ~/.local/share/containers,"
-    echo "and your subordinate ID ranges, which own their files. Add containers"
+    echo "and your subordinate ID ranges, which own their files. Add Podman"
     echo "again to use them, or delete that folder to free the space."
   fi
   echo "Done."
@@ -231,5 +250,5 @@ case "${1:-}" in
   status) status ;;
   install) install_feature ;;
   remove) remove_feature ;;
-  *) sed -n 's/^# karchy:args=/Usage: karchy-feature-containers /p' "$0" >&2; exit 1 ;;
+  *) sed -n 's/^# karchy:args=/Usage: karchy-feature-podman /p' "$0" >&2; exit 1 ;;
 esac

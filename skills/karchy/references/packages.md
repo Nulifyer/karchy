@@ -74,7 +74,8 @@ Quick install is the catalog of apps and karchy features. The catalog is `/usr/s
 - An AUR entry builds its AUR packages with paru (the first package, or the ones its `aur` list names: DroidCam and its kernel module `v4l2loopback-dc-dkms`); the rest come with its `karchy-app-<id>` package.
 - Such an app counts as installed when `karchy-app-<id>` is installed, or when its first package was installed by hand.
 - Prefer a catalog id over raw package names when the catalog has the app. Find the id with `jq '.apps[] | select(.name | test("<name>"; "i")) | .id' <catalog>`.
-- karchy features are catalog entries with a `feature` script: `containers`, `vms` and `printing`. Install them with `karchy-quick-install install <id>` or the window, not by package name, so that their setup runs.
+- karchy features are catalog entries with a `feature` script: `podman` (karchy's Podman setup), `vms` (Virtual machines, with QEMU) and `printing`. Install them with `karchy-quick-install install <id>` or the window, not by package name, so that their setup runs.
+- The category `karchy` holds karchy's own apps and add-ons: `containers` (the Containers window, package `karchy-containers-app`, which works with Podman or Docker and installs neither), `vms` and `karchy-project-picker`.
 - An app marked `required` cannot be removed.
 
 The window installs repo apps through the root helper `/usr/lib/karchy/app-packages`, which asks for the administrator's password and accepts catalog ids only. Do not call the helper directly.

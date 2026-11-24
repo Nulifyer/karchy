@@ -87,9 +87,10 @@ if is_user_desktop_file; then
   exit 0
 fi
 
-# One of karchy's own windows (Virtual Machines, Containers): the entry
-# belongs to a feature, so removing it removes the feature through its own
-# script, not the package that happens to own the file.
+# One of karchy's own windows that is a feature without a package (Virtual
+# Machines): removing the entry removes the feature through its own script,
+# not the package that happens to own the file. Containers is a package of
+# its own (karchy-containers-app) and goes the ordinary way below.
 feature="$(sed -n 's/^X-Karchy-Feature=//p' "$desktop_file" | head -1)"
 if [[ $feature =~ ^karchy-feature-[a-z0-9-]+$ ]] && command -v "$feature" >/dev/null; then
   uninstall_in_terminal "$feature remove"

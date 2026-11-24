@@ -17,6 +17,9 @@
 | `karchy-bees` | Native: bees, the btrfs deduplicator, built from a pinned tag of karchy's fork Nulifyer/bees (D-85); provides and conflicts with Arch's `bees`; a `karchy-settings` dependency; `karchy-bees.service` runs it (D-86) |
 | `karchy-vpn` | Transitional and empty (D-156): the VPN moved into `karchy-settings`; a machine with the old add-on upgrades to this in the same transaction, so the files change owner without the add-on's removal script running, and `karchy update` then retires it |
 | `karchy-project-picker` | Add-on (D-106): the project picker overlay and its Ctrl+Alt+P binding, built from `addons/project-picker`; offered in Quick install › karchy |
+| `karchy-containers-app` | karchy's own app (D-164): the Containers window's launcher entry and its agent skill; depends on `karchy` and on no container engine; offered in Quick install › karchy. Replaces `karchy-containers` |
+| `karchy-podman` | Optional feature (D-67, D-164): karchy's rootless Podman setup with `podman-docker` and `docker-compose`, the user socket and `DOCKER_HOST`; installed by Quick install › System › Podman (`karchy-feature-podman`). Replaces `karchy-containers` |
+| `karchy-printing` | Optional feature (D-67): the cups-browsed user and sandbox drop-in, ipp-usb; installed by Quick install › System › Printers & scanners |
 | `guget`, `sqlgo` | Native: the user's own tools, repackaged from a pinned GitHub release's `linux_amd64` binary with its checksum (D-155); offered in Quick install › Developer tools and › Databases & APIs |
 | `karchy-app-<id>` | Meta, one per Quick install app of several packages (D-150): no files, depends on the app's packages, so pacman removes them with the app. All made by one PKGBUILD, `pkgbuilds/karchy-apps`, from `default/karchy/quick-install.json` |
 

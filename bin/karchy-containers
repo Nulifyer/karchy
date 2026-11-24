@@ -1,20 +1,36 @@
 #!/bin/bash
 
-# karchy:summary=List and control containers with Podman, or Docker when it is the engine (D-63)
-# karchy:args=open [container] | engine | summary | list | images | watch | start|stop|restart|remove <container> | logs <container> [lines] | follow <container> | compose up|down|restart <project> | forget <project> | remove-image <image> | prune
+# karchy:summary=List and control containers with Podman or Docker, whichever is installed (D-63, D-164)
+# karchy:args=open [container] | engine | engines | summary | list | images | watch | start|stop|restart|remove <container> | logs <container> [lines] | follow <container> | compose up|down|restart <project> | forget <project> | remove-image <image> | prune
 # karchy:examples=karchy containers open | karchy containers list | karchy containers compose down myapp
 
 # The Containers panel and window (shell/plugins/containers) read and act
 # through this command, so both engines answer in one JSON shape:
-#   list    {engine, containers: [{id, name, image, state, status, ports:
-#           [{ip, host, container, proto}], project, service, workdir, files,
-#           created}], projects: [{name, workdir, files, running, total}]}
-#   summary {engine, running: [{name, image, project}]}
+#   list    {engine, also, cli, containers: [{id, name, image, state, status,
+#           ports: [{ip, host, container, proto}], project, service, workdir,
+#           files, created}], projects: [{name, workdir, files, running,
+#           total}]}
+#   summary {engine, also, cli, running: [{name, image, project}]}
 #   images  [{id, name, tags, size, created, containers}]
+#   engines {engine, also, cli}, also when no engine is installed (engine "")
 # Compose projects are found from the labels Compose puts on its containers.
 # A project's folder and files are remembered in ~/.local/state/karchy, so a
 # project taken down can be brought up again from the window.
-# Podman is preferred; with podman-docker `docker` is Podman anyway.
+#
+# The engine (D-164). karchy ships none with this command or its window: the
+# person installs Podman or Docker, and whichever is there is used.
+#   neither   every command but open, engine and engines fails with exit 3
+#             and one sentence saying what to install
+#   one       that one. `docker` from podman-docker (karchy's Podman setup,
+#             karchy-podman) is Podman, not a second engine
+#   one that  list, summary and images fail with exit 4 and one sentence
+#   doesn't   saying why: Docker without its service, or before the docker
+#   answer    group applies to this session (the next sign-in)
+#   both      Podman, because it runs as you with no service to start and no
+#             group to join, so it answers on every machine that has it.
+#             `also` is then "docker", and Docker's containers are not shown
+# `cli` is the command to type for the engine in use: "docker" when that
+# reaches it (Docker itself, or Podman through podman-docker), else "podman".
 
 set -euo pipefail
 
@@ -22,18 +38,73 @@ STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/containers"
 PROJECTS_FILE="$STATE_DIR/projects.json"
 ICON=containers
 
+# Docker itself. podman-docker's `docker` is a shell script that runs Podman;
+# Docker's is a program.
+real_docker() {
+  local docker
+  docker=$(command -v docker) || return 1
+  [[ $(head -c 2 "$docker" 2>/dev/null) != "#!" ]]
+}
+
 engine() {
   if command -v podman >/dev/null; then
     echo podman
-  elif command -v docker >/dev/null; then
+  elif real_docker; then
     echo docker
   else
     return 1
   fi
 }
 
+# Sets ENGINE ("" when there is none), ALSO and CLI (see the header).
+find_engine() {
+  ENGINE=$(engine) || ENGINE=""
+  ALSO="" CLI=$ENGINE
+  if [[ $ENGINE == podman ]]; then
+    if real_docker; then
+      ALSO=docker
+    elif command -v docker >/dev/null; then
+      CLI=docker
+    fi
+  fi
+  # A session that began with karchy's Podman setup keeps its DOCKER_HOST
+  # until the next sign-in, also after that setup was removed and Docker
+  # installed. Docker's own client must not look for its service there.
+  if [[ $ENGINE == docker && ${DOCKER_HOST:-} == */podman/podman.sock ]]; then
+    unset DOCKER_HOST
+  fi
+  return 0
+}
+
 require_engine() {
-  ENGINE=$(engine) || { echo "Neither Podman nor Docker is installed." >&2; exit 3; }
+  find_engine
+  [[ -n $ENGINE ]] && return
+  echo "No container engine is installed. Install Podman or Docker from Quick install › System." >&2
+  exit 3
+}
+
+# The engine is installed, but a read from it failed: ask it once more for
+# its own error and say what to do about it (exit 4).
+unreachable() {
+  local error
+  error=$("$ENGINE" ps -q 2>&1 >/dev/null) || true
+  if [[ $ENGINE == docker && $error == *"permission denied"* ]]; then
+    echo "Docker is installed, but you aren't in the docker group in this session yet. Sign out and in again." >&2
+  elif [[ $ENGINE == docker && $error == *"Cannot connect to the Docker daemon"* ]]; then
+    echo "Docker is installed, but its service isn't running. Start it with: sudo systemctl enable --now docker.socket" >&2
+  elif [[ -n $error ]]; then
+    printf '%s did not answer: %s\n' "${ENGINE^}" "$(tail -n 1 <<<"$error")" >&2
+  else
+    echo "${ENGINE^} did not answer." >&2
+  fi
+  exit 4
+}
+
+# A read whose output is JSON for the shell: all of it, or the reason.
+answer() {
+  local output
+  output=$("$@" 2>/dev/null) && [[ -n $output ]] || unreachable
+  printf '%s\n' "$output"
 }
 
 usage() {
@@ -89,9 +160,10 @@ remembered_projects() {
 
 list() {
   local containers remembered result
-  containers=$(containers_json)
+  # Said outright: inside answer's $( ) a failed step doesn't stop the script.
+  containers=$(containers_json) || return 1
   remembered=$(remembered_projects)
-  result=$(jq -n --arg engine "$ENGINE" --argjson c "$containers" --argjson r "$remembered" '
+  result=$(jq -n --arg engine "$ENGINE" --arg also "$ALSO" --arg cli "$CLI" --argjson c "$containers" --argjson r "$remembered" '
     ($c | map(select(.project != "")) | group_by(.project) | map({
       name: .[0].project,
       workdir: (map(.workdir) | map(select(. != "")) | first // ($r[.[0].project].workdir // "")),
@@ -101,11 +173,11 @@ list() {
     })) as $live
     | ($live | map(.name)) as $names
     | {
-        engine: $engine,
+        engine: $engine, also: $also, cli: $cli,
         containers: ($c | sort_by(.project, .name)),
         projects: ($live + [$r | to_entries[] | select(.key as $k | $names | index($k) | not)
           | {name: .key, workdir: .value.workdir, files: .value.files, running: 0, total: 0}] | sort_by(.name))
-      }')
+      }') || return 1
   remember "$result"
   echo "$result"
 }
@@ -123,12 +195,12 @@ remember() {
 
 summary() {
   if [[ $ENGINE == podman ]]; then
-    podman ps --format json | jq -c --arg engine podman '{engine: $engine, running: [.[] | select(.IsInfra != true) | {
+    podman ps --format json | jq -c --arg also "$ALSO" --arg cli "$CLI" '{engine: "podman", also: $also, cli: $cli, running: [.[] | select(.IsInfra != true) | {
       name: ((.Names // [])[0] // .Id[0:12]), image: .Image,
       project: ((.Labels // {})["com.docker.compose.project"] // (.Labels // {})["io.podman.compose.project"] // "")}]}'
   else
     docker ps --format '{"name":{{json .Names}},"image":{{json .Image}},"project":{{json (.Label "com.docker.compose.project")}}}' \
-      | jq -sc '{engine: "docker", running: .}'
+      | jq -sc '{engine: "docker", also: "", cli: "docker", running: .}'
   fi
 }
 
@@ -231,13 +303,14 @@ case "${1:-}" in
   # The window, at one container's page when a name is given.
   open) exec karchy-shell shell summon karchy.containers "$(jq -cn --arg c "${2:-}" 'if $c == "" then {} else {container: $c} end')" >/dev/null ;;
   engine) engine; exit ;;
+  engines) find_engine; jq -cn --arg engine "$ENGINE" --arg also "$ALSO" --arg cli "$CLI" '{engine: $engine, also: $also, cli: $cli}'; exit ;;
 esac
 
 require_engine
 case "${1:-}" in
-  summary) summary ;;
-  list) list ;;
-  images) images ;;
+  summary) answer summary ;;
+  list) answer list ;;
+  images) answer images ;;
   watch) watch_events ;;
   start | stop | restart) (($# == 2)) || usage; run "$ENGINE" "$1" "$2" ;;
   remove) (($# == 2)) || usage; run "$ENGINE" rm "$2" ;;

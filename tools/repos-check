@@ -24,7 +24,8 @@
 #      on its own. The apps' own packages (karchy-app-<id>, D-150: an app
 #      of several packages, depending on them) are each resolved on their
 #      own too, with [multilib]: some need it (Steam), and some can't be
-#      installed together (Docker and Containers). Nothing is downloaded.
+#      installed together (Docker and karchy's Podman setup). Nothing is
+#      downloaded.
 # pacman's own errors name what no longer resolves. Exits 1 on any failure.
 #
 # Needs podman (rootless) and the network.

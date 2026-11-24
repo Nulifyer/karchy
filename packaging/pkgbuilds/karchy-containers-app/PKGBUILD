@@ -1,0 +1,36 @@
+# karchy-containers-app: the Containers window as an app, one of karchy's own
+# (D-116, D-164). Nothing installs it but the user: Quick install › karchy ›
+# Containers. It adds the window's launcher entry and the agent skill for the
+# `karchy containers` command; the window itself, the bar icon that shows
+# while containers run and the command are part of karchy.
+#
+# It depends on no container engine. The window works with Podman or Docker,
+# whichever is installed (Quick install › System has both, and
+# karchy's Podman setup is karchy-podman), and says so when neither is. No
+# optdepends either: tools/repos-check resolves every [karchy] package with
+# the packages they suggest in one go, and docker can't be installed beside
+# karchy-podman's podman-docker.
+#
+# Until D-164 this and karchy's Podman setup were one package,
+# karchy-containers. Both packages replace it (see karchy-podman).
+
+pkgname=karchy-containers-app
+pkgver=0
+pkgrel=1
+pkgdesc="karchy's Containers window: containers, images and Compose projects with Podman or Docker"
+arch=('any')
+url="https://github.com/Nulifyer/karchy"
+license=('MIT')
+depends=('karchy')
+replaces=('karchy-containers')
+conflicts=('karchy-containers')
+source=('karchy-containers.desktop' 'karchy-src.tar.gz')
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  # The Containers window in the app launcher while this package is installed.
+  install -Dm644 karchy-containers.desktop "$pkgdir/usr/share/applications/karchy-containers.desktop"
+  # Its agent skill, linked for each user by karchy-agent-skills.
+  install -d "$pkgdir/usr/share/karchy/agents/skills"
+  cp -a "$srcdir/karchy/skills/karchy-containers" "$pkgdir/usr/share/karchy/agents/skills/"
+}

@@ -413,6 +413,27 @@
   ],
   "apps": [
     {
+      "id": "containers",
+      "name": "Containers",
+      "category": "karchy",
+      "icon": "podman-desktop",
+      "description": "See and manage containers, images and Compose projects in a window, with Podman or Docker, whichever you install. The bar shows what's running.",
+      "packages": [
+        "karchy-containers-app"
+      ],
+      "source": "karchy",
+      "keywords": [
+        "podman",
+        "docker",
+        "compose",
+        "images",
+        "logs"
+      ],
+      "setup": {
+        "note": "Containers needs Podman or Docker: both are in System."
+      }
+    },
+    {
       "id": "karchy-project-picker",
       "name": "Project picker",
       "category": "karchy",
@@ -434,6 +455,30 @@
         ],
         "note": "Press Ctrl+Alt+P to open it."
       }
+    },
+    {
+      "id": "vms",
+      "name": "Virtual machines",
+      "category": "karchy",
+      "icon": "virt-manager",
+      "description": "Run Linux and Windows VMs with QEMU/KVM, each in a window of its own. The bar shows which VMs are running.",
+      "packages": [
+        "qemu-desktop",
+        "edk2-ovmf",
+        "swtpm",
+        "spice-gtk"
+      ],
+      "source": "karchy",
+      "feature": "karchy-feature-vms",
+      "keywords": [
+        "qemu",
+        "kvm",
+        "windows",
+        "virtual machine",
+        "vm",
+        "virtualbox",
+        "vmware"
+      ]
     },
     {
       "id": "brave",
@@ -12068,26 +12113,6 @@
       ]
     },
     {
-      "id": "containers",
-      "name": "Containers",
-      "category": "system",
-      "group": "virtual",
-      "icon": "podman-desktop",
-      "description": "Run containers with Podman, without root. The docker command and docker compose work too, and the bar shows what's running.",
-      "packages": [
-        "podman",
-        "podman-docker",
-        "docker-compose"
-      ],
-      "source": "karchy",
-      "feature": "karchy-feature-containers",
-      "keywords": [
-        "podman",
-        "docker",
-        "compose"
-      ]
-    },
-    {
       "id": "coolercontrol",
       "name": "CoolerControl",
       "category": "system",
@@ -12170,7 +12195,8 @@
         ]
       },
       "keywords": [
-        "containers"
+        "containers",
+        "container engine"
       ]
     },
     {
@@ -12720,6 +12746,28 @@
       ]
     },
     {
+      "id": "podman",
+      "name": "Podman",
+      "category": "system",
+      "group": "virtual",
+      "icon": "",
+      "description": "Run containers without root. karchy sets Podman up so that the docker command and docker compose use it too.",
+      "packages": [
+        "podman",
+        "podman-docker",
+        "docker-compose"
+      ],
+      "source": "karchy",
+      "feature": "karchy-feature-podman",
+      "keywords": [
+        "containers",
+        "container engine",
+        "docker",
+        "compose",
+        "rootless"
+      ]
+    },
+    {
       "id": "popsicle",
       "name": "Popsicle",
       "category": "system",
@@ -12927,31 +12975,6 @@
         "libvirt",
         "qemu",
         "kvm"
-      ]
-    },
-    {
-      "id": "vms",
-      "name": "Virtual machines",
-      "category": "system",
-      "group": "virtual",
-      "icon": "virt-manager",
-      "description": "Run Linux and Windows VMs with QEMU/KVM, each in a window of its own. The bar shows which VMs are running.",
-      "packages": [
-        "qemu-desktop",
-        "edk2-ovmf",
-        "swtpm",
-        "spice-gtk"
-      ],
-      "source": "karchy",
-      "feature": "karchy-feature-vms",
-      "keywords": [
-        "qemu",
-        "kvm",
-        "windows",
-        "virtual machine",
-        "vm",
-        "virtualbox",
-        "vmware"
       ]
     },
     {
