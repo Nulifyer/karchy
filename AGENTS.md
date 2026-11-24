@@ -20,6 +20,7 @@ karchy is a personal Arch-based Linux setup built from selected Omarchy v4.5.0 c
 - A script the menu runs in its floating terminal (`karchy-launch-floating-terminal-with-presentation`) exits 130 when a prompt is cancelled (Esc) or declined, so the window closes instead of showing Failed. A wrong answer asks again, keeping what was typed (a password is asked again empty, as login prompts do). The wrapper shows Done or Failed and waits for a key, so the script doesn't add its own "Press Enter".
 - Long-running code reacts to events instead of polling (Omarchy's rule; this applies to plugins too).
 - Common screens use what people already know. For something as common as an OS settings page, start from how the same thing is worded, grouped and controlled in Windows Settings (then macOS, GNOME, KDE) and depart only where karchy behaves differently; don't coin new phrasing or design a new pattern where a familiar one exists. The effort goes into the setting working (user, 2026-11-24).
+- Front-end work (shell QML, Settings pages, windows, panels) starts by loading the `frontend-design` skill and follows it, and UI is reviewed against it (user, 2026-11-24).
 
 ## Delivery
 
