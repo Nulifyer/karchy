@@ -24,7 +24,7 @@
 #       which karchy's Hyprland config loads before ~/.config/hypr, so a
 #       binding written there by hand wins (D-27). logind leaves the key
 #       alone on karchy (10-ignore-power-button.conf), so this needs no root.
-#   lid, hibernation and the nearly empty battery
+#   lid, hibernation and the critical battery
 #                                     /etc/systemd/logind.conf.d/60-karchy-settings.conf,
 #       /etc/systemd/sleep.conf.d/60-karchy-settings.conf and
 #       /etc/UPower/UPower.conf.d/60-karchy-settings.conf, written by the
@@ -59,14 +59,17 @@
 #                          30 on battery, never plugged in)
 #       battery.low, battery.critical
 #                          percent (low 5 to 50, critical 3 to 30, under low
-#                          and both above empty.level)
+#                          and both above criticalBattery.level): the two
+#                          warnings, "Warn at" and "Warn again at"
 #       battery.saver      on (karchy's default), off: Power saver from
 #                          the first battery warning until the charger goes in
-#       empty.level        percent (2 to 20, under the last battery
+#       criticalBattery.level
+#                          percent (2 to 20, under the last battery
 #                          warning): where a laptop left on its battery is
-#                          hibernated or shut down
-#       empty.action       hibernate (karchy's, where the machine can),
-#                          poweroff
+#                          hibernated or shut down ("Critical battery at")
+#       criticalBattery.action
+#                          hibernate (karchy's, where the machine can),
+#                          poweroff ("At critical battery")
 #       powerKey           menu, sleep, hibernate, shutdown, nothing
 #       lid.battery, lid.ac, lid.docked
 #                          sleep, ignore (karchy still locks the session),
@@ -76,6 +79,17 @@
 #                          counts from when the charger is pulled), same
 #                          (hibernate after that time plugged in too)
 #   reset                  Forget every choice made here
+#
+# Two settings sound alike and are not the same thing:
+#   battery.critical       the second battery warning ("Warn again at"), a
+#                          notification the shell shows: shell.json's
+#                          battery.critical
+#   criticalBattery.*      UPower's last resort under every warning ("Critical
+#                          battery at", "At critical battery"): the level
+#                          where the computer hibernates or shuts down by
+#                          itself, UPower's PercentageAction and
+#                          CriticalPowerAction, through the root helper's
+#                          battery-level and battery-action
 
 set -euo pipefail
 
@@ -302,11 +316,11 @@ defaults_json() {
     --arg docked "$(lid_choice "${docked:-ignore}")" \
     --argjson hibernateAfter "$(hibernate_after packaged)" \
     --arg hibernateAc "$(hibernate_on_ac packaged)" \
-    --argjson emptyLevel "$(empty_level packaged)" \
-    --arg emptyAction "$(empty_action packaged)" \
+    --argjson criticalLevel "$(critical_battery_level packaged)" \
+    --arg criticalAction "$(critical_battery_action packaged)" \
     '{powerKey: "menu", "lid.battery": $lid, "lid.ac": $ac, "lid.docked": $docked,
       hibernateAfter: $hibernateAfter, "hibernate.ac": $hibernateAc,
-      "empty.level": $emptyLevel, "empty.action": $emptyAction}'
+      "criticalBattery.level": $criticalLevel, "criticalBattery.action": $criticalAction}'
 }
 
 # What the power button does now, read back from Hyprland, so a binding in the
@@ -367,7 +381,7 @@ upower_value() {
 # The charge (percent) at which UPower acts. It drops a level's fraction, and
 # uses its own 20, 5 and 2 unless the three levels are under 100 and
 # descending (src/up-daemon.c).
-empty_level() {
+critical_battery_level() {
   local mode="$1" key value levels=()
   for key in PercentageLow PercentageCritical PercentageAction; do
     value=$(upower_value "$mode" "$key")
@@ -385,7 +399,7 @@ empty_level() {
 # doesn't work, it powers off). Before any choice made here, and where the
 # daemon doesn't answer, it is worked out from the files the same way for
 # the two actions karchy uses.
-empty_action() {
+critical_battery_action() {
   local mode="$1" action=""
   if [[ $mode == live ]]; then
     action=$(busctl call org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower GetCriticalAction 2>/dev/null) || action=""
@@ -403,7 +417,7 @@ empty_action() {
 }
 
 # The later of the battery warnings that are on, 0 with both off: what the
-# empty level has to stay under. The warnings are read as the shell reads
+# critical battery level has to stay under. The warnings are read as the shell reads
 # them (BatteryModel.js `warningThresholds`).
 last_warning() {
   effective_config | jq -r '
@@ -461,14 +475,14 @@ status() {
     --arg lidDocked "$(lid_choice "${docked:-ignore}")" \
     --argjson hibernateAfter "$(hibernate_after live)" \
     --arg hibernateAc "$(hibernate_on_ac live)" \
-    --argjson emptyLevel "$(empty_level live)" \
-    --arg emptyAction "$(empty_action live)" \
+    --argjson criticalLevel "$(critical_battery_level live)" \
+    --arg criticalAction "$(critical_battery_action live)" \
     --argjson profiles "$profileValues" '
     . + $profiles + {
       powerKey: $powerKey,
       "lid.battery": $lidBattery, "lid.ac": $lidAc, "lid.docked": $lidDocked,
       hibernateAfter: $hibernateAfter, "hibernate.ac": $hibernateAc,
-      "empty.level": $emptyLevel, "empty.action": $emptyAction
+      "criticalBattery.level": $criticalLevel, "criticalBattery.action": $criticalAction
     }')
 
   # Decided somewhere else: the value in effect is not the one recorded here,
@@ -590,13 +604,13 @@ apply_power_key() {
   hyprctl reload >/dev/null 2>&1 || true
 }
 
-# The lid, hibernation and empty-battery choices, all of them at once, to the root
+# The lid, hibernation and critical-battery choices, all of them at once, to the root
 # helper. pkexec exits 126 when the password prompt is dismissed and 127 when
 # the request is refused.
 apply_system() {
   local settings="$1" args=() key value code=0
   [[ -x $ROOT_HELPER ]] || fail "$ROOT_HELPER is missing; update karchy-settings"
-  for key in lid.battery lid.ac lid.docked hibernateAfter hibernate.ac empty.level empty.action; do
+  for key in lid.battery lid.ac lid.docked hibernateAfter hibernate.ac criticalBattery.level criticalBattery.action; do
     value=$(jq -r --arg k "$key" '.[$k] // empty' <<<"$settings")
     [[ -n $value ]] || continue
     case $key in
@@ -608,8 +622,8 @@ apply_system() {
         [[ $value == same ]] && value=yes || value=no
         args+=("hibernate-on-ac=$value")
         ;;
-      empty.level) args+=("battery-level=$value") ;;
-      empty.action) args+=("battery-action=$value") ;;
+      criticalBattery.level) args+=("battery-level=$value") ;;
+      criticalBattery.action) args+=("battery-action=$value") ;;
       *) args+=("${key/./-}=$value") ;;
     esac
   done
@@ -691,24 +705,24 @@ set_value() {
       ;;
     battery.low | battery.critical)
       [[ $value =~ ^[1-9][0-9]?$ ]] || usage
-      local low critical empty
+      local low critical last_resort
       low=$(effective_config | jq '.battery.low // 15')
       critical=$(effective_config | jq '.battery.critical // 5')
-      empty=$(empty_level live)
+      last_resort=$(critical_battery_level live)
       if [[ $setting == battery.low ]]; then
         (( value >= 5 && value <= 50 )) || usage
-        (( value > critical )) || fail "The low warning has to come before the critical one ($critical%)"
+        (( value > critical )) || fail "The first warning has to come before the second one ($critical%)"
       else
         (( value >= 3 && value <= 30 )) || usage
-        (( low == 0 || value < low )) || fail "The critical warning has to come after the low one ($low%)"
+        (( low == 0 || value < low )) || fail "The second warning has to come after the first one ($low%)"
       fi
       # A warning at or under the level where the computer hibernates or
       # shuts down would never be seen.
-      (( value > empty )) || fail "A warning has to come before the battery is nearly empty ($empty%). Lower that level first."
+      (( value > last_resort )) || fail "A warning has to come before the critical battery level ($last_resort%). Lower that level first."
       outcome=$(apply_battery "$setting" "$value")
       json=$value
       ;;
-    empty.level)
+    criticalBattery.level)
       [[ $value =~ ^[1-9][0-9]?$ ]] || usage
       (( value >= 2 && value <= 20 )) || usage
       local warning
@@ -717,7 +731,7 @@ set_value() {
         fail "That would be before the last battery warning ($warning%). Raise the warning first, or pick a lower level."
       json=$value
       ;;
-    empty.action)
+    criticalBattery.action)
       case $value in
         poweroff) ;;
         hibernate) karchy-hibernation-available || fail "This computer can't hibernate" ;;
@@ -769,7 +783,7 @@ set_value() {
   fi
 
   case $setting in
-    lid.* | hibernateAfter | hibernate.ac | empty.*) apply_system "$settings" ;;
+    lid.* | hibernateAfter | hibernate.ac | criticalBattery.*) apply_system "$settings" ;;
   esac
   write_saved "$settings"
 
@@ -815,7 +829,7 @@ reset_all() {
     apply_power_key menu
   fi
   if jq -e 'has("lid.battery") or has("lid.ac") or has("lid.docked") or has("hibernateAfter") or has("hibernate.ac")
-            or has("empty.level") or has("empty.action")' <<<"$settings" >/dev/null; then
+            or has("criticalBattery.level") or has("criticalBattery.action")' <<<"$settings" >/dev/null; then
     apply_system '{}'
   fi
   rm -f "$POWER_FILE"

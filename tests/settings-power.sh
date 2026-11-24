@@ -11,8 +11,8 @@
 # /usr/lib/karchy, karchy-laptop's drop-ins where the package puts them, and
 # made-up programs over the ones that need a real battery, daemon or screen:
 #   busctl            UPower (a battery or none, on battery or not, its
-#                     charge, and what it will do when the battery is nearly
-#                     empty: by default no answer, so the files are read),
+#                     charge, and what it will do at the critical battery
+#                     level: by default no answer, so the files are read),
 #                     logind's lid properties, the running profile
 #   powerprofilesctl  the profiles this machine has; `set` is recorded
 #   brightnessctl     `set` is recorded
@@ -448,95 +448,98 @@ is "the helper writes what it is told" "$(grep -hv '^#' $sleep_file /etc/systemd
 $helper
 is "the helper with nothing to say removes both files" "$(ls /etc/systemd/sleep.conf.d /etc/systemd/logind.conf.d 2>/dev/null | grep -c conf$)" 0
 
-# The nearly empty battery: UPower's level and action, through the root helper.
+# The critical battery: UPower's level and action, through the root helper.
 upower_file=/etc/UPower/UPower.conf.d/60-karchy-settings.conf
 upower_lines() { grep -v '^#' $upower_file 2>/dev/null | tr '\n' ' '; }
 is "karchy-laptop's drop-in over UPower's own 2%: 3% and hibernate, no choice, nothing foreign" \
-  "$(value empty.level) $(value empty.action) $(field '[(.saved | has("empty.level") or has("empty.action")), .foreign]')" '3 hibernate [false,[]]'
+  "$(value criticalBattery.level) $(value criticalBattery.action) $(field '[(.saved | has("criticalBattery.level") or has("criticalBattery.action")), .foreign]')" '3 hibernate [false,[]]'
 clear_log
-power set empty.level 4 >/dev/null
-is "empty.level 4: the three levels, descending, in UPower's drop-in" "$(upower_lines)" \
+power set criticalBattery.level 4 >/dev/null
+is "criticalBattery.level 4: the three levels, descending, in UPower's drop-in" "$(upower_lines)" \
   "[UPower] UsePercentageForPolicy=true PercentageLow=15.0 PercentageCritical=5.0 PercentageAction=4.0 "
-is "empty.level 4: in effect, recorded, not foreign" "$(field '[.values["empty.level"], .saved["empty.level"], .foreign]')" '[4,4,[]]'
+is "criticalBattery.level 4: in effect, recorded, not foreign" "$(field '[.values["criticalBattery.level"], .saved["criticalBattery.level"], .foreign]')" '[4,4,[]]'
 is "…and UPower is started again to read it" "$(log)" "systemctl try-restart upower.service;"
 clear_log
-power set empty.level 4 >/dev/null
+power set criticalBattery.level 4 >/dev/null
 is "the same choice again: nothing written, UPower left running" "$(log)" ""
-refused "empty.level at the last warning (5%) is refused" "before the last battery warning (5%)" set empty.level 5
-refused "empty.level above it is refused" "before the last battery warning (5%)" set empty.level 7
-is "…and nothing changed" "$(upower_lines)$(value empty.level)" \
+refused "criticalBattery.level at the last warning (5%) is refused" "before the last battery warning (5%)" set criticalBattery.level 5
+refused "criticalBattery.level above it is refused" "before the last battery warning (5%)" set criticalBattery.level 7
+is "…and nothing changed" "$(upower_lines)$(value criticalBattery.level)" \
   "[UPower] UsePercentageForPolicy=true PercentageLow=15.0 PercentageCritical=5.0 PercentageAction=4.0 4"
-for wrong in 1 21 0 x 3.5 "" 03; do refused "empty.level '$wrong' is refused" "Usage" set empty.level "$wrong"; done
-refused "a second warning at the empty level is refused" "nearly empty (4%)" set battery.critical 4
-refused "…and under it" "nearly empty (4%)" set battery.critical 3
+refused "the old name empty.level is no setting" "Usage" set empty.level 4
+refused "nor empty.action" "Usage" set empty.action poweroff
+is "status names neither" "$(field '.values | has("empty.level") or has("empty.action")')" false
+for wrong in 1 21 0 x 3.5 "" 03; do refused "criticalBattery.level '$wrong' is refused" "Usage" set criticalBattery.level "$wrong"; done
+refused "a second warning at the critical battery level is refused" "critical battery level (4%)" set battery.critical 4
+refused "…and under it" "critical battery level (4%)" set battery.critical 3
 power set battery.critical 10 >/dev/null
-power set empty.level 7 >/dev/null
-is "empty.level 7 under a warning at 10%: UPower's critical level moves above it" "$(upower_lines)" \
+power set criticalBattery.level 7 >/dev/null
+is "criticalBattery.level 7 under a warning at 10%: UPower's critical level moves above it" "$(upower_lines)" \
   "[UPower] UsePercentageForPolicy=true PercentageLow=15.0 PercentageCritical=8.0 PercentageAction=7.0 "
-refused "the second warning can't then go to 7%" "nearly empty (7%)" set battery.critical 7
-refused "…nor 5%" "nearly empty (7%)" set battery.critical 5
+refused "the second warning can't then go to 7%" "critical battery level (7%)" set battery.critical 7
+refused "…nor 5%" "critical battery level (7%)" set battery.critical 5
 # The second warning turned off by hand: the first is the last.
 jq '.battery.critical = 0' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
-refused "second warning off: the first can't go to the empty level" "nearly empty (7%)" set battery.low 7
-power set empty.level 10 >/dev/null
-is "second warning off: the empty level may go up to under the first (15%)" "$(value empty.level)" 10
-refused "…but not to it" "before the last battery warning (15%)" set empty.level 15
+refused "second warning off: the first can't go to the critical battery level" "critical battery level (7%)" set battery.low 7
+power set criticalBattery.level 10 >/dev/null
+is "second warning off: the critical battery level may go up to under the first (15%)" "$(value criticalBattery.level)" 10
+refused "…but not to it" "before the last battery warning (15%)" set criticalBattery.level 15
 jq '.battery.low = 0' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
-power set empty.level 20 >/dev/null
+power set criticalBattery.level 20 >/dev/null
 is "both warnings off: nothing to come before, up to the helper's 20%" "$(upower_lines)" \
   "[UPower] UsePercentageForPolicy=true PercentageLow=22.0 PercentageCritical=21.0 PercentageAction=20.0 "
 jq 'del(.battery.low, .battery.critical)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
-is "the warnings put back by hand at 15% and 5% under a level of 20%: shown as it is" "$(value empty.level)/$(value battery.critical)" 20/5
-power set empty.level 3 >/dev/null
-is "empty.level back at karchy's 3%: no drop-in, no record" "$([[ -e $upower_file ]] && echo there)$(field '.saved | has("empty.level")')" false
+is "the warnings put back by hand at 15% and 5% under a level of 20%: shown as it is" "$(value criticalBattery.level)/$(value battery.critical)" 20/5
+power set criticalBattery.level 3 >/dev/null
+is "criticalBattery.level back at karchy's 3%: no drop-in, no record" "$([[ -e $upower_file ]] && echo there)$(field '.saved | has("criticalBattery.level")')" false
 
 clear_log
-power set empty.action poweroff >/dev/null
-is "empty.action poweroff: written, in effect, recorded" "$(upower_lines)$(field '[.values["empty.action"], .saved["empty.action"], .foreign]')" \
+power set criticalBattery.action poweroff >/dev/null
+is "criticalBattery.action poweroff: written, in effect, recorded" "$(upower_lines)$(field '[.values["criticalBattery.action"], .saved["criticalBattery.action"], .foreign]')" \
   '[UPower] CriticalPowerAction=PowerOff ["poweroff","poweroff",[]]'
 is "…and UPower is started again" "$(log)" "systemctl try-restart upower.service;"
-power set empty.level 4 >/dev/null
+power set criticalBattery.level 4 >/dev/null
 is "level and action together" "$(upower_lines)" \
   "[UPower] UsePercentageForPolicy=true PercentageLow=15.0 PercentageCritical=5.0 PercentageAction=4.0 CriticalPowerAction=PowerOff "
 power set lid.ac ignore >/dev/null
 is "another system choice leaves UPower's file as it is" "$(upower_lines)" \
   "[UPower] UsePercentageForPolicy=true PercentageLow=15.0 PercentageCritical=5.0 PercentageAction=4.0 CriticalPowerAction=PowerOff "
 power set lid.ac sleep >/dev/null
-power set empty.level 3 >/dev/null
-power set empty.action hibernate >/dev/null
-is "empty.action hibernate is karchy's default: no drop-in, no record" "$([[ -e $upower_file ]] && echo there)$(field '.saved | has("empty.action")')" false
-for wrong in suspend ignore sleep shutdown ""; do refused "empty.action '$wrong' is refused" "Usage" set empty.action "$wrong"; done
+power set criticalBattery.level 3 >/dev/null
+power set criticalBattery.action hibernate >/dev/null
+is "criticalBattery.action hibernate is karchy's default: no drop-in, no record" "$([[ -e $upower_file ]] && echo there)$(field '.saved | has("criticalBattery.action")')" false
+for wrong in suspend ignore sleep shutdown ""; do refused "criticalBattery.action '$wrong' is refused" "Usage" set criticalBattery.action "$wrong"; done
 
 # What the running UPower says wins over what the files say.
 echo HybridSleep >$t/critical-action
-is "UPower answers something else: shown as it is, and named foreign" "$(field '[.values["empty.action"], .foreign]')" '["hybridsleep",["empty.action"]]'
+is "UPower answers something else: shown as it is, and named foreign" "$(field '[.values["criticalBattery.action"], .foreign]')" '["hybridsleep",["criticalBattery.action"]]'
 echo Hibernate >$t/critical-action
-is "UPower answers Hibernate: as chosen" "$(field '[.values["empty.action"], .foreign]')" '["hibernate",[]]'
+is "UPower answers Hibernate: as chosen" "$(field '[.values["criticalBattery.action"], .foreign]')" '["hibernate",[]]'
 rm $t/critical-action
 
 # UPower's own rules for its files.
 printf '[UPower]\nPercentageAction=4.7\n' >/etc/UPower/UPower.conf.d/90-mine.conf
-is "a later drop-in decides, its fraction dropped as UPower drops it" "$(field '[.values["empty.level"], .foreign]')" '[4,[]]'
-power set empty.level 2 >/dev/null
-is "…also over a choice made here, which is then named foreign" "$(field '[.values["empty.level"], .saved["empty.level"], .foreign]')" '[4,2,["empty.level"]]'
+is "a later drop-in decides, its fraction dropped as UPower drops it" "$(field '[.values["criticalBattery.level"], .foreign]')" '[4,[]]'
+power set criticalBattery.level 2 >/dev/null
+is "…also over a choice made here, which is then named foreign" "$(field '[.values["criticalBattery.level"], .saved["criticalBattery.level"], .foreign]')" '[4,2,["criticalBattery.level"]]'
 mv /etc/UPower/UPower.conf.d/90-mine.conf /etc/UPower/UPower.conf.d/mine.conf
-is "a drop-in UPower doesn't read (no two digits and a dash) changes nothing" "$(value empty.level)$(field .foreign)" '2[]'
-power set empty.level 3 >/dev/null
+is "a drop-in UPower doesn't read (no two digits and a dash) changes nothing" "$(value criticalBattery.level)$(field .foreign)" '2[]'
+power set criticalBattery.level 3 >/dev/null
 mv /etc/UPower/UPower.conf.d/mine.conf /etc/UPower/UPower.conf.d/90-mine.conf
 printf '[UPower]\nPercentageCritical=3.0\n' >/etc/UPower/UPower.conf.d/90-mine.conf
-is "levels that don't descend: UPower's own 2%" "$(value empty.level)" 2
+is "levels that don't descend: UPower's own 2%" "$(value criticalBattery.level)" 2
 printf '[UPower]\nTimeAktion=1\nPercentageAction = 2.0 \n' >/etc/UPower/UPower.conf.d/90-mine.conf
-is "spaces around the equals sign are read" "$(value empty.level)" 2
+is "spaces around the equals sign are read" "$(value criticalBattery.level)" 2
 printf '[Other]\nPercentageAction=1.0\n' >/etc/UPower/UPower.conf.d/90-mine.conf
-is "another group is not UPower's" "$(value empty.level)" 3
+is "another group is not UPower's" "$(value criticalBattery.level)" 3
 rm /etc/UPower/UPower.conf.d/90-mine.conf
 
 # A machine that can't hibernate: UPower shuts it down, and that is the choice.
 rm $t/hibernation
-is "no hibernation: shuts down, by default" "$(field '[.values["empty.action"], (.saved | has("empty.action")), .foreign]')" '["poweroff",false,[]]'
-refused "no hibernation: hibernate can't be chosen" "can't hibernate" set empty.action hibernate
-power set empty.action poweroff >/dev/null
-is "no hibernation: \"shut down\" is what it does already, so nothing is written" "$([[ -e $upower_file ]] && echo there)$(field '.saved | has("empty.action")')" false
+is "no hibernation: shuts down, by default" "$(field '[.values["criticalBattery.action"], (.saved | has("criticalBattery.action")), .foreign]')" '["poweroff",false,[]]'
+refused "no hibernation: hibernate can't be chosen" "can't hibernate" set criticalBattery.action hibernate
+power set criticalBattery.action poweroff >/dev/null
+is "no hibernation: \"shut down\" is what it does already, so nothing is written" "$([[ -e $upower_file ]] && echo there)$(field '.saved | has("criticalBattery.action")')" false
 $helper battery-action=hibernate >/dev/null 2>$t/err; code=$?
 is "the helper refuses hibernate there too" "$code:$(ls /etc/UPower/UPower.conf.d | tr '\n' ' ')" "1:50-karchy-laptop.conf "
 touch $t/hibernation
@@ -577,17 +580,17 @@ is "lid.ac back to sleep: no drop-in left" "$(ls /etc/systemd/logind.conf.d 2>/d
 power set hibernate.ac same >/dev/null
 power set battery.saver off >/dev/null
 power set lock.battery 120 >/dev/null
-power set empty.level 4 >/dev/null
-power set empty.action poweroff >/dev/null
+power set criticalBattery.level 4 >/dev/null
+power set criticalBattery.action poweroff >/dev/null
 is "before the reset: nine choices" "$(power status | jq -r '.saved | keys | join(" ")')" \
-  "battery.saver brightness.battery dim.ac empty.action empty.level hibernate.ac lock.battery profile.ac profile.battery"
+  "battery.saver brightness.battery criticalBattery.action criticalBattery.level dim.ac hibernate.ac lock.battery profile.ac profile.battery"
 clear_log
 power reset >/dev/null
 is "reset: nothing saved" "$(field .saved)" '{}'
 is "reset: the profiles are forgotten and Balanced runs" "$(ls "$profiles_dir" | wc -l)$(log | grep -o 'profile [a-z-]*;')" "0profile balanced;"
 is "reset: shell.json holds none of it" "$(shell_json '[has("power"), has("battery"), has("idle")]')" '[false,false,false]'
 is "reset: no drop-in, no record" "$([[ -e $sleep_file || -e $upower_file ]] && echo drop-in)$([[ -e $HOME/.config/karchy/power.json ]] && echo record)" ""
-is "reset: UPower is started again without the choices" "$(log | grep -c 'try-restart upower')$(value empty.level)$(value empty.action)" "13hibernate"
+is "reset: UPower is started again without the choices" "$(log | grep -c 'try-restart upower')$(value criticalBattery.level)$(value criticalBattery.action)" "13hibernate"
 is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery) $(value dim.ac)" \
   "balanced 0 on never 300 0"
 

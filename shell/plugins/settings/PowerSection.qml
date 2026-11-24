@@ -108,7 +108,7 @@ ColumnLayout {
   function groupOf(setting) {
     var name = String(setting).split(".")[0]
     if (name === "profile" || name === "brightness") return "use"
-    if (name === "empty") return "battery"
+    if (name === "criticalBattery") return "battery"
     if (name === "screenOff" || name === "dim" || name === "lock" || name === "sleep" || name === "hibernateAfter" || name === "hibernate") return "idle"
     return name
   }
@@ -268,14 +268,14 @@ ColumnLayout {
     return again >= low ? 0 : low
   }
   readonly property int warnAgain: Number(root.values["battery.critical"] || 0)
-  // The later of them, 0 with both off: the nearly-empty level stays under it.
+  // The later of them, 0 with both off: the critical battery level stays under it.
   readonly property int lastWarning: warnAgain > 0 ? warnAgain : warnLow
-  readonly property int emptyLevel: Number(root.values["empty.level"] || 0)
+  readonly property int criticalLevel: Number(root.values["criticalBattery.level"] || 0)
 
-  // What a laptop left running on its battery does when it is nearly empty.
+  // What a laptop left running on its battery does at the critical level.
   // Hibernation is offered only where it works; told to hibernate elsewhere,
   // UPower shuts down, and that is then the value shown.
-  readonly property var emptyChoices: {
+  readonly property var criticalChoices: {
     var out = []
     if (root.hibernation) out.push({ value: "hibernate", label: "Hibernate" })
     out.push({ value: "poweroff", label: "Shut down" })
@@ -283,21 +283,21 @@ ColumnLayout {
   }
 
   // UPower's own names for what the page doesn't offer (set in a file).
-  function emptyName(action) {
+  function criticalName(action) {
     var names = { hibernate: "Hibernate", poweroff: "Shut down", hybridsleep: "Sleep, saved to disk too",
                   suspend: "Sleep", sleep: "Sleep", ignore: "Nothing" }
     return names[action] || String(action)
   }
 
   readonly property string lastResort: {
-    var action = String(root.values["empty.action"] || "")
-    if (root.emptyLevel <= 0 || action === "") return ""
+    var action = String(root.values["criticalBattery.action"] || "")
+    if (root.criticalLevel <= 0 || action === "") return ""
     var does = action === "hibernate" ? "hibernates, so nothing open is lost"
       : action === "poweroff" ? "shuts down; unsaved work is lost"
       : action === "hybridsleep" ? "sleeps, with the session also saved to disk"
       : action === "ignore" ? "does nothing, and the battery runs out"
       : "sleeps, and what is open is lost when the battery runs out"
-    return "At " + root.emptyLevel + "% it " + does + "."
+    return "At " + root.criticalLevel + "% it " + does + "."
   }
 
   function hibernateName(minutes) {
@@ -409,7 +409,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Power"
-    explanation: "The power mode is the one the battery in the bar sets. Screen brightness, idle times and battery warnings you edit by hand in shell.json win over these. Lid, hibernation and the nearly empty battery are system settings, changed without a password at this computer."
+    explanation: "The power mode is the one the battery in the bar sets. Screen brightness, idle times and battery warnings you edit by hand in shell.json win over these. Lid, hibernation and the critical battery are system settings, changed without a password at this computer."
     ConfigFileLink { closes: root.settings; file: ".config/karchy/shell.json" }
   }
 
@@ -517,7 +517,7 @@ ColumnLayout {
       visible: root.hibernation && root.ready && !root.isForeign("hibernateAfter") && Number(root.values.hibernateAfter) <= 0
       text: Number(root.values.hibernateAfter) === 0
         ? "Sleep still uses power: a battery runs down over days."
-        : "Hibernates when the battery is nearly empty."
+        : "Hibernates at the critical battery level."
     }
 
     // ---------- Lid ----------
@@ -592,7 +592,7 @@ ColumnLayout {
       page: root
       setting: "battery.low"
       choices: root.percentChoices([10, 15, 20, 25, 30], function(level) {
-        return level > Number(root.values["battery.critical"] || 0) && level > root.emptyLevel })
+        return level > Number(root.values["battery.critical"] || 0) && level > root.criticalLevel })
       nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
     }
 
@@ -601,7 +601,7 @@ ColumnLayout {
       page: root
       setting: "battery.critical"
       choices: root.percentChoices([5, 7, 10], function(level) {
-        return level > root.emptyLevel && (Number(root.values["battery.low"] || 0) === 0 || level < Number(root.values["battery.low"])) })
+        return level > root.criticalLevel && (Number(root.values["battery.low"] || 0) === 0 || level < Number(root.values["battery.low"])) })
       nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
     }
 
@@ -617,31 +617,31 @@ ColumnLayout {
 
     // UPower's last resort for a laptop nobody plugs in: always under the
     // last warning, so the warnings come first.
-    SettingsLabel { text: "Nearly empty at" }
+    SettingsLabel { text: "Critical battery at" }
     PowerChoice {
       page: root
-      setting: "empty.level"
+      setting: "criticalBattery.level"
       choices: root.percentChoices([2, 3, 4, 5, 7, 10], function(level) { return root.lastWarning === 0 || level < root.lastWarning })
       nameFor: function(level) { return level + "%" }
     }
 
-    SettingsLabel { text: "When nearly empty" }
-    PowerChoice { page: root; setting: "empty.action"; choices: root.emptyChoices; nameFor: root.emptyName }
+    SettingsLabel { text: "At critical battery" }
+    PowerChoice { page: root; setting: "criticalBattery.action"; choices: root.criticalChoices; nameFor: root.criticalName }
   }
 
   GroupError { group: "battery" }
 
   // Set by hand in shell.json: a warning the computer never gets to show.
   InlineMessage {
-    visible: root.battery && root.ready && root.lastWarning > 0 && root.emptyLevel >= root.lastWarning
+    visible: root.battery && root.ready && root.lastWarning > 0 && root.criticalLevel >= root.lastWarning
     kind: "warning"
-    text: "The computer acts at " + root.emptyLevel + "%, at or before the last warning (" + root.lastWarning + "%), so that warning is never seen."
+    text: "The computer acts at " + root.criticalLevel + "%, at or before the last warning (" + root.lastWarning + "%), so that warning is never seen."
   }
 
   InlineMessage {
-    visible: root.battery && root.ready && (root.isForeign("empty.level") || root.isForeign("empty.action"))
+    visible: root.battery && root.ready && (root.isForeign("criticalBattery.level") || root.isForeign("criticalBattery.action"))
     kind: "warning"
-    text: "A system configuration file controls the nearly empty battery, so these choices may have no effect."
+    text: "A system configuration file controls the critical battery, so these choices may have no effect."
     details: "A file in /etc/UPower/UPower.conf.d that sorts after 60-karchy-settings.conf, or UPower hasn't started again since the change."
   }
 

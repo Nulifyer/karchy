@@ -15,7 +15,7 @@ Item {
   // are `battery.low` and `battery.critical` in shell.json (percent, 0 = off).
   // What happens to an unattended laptop below them is UPower's
   // CriticalPowerAction (system/laptop/upower.conf, and Settings › Power's
-  // "Nearly empty at"), which acts at a level karchy-settings-power keeps
+  // "Critical battery at"), which acts at a level karchy-settings-power keeps
   // under the last warning.
   readonly property int defaultLowPercent: 15
   readonly property int defaultCriticalPercent: 5

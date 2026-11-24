@@ -29,7 +29,7 @@ Each helper is run through `pkexec` by the command in the second column. Call th
 | Wi-Fi country | `karchy network country set <XX\|auto>` | administrator's password |
 | Install or remove Quick install apps (`/usr/lib/karchy/app-packages`) | `karchy quick-install apply install\|remove <id>...` | administrator's password, every time |
 | Accounts and automatic login: add or remove a person, their name, role or password (`/usr/lib/karchy/users-settings`) | `karchy-settings-users add\|remove\|full-name\|role\|reset-password\|autologin ...` | administrator's password, every time |
-| Lid actions, hibernate delay, hibernation while plugged in, the level and action for a nearly empty battery (`/usr/lib/karchy/power-settings`) | `karchy-settings-power set ...` | none |
+| Lid actions, hibernate delay, hibernation while plugged in, the level and action for a critical battery (`/usr/lib/karchy/power-settings`) | `karchy-settings-power set ...` | none |
 | Storage: the count of the breakdown, disk health, the subvolume list, bees' progress, bees on or off (`/usr/lib/karchy/storage-settings`) | `karchy-settings-storage measure`, `health`, `subvolumes`, `bees`, `bees on\|off` | none for the person at the computer. The three reads (`health`, `subvolumes`, `bees`) never ask anyone: where polkit would ask, they return what can be read without root |
 | Browser theme color policy | `karchy theme set` | none (one fixed sudo rule that accepts a color) |
 
