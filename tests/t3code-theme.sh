@@ -50,7 +50,7 @@ chmod +x "$tmp/bin"/* "$tmp/t3code-bin/t3code" "$tmp/t3-bin/t3"
 mkdir -p "$tmp/sys"
 for cmd in /usr/bin/* /bin/*; do
   case ${cmd##*/} in t3 | t3code | t3-code-desktop) continue ;; esac
-  [[ -e $tmp/sys/${cmd##*/} ]] || ln -s "$cmd" "$tmp/sys/${cmd##*/}"
+  [[ -e $tmp/sys/${cmd##*/} || -L $tmp/sys/${cmd##*/} ]] || ln -s "$cmd" "$tmp/sys/${cmd##*/}"
 done
 base_path=$tmp/bin:$root/bin:$tmp/sys
 installed_path=$tmp/t3code-bin:$tmp/t3-bin:$base_path
