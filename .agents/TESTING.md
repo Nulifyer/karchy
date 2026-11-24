@@ -29,6 +29,7 @@ tests/installer-network.sh         # the installer's Wi-Fi list from scan text, 
 tools/quick-install-search-check   # the Quick install window's search ranking, against the real list, and its sentence about the last install; `bun tools/quick-install-search-check` where node won't start
 python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, rules, the generated Lua; with lua installed, karchy's real Lua layer under a stand-in Hyprland
 bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
+lua tests/window-stacking.lua      # which window is in front and where Alt+Tab goes (D-159): the real stacking.lua, window-switch.lua and workspace-modes.lua under a stand-in Hyprland that keeps the stacking order and the focus history
 bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, what loose typing no longer finds (D-136), en/menu.json agrees
 bun tests/notifications-panel.js "$PWD"   # the notifications panel: sections, groups, the names apps are listed under
 bun tests/storage-model.js "$PWD"  # Settings › Storage: sizes, the live figures, the overview's tiles, the stack and subvolume rows
