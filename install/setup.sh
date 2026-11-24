@@ -99,6 +99,9 @@ setup_system_files() {
   sed -i 's/^#\?[[:space:]]*deny[[:space:]]*=.*/deny = 10/' "$KARCHY_MNT/etc/security/faillock.conf"
   # ...and the same 2-minute lockout as the lock screen, instead of 10.
   sed -i 's/^#\?[[:space:]]*unlock_time[[:space:]]*=.*/unlock_time = 120/' "$KARCHY_MNT/etc/security/faillock.conf"
+  # ...where a cancelled password dialog doesn't count (D-163): polkit's
+  # PAM service checks passwords with karchy-settings' auth lines.
+  in_target /usr/lib/karchy/polkit-pam
 
   # The text greeter (agreety, behind karchy's login screen) prints /etc/issue but
   # doesn't expand \S{PRETTY_NAME}, so it showed "Arch Linux{PRETTY_NAME}".

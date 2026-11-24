@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# karchy: make polkit's PAM service check passwords with karchy's auth lines
+# (D-163), so that a cancelled password dialog doesn't count as a failed
+# login. Installed as /usr/lib/karchy/polkit-pam and run as root by the
+# installer, a migration, and fingerprint and FIDO2 setup before they add
+# their lines.
+#
+#   polkit-pam [--root <dir>]
+#
+# polkit's own file is /usr/lib/pam.d/polkit-1 (the polkit package's); a file
+# in /etc/pam.d takes its place. Without one, this writes polkit's stack with
+# its auth lines from /etc/pam.d/karchy-polkit-auth (karchy-settings). With
+# one (fingerprint or FIDO2 set up earlier, or someone's own), only its
+# `auth include system-auth` line becomes `auth include karchy-polkit-auth`,
+# so lines added above it stay. A file without that line is left as it is.
+# Running it again changes nothing.
+set -euo pipefail
+
+root=
+if [[ ${1:-} == --root ]]; then
+  root=${2:?polkit-pam: --root needs a folder}
+fi
+file=$root/etc/pam.d/polkit-1
+auth_line='auth       include      karchy-polkit-auth'
+
+write() {
+  local tmp
+  tmp=$(mktemp "$root/etc/pam.d/.polkit-1.XXXXXX")
+  cat >"$tmp"
+  chmod 644 "$tmp"
+  mv -f -- "$tmp" "$file"
+}
+
+if [[ ! -e $file ]]; then
+  write <<EOF
+#%PAM-1.0
+# polkit's stack, with the password check from karchy-polkit-auth: a password
+# dialog that is cancelled doesn't count as a failed login (karchy, D-163).
+$auth_line
+account    include      system-auth
+password   include      system-auth
+session    include      system-auth
+EOF
+  exit 0
+fi
+
+grep -Eq '^[[:space:]]*auth[[:space:]]+include[[:space:]]+karchy-polkit-auth[[:space:]]*$' "$file" && exit 0
+
+if grep -Eq '^[[:space:]]*auth[[:space:]]+include[[:space:]]+system-auth[[:space:]]*$' "$file"; then
+  sed -E "s/^[[:space:]]*auth[[:space:]]+include[[:space:]]+system-auth[[:space:]]*\$/$auth_line/" "$file" | write
+  exit 0
+fi
+
+echo "polkit-pam: $file has no 'auth include system-auth' line; left as it is" >&2

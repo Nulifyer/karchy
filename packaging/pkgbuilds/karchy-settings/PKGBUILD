@@ -43,6 +43,7 @@ backup=(
   'etc/xdg/fastfetch/config.jsonc'
   'etc/pam.d/karchy-lock-password'
   'etc/pam.d/karchy-login'
+  'etc/pam.d/karchy-polkit-auth'
 )
 source=("karchy-src.tar.gz")
 sha256sums=('SKIP')
@@ -194,6 +195,10 @@ package() {
   # The login screen's PAM service (D-131, D-142): greetd's config names it,
   # and it runs keyring-login, below.
   install -Dm644 pam.d/karchy-login "$pkgdir/etc/pam.d/karchy-login"
+  # polkit's password check (D-163): a cancelled password dialog is not a
+  # failed login. polkit-pam points /etc/pam.d/polkit-1 at it.
+  install -Dm644 pam.d/karchy-polkit-auth "$pkgdir/etc/pam.d/karchy-polkit-auth"
+  install -Dm755 pam.d/polkit-pam "$pkgdir/usr/lib/karchy/polkit-pam"
   # Font defaults: monospace is Noto Sans Mono, unless karchy-font-set
   # chose another (the state file it includes) or the user's fontconfig does.
   install -Dm644 fontconfig/50-karchy.conf "$pkgdir/usr/share/fontconfig/conf.avail/50-karchy.conf"

@@ -1,0 +1,21 @@
+# karchy: the password check of polkit's prompts (shipped by karchy-settings;
+# D-163). /etc/pam.d/polkit-1 includes it for its auth lines, written there by
+# /usr/lib/karchy/polkit-pam.
+#
+# system-auth's auth lines with one change: a prompt closed without an answer
+# doesn't count as a failed login. polkit's helper keeps the prompt open while
+# the password dialog shows; cancelling the dialog, or the program that asked
+# going away, closes it, and pam_unix then has no password to check. It says
+# so with PAM_AUTHTOK_ERR, which it returns for nothing else here (a password
+# it checked and refused is PAM_AUTH_ERR), and authtok_err=die ends the check
+# before pam_faillock's authfail counts it. A wrong password that was sent
+# still counts, toward the same tally and limits as everywhere
+# (/etc/security/faillock.conf).
+#%PAM-1.0
+auth       required                    pam_faillock.so preauth
+-auth      [success=2 default=ignore]  pam_systemd_home.so
+auth       [success=1 authtok_err=die default=bad]  pam_unix.so try_first_pass nullok
+auth       [default=die]               pam_faillock.so authfail
+auth       optional                    pam_permit.so
+auth       required                    pam_env.so
+auth       required                    pam_faillock.so authsucc

@@ -23,30 +23,16 @@ setup_pam_config() {
   # reader, meant for the lock screen or a polkit prompt (CVE-2024-37408, Arch
   # Wiki fprint). A polkit prompt says what is asking; sudo keeps the password.
 
-  # Configure polkit
-  if [[ -f /etc/pam.d/polkit-1 ]]; then
-    if ! grep -q 'pam_fprintd.so' /etc/pam.d/polkit-1; then
-      echo "Configuring polkit for fingerprint authentication..."
-      sudo sed -i '1i auth      sufficient pam_fprintd.so' /etc/pam.d/polkit-1
-    fi
-    if ! grep -q 'karchy-hw-laptop-closed' /etc/pam.d/polkit-1; then
-      echo "Adding clamshell gate to polkit..."
-      sudo sed -i "/pam_fprintd\.so/i $fprintd_gate" /etc/pam.d/polkit-1
-    fi
-  else
-    echo "Creating polkit configuration with fingerprint authentication..."
-    # karchy:heredoc-expands paths=none -- $fprintd_gate is the literal PAM
-    # line defined above, shared with the two sed insertions so the gate cannot
-    # drift between files. The only path in it is the fixed /usr/bin one.
-    sudo tee /etc/pam.d/polkit-1 >/dev/null <<EOF
-$fprintd_gate
-auth      sufficient pam_fprintd.so
-auth      include system-auth
-
-account   include system-auth
-password  include system-auth
-session   include system-auth
-EOF
+  # Configure polkit: karchy's file first (D-163), then the reader above
+  # its password check.
+  sudo /usr/lib/karchy/polkit-pam
+  if ! grep -q 'pam_fprintd.so' /etc/pam.d/polkit-1; then
+    echo "Configuring polkit for fingerprint authentication..."
+    sudo sed -i '1i auth      sufficient pam_fprintd.so' /etc/pam.d/polkit-1
+  fi
+  if ! grep -q 'karchy-hw-laptop-closed' /etc/pam.d/polkit-1; then
+    echo "Adding clamshell gate to polkit..."
+    sudo sed -i "/pam_fprintd\.so/i $fprintd_gate" /etc/pam.d/polkit-1
   fi
 }
 
