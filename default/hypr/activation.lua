@@ -15,6 +15,8 @@
 -- end of this file tags Telegram's. A request that is not followed keeps the
 -- mark too, and the bar shows it on the window's workspace.
 
+local screensaver = require("default.hypr.screensaver")
+
 hl.on("window.urgent", function(window)
   if not (window and window.mapped) or o.window_tagged(window, "attention-only") then return end
 
@@ -38,6 +40,14 @@ hl.on("window.urgent", function(window)
     -- So does a fullscreen game: losing the keyboard in the middle of a match
     -- costs more than an answer that waits. The window stays urgent.
     if o.fullscreen_game(hl.get_active_window()) then return end
+
+    -- So does the screensaver, which would end as if dismissed and take the
+    -- lock with it: a window asking for the keyboard is not somebody coming
+    -- back. It gets the keyboard once the screensaver is gone.
+    if screensaver.showing() then
+      screensaver.keyboard_after(current)
+      return
+    end
 
     local before = hl.get_active_workspace()
     hl.dispatch(hl.dsp.focus({ window = target }))
