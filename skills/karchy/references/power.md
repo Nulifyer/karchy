@@ -6,7 +6,7 @@ Read this before you change idle times, screen dimming, the lid or power button,
 
 `karchy-settings-power` is the Settings › Power page's command. `karchy settings power` opens the page.
 
-- `karchy-settings-power status` prints JSON: what the machine has (`battery`, `lid`, `hibernation`, `backlight`, and the power `profiles`), each value in effect (`values`), what Settings recorded (`saved`), settings that something else decides (`foreign`), the power source in use (`source`: `battery` or `ac`) and the profile running now (`profile`). Read it before a change.
+- `karchy-settings-power status` prints JSON: what the machine has (`battery`, `lid`, `hibernation`, `backlight`, and the power `profiles`), each value in effect (`values`; for `empty.action` that is what the running UPower answers), what Settings recorded (`saved`), settings that something else decides (`foreign`), the power source in use (`source`: `battery` or `ac`) and the profile running now (`profile`). Read it before a change.
 - `karchy-settings-power set <setting> <value>` changes one setting. `karchy-settings-power reset` forgets every choice made here.
 
 | Setting | Value |
@@ -15,8 +15,10 @@ Read this before you change idle times, screen dimming, the lid or power button,
 | `brightness.battery`, `brightness.ac` | `keep`, or percent (1 to 100) |
 | `screenOff.battery`, `screenOff.ac`, `lock.battery`, `lock.ac`, `sleep.battery`, `sleep.ac` | `never`, or seconds idle (10 to 86400) |
 | `dim.battery`, `dim.ac` | `never`, or seconds (5 to 600) before the screen turns off |
-| `battery.low`, `battery.critical` | percent (low 5 to 50, critical 4 to 30 and under low) |
+| `battery.low`, `battery.critical` | percent (low 5 to 50, critical 3 to 30 and under low; both above `empty.level`) |
 | `battery.saver` | `on` (the default), `off` |
+| `empty.level` | percent (2 to 20, under the last battery warning that is on) |
+| `empty.action` | `hibernate` (the default where the machine can hibernate), `poweroff` |
 | `powerKey` | `menu`, `sleep`, `hibernate`, `shutdown`, `nothing` |
 | `lid.battery`, `lid.ac`, `lid.docked` | `sleep`, `ignore`, `poweroff`, `hibernate` |
 | `hibernateAfter` | `never`, or minutes asleep (5 to 1440) |
@@ -39,7 +41,7 @@ Use `set` so that each value lands where the system reads it. The files matter w
 - Idle times, dimming, screen brightness and battery warnings are the `idle`, `power.brightness` and `battery` keys of `~/.config/karchy/shell.json`. The user can edit that file. A value there is what runs.
 - The power profile of each source is in `~/.local/state/karchy/powerprofiles/ac` and `battery`. `karchy-powerprofiles-set` writes them, for Settings and for the bar's power panel alike. `power.json` does not record them.
 - The power button is a binding in `~/.local/state/karchy/hypr/power.lua`. A binding for the key in `~/.config/hypr` wins.
-- The lid, the hibernate delay and hibernation while plugged in are in `/etc/systemd/logind.conf.d/60-karchy-settings.conf` and `/etc/systemd/sleep.conf.d/60-karchy-settings.conf`. The root helper `/usr/lib/karchy/power-settings` writes them through pkexec, with no password for the person at the computer. Do not write those two files by hand.
+- The lid, the hibernate delay and hibernation while plugged in are in `/etc/systemd/logind.conf.d/60-karchy-settings.conf` and `/etc/systemd/sleep.conf.d/60-karchy-settings.conf`. The level and action for a nearly empty battery are in `/etc/UPower/UPower.conf.d/60-karchy-settings.conf`. The root helper `/usr/lib/karchy/power-settings` writes all three through pkexec, with no password for the person at the computer, and restarts `upower.service` when its file changed. Do not write those three files by hand.
 - A drop-in that sorts later, such as `90-mine.conf`, wins over Settings. `status` reports such a setting under `foreign`. If a value does not take effect, look there first.
 - `~/.config/karchy/power.json` records what Settings changed. Do not edit it. Change the setting with `set`.
 
@@ -72,7 +74,8 @@ Power profiles exist where `power-profiles-daemon` is installed, which karchy do
 
 - The shell warns at `battery.low` (default 15) and `battery.critical` (default 5).
 - On battery at or under the first warning the battery counts as low (`karchy-battery-running-low` exits 0). Two things follow: Power saver (unless `battery.saver` is off) and no screensaver. The idle cycle still dims, locks and sleeps. Nothing turns the screensaver rule off; `karchy-launch-screensaver force` starts the screensaver anyway.
-- A little below the critical level UPower hibernates the machine, or powers it off where it cannot hibernate. That level is in `/etc/UPower/UPower.conf.d/50-karchy-laptop.conf`. Keep `battery.critical` above it, or the action comes before the warning.
+- A little below the critical level UPower hibernates the machine, or powers it off where it cannot hibernate. The level is `empty.level` (3 by default) and the action `empty.action`. `set` refuses an `empty.level` at or above the last warning, and a warning at or under `empty.level`: change the other one first. Only a hand edit of `shell.json` can put a warning under the level; the page then says so.
+- UPower reads `/etc/UPower/UPower.conf`, then the files in `/etc/UPower/UPower.conf.d` named two digits, a dash, then letters, digits, dashes or underscores, then `.conf`. A drop-in overrides only keys the main file has. If `PercentageLow`, `PercentageCritical` and `PercentageAction` do not descend, UPower uses 20, 5 and 2 for all three. It reads its files only when it starts: after a hand edit run `sudo systemctl try-restart upower.service`, with the user's agreement. `busctl call org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower GetCriticalAction` prints what the running UPower will do.
 - `karchy-battery-status` prints the charge and the power draw.
 
 ## Feature toggles

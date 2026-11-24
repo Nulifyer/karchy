@@ -1,4 +1,5 @@
-// Settings › Power changes the lid actions and the sleep-then-hibernate delay
+// Settings › Power changes the lid actions, the sleep-then-hibernate delay and
+// the level and action for a nearly empty battery (hibernate or shut down)
 // without a password for the person at the computer: an active, local session
 // of a member of wheel. That session can already hold the lid switch off,
 // suspend, hibernate and power off without one, and the helper

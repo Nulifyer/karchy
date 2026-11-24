@@ -14,8 +14,9 @@ Item {
   // A low and a critical warning, each shown once per discharge. The levels
   // are `battery.low` and `battery.critical` in shell.json (percent, 0 = off).
   // What happens to an unattended laptop below them is UPower's
-  // CriticalPowerAction (system/laptop/upower.conf), which acts at a level
-  // under the critical warning.
+  // CriticalPowerAction (system/laptop/upower.conf, and Settings › Power's
+  // "Nearly empty at"), which acts at a level karchy-settings-power keeps
+  // under the last warning.
   readonly property int defaultLowPercent: 15
   readonly property int defaultCriticalPercent: 5
   readonly property var batteryConfig: shell && shell.shellConfig && shell.shellConfig.battery

@@ -2,8 +2,9 @@
 <!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
 <!--
-  Settings › Power's system-wide choices: what closing the lid does and when
-  sleep turns into hibernation. karchy-settings-power runs
+  Settings › Power's system-wide choices: what closing the lid does, when
+  sleep turns into hibernation, and at what charge a laptop left on its
+  battery hibernates or shuts down. karchy-settings-power runs
   /usr/lib/karchy/power-settings through pkexec, which picks this action by
   the exec.path below. The defaults ask for an administrator's password;
   50-karchy-power-settings.rules lets the person at the computer skip it.
@@ -13,8 +14,8 @@
   <vendor_url>https://github.com/Nulifyer/karchy</vendor_url>
 
   <action id="org.karchy.power-settings">
-    <description>Change what closing the lid does and when sleep becomes hibernation</description>
-    <message>Change what this computer does when the lid closes, and how long it sleeps before it hibernates.</message>
+    <description>Change what closing the lid does, when sleep becomes hibernation and what a nearly empty battery does</description>
+    <message>Change what this computer does when the lid closes, how long it sleeps before it hibernates, and what it does when the battery is nearly empty.</message>
     <icon_name>preferences-system-power</icon_name>
     <defaults>
       <allow_any>auth_admin</allow_any>

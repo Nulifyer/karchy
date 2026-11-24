@@ -29,7 +29,7 @@ Each helper is run through `pkexec` by the command in the second column. Call th
 | Wi-Fi country | `karchy network country set <XX\|auto>` | administrator's password |
 | Install or remove Quick install apps (`/usr/lib/karchy/app-packages`) | `karchy quick-install apply install\|remove <id>...` | administrator's password, every time |
 | Accounts and automatic login: add or remove a person, their name, role or password (`/usr/lib/karchy/users-settings`) | `karchy-settings-users add\|remove\|full-name\|role\|reset-password\|autologin ...` | administrator's password, every time |
-| Lid actions, hibernate delay, hibernation while plugged in (`/usr/lib/karchy/power-settings`) | `karchy-settings-power set ...` | none |
+| Lid actions, hibernate delay, hibernation while plugged in, the level and action for a nearly empty battery (`/usr/lib/karchy/power-settings`) | `karchy-settings-power set ...` | none |
 | Storage: the count of the breakdown, disk health, the subvolume list, bees' progress, bees on or off (`/usr/lib/karchy/storage-settings`) | `karchy-settings-storage measure`, `health`, `subvolumes`, `bees`, `bees on\|off` | none for the person at the computer. The three reads (`health`, `subvolumes`, `bees`) never ask anyone: where polkit would ask, they return what can be read without root |
 | Browser theme color policy | `karchy theme set` | none (one fixed sudo rule that accepts a color) |
 
@@ -64,6 +64,6 @@ These run `sudo` themselves and expect a terminal:
 ## System files
 
 - Prefer a drop-in over an edit: `/etc/systemd/*.conf.d/`, `/etc/NetworkManager/conf.d/`, a unit override made with `sudo systemctl edit <unit>`. karchy's packaged defaults are in `/usr/lib`. A file in `/etc` with a name that sorts later wins.
-- Settings › Power writes `60-karchy-settings.conf` in `/etc/systemd/logind.conf.d` and `/etc/systemd/sleep.conf.d`. Do not edit those files. For a hand-written override use a later name, such as `90-mine.conf`, and tell the user that it now overrides the Settings page.
+- Settings › Power writes `60-karchy-settings.conf` in `/etc/systemd/logind.conf.d`, `/etc/systemd/sleep.conf.d` and `/etc/UPower/UPower.conf.d`. Do not edit those files. For a hand-written override use a later name, such as `90-mine.conf`, and tell the user that it now overrides the Settings page. UPower reads a drop-in only when its name is two digits, a dash, then letters, digits, dashes or underscores, then `.conf`, and only after `upower.service` is restarted.
 - Before you change a file in `/etc`, take the snapshot that the main skill file names. Report the file, the change and the snapshot number.
 - Do not run root code from the home folder, and do not point a system unit, a PAM file or a sudo rule at a path that the user can write.

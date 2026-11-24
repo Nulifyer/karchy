@@ -45,7 +45,7 @@ The valid settings and values for each command are in its header comment. Read i
 ## What needs a password
 
 - Displays, input, night light, notifications, default apps and the user's own SSH keys need none.
-- Lid actions, the hibernate delay and hibernation while plugged in go through the root helper `/usr/lib/karchy/power-settings`. It asks no password from the person at the computer.
+- Lid actions, the hibernate delay, hibernation while plugged in and the level and action for a nearly empty battery go through the root helper `/usr/lib/karchy/power-settings`. It asks no password from the person at the computer.
 - The SSH server is set up and removed in a terminal, with the password: `karchy-setup-security-sshd` and `karchy-remove-security-sshd`. Run them only when the user asked for the server to change. Opening the machine to SSH is a system-level change.
 - Trusted networks, DNS and the Wi-Fi country ask for the administrator's password. See [privilege.md](privilege.md).
 - The timezone, automatic time and `sync` ask for the password in the shell's dialog (`karchy-settings-datetime`); a dismissed dialog exits 1 with `Canceled.`. The clock's format needs none.

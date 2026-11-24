@@ -27,7 +27,6 @@ ColumnLayout {
   property var values: ({})
   property var saved: ({})
   property var foreign: []
-  property var batteryAction: ({})
   // The power profile running now, and the ones this machine has.
   property string profile: ""
   property var profiles: []
@@ -78,7 +77,6 @@ ColumnLayout {
       root.values = status.values || {}
       root.saved = status.saved || {}
       root.foreign = status.foreign || []
-      root.batteryAction = status.batteryAction || {}
       root.profile = String(status.profile || "")
       root.profiles = status.profiles || []
       root.battery = status.battery === true
@@ -110,6 +108,7 @@ ColumnLayout {
   function groupOf(setting) {
     var name = String(setting).split(".")[0]
     if (name === "profile" || name === "brightness") return "use"
+    if (name === "empty") return "battery"
     if (name === "screenOff" || name === "dim" || name === "lock" || name === "sleep" || name === "hibernateAfter" || name === "hibernate") return "idle"
     return name
   }
@@ -262,16 +261,43 @@ ColumnLayout {
     return out
   }
 
+  // The battery warnings that are on, as the shell counts them: a second
+  // warning at or above the first leaves only the second.
+  readonly property int warnLow: {
+    var low = Number(root.values["battery.low"] || 0), again = Number(root.values["battery.critical"] || 0)
+    return again >= low ? 0 : low
+  }
+  readonly property int warnAgain: Number(root.values["battery.critical"] || 0)
+  // The later of them, 0 with both off: the nearly-empty level stays under it.
+  readonly property int lastWarning: warnAgain > 0 ? warnAgain : warnLow
+  readonly property int emptyLevel: Number(root.values["empty.level"] || 0)
+
+  // What a laptop left running on its battery does when it is nearly empty.
+  // Hibernation is offered only where it works; told to hibernate elsewhere,
+  // UPower shuts down, and that is then the value shown.
+  readonly property var emptyChoices: {
+    var out = []
+    if (root.hibernation) out.push({ value: "hibernate", label: "Hibernate" })
+    out.push({ value: "poweroff", label: "Shut down" })
+    return out
+  }
+
+  // UPower's own names for what the page doesn't offer (set in a file).
+  function emptyName(action) {
+    var names = { hibernate: "Hibernate", poweroff: "Shut down", hybridsleep: "Sleep, saved to disk too",
+                  suspend: "Sleep", sleep: "Sleep", ignore: "Nothing" }
+    return names[action] || String(action)
+  }
+
   readonly property string lastResort: {
-    var percent = Number(root.batteryAction.percent || 0)
-    var action = String(root.batteryAction.action || "")
-    if (percent <= 0) return ""
-    // UPower powers off where it is told to hibernate and the machine can't.
-    var does = action === "hibernate" ? (root.hibernation ? "hibernates, so nothing open is lost" : "shuts down")
-      : action === "poweroff" ? "shuts down"
+    var action = String(root.values["empty.action"] || "")
+    if (root.emptyLevel <= 0 || action === "") return ""
+    var does = action === "hibernate" ? "hibernates, so nothing open is lost"
+      : action === "poweroff" ? "shuts down; unsaved work is lost"
       : action === "hybridsleep" ? "sleeps, with the session also saved to disk"
-      : "sleeps or shuts down, whichever it can"
-    return "At " + percent + "% it " + does + "."
+      : action === "ignore" ? "does nothing, and the battery runs out"
+      : "sleeps, and what is open is lost when the battery runs out"
+    return "At " + root.emptyLevel + "% it " + does + "."
   }
 
   function hibernateName(minutes) {
@@ -383,7 +409,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Power"
-    explanation: "The power mode is the one the battery in the bar sets. Screen brightness, idle times and battery warnings you edit by hand in shell.json win over these. Lid and hibernation are system settings, changed without a password at this computer."
+    explanation: "The power mode is the one the battery in the bar sets. Screen brightness, idle times and battery warnings you edit by hand in shell.json win over these. Lid, hibernation and the nearly empty battery are system settings, changed without a password at this computer."
     ConfigFileLink { closes: root.settings; file: ".config/karchy/shell.json" }
   }
 
@@ -565,7 +591,8 @@ ColumnLayout {
     PowerChoice {
       page: root
       setting: "battery.low"
-      choices: root.percentChoices([10, 15, 20, 25, 30], function(level) { return level > Number(root.values["battery.critical"] || 0) })
+      choices: root.percentChoices([10, 15, 20, 25, 30], function(level) {
+        return level > Number(root.values["battery.critical"] || 0) && level > root.emptyLevel })
       nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
     }
 
@@ -574,7 +601,7 @@ ColumnLayout {
       page: root
       setting: "battery.critical"
       choices: root.percentChoices([5, 7, 10], function(level) {
-        return Number(root.values["battery.low"] || 0) === 0 || level < Number(root.values["battery.low"]) })
+        return level > root.emptyLevel && (Number(root.values["battery.low"] || 0) === 0 || level < Number(root.values["battery.low"])) })
       nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
     }
 
@@ -587,9 +614,36 @@ ColumnLayout {
       setting: "battery.saver"
       choices: [{ value: "on", label: "Switch to Power saver" }, { value: "off", label: "Keep the power mode" }]
     }
+
+    // UPower's last resort for a laptop nobody plugs in: always under the
+    // last warning, so the warnings come first.
+    SettingsLabel { text: "Nearly empty at" }
+    PowerChoice {
+      page: root
+      setting: "empty.level"
+      choices: root.percentChoices([2, 3, 4, 5, 7, 10], function(level) { return root.lastWarning === 0 || level < root.lastWarning })
+      nameFor: function(level) { return level + "%" }
+    }
+
+    SettingsLabel { text: "When nearly empty" }
+    PowerChoice { page: root; setting: "empty.action"; choices: root.emptyChoices; nameFor: root.emptyName }
   }
 
   GroupError { group: "battery" }
+
+  // Set by hand in shell.json: a warning the computer never gets to show.
+  InlineMessage {
+    visible: root.battery && root.ready && root.lastWarning > 0 && root.emptyLevel >= root.lastWarning
+    kind: "warning"
+    text: "The computer acts at " + root.emptyLevel + "%, at or before the last warning (" + root.lastWarning + "%), so that warning is never seen."
+  }
+
+  InlineMessage {
+    visible: root.battery && root.ready && (root.isForeign("empty.level") || root.isForeign("empty.action"))
+    kind: "warning"
+    text: "A system configuration file controls the nearly empty battery, so these choices may have no effect."
+    details: "A file in /etc/UPower/UPower.conf.d that sorts after 60-karchy-settings.conf, or UPower hasn't started again since the change."
+  }
 
   Outcome {
     visible: root.battery && root.lastResort !== ""
@@ -603,7 +657,7 @@ ColumnLayout {
     text: "Back to karchy's defaults"
     bordered: true
     // Drops every power choice saved here, so it asks first.
-    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every power mode, brightness, idle time, lid, power button, hibernation and battery choice made here is forgotten.",
+    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every power mode, brightness, dimming, idle time, lid, power button, hibernation and battery choice made here is forgotten.",
       "Back to defaults", function() { root.run(["reset"]) })
   }
 }

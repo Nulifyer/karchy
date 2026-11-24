@@ -11,38 +11,67 @@
 #                                        plugged-in laptop hibernates after
 #                                        that time, or stays asleep until the
 #                                        charger is pulled)
+#   battery-level=                       default | percent (2 to 20): the
+#                                        charge at which UPower acts for a
+#                                        laptop left running on its battery
+#   battery-action=                      default | hibernate | poweroff: what
+#                                        it does there
 #
 # Every call states the whole choice: a key left out is "default". It writes
-# only /etc/systemd/logind.conf.d/60-karchy-settings.conf and
-# /etc/systemd/sleep.conf.d/60-karchy-settings.conf, removes each when nothing
-# is left to say, and tells logind to read its config again (SIGHUP; logind is
-# never restarted, which would end the session).
+# only /etc/systemd/logind.conf.d/60-karchy-settings.conf,
+# /etc/systemd/sleep.conf.d/60-karchy-settings.conf and
+# /etc/UPower/UPower.conf.d/60-karchy-settings.conf, and removes each when
+# nothing is left to say. logind is told to read its config again (SIGHUP; it
+# is never restarted, which would end the session). UPower reads its config
+# only when it starts and has no reload, so upower.service is restarted when
+# its file changed, and only if it is running (try-restart): it holds no
+# session, its clients keep their connection to the name, and it comes back
+# in well under a second.
 #
-# The order in both folders: karchy's packaged files are numbered below 60
-# (30-karchy-laptop.conf, 40-karchy-nvidia.conf), so the choice made here wins
-# over them, and a file the user numbers higher (90-mine.conf) wins over it.
-# Until 2026-11 these files were named karchy-settings.conf, which sorted
-# after every numbered file; a leftover one is removed on each call.
+# The order in the folders: karchy's packaged files are numbered below 60
+# (30-karchy-laptop.conf, 40-karchy-nvidia.conf, UPower's 50-karchy-laptop.conf),
+# so the choice made here wins over them, and a file the user numbers higher
+# (90-mine.conf) wins over it. Until 2026-11 the two systemd files were named
+# karchy-settings.conf, which sorted after every numbered file; a leftover one
+# is removed on each call.
+#
+# What UPower needs of its file (upower 1.91.5, src/up-config.c and
+# src/up-daemon.c): a name of two digits, a dash, then letters, digits, dashes
+# and underscores, ending in .conf, or the file is not read; only keys the
+# main UPower.conf also has; and PercentageLow > PercentageCritical >
+# PercentageAction, all under 100, or it falls back to its own 20, 5 and 2 for
+# all three. So a level is always written with a low and a critical level
+# above it (karchy-laptop's 15 and 5 where they fit), whatever the files
+# before this one say. UPower's low and critical levels are not the shell's
+# battery warnings (shell.json) and nothing in karchy reads them. The levels
+# are whole numbers: UPower drops the fraction.
 #
 # Threat reasoning. polkit lets an active, local member of wheel run this
 # without a password (50-karchy-power-settings.rules); everyone else must
 # authenticate as an administrator. So assume the caller is any program in
 # that user's session, hostile ones included.
-# - What it can reach: the lid actions, the sleep-then-hibernate delay and
-#   whether that delay counts while plugged in, nothing else. The same session may already block the lid switch (logind's
-#   inhibit-handle-lid-switch), suspend, hibernate and power off without a
-#   password, so no value here does more than it could do already. What is
-#   new is that the choice outlasts the session, which is the point of a
-#   setting; the worst outcome is a laptop that stays awake or shuts down with
-#   the lid closed until the choice is changed back in Settings.
+# - What it can reach: the lid actions, the sleep-then-hibernate delay,
+#   whether that delay counts while plugged in, and the battery level and
+#   action of UPower's last resort, nothing else. The same session may already
+#   block the lid switch (logind's inhibit-handle-lid-switch), suspend,
+#   hibernate and power off without a password, so no value here does more
+#   than it could do already. What is new is that the choice outlasts the
+#   session, which is the point of a setting; the worst outcome is a laptop
+#   that stays awake or shuts down with the lid closed, or that hibernates or
+#   shuts down cleanly at 20% of its battery, until the choice is changed back
+#   in Settings. The last resort cannot be turned off or made a plain suspend
+#   from here (UPower's "Ignore" and "Suspend", which let a battery run out
+#   with work unsaved): the two actions are the two that save or close the
+#   session, and the level cannot go under UPower's own 2%.
 # - Input is argv only. Nothing is read from the caller's files or
 #   environment, nothing is sourced or evaluated, and no value is ever used as
-#   a path or as part of a command. Each argument must be one of five keys
+#   a path or as part of a command. Each argument must be one of seven keys
 #   with a value from a fixed list or a number in range; anything else ends
 #   the call before a file is touched.
-# - The files have fixed names in root-owned folders (the two written, and
+# - The files have fixed names in root-owned folders (the three written, and
 #   the two old names removed), and their text is built from fixed strings
-#   chosen by the validated values, never from the arguments themselves.
+#   chosen by the validated values, never from the arguments themselves (a
+#   number is written only after it matched digits and its range).
 # - Only packaged, root-owned programs are run, by absolute path, with a
 #   fixed PATH and none of the caller's environment (pkexec clears it; this
 #   does not rely on that).
@@ -55,6 +84,7 @@ IFS=$' \t\n'
 
 LOGIND_FILE=/etc/systemd/logind.conf.d/60-karchy-settings.conf
 SLEEP_FILE=/etc/systemd/sleep.conf.d/60-karchy-settings.conf
+UPOWER_FILE=/etc/UPower/UPower.conf.d/60-karchy-settings.conf
 OLD_LOGIND_FILE=/etc/systemd/logind.conf.d/karchy-settings.conf
 OLD_SLEEP_FILE=/etc/systemd/sleep.conf.d/karchy-settings.conf
 
@@ -64,13 +94,14 @@ fail() {
 }
 
 usage() {
-  fail "usage: power-settings [lid-battery|lid-ac|lid-docked=default|sleep|ignore|poweroff|hibernate] [hibernate-after=default|never|5-1440] [hibernate-on-ac=default|yes|no]" 64
+  fail "usage: power-settings [lid-battery|lid-ac|lid-docked=default|sleep|ignore|poweroff|hibernate] [hibernate-after=default|never|5-1440] [hibernate-on-ac=default|yes|no] [battery-level=default|2-20] [battery-action=default|hibernate|poweroff]" 64
 }
 
 (( EUID == 0 )) || fail "must run as root, through pkexec" 77
-(( $# <= 5 )) || usage
+(( $# <= 7 )) || usage
 
-declare -A choice=([lid-battery]=default [lid-ac]=default [lid-docked]=default [hibernate-after]=default [hibernate-on-ac]=default)
+declare -A choice=([lid-battery]=default [lid-ac]=default [lid-docked]=default [hibernate-after]=default [hibernate-on-ac]=default
+  [battery-level]=default [battery-action]=default)
 declare -A seen=()
 
 for arg in "$@"; do
@@ -99,9 +130,24 @@ for arg in "$@"; do
         *) usage ;;
       esac
       ;;
+    battery-level)
+      case $value in
+        default) ;;
+        *)
+          [[ $value =~ ^[1-9][0-9]?$ ]] || usage
+          (( value >= 2 && value <= 20 )) || usage
+          ;;
+      esac
+      ;;
+    battery-action)
+      case $value in
+        default | hibernate | poweroff) ;;
+        *) usage ;;
+      esac
+      ;;
     *) usage ;;
   esac
-  # Only one of the five keys gets this far.
+  # Only one of the seven keys gets this far.
   [[ -z ${seen[$key]:-} ]] || usage
   seen[$key]=1
   choice[$key]=$value
@@ -109,10 +155,12 @@ done
 
 # logind does nothing at all when told to hibernate a machine that can't, so
 # a lid set to hibernate there would be a lid that keeps the laptop running.
-for key in lid-battery lid-ac lid-docked; do
+# UPower would power such a machine off instead, which is the other choice;
+# hibernation is not written where it would not be what happens.
+for key in lid-battery lid-ac lid-docked battery-action; do
   if [[ ${choice[$key]} == hibernate ]]; then
     env -i PATH=/usr/bin /usr/bin/karchy-hibernation-available ||
-      fail "this computer can't hibernate, so the lid can't be set to it"
+      fail "this computer can't hibernate, so the lid and the battery can't be set to it"
     break
   fi
 done
@@ -161,8 +209,26 @@ sleep_lines=$(
   esac
 )
 
+# UPower's levels, descending whatever the files before this one hold: the
+# level chosen, a critical level above it and a low level above that.
+upower_lines=$(
+  if [[ ${choice[battery-level]} != default ]]; then
+    action=${choice[battery-level]}
+    critical=5
+    (( action < critical )) || critical=$(( action + 1 ))
+    low=15
+    (( critical < low )) || low=$(( critical + 1 ))
+    printf '%s\n' "UsePercentageForPolicy=true" "PercentageLow=$low.0" "PercentageCritical=$critical.0" "PercentageAction=$action.0"
+  fi
+  case ${choice[battery-action]} in
+    default) ;;
+    hibernate) printf '%s\n' "CriticalPowerAction=Hibernate" ;;
+    poweroff) printf '%s\n' "CriticalPowerAction=PowerOff" ;;
+  esac
+)
+
 # Replace a file with new text, or remove it when there is none, and remove
-# the file's old name. Sets `changed` to 1 when what systemd reads is
+# the file's old name (if it had one). Sets `changed` to 1 when what systemd reads is
 # different afterwards.
 tmp=""
 trap '[[ -z $tmp ]] || rm -f -- "$tmp"' EXIT
@@ -170,7 +236,7 @@ trap '[[ -z $tmp ]] || rm -f -- "$tmp"' EXIT
 write_file() {
   local file=$1 old=$2 section=$3 lines=$4 text
   changed=0
-  if [[ -e $old || -L $old ]]; then
+  if [[ -n $old && ( -e $old || -L $old ) ]]; then
     rm -f -- "$old"
     changed=1
   fi
@@ -206,4 +272,9 @@ write_file "$SLEEP_FILE" "$OLD_SLEEP_FILE" Sleep "$sleep_lines"
 write_file "$LOGIND_FILE" "$OLD_LOGIND_FILE" Login "$logind_lines"
 if (( changed )); then
   systemctl kill --kill-whom=main --signal=HUP systemd-logind.service
+fi
+# UPower reads its config when it starts; see the header.
+write_file "$UPOWER_FILE" "" UPower "$upower_lines"
+if (( changed )); then
+  systemctl try-restart upower.service
 fi
