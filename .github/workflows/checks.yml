@@ -66,6 +66,17 @@ jobs:
       - name: A theme from a git repo ships colours only, and karchy makes the rest (D-161, D-166)
         run: tests/theme-git-denied.sh
 
+  apps-follow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vesktop follows the theme (D-161)
+        run: tests/vesktop-theme.sh
+      - name: T3 Code follows the theme (D-171)
+        run: tests/t3code-theme.sh
+      - name: What a copy becomes in the clipboard history (D-167)
+        run: tests/clipboard-capture.sh
+
   quick-install:
     runs-on: ubuntu-latest
     steps:
