@@ -106,9 +106,13 @@ def release_version(ref):
     if described.returncode == 0:
         tag, count, ghash = re.match(r"^v(.+)-(\d+)-(g[0-9a-f]+)$", described.stdout.strip()).groups()
     else:
+        # No tag yet, or no repository: say which rather than build 0.0.0 of nothing.
+        short = git("rev-parse", "--short=7", target)
+        if short.returncode != 0:
+            sys.exit(f"build: git can't read {target} in {ROOT}: {short.stderr.strip()}")
         tag = "0.0.0"
         count = git("rev-list", "--count", target).stdout.strip() or "0"
-        ghash = "g" + git("rev-parse", "--short=7", target).stdout.strip()
+        ghash = "g" + short.stdout.strip()
     m = re.match(r"^(\d+\.\d+\.\d+)(?:-rc\.(\d+))?$", tag)
     if not m:
         sys.exit(f"build: tag v{tag} is not vX.Y.Z or vX.Y.Z-rc.N")

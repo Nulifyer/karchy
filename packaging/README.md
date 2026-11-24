@@ -53,7 +53,7 @@ Releasing guget or sqlgo into `[karchy]`: in `pkgbuilds/<name>/PKGBUILD` set `pk
 
 Builds run in a fresh container of `container/Containerfile`, removed when the build ends: `packaging/build` and `packaging/iso/build` start one themselves, and CI runs `ci/publish` in one. Every build, here or in CI, starts from the same files: stock Arch, pinned by image digest, with the build tools and Arch's own makepkg settings. Nothing comes from the machine running it, such as a CachyOS `makepkg.conf` that compiles for that machine's CPU.
 
-- `container/run [--writable] [--volume DIR] [--env NAME] [--iso] [--refresh] -- COMMAND` runs a command in one (`--help`). It needs rootless podman. Your account is the container's `builder`, so files it writes belong to you. The checkout is mounted read-only at its own path, with `out/` writable.
+- `container/run [--writable] [--volume DIR] [--env NAME] [--iso] [--refresh] -- COMMAND` runs a command in one (`--help`). It needs rootless podman. Your account is the container's `builder`, so files it writes belong to you. The checkout is mounted read-only at its own path, with `out/` writable. In a git worktree, the repository it belongs to (`git rev-parse --git-common-dir`) is mounted read-only too, so a build there packages the same files and takes the same version as in a plain checkout; git inside can't commit or check out there, even with `--writable`.
 - The image is built the first time and tagged with the Containerfile's hash, so a changed Containerfile builds a new one. `--refresh` rebuilds it with the current tools.
 - Downloaded packages stay in the podman volume `karchy-build-pkg-cache`.
 - Native builds (`--native`) upgrade the container's packages first, so they build against Arch as it is that day.

@@ -18,7 +18,8 @@
 #
 # The command runs as the container's "builder", mapped to the caller's own
 # account, in the checkout, which is mounted at its own path so paths mean
-# the same thing inside. The image is built when this Containerfile has no
+# the same thing inside. In a git worktree, the repository it belongs to is
+# mounted read-only too. The image is built when this Containerfile has no
 # image yet (tagged by the file's hash), and reused until the file changes.
 # Downloaded packages are kept in the podman volume karchy-build-pkg-cache
 # (`podman volume rm karchy-build-pkg-cache` frees it).
@@ -94,6 +95,16 @@ if [[ $writable == "true" ]]; then
   args+=(--volume "$ROOT:$ROOT")
 else
   args+=(--volume "$ROOT:$ROOT:ro" --volume "$ROOT/out:$ROOT/out")
+fi
+# A git worktree's .git is a file naming its git directory inside the main
+# checkout's .git, which isn't under the checkout. Git inside needs that
+# repository too (the build lists files and reads tags), so it is mounted at
+# its own path, read-only: git inside can read it but not commit or check out.
+if [[ -f $ROOT/.git ]]; then
+  command -v git >/dev/null || die "missing git, which finds this worktree's repository (pacman -S git)"
+  common=$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir) ||
+    die "$ROOT/.git doesn't point to a git repository"
+  args+=(--volume "$common:$common:ro")
 fi
 
 # The caller's account is builder (uid 1000) inside; the container's other
