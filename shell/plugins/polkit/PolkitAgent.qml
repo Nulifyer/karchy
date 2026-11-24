@@ -324,10 +324,13 @@ Item {
             clip: true
             selectionColor: Util.alpha(root.accent, 0.45)
             selectedTextColor: root.foreground
-            font.family: root.fontFamily
+            // A hidden answer is dots from the icon font, the same in every
+            // text font; one UTF-16 unit, as passwordCharacter takes (see
+            // Ui/PasswordInput).
+            font.family: root.responseVisible ? root.fontFamily : Icons.family
             font.pixelSize: Style.font.iconLarge
             echoMode: root.responseVisible ? TextInput.Normal : TextInput.Password
-            passwordCharacter: "\u2022"
+            passwordCharacter: Icons.glyph("ui.password-dot")
             color: root.errorFlash ? Commons.Color.polkit.textError : root.foreground
             cursorVisible: activeFocus && !root.submitted && !root.errorFlash
             readOnly: root.submitted || root.errorFlash

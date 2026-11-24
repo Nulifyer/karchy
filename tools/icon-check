@@ -10,7 +10,10 @@ This fails on:
     shell's QML and JS, JSON and JSONC, Lua and the bash commands, outside the
     map
   - a map entry that breaks the family rule: every name outside brand.* is a
-    Material Design icon (nf "md-*", U+F0001-U+F1AF0)
+    Material Design icon (nf "md-*", U+F0001-U+F1AF0). The names in
+    SINGLE_UNIT are the one more exception: TextInput.passwordCharacter takes
+    one UTF-16 unit, a Material Design glyph takes two, so the password dots
+    are Nerd Font glyphs of U+E000-F8FF
   - an icon name used in code that the map doesn't have: Icons.glyph("x"),
     "iconName": "x", karchy-icon x and karchy-notification-send -g x
 Names built at run time ("net.wifi." + level) aren't checked here; the shell
@@ -27,6 +30,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MAP = "default/karchy/icons.json"
 NAME = re.compile(r"^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$")
 MD_RANGE = (0xF0001, 0xF1AF0)
+# Names that must be one UTF-16 unit, so can't be Material Design: the dot a
+# password field shows for each character (TextInput.passwordCharacter).
+SINGLE_UNIT = {"ui.password-dot", "ui.password-dot.large"}
+SINGLE_UNIT_RANGE = (0xE000, 0xF8FF)
 
 # Text files that can carry a glyph: the shell, data and Lua by extension,
 # commands by their place.
@@ -94,7 +101,10 @@ def check_map(problems):
             problems.append(f"{where}: needs \"nf\", the Nerd Font glyph name")
         if not private_use(cp):
             problems.append(f"{where}: U+{cp:04X} is not a Nerd Font glyph")
-        if not name.startswith("brand.") and (
+        if name in SINGLE_UNIT:
+            if not SINGLE_UNIT_RANGE[0] <= cp <= SINGLE_UNIT_RANGE[1]:
+                problems.append(f"{where}: must be one UTF-16 unit, U+E000-F8FF ({nf}, U+{cp:04X})")
+        elif not name.startswith("brand.") and (
             not nf.startswith("md-") or not MD_RANGE[0] <= cp <= MD_RANGE[1]
         ):
             problems.append(f"{where}: only brand.* names may leave Material Design ({nf}, U+{cp:04X})")

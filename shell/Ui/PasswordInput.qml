@@ -13,7 +13,10 @@ import qs.Commons as Commons
 //   }
 //
 // One dot per character, shrinking to fit once the password outgrows the
-// field, so every keystroke stays visible. Escape or Ctrl+U clears it. A held
+// field, so every keystroke stays visible. The dots are a glyph of the icon
+// font, a disc that fills its em, so they are the same size and shape in
+// every text font: `dotSize` is the disc's diameter and `dotGap` the space
+// between two. Escape or Ctrl+U clears it. A held
 // key types nothing (see dropsAutoRepeat). `checking` freezes it while a
 // password is being tried; `keyPressed` reports every key for a screen that
 // wakes its display on input.
@@ -24,8 +27,12 @@ TextInput {
   // Whether the cursor may show at all (a screen hides it beside a message).
   property bool cursorShown: true
   property color textColor: Commons.Color.foreground
-  property int dotFontSize: Math.round(Style.font.heading * 1.33)
-  property int dotLetterSpacing: Math.round(Style.font.heading * 0.19)
+  property int dotSize: Math.round(Style.font.heading * 1.19)
+  property int dotGap: Math.round(Style.font.heading * 0.31)
+  // TextInput.passwordCharacter takes one UTF-16 unit, and the icon map's
+  // Material Design glyphs take two; this name is one of the two the map
+  // keeps outside them for that reason (tools/icon-check).
+  readonly property string dot: Icons.glyph("ui.password-dot.large")
 
   // How far the dots shrink so the whole password fits the field.
   readonly property real dotScale: dotMetrics.advanceWidth > 0
@@ -47,18 +54,25 @@ TextInput {
   clip: true
   readOnly: checking
   echoMode: TextInput.Password
-  passwordCharacter: "●"
+  passwordCharacter: dot
   passwordMaskDelay: 0
   color: textColor
   selectedTextColor: textColor
-  font.family: Style.font.family
-  font.pixelSize: Math.max(1, Math.floor(dotFontSize * dotScale))
-  font.letterSpacing: dotLetterSpacing * dotScale
+  font.family: Icons.family
+  font.pixelSize: Math.max(1, Math.floor(dotSize * dotScale))
+  font.letterSpacing: dotGap * dotScale
   cursorVisible: activeFocus && cursorShown && !checking && text.length > 0
-  cursorDelegate: Rectangle {
+  // The icon font's line is as high as a dot; the cursor stands taller, as
+  // it does beside text.
+  cursorDelegate: Item {
     width: 2
-    color: root.textColor
     visible: root.cursorVisible
+    Rectangle {
+      anchors.verticalCenter: parent.verticalCenter
+      width: parent.width
+      height: Math.round(root.font.pixelSize * 1.7)
+      color: root.textColor
+    }
   }
 
   Accessible.role: Accessible.EditableText
@@ -80,9 +94,9 @@ TextInput {
   // the field's width.
   TextMetrics {
     id: dotMetrics
-    font.family: Style.font.family
-    font.pixelSize: root.dotFontSize
-    font.letterSpacing: root.dotLetterSpacing
-    text: "●".repeat(root.text.length)
+    font.family: Icons.family
+    font.pixelSize: root.dotSize
+    font.letterSpacing: root.dotGap
+    text: root.dot.repeat(root.text.length)
   }
 }

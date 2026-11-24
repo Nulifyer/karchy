@@ -15,6 +15,10 @@ import qs.Commons as Commons
 // placeholder uses the secondary text role, so it reads as a hint (quieter
 // than typed text) in light and dark themes alike.
 //
+// A `password` field masks what is typed with dots from the icon font, so
+// they are the same in every text font; the field keeps the text font's
+// height.
+//
 // Sizing is driven by font.pixelSize + verticalPadding. The default 30px
 // implicitHeight fits dialog forms; inline callers (wifi's row-embedded
 // passphrase prompt) drop verticalPadding to match a 22-26px row.
@@ -39,9 +43,19 @@ TextField {
   readonly property bool _hot: hovered || hasCursor
   readonly property var _borderSpec: Border.controlSpec(_focused || _hot ? "hover-cursor" : "normal", root.foreground, root.accent)
 
+  // Dots are drawn only while there is text, so the placeholder stays in the
+  // text font.
+  readonly property bool _masked: password && length > 0
+
   echoMode: password ? TextInput.Password : TextInput.Normal
-  font.family: Style.font.family
+  // One UTF-16 unit, as passwordCharacter takes (see Ui/PasswordInput).
+  passwordCharacter: Icons.glyph("ui.password-dot")
+  font.family: _masked ? Icons.family : Style.font.family
   font.pixelSize: Style.font.body
+  // The icon font's line is lower than the text font's: the height is the
+  // text font's, whichever is drawn.
+  implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
+    Math.max(contentHeight, textLine.implicitHeight) + topPadding + bottomPadding)
   color: enabled ? foreground : Commons.Color.disabledText(foreground)
   selectionColor: selectionTint
   selectedTextColor: foreground
@@ -58,5 +72,13 @@ TextField {
     radius: Style.radius.control
 
     FocusRing { shown: root._focused || root.hasCursor; control: root; textEntry: true }
+  }
+
+  Text {
+    id: textLine
+    visible: false
+    textFormat: Text.PlainText
+    font.family: Style.font.family
+    font.pixelSize: root.font.pixelSize
   }
 }
