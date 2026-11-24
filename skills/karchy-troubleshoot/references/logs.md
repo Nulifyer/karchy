@@ -18,7 +18,7 @@
 
 The shell logs to the journal because `karchy-launch-shell` starts Quickshell through `systemd-cat -t karchy-shell`. Quickshell's own log file lives in a runtime folder that a reboot clears, so use the journal. The same tag carries the launcher's lines: "Karchy shell exited with status N; relaunching." and "Giving up on the Karchy shell after N relaunches in under a minute." The second line means the shell stays down until `karchy-restart-shell` or the next login.
 
-karchy's user units: `karchy-nightlight.service`, `karchy-sleep-lock.service`, `karchy-recover-internal-monitor.service`, `karchy-update-check.service` with its timer, `karchy-disk-health.service` and `karchy-sleep-shares.service`. List what is on the machine with `systemctl --user list-units 'karchy-*'` and `systemctl list-units 'karchy-*'`.
+karchy's user units: `karchy-nightlight.service`, `karchy-sleep-lock.service`, `karchy-recover-internal-monitor.service`, `karchy-update-check.service` with its timer, `karchy-disk-health.service`, `karchy-sleep-shares.service` and `karchy-clipboard-persist.service` (wl-clip-persist: what was copied stays pasteable after the app that copied closes; if a paste comes up empty once that app is gone, check this unit). List what is on the machine with `systemctl --user list-units 'karchy-*'` and `systemctl list-units 'karchy-*'`.
 
 Narrow a search by time with `--since "10 min ago"`. Reproduce the fault while `journalctl -f -t karchy-shell` runs to see only the new lines.
 

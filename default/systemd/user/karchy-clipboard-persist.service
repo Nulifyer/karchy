@@ -1,0 +1,23 @@
+# karchy: keep what was copied after the app it came from closes. On Wayland
+# the app that copied serves the data itself, so closing it (LocalSend after
+# Copy, a browser tab's window, a dialog) empties the clipboard. wl-clip-persist
+# reads every type of each copy and serves it from memory instead, as Klipper
+# does on KDE. The clipboard history (shell/plugins/clipboard) only records.
+#   --clipboard regular  only the Ctrl+C clipboard; the primary selection breaks
+#                        text selection in GTK apps (upstream issue #3).
+#   --all-mime-type-regex  a password manager's copy (x-kde-passwordManagerHint,
+#                        KeePassXC and others) is left to its app, which clears it.
+#   --selection-size-limit  64 MiB at most in memory; a larger copy still pastes
+#                        while its app stays open.
+[Unit]
+Description=Keep the clipboard after the app that copied closes (wl-clip-persist)
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wl-clip-persist --clipboard regular --all-mime-type-regex '^(?!x-kde-passwordManagerHint$).+' --selection-size-limit 67108864 --disable-timestamps
+Slice=session.slice
+Restart=on-failure
+RestartSec=2
