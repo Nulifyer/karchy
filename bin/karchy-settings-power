@@ -52,8 +52,8 @@
 #                          plugged in, and the only one a desktop uses
 #       battery.low, battery.critical
 #                          percent (low 5 to 50, critical 4 to 30, under low)
-#       battery.saver      on, off: Power saver from the first battery
-#                          warning until the charger goes in
+#       battery.saver      on (karchy's default), off: Power saver from
+#                          the first battery warning until the charger goes in
 #       powerKey           menu, sleep, hibernate, shutdown, nothing
 #       lid.battery, lid.ac, lid.docked
 #                          sleep, ignore (karchy still locks the session),
@@ -321,11 +321,11 @@ battery_action() {
   jq -n -c --argjson percent "${percent%%.*}" --arg action "${action:-Auto}" '{percent: $percent, action: ($action | ascii_downcase)}'
 }
 
-# The idle times, screen brightness and battery choices the shell and
-# karchy-power-source run with, by setting name. A brightness of 0 leaves the
-# screen as it is; bin/karchy-power-source reads the key the same way.
-shell_values() {
-  effective_config | jq -c "$IDLE_TIMES"'
+# The idle times, screen brightness and battery choices of a shell config on
+# stdin, by setting name. A brightness of 0 leaves the screen as it is;
+# bin/karchy-power-source reads the key the same way.
+shell_values_of() {
+  jq -c "$IDLE_TIMES"'
     def brightness($supply):
       ((.power.brightness[$supply])? // 0)
       | if type == "string" then (tonumber? // 0) else . end
@@ -340,6 +340,10 @@ shell_values() {
         "battery.saver": (if (.battery.saver)? == true then "on" else "off" end)
       }'
 }
+
+# Those the shell and karchy-power-source run with, and karchy's own.
+shell_values() { effective_config | shell_values_of; }
+shell_defaults() { shell_values_of <"$DEFAULTS_FILE"; }
 
 status() {
   local values settings docked ac available profileValues='{}'
@@ -379,6 +383,7 @@ status() {
     --argjson profiles "$(jq -R -n -c '[inputs | select(. != "")]' <<<"$available")" \
     --argjson values "$values" \
     --argjson saved "$settings" \
+    --argjson shellDefaults "$(shell_defaults)" \
     --argjson defaults "$(defaults_json)" \
     --argjson batteryAction "$(battery_action)" \
     --arg source "$(source_in_use)" \
@@ -386,7 +391,9 @@ status() {
     {
       battery: $battery, lid: $lid, hibernation: $hibernation, backlight: $backlight, profiles: $profiles,
       values: $values,
-      saved: ($saved + ($values | with_entries(select((.key | startswith("profile.")) and .value != "balanced")))),
+      # A record that only repeats the default of today is no choice.
+      saved: (($saved | with_entries(select(.value != $shellDefaults[.key])))
+              + ($values | with_entries(select((.key | startswith("profile.")) and .value != "balanced")))),
       foreign: [$defaults | keys[] | select(($saved[.] // $defaults[.]) != $values[.])],
       batteryAction: $batteryAction, source: $source, profile: $profile
     }'
@@ -443,8 +450,9 @@ apply_brightness() {
   (( percent == 0 )) && echo default || echo set
 }
 
-# Power saver at the first battery warning. The profile is asked for again
-# when this changes on battery, so a battery that is already low follows.
+# Power saver at the first battery warning: on is karchy's, so commit keeps
+# only "off" in shell.json. The profile is asked for again when this changes
+# on battery, so a battery that is already low follows.
 apply_saver() {
   local on="$1"
   # shellcheck disable=SC2016 # jq variables, not shell ones
@@ -452,7 +460,7 @@ apply_saver() {
   if [[ $(source_in_use) == battery ]]; then
     karchy-powerprofiles-set battery >/dev/null 2>&1 || true
   fi
-  [[ $on == false ]] && echo default || echo set
+  [[ $on == "$(jq -r '.battery.saver == true' "$DEFAULTS_FILE")" ]] && echo default || echo set
 }
 
 # The power button's binding, generated for karchy's Hyprland config to load.
@@ -658,9 +666,9 @@ reset_all() {
     esac
   done < <(jq -r 'keys[]' <<<"$settings")
 
-  # Both power sources go back to Balanced, the one in use at once (and to
-  # Power saver, were the battery low with that choice still on by hand).
-  if [[ -e $PROFILE_DIR/ac || -e $PROFILE_DIR/battery ]]; then
+  # Both power sources go back to Balanced, the one in use at once, or to
+  # Power saver where the battery is low, which is the default again.
+  if [[ -e $PROFILE_DIR/ac || -e $PROFILE_DIR/battery ]] || jq -e 'has("battery.saver")' <<<"$settings" >/dev/null; then
     rm -f "$PROFILE_DIR/ac" "$PROFILE_DIR/battery"
     karchy-powerprofiles-set autodetect >/dev/null 2>&1 || true
   fi

@@ -547,14 +547,14 @@ ColumnLayout {
       nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
     }
 
-    // From the first warning until the charger goes in, or until another
-    // mode is picked by hand.
+    // Power saver from the first warning until the charger goes in, or until
+    // another mode is picked by hand: karchy's default.
     SettingsLabel { visible: root.profiles.indexOf("power-saver") !== -1; text: "At the first warning" }
     PowerChoice {
       visible: root.profiles.indexOf("power-saver") !== -1
       page: root
       setting: "battery.saver"
-      choices: [{ value: "off", label: "Keep the power mode" }, { value: "on", label: "Switch to Power saver" }]
+      choices: [{ value: "on", label: "Switch to Power saver" }, { value: "off", label: "Keep the power mode" }]
     }
   }
 

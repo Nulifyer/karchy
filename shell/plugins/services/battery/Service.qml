@@ -25,7 +25,7 @@ Item {
   // The charger going in or out brings the source's own power profile and
   // screen brightness (karchy-power-source, Settings › Power). The first
   // battery warning of a discharge asks for the battery's profile again, which
-  // is Power saver while `battery.saver` is on: karchy-powerprofiles-set
+  // is Power saver unless `battery.saver` is off: karchy-powerprofiles-set
   // decides that from the charge, so the session's start agrees with it.
   property string pendingPowerSource: ""
   property bool pendingLowBattery: false

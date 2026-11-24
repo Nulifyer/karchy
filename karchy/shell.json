@@ -13,7 +13,7 @@
   "battery": {
     "low": 15,
     "critical": 5,
-    "saver": false
+    "saver": true
   },
   "power": {
     "brightness": {

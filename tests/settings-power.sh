@@ -277,18 +277,40 @@ touch $t/backlight
 is "karchy-power-source wants a source" "$(karchy-power-source 2>&1; echo $?)" "Usage: karchy-power-source <ac|battery>
 1"
 
-# Power saver at the first battery warning.
+# Power saver at the first battery warning: karchy's default, off a choice.
 power set profile.battery performance >/dev/null
-is "battery.saver is off until chosen" "$(value battery.saver)" off
+is "battery.saver is on until turned off, and no choice" "$(value battery.saver)$(field '.saved | has("battery.saver")')" onfalse
 echo 10 >$t/percent
 clear_log
 karchy-powerprofiles-set battery
+is "by default: Power saver on a low battery" "$(log)" "profile power-saver;"
+is "…and the battery's own profile is still remembered" "$(cat "$profiles_dir/battery")" performance
+clear_log
+power set battery.saver off >/dev/null
+is "battery.saver off: written, recorded" "$(shell_json .battery.saver)$(field '.saved["battery.saver"]')" 'false"off"'
+is "battery.saver off while low on battery: the battery's profile at once" "$(log)" "profile performance;"
+clear_log
+karchy-powerprofiles-set battery
 is "saver off: a low battery keeps its profile" "$(log)" "profile performance;"
+# A choice from when off was the default: on, recorded and written.
+jq '.settings["battery.saver"] = "on"' "$HOME/.config/karchy/power.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/power.json"
+jq '.battery.saver = true' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
+is "an old record of \"on\" is the default now, so no choice" "$(value battery.saver)$(field '.saved | has("battery.saver")')" onfalse
 clear_log
 power set battery.saver on >/dev/null
-is "battery.saver on: written, recorded" "$(shell_json .battery.saver)$(field '.saved["battery.saver"]')" 'true"on"'
+is "battery.saver on: the default, so nothing kept" "$(shell_json '.battery | has("saver")')$(field '.saved | has("battery.saver")')" falsefalse
 is "battery.saver on while low on battery: Power saver at once" "$(log)" "profile power-saver;"
-is "…and the battery's own profile is still remembered" "$(cat "$profiles_dir/battery")" performance
+for name in karchy-battery-running-low; do
+  for level in 16:1 15:0 15.4:0 15.6:1; do
+    echo "${level%:*}" >$t/percent
+    "$name"; is "the battery is low at ${level%:*}%: ${level#*:}" "$?" "${level#*:}"
+  done
+done
+rm $t/on-battery; echo 5 >$t/percent
+karchy-battery-running-low; is "plugged in: never low" "$?" 1
+touch $t/on-battery; rm $t/battery
+karchy-battery-running-low; is "no battery that powers the machine: never low" "$?" 1
+touch $t/battery
 for level in 16:performance 15:power-saver 3:power-saver; do
   echo "${level%:*}" >$t/percent
   clear_log
@@ -322,9 +344,11 @@ rm $t/on-battery
 clear_log; karchy-powerprofiles-set ac
 is "plugged in: never Power saver for the charge" "$(log)" "profile performance;"
 touch $t/on-battery
-clear_log
-power set battery.saver off >/dev/null
-is "battery.saver off while low: back to the battery's profile" "$(log)$(shell_json '.battery | has("saver")')" "profile performance;false"
+jq '.battery.low = 0 | .battery.critical = 0' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
+echo 1 >$t/percent
+karchy-battery-running-low; is "both warnings off: never low" "$?" 1
+jq 'del(.battery.low, .battery.critical)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
+echo 10 >$t/percent
 refused "battery.saver takes on or off" "Usage" set battery.saver maybe
 rm $t/on-battery
 echo 80 >$t/percent
@@ -365,7 +389,7 @@ is "lid.ac back to sleep: no drop-in left" "$(ls /etc/systemd/logind.conf.d 2>/d
 
 # Back to karchy's defaults.
 power set hibernate.ac same >/dev/null
-power set battery.saver on >/dev/null
+power set battery.saver off >/dev/null
 power set lock.battery 120 >/dev/null
 is "before the reset: six choices" "$(power status | jq -r '.saved | keys | join(" ")')" \
   "battery.saver brightness.battery hibernate.ac lock.battery profile.ac profile.battery"
@@ -376,7 +400,7 @@ is "reset: the profiles are forgotten and Balanced runs" "$(ls "$profiles_dir" |
 is "reset: shell.json holds none of it" "$(shell_json '[has("power"), has("battery"), has("idle")]')" '[false,false,false]'
 is "reset: no drop-in, no record" "$([[ -e $sleep_file ]] && echo drop-in)$([[ -e $HOME/.config/karchy/power.json ]] && echo record)" ""
 is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery)" \
-  "balanced 0 off never 300"
+  "balanced 0 on never 300"
 
 exit "$fails"
 CASES

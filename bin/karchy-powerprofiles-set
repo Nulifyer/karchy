@@ -8,9 +8,9 @@
 # running now, and Settings › Power can also set the other source's.
 #
 # Without one: switch to the source's remembered profile, Balanced until one
-# is picked. On battery at or under the low-battery warning, with
-# `battery.saver` on in shell.json (Settings › Power), that is Power saver
-# instead and nothing is remembered: the charger, or a profile picked by
+# is picked. On battery at or under the low-battery warning that is Power
+# saver instead, unless `battery.saver` is off in shell.json (Settings ›
+# Power), and nothing is remembered: the charger, or a profile picked by
 # hand, ends it. The decision is made here so that every caller agrees: the
 # session's start (karchy-powerprofiles-init), the charger going in or out
 # and the low-battery warning (the shell's battery service).
@@ -44,30 +44,14 @@ profile_available() {
   [[ " ${profiles[*]} " == *" $1 "* ]]
 }
 
-# Whether the battery is low enough for Power saver: `battery.saver` is on
-# and the charge is at or under the first battery warning that is on (the
-# low one, else the critical one). The levels are read as the shell reads
-# them (BatteryModel.js `warningThresholds`); keep the two in step.
+# Power saver at a low battery: `battery.saver` is on (karchy's default; off
+# is a choice kept in shell.json) and the battery is low, which is
+# karchy-battery-running-low's to say.
 battery_saver_due() {
-  local level reading percent
+  local saver
   # shellcheck source=bin/karchy-shell-config
-  level=$(source karchy-shell-config 2>/dev/null && effective_config 2>/dev/null | jq -r '
-    def percent($fallback):
-      (if type == "string" then (tonumber? // null) else . end)
-      | if type == "number" then (if . < 0 then 0 elif . > 100 then 100 else floor end) else $fallback end;
-    (.battery | if type == "object" then . else {} end) as $battery
-    | if $battery.saver != true then 0
-      else ($battery.low | percent(15)) as $low | ($battery.critical | percent(5)) as $critical
-        | if $critical >= $low then $critical else $low end
-      end') || return 1
-  [[ $level =~ ^[0-9]+$ ]] && (( level > 0 )) || return 1
-
-  # A battery that powers the machine, as the shell counts one, and its charge.
-  reading=$(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower/devices/DisplayDevice \
-    org.freedesktop.UPower.Device Type PowerSupply IsPresent Percentage 2>/dev/null | tr '\n' ' ') || return 1
-  [[ $reading =~ ^u\ 2\ b\ true\ b\ true\ d\ ([0-9]+(\.[0-9]+)?)\ $ ]] || return 1
-  percent=$(LC_ALL=C printf '%.0f' "${BASH_REMATCH[1]}")
-  (( percent <= level ))
+  saver=$(source karchy-shell-config 2>/dev/null && effective_config 2>/dev/null | jq -r '(.battery.saver)? == true') || return 1
+  [[ $saver == true ]] && karchy-battery-running-low
 }
 
 state_dir="${KARCHY_POWERPROFILES_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/karchy/powerprofiles}"
