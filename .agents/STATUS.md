@@ -260,6 +260,14 @@ Branch `t3/plymouth-scale-one` (worktree, not merged). The splash was blurred on
 - **Confirmed in Plymouth 26.134.222's source:** the kernel line's `plymouth.force-scale=` is read before the file and wins over it; the shutdown splash reads the file from `/etc`; `plymouth-set-default-theme` touches only `Theme=`.
 - **Seen in VM `inst`** (`out/plymouth-scale/` in the worktree; the VM is back on its state before, snapshot `pre-plymouth-scale`, shut off): the fault with `plymouth.force-scale=2` before the fix and the same after it (kernel line wins), a normal boot unchanged, scale 2 from `plymouthd.defaults` beaten by the file at boot and shutdown, the migration twice.
 - **Not checked:** a real 2880x1920 panel and simpledrm's guess (TESTING has the line), a full fresh install.
+## Password dots are one row at every size (D-169), 2026-11-24
+
+Branch `t3/unify-password-dot-sizing`, three commits, not merged. The user asked for one look for hidden passwords across the interfaces.
+- **The rule:** `Ui/PasswordDots`, read by every field that hides what is typed: one disc (`ui.password-dot`), 0.6 of the field's text size across, centres 0.8 of it apart. Lock screen 11 px dots 14 px apart (were 19 and 24), login screen 9 and 12 (20 and 23), password dialog 10 and 13 (8 and 16), Settings and the Wi-Fi password 7 and 10 (6 and 12). It also draws the cursor and the selection, and keeps the row on whole pixels.
+- **Found on the way:** the network panel's Wi-Fi password field had drawn its dots through the text font since D-157 (it set its own `font`); fixed in its own commit.
+- **Checked in VM `rc11`** with packages built at `a9e53e2`: `out/password-dots/` (a sheet for each font, `measurements.txt`, `checks.txt`, a right-to-left sheet). The dots of each field are pixel-identical under Noto Sans and JetBrainsMono Nerd Font; the lock screen and the dialog refuse a wrong password and take the right one.
+- **For the user to look at:** the lock and login screens' dots are much smaller than they were, because they now follow the text beside them. The boot splash's disk-password box is not the shell and still has 8 px dots 14 px apart; the rule would give 9 and 12, which means new bullet images and a new step in `system/plymouth/karchy/karchy.script`.
+- Not checked: the real login screen at boot, a display scale above 1, a real right-to-left language, real hardware.
 
 ## Current batch
 

@@ -81,6 +81,7 @@ Dev mode in a test VM (D-55), to try shell and command changes without rebuildin
 ## Known gaps
 
 - The VM cannot test NVIDIA, fingerprint, laptop power or suspend, real docking, or Wi-Fi.
+- Wi-Fi's screens can be seen in a VM without a radio (D-169): as root in the guest, `modprobe mac80211_hwsim radios=2`, `nmcli device set wlan1 managed no`, `ip link set wlan1 up`, then `wpa_supplicant -B -i wlan1 -c <file>` with a `network={ ssid="…" mode=2 frequency=2412 key_mgmt=WPA-PSK proto=RSN pairwise=CCMP psk="…" }` block. The network panel lists it on `wlan0` after R (the panel reads the first Wi-Fi device, so the access point goes on the second), asks for its password, refuses a wrong one and associates with the right one; there is no DHCP, so it stops at getting an address. Real radios, range and roaming stay untested.
 
 ## Project notes
 
