@@ -7,7 +7,10 @@
     "suspend": 900,
     "suspendOnAC": false,
     "dim": 30,
-    "dimBrightness": 10
+    "dimBrightness": 10,
+    "ac": {
+      "dim": 0
+    }
   },
   "lock": {
     "clock": true

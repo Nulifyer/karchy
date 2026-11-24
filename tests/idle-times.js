@@ -23,6 +23,17 @@ eq(M.timeouts({}, true, d).dimBrightness, 10)
 eq(M.timeouts({ dimBrightness: 25 }, true, d).dimBrightness, 25)
 for (const junk of [0, 100, -3, "x", null, ""]) eq(M.timeouts({ dimBrightness: junk }, true, d).dimBrightness, 10, "dimBrightness " + junk)
 
+// karchy's defaults: 30 seconds before on battery, never plugged in. They are
+// karchy/shell.json's idle block (merged under the user's, as the shell does)
+// and, without that file, the idle service's own fallback per source.
+const karchyIdle = JSON.parse(require("fs").readFileSync(process.argv[2] + "/karchy/shell.json", "utf8")).idle
+const merged = (user) => { const out = JSON.parse(JSON.stringify(karchyIdle)); for (const k in user) out[k] = (typeof user[k] === "object" && typeof out[k] === "object") ? Object.assign(out[k], user[k]) : user[k]; return out }
+const fallback = (onBattery) => Object.assign({}, d, { dim: onBattery ? 30 : 0 })
+eq([M.timeouts(karchyIdle, true, d).dim, M.timeouts(karchyIdle, false, d).dim], [30, 0], "karchy's shell.json: 30 s on battery, never plugged in")
+eq([M.timeouts({}, true, fallback(true)).dim, M.timeouts({}, false, fallback(false)).dim], [30, 0], "the service's fallback, without shell.json")
+eq([M.timeouts(merged({ dim: 60 }), true, d).dim, M.timeouts(merged({ dim: 60 }), false, d).dim], [60, 0], "a shared idle.dim by hand: battery only, plugged in keeps never")
+eq(M.timeouts(merged({ ac: { dim: 10 } }), false, d).dim, 10, "idle.ac.dim turns it on plugged in")
+
 // When the screen goes dark by itself, and when it is dimmed before that.
 const T = (screenOff, lock, suspend, dimSeconds) => ({ screenOff, lock, suspend, dim: dimSeconds })
 eq(M.screenDarkAfter(T(300, 300, 900)), 300)

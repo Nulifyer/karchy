@@ -55,7 +55,8 @@
 #                          plugged in, and the only one a desktop uses
 #       dim.battery, dim.ac
 #                          never, or seconds (5 to 600): the built-in screen
-#                          is dimmed that long before it turns off
+#                          is dimmed that long before it turns off (karchy's:
+#                          30 on battery, never plugged in)
 #       battery.low, battery.critical
 #                          percent (low 5 to 50, critical 3 to 30, under low
 #                          and both above empty.level)
@@ -200,7 +201,7 @@ IDLE_TIMES='
           {
             screenOff: pick("screenOff"; 300),
             lock: pick("lock"; 300),
-            dim: pick("dim"; 30),
+            dim: pick("dim"; (if $name == "battery" then 30 else 0 end)),
             sleep: (if ($own.suspend | is_set) then ($own.suspend | number_of | floor)
                     elif $name == "battery" or $idle.suspendOnAC == true then ($idle.suspend | seconds(900))
                     else 0 end)
@@ -496,16 +497,20 @@ status() {
 }
 
 # One idle time: written to shell.json for its power source, or taken out of
-# it when the shared idle.<key> already gives that time, so only a difference
+# it when what is left without it (the shared idle.<key>, or karchy's own for
+# that source, as idle.ac.dim) already gives that time, so only a difference
 # is kept. Prints "set" or "default".
 apply_idle() {
-  local setting="$1" seconds="$2" source key config fallback
+  local setting="$1" seconds="$2" source key user fallback
   source=${setting#*.}
   key=$(idle_key "$setting")
-  config=$(effective_config)
-  fallback=$(jq -r --arg source "$source" --arg key "$key" --arg name "${setting%%.*}" "$IDLE_TIMES"'
-    (if (.idle | type) == "object" and (.idle[$source] | type) == "object" then del(.idle[$source][$key]) else . end)
-    | idle_times[$source][$name]' <<<"$config")
+  effective_config >/dev/null || exit 1
+  user='{}'
+  [[ -s $CONFIG_FILE ]] && user=$(<"$CONFIG_FILE")
+  fallback=$(jq -r -n --slurpfile defaults "$DEFAULTS_FILE" --argjson user "$user" \
+    --arg source "$source" --arg key "$key" --arg name "${setting%%.*}" "$IDLE_TIMES"'
+    $defaults[0] * ($user | if (.idle | type) == "object" and (.idle[$source] | type) == "object" then del(.idle[$source][$key]) else . end)
+    | idle_times[$source][$name]')
   if (( seconds == fallback )); then
     # shellcheck disable=SC2016 # jq variables, not shell ones
     commit 'if (.idle | type) == "object" and (.idle[$source] | type) == "object"

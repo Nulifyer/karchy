@@ -309,17 +309,20 @@ touch $t/backlight
 is "karchy-power-source wants a source" "$(karchy-power-source 2>&1; echo $?)" "Usage: karchy-power-source <ac|battery>
 1"
 
-# Dimming before the screen turns off, for each source.
-is "dim: 30 seconds before, on both sources" "$(value dim.battery)/$(value dim.ac)" 30/30
+# Dimming before the screen turns off, for each source: karchy's is 30
+# seconds before on battery and never plugged in.
+is "dim: 30 seconds before on battery, never plugged in" "$(value dim.battery)/$(value dim.ac)" 30/0
 power set dim.battery 60 >/dev/null
-is "dim.battery 60: written for the battery only" "$(shell_json '[.idle.battery.dim, .idle.ac.dim]') $(value dim.battery)/$(value dim.ac)" "[60,null] 60/30"
+is "dim.battery 60: written for the battery only" "$(shell_json '[.idle.battery.dim, .idle.ac.dim]') $(value dim.battery)/$(value dim.ac)" "[60,null] 60/0"
+power set dim.ac 30 >/dev/null
+is "dim.ac 30: written for plugged in, and recorded" "$(shell_json .idle.ac.dim) $(field '[.saved["dim.battery"], .saved["dim.ac"]]')" "30 [60,30]"
 power set dim.ac never >/dev/null
-is "dim.ac never: 0 for plugged in, and recorded" "$(shell_json .idle.ac.dim) $(field '[.saved["dim.battery"], .saved["dim.ac"]]')" "0 [60,0]"
+is "dim.ac never: karchy's again, out of shell.json and the record" "$(shell_json .idle.ac.dim) $(value dim.ac) $(field '.saved | has("dim.ac")')" "null 0 false"
 for wrong in 4 601 0 x 30s ""; do refused "dim '$wrong' is refused" "Usage" set dim.ac "$wrong"; done
 power set dim.battery 30 >/dev/null
 is "dim.battery back at karchy's: out of shell.json and the record" "$(shell_json '.idle | has("battery")')$(field '.saved | has("dim.battery")')" falsefalse
-jq '.idle.dim = 10 | del(.idle.ac)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
-is "idle.dim edited by hand is shared by both sources" "$(value dim.battery)/$(value dim.ac)" "10/10"
+jq '.idle.dim = 10' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
+is "idle.dim edited by hand: battery, plugged in keeps karchy's never" "$(value dim.battery)/$(value dim.ac)" "10/0"
 power set dim.ac 120 >/dev/null
 is "one source set apart from a shared time by hand" "$(value dim.battery)/$(value dim.ac)" 10/120
 jq 'del(.idle.dim)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
@@ -586,7 +589,7 @@ is "reset: shell.json holds none of it" "$(shell_json '[has("power"), has("batte
 is "reset: no drop-in, no record" "$([[ -e $sleep_file || -e $upower_file ]] && echo drop-in)$([[ -e $HOME/.config/karchy/power.json ]] && echo record)" ""
 is "reset: UPower is started again without the choices" "$(log | grep -c 'try-restart upower')$(value empty.level)$(value empty.action)" "13hibernate"
 is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery) $(value dim.ac)" \
-  "balanced 0 on never 300 30"
+  "balanced 0 on never 300 0"
 
 exit "$fails"
 CASES

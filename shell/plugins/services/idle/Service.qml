@@ -24,8 +24,9 @@ Item {
   // true or idle.ac.suspend gives plugged-in its own time. 0 turns it off.
   readonly property int defaultSuspendSeconds: 900
   // The built-in screen is dimmed this long before it turns off (0 = not),
-  // to this percent. See "Dimming" below.
-  readonly property int defaultDimSeconds: 30
+  // to this percent: on battery only, unless idle.ac.dim is set. See
+  // "Dimming" below.
+  readonly property int defaultDimSeconds: onBattery ? 30 : 0
   readonly property int defaultDimBrightness: 10
   readonly property var idleConfig: shell && shell.shellConfig && shell.shellConfig.idle
     ? shell.shellConfig.idle : ({})
