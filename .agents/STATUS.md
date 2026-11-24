@@ -298,6 +298,15 @@ Branch `t3/vm-guest-display-resize` (worktree, not merged). Hyprland 0.57.2 stil
 - **Seen in VM `inst`** with the package built from the tree, on virtio-gpu and QXL (`out/vm-guest-resize/` in the worktree; the VM is back on snapshot `pre-guest-resize`, its virtio display restored, shut off): see D-174's evidence.
 - **For the user to try:** open `karchy-inst` in virt-manager (View › Scale Display › Auto resize VM with window on), drag the window's edge and maximize it; the desktop should take the new size about half a second after the drag stops, without changing size during it.
 - **Found, not fixed:** Settings › Displays can't save for a monitor without EDID (QXL in a VM): its key is the empty description.
+## karchy's own windows tile, each with a narrow layout (D-175), 2026-11-24
+
+Branch `t3/narrow-shell-window-tiles` (worktree, not merged), on `29ad7a5`. The user chose: build a narrow layout for the five windows, then tile them on tiling workspaces.
+
+- **Built:** Settings, Quick install, Updates, Virtual machines and Containers fold the same way at the same widths (`docs/architecture.md` › Narrow windows): the sidebar is one dropdown across the top (`shell/Ui/SidebarSwitcher.qml`) under 720, labels go above their controls under 560, and each is whole at 301×365. Then the rule: no float rule names them (`o.own_size_window` in `default/hypr/apps`), so they tile on a tiling workspace and open floating at their own size on a floating one. Six commits for the layouts (shared pieces, then one a window), one for the rule.
+- **Checks:** `lua tests/window-stacking.lua` (87), `bun tests/window-switcher.js "$PWD"`, `python3 tests/keybindings.py` (96), `bun tests/keybindings-model.js "$PWD"`, `tests/agent-skills.sh`, `tools/icon-check`, `bun tools/quick-install-search-check`, `bun tests/storage-model.js "$PWD"`, `bun tests/menu-search.js "$PWD"`.
+- **Seen on the host, offscreen:** every window and Settings page at its own size from `29ad7a5` and from the branch, the same pictures; each at 621×740, 409×740, 621×363 and 304×363 with every visible item's right edge inside the window. VMs, Containers and Updates drew stand-in data; Power a made-up laptop (`tests/settings-power.sh --machine`); Keybindings the list karchy's real Lua layer publishes.
+- **Seen in VM `win`** (rc.13 installed, snapshot `installed`; first in dev mode, then the `karchy` package built from the branch, dev mode off, after a restart): see the worktree's `out/narrow-windows` (`facts-*.txt` name each screenshot; `evidence*.sh` made them). VMs, Containers and Updates had stand-in data there too (`_bin`), since the guest has no VM, no container engine and nothing to update. The VM is restored to `installed` and shut off.
+- **Found on the way and fixed:** a window rule that depends on the workspace floats a window at the screen's size unless it names one, so the rule names each window's own size and the window corrects it where the text size changes it (`shell/Ui/OwnSize.qml`); an opened account on Settings › Users, and a long switch label, held a narrow page wider than its window.
 
 ## Current batch
 
