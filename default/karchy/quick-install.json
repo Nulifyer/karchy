@@ -173,6 +173,24 @@
       ]
     },
     {
+      "id": "firefox-developer-edition",
+      "name": "Firefox Developer Edition",
+      "category": "browsers",
+      "description": "Firefox's beta build, with extra tools for web developers",
+      "icon": "firefox-developer-edition",
+      "packages": [
+        "firefox-developer-edition"
+      ],
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "firefox",
+        "developer",
+        "beta"
+      ]
+    },
+    {
       "id": "floorp",
       "name": "Floorp",
       "category": "browsers",
@@ -248,6 +266,23 @@
       "keywords": [
         "browser",
         "web"
+      ]
+    },
+    {
+      "id": "librewolf",
+      "name": "LibreWolf",
+      "category": "browsers",
+      "description": "Firefox set up for privacy: no telemetry, and tracker blocking from the first start",
+      "icon": "librewolf",
+      "packages": [
+        "librewolf"
+      ],
+      "source": "arch",
+      "keywords": [
+        "browser",
+        "web",
+        "firefox",
+        "privacy"
       ]
     },
     {
@@ -481,6 +516,23 @@
       ]
     },
     {
+      "id": "gajim",
+      "name": "Gajim",
+      "category": "chat",
+      "description": "Chat on XMPP (Jabber), with group chats and end-to-end encryption",
+      "icon": "org.gajim.Gajim",
+      "packages": [
+        "gajim"
+      ],
+      "source": "arch",
+      "keywords": [
+        "chat",
+        "xmpp",
+        "jabber",
+        "messenger"
+      ]
+    },
+    {
       "id": "geary",
       "name": "Geary",
       "category": "chat",
@@ -603,6 +655,24 @@
       ]
     },
     {
+      "id": "neomutt",
+      "name": "NeoMutt",
+      "category": "chat",
+      "description": "Email client for the terminal",
+      "icon": "",
+      "packages": [
+        "neomutt"
+      ],
+      "source": "arch",
+      "keywords": [
+        "email",
+        "mail",
+        "terminal",
+        "mutt",
+        "imap"
+      ]
+    },
+    {
       "id": "polari",
       "name": "Polari",
       "category": "chat",
@@ -646,6 +716,23 @@
         "email",
         "imap",
         "smtp"
+      ]
+    },
+    {
+      "id": "qq",
+      "name": "QQ",
+      "category": "chat",
+      "description": "Official QQ messenger from Tencent",
+      "icon": "",
+      "packages": [
+        "linuxqq"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "chat",
+        "messenger",
+        "tencent",
+        "腾讯"
       ]
     },
     {
@@ -699,6 +786,23 @@
       ]
     },
     {
+      "id": "teamspeak",
+      "name": "TeamSpeak 3",
+      "category": "chat",
+      "description": "Voice chat for gaming groups, on TeamSpeak servers",
+      "icon": "teamspeak3",
+      "packages": [
+        "teamspeak3"
+      ],
+      "source": "arch",
+      "keywords": [
+        "voice chat",
+        "gaming",
+        "voip",
+        "ts3"
+      ]
+    },
+    {
       "id": "telegram",
       "name": "Telegram",
       "category": "chat",
@@ -731,6 +835,23 @@
       ]
     },
     {
+      "id": "tuba",
+      "name": "Tuba",
+      "category": "chat",
+      "description": "Read and post on Mastodon and the rest of the Fediverse",
+      "icon": "",
+      "packages": [
+        "tuba"
+      ],
+      "source": "arch",
+      "keywords": [
+        "mastodon",
+        "fediverse",
+        "social",
+        "microblog"
+      ]
+    },
+    {
       "id": "vesktop",
       "name": "Vesktop",
       "category": "chat",
@@ -742,6 +863,40 @@
       "source": "cachyos",
       "keywords": [
         "discord"
+      ]
+    },
+    {
+      "id": "wechat",
+      "name": "WeChat",
+      "category": "chat",
+      "description": "Official WeChat (微信) messenger from Tencent",
+      "icon": "wechat",
+      "packages": [
+        "wechat-bin"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "chat",
+        "messenger",
+        "weixin",
+        "微信",
+        "tencent"
+      ]
+    },
+    {
+      "id": "weechat",
+      "name": "WeeChat",
+      "category": "chat",
+      "description": "IRC chat client for the terminal, extended with scripts",
+      "icon": "weechat",
+      "packages": [
+        "weechat"
+      ],
+      "source": "arch",
+      "keywords": [
+        "chat",
+        "irc",
+        "terminal"
       ]
     },
     {
@@ -775,6 +930,25 @@
         "word",
         "docx",
         "document"
+      ]
+    },
+    {
+      "id": "anki",
+      "name": "Anki",
+      "category": "office",
+      "description": "Flashcards that time each review so you remember what you learn",
+      "icon": "anki",
+      "packages": [
+        "anki"
+      ],
+      "source": "arch",
+      "keywords": [
+        "flashcards",
+        "study",
+        "learn",
+        "language",
+        "memory",
+        "spaced repetition"
       ]
     },
     {
@@ -858,6 +1032,25 @@
         "bibtex",
         "latex",
         "references"
+      ]
+    },
+    {
+      "id": "drawio",
+      "name": "draw.io",
+      "category": "office",
+      "description": "Draw diagrams and flowcharts",
+      "icon": "drawio",
+      "packages": [
+        "drawio-desktop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "diagram",
+        "flowchart",
+        "uml",
+        "chart",
+        "visio",
+        "diagrams.net"
       ]
     },
     {
@@ -956,6 +1149,24 @@
         "epub",
         "ebook reader",
         "kindle"
+      ]
+    },
+    {
+      "id": "gcompris",
+      "name": "GCompris",
+      "category": "office",
+      "description": "Educational games and activities for children aged 2 to 10",
+      "icon": "gcompris-qt",
+      "packages": [
+        "gcompris-qt"
+      ],
+      "source": "arch",
+      "keywords": [
+        "kids",
+        "children",
+        "education",
+        "learn",
+        "school"
       ]
     },
     {
@@ -1080,6 +1291,41 @@
       ]
     },
     {
+      "id": "gnuplot",
+      "name": "Gnuplot",
+      "category": "office",
+      "description": "Plot data and mathematical functions from the command line",
+      "icon": "",
+      "packages": [
+        "gnuplot"
+      ],
+      "source": "arch",
+      "keywords": [
+        "plot",
+        "graph",
+        "chart",
+        "data",
+        "math"
+      ]
+    },
+    {
+      "id": "gramps",
+      "name": "Gramps",
+      "category": "office",
+      "description": "Research and record your family tree",
+      "icon": "gramps",
+      "packages": [
+        "gramps"
+      ],
+      "source": "arch",
+      "keywords": [
+        "genealogy",
+        "family tree",
+        "ancestry",
+        "history"
+      ]
+    },
+    {
       "id": "graphs",
       "name": "Graphs",
       "category": "office",
@@ -1153,6 +1399,24 @@
       "source": "arch"
     },
     {
+      "id": "kiwix",
+      "name": "Kiwix",
+      "category": "office",
+      "description": "Read Wikipedia and other sites without an internet connection",
+      "icon": "kiwix-desktop",
+      "packages": [
+        "kiwix-desktop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "wikipedia",
+        "offline",
+        "encyclopedia",
+        "reader",
+        "zim"
+      ]
+    },
+    {
       "id": "kmymoney",
       "name": "KMyMoney",
       "category": "office",
@@ -1190,6 +1454,24 @@
         "pptx",
         "microsoft office",
         "office suite"
+      ]
+    },
+    {
+      "id": "minder",
+      "name": "Minder",
+      "category": "office",
+      "description": "Draw mind maps to sort out ideas",
+      "icon": "com.github.phase1geo.minder",
+      "packages": [
+        "minder"
+      ],
+      "source": "arch",
+      "keywords": [
+        "mind map",
+        "mindmap",
+        "brainstorm",
+        "ideas",
+        "outline"
       ]
     },
     {
@@ -1288,6 +1570,25 @@
       ]
     },
     {
+      "id": "pandoc",
+      "name": "Pandoc",
+      "category": "office",
+      "description": "Convert documents between Markdown, Word, HTML, PDF and many other formats",
+      "icon": "",
+      "packages": [
+        "pandoc-cli"
+      ],
+      "source": "arch",
+      "keywords": [
+        "convert",
+        "markdown",
+        "docx",
+        "html",
+        "pdf",
+        "document"
+      ]
+    },
+    {
       "id": "papers",
       "name": "Papers",
       "category": "office",
@@ -1316,6 +1617,79 @@
       "keywords": [
         "ocr",
         "scan"
+      ]
+    },
+    {
+      "id": "pdfarranger",
+      "name": "PDF Arranger",
+      "category": "office",
+      "description": "Merge and split PDF files; rotate, crop and reorder their pages",
+      "icon": "com.github.jeromerobert.pdfarranger",
+      "packages": [
+        "pdfarranger"
+      ],
+      "source": "arch",
+      "keywords": [
+        "pdf",
+        "merge",
+        "split",
+        "rotate",
+        "pages"
+      ]
+    },
+    {
+      "id": "planify",
+      "name": "Planify",
+      "category": "office",
+      "description": "To-do lists and projects, also synced with Todoist, Nextcloud or CalDAV",
+      "icon": "",
+      "packages": [
+        "planify"
+      ],
+      "source": "arch",
+      "keywords": [
+        "todo",
+        "tasks",
+        "planner",
+        "todoist",
+        "reminders"
+      ]
+    },
+    {
+      "id": "qalculate",
+      "name": "Qalculate!",
+      "category": "office",
+      "description": "Calculator that knows units, currencies, fractions and equations",
+      "icon": "qalculate",
+      "packages": [
+        "qalculate-gtk"
+      ],
+      "source": "arch",
+      "keywords": [
+        "calculator",
+        "math",
+        "units",
+        "currency",
+        "convert"
+      ]
+    },
+    {
+      "id": "rnote",
+      "name": "Rnote",
+      "category": "office",
+      "description": "Handwritten notes and sketches with a pen or drawing tablet",
+      "icon": "com.github.flxzt.rnote",
+      "packages": [
+        "rnote"
+      ],
+      "source": "arch",
+      "keywords": [
+        "notes",
+        "handwriting",
+        "stylus",
+        "draw",
+        "annotate pdf",
+        "tablet"
       ]
     },
     {
@@ -1363,6 +1737,82 @@
       "keywords": [
         "Pomodoro",
         "timer"
+      ]
+    },
+    {
+      "id": "stellarium",
+      "name": "Stellarium",
+      "category": "office",
+      "description": "Planetarium: the night sky as seen from anywhere on Earth",
+      "icon": "stellarium",
+      "packages": [
+        "stellarium"
+      ],
+      "source": "arch",
+      "keywords": [
+        "astronomy",
+        "stars",
+        "planets",
+        "sky",
+        "telescope"
+      ]
+    },
+    {
+      "id": "taskwarrior",
+      "name": "Taskwarrior",
+      "category": "office",
+      "description": "To-do list manager for the terminal",
+      "icon": "",
+      "packages": [
+        "task"
+      ],
+      "source": "arch",
+      "keywords": [
+        "todo",
+        "tasks",
+        "terminal",
+        "gtd"
+      ]
+    },
+    {
+      "id": "texstudio",
+      "name": "TeXstudio",
+      "category": "office",
+      "description": "Write LaTeX documents with a preview beside the text; a basic TeX Live comes with it",
+      "icon": "texstudio",
+      "packages": [
+        "texstudio",
+        "texlive-basic",
+        "texlive-latex",
+        "texlive-latexrecommended",
+        "texlive-fontsrecommended"
+      ],
+      "source": "arch",
+      "keywords": [
+        "latex",
+        "tex",
+        "paper",
+        "thesis",
+        "typesetting",
+        "texlive"
+      ]
+    },
+    {
+      "id": "typst",
+      "name": "Typst",
+      "category": "office",
+      "description": "Typeset documents from plain text: a faster, simpler alternative to LaTeX",
+      "icon": "",
+      "packages": [
+        "typst"
+      ],
+      "source": "arch",
+      "keywords": [
+        "typesetting",
+        "latex",
+        "pdf",
+        "paper",
+        "markup"
       ]
     },
     {
@@ -1419,6 +1869,62 @@
         "pdf",
         "pdf reader",
         "pdf viewer"
+      ]
+    },
+    {
+      "id": "zathura",
+      "name": "Zathura",
+      "category": "office",
+      "description": "Minimal PDF and e-book viewer driven from the keyboard",
+      "icon": "org.pwmt.zathura",
+      "packages": [
+        "zathura",
+        "zathura-pdf-mupdf"
+      ],
+      "source": "arch",
+      "keywords": [
+        "pdf",
+        "reader",
+        "epub",
+        "viewer",
+        "vim"
+      ]
+    },
+    {
+      "id": "zotero",
+      "name": "Zotero",
+      "category": "office",
+      "description": "Collect, organize and cite research papers and other sources",
+      "icon": "zotero",
+      "packages": [
+        "zotero"
+      ],
+      "source": "arch",
+      "keywords": [
+        "references",
+        "citations",
+        "bibliography",
+        "research",
+        "papers"
+      ]
+    },
+    {
+      "id": "aegisub",
+      "name": "Aegisub",
+      "category": "media",
+      "description": "Write and time subtitles, with styling and karaoke effects",
+      "icon": "aegisub",
+      "packages": [
+        "aegisub"
+      ],
+      "source": "arch",
+      "keywords": [
+        "subtitles",
+        "captions",
+        "ass",
+        "srt",
+        "timing",
+        "karaoke"
       ]
     },
     {
@@ -1513,6 +2019,25 @@
       ]
     },
     {
+      "id": "bambu-studio",
+      "name": "Bambu Studio",
+      "category": "media",
+      "description": "Prepare 3D prints and send them to Bambu Lab printers",
+      "icon": "bambustudio",
+      "packages": [
+        "bambustudio-bin"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "3d printing",
+        "3d printer",
+        "slicer",
+        "bambu lab",
+        "stl",
+        "gcode"
+      ]
+    },
+    {
       "id": "birdfont",
       "name": "BirdFont",
       "category": "media",
@@ -1593,6 +2118,24 @@
       ]
     },
     {
+      "id": "cava",
+      "name": "Cava",
+      "category": "media",
+      "description": "Audio visualizer for the terminal",
+      "icon": "",
+      "packages": [
+        "cava"
+      ],
+      "source": "arch",
+      "keywords": [
+        "audio",
+        "visualizer",
+        "music",
+        "spectrum",
+        "terminal"
+      ]
+    },
+    {
       "id": "celluloid",
       "name": "Celluloid",
       "category": "media",
@@ -1606,6 +2149,23 @@
         "video player",
         "media player",
         "movies"
+      ]
+    },
+    {
+      "id": "cmus",
+      "name": "cmus",
+      "category": "media",
+      "description": "Small, fast music player for the terminal",
+      "icon": "",
+      "packages": [
+        "cmus"
+      ],
+      "source": "arch",
+      "keywords": [
+        "music",
+        "player",
+        "terminal",
+        "audio"
       ]
     },
     {
@@ -1651,6 +2211,25 @@
         "raw",
         "lightroom",
         "photos"
+      ]
+    },
+    {
+      "id": "davinci-resolve",
+      "name": "DaVinci Resolve",
+      "category": "media",
+      "description": "Professional video editing, color grading, effects and audio from Blackmagic Design (the free edition; about 9 GB)",
+      "icon": "davinci-resolve",
+      "packages": [
+        "davinci-resolve"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "video editor",
+        "color grading",
+        "editing",
+        "film",
+        "premiere",
+        "blackmagic"
       ]
     },
     {
@@ -2013,6 +2592,40 @@
       ]
     },
     {
+      "id": "hugin",
+      "name": "Hugin",
+      "category": "media",
+      "description": "Stitch overlapping photos into a panorama",
+      "icon": "hugin",
+      "packages": [
+        "hugin"
+      ],
+      "source": "arch",
+      "keywords": [
+        "panorama",
+        "photo",
+        "stitch",
+        "photography"
+      ]
+    },
+    {
+      "id": "hydrogen",
+      "name": "Hydrogen",
+      "category": "media",
+      "description": "Drum machine for programming beats and patterns",
+      "icon": "org.hydrogenmusic.Hydrogen",
+      "packages": [
+        "hydrogen"
+      ],
+      "source": "arch",
+      "keywords": [
+        "drums",
+        "beats",
+        "drum machine",
+        "music"
+      ]
+    },
+    {
       "id": "hypnotix",
       "name": "Hypnotix",
       "category": "media",
@@ -2281,6 +2894,24 @@
       ]
     },
     {
+      "id": "libresprite",
+      "name": "LibreSprite",
+      "category": "media",
+      "description": "Draw and animate pixel art and sprites",
+      "icon": "libresprite",
+      "packages": [
+        "libresprite"
+      ],
+      "source": "arch",
+      "keywords": [
+        "pixel art",
+        "sprite",
+        "animation",
+        "aseprite",
+        "game art"
+      ]
+    },
+    {
       "id": "lmms",
       "name": "LMMS",
       "category": "media",
@@ -2340,6 +2971,30 @@
       "source": "arch"
     },
     {
+      "id": "makemkv",
+      "name": "MakeMKV",
+      "category": "media",
+      "description": "Copy DVDs and Blu-ray discs to MKV files (free while in beta, with the key from its forum)",
+      "icon": "makemkv",
+      "packages": [
+        "makemkv"
+      ],
+      "source": "aur",
+      "setup": {
+        "modules": [
+          "sg"
+        ]
+      },
+      "keywords": [
+        "dvd",
+        "blu-ray",
+        "bluray",
+        "rip",
+        "mkv",
+        "disc"
+      ]
+    },
+    {
       "id": "mediaelch",
       "name": "MediaElch",
       "category": "media",
@@ -2349,6 +3004,24 @@
         "mediaelch"
       ],
       "source": "arch"
+    },
+    {
+      "id": "mediainfo",
+      "name": "MediaInfo",
+      "category": "media",
+      "description": "Show the technical details of a video or audio file: codecs, bitrate, resolution, tracks",
+      "icon": "mediainfo",
+      "packages": [
+        "mediainfo-gui"
+      ],
+      "source": "arch",
+      "keywords": [
+        "video",
+        "audio",
+        "codec",
+        "metadata",
+        "info"
+      ]
     },
     {
       "id": "mixxx",
@@ -2362,6 +3035,25 @@
       "source": "arch",
       "keywords": [
         "dj"
+      ]
+    },
+    {
+      "id": "mkvtoolnix",
+      "name": "MKVToolNix",
+      "category": "media",
+      "description": "Edit Matroska (MKV) video files: add or remove audio tracks and subtitles without re-encoding",
+      "icon": "mkvtoolnix-gui",
+      "packages": [
+        "mkvtoolnix-gui"
+      ],
+      "source": "arch",
+      "keywords": [
+        "mkv",
+        "video",
+        "subtitles",
+        "mux",
+        "matroska",
+        "remux"
       ]
     },
     {
@@ -2419,6 +3111,24 @@
       ]
     },
     {
+      "id": "picard",
+      "name": "MusicBrainz Picard",
+      "category": "media",
+      "description": "Tag and rename music files from the MusicBrainz database",
+      "icon": "org.musicbrainz.Picard",
+      "packages": [
+        "picard"
+      ],
+      "source": "arch",
+      "keywords": [
+        "music",
+        "tags",
+        "metadata",
+        "mp3",
+        "tagger"
+      ]
+    },
+    {
       "id": "mypaint",
       "name": "MyPaint",
       "category": "media",
@@ -2431,6 +3141,23 @@
       "keywords": [
         "painting",
         "drawing"
+      ]
+    },
+    {
+      "id": "ncspot",
+      "name": "ncspot",
+      "category": "media",
+      "description": "Spotify client for the terminal (needs Spotify Premium)",
+      "icon": "",
+      "packages": [
+        "ncspot"
+      ],
+      "source": "arch",
+      "keywords": [
+        "spotify",
+        "music",
+        "terminal",
+        "streaming"
       ]
     },
     {
@@ -2451,6 +3178,25 @@
         "streaming",
         "twitch",
         "live stream"
+      ]
+    },
+    {
+      "id": "openscad",
+      "name": "OpenSCAD",
+      "category": "media",
+      "description": "Model 3D parts by writing code",
+      "icon": "openscad",
+      "packages": [
+        "openscad"
+      ],
+      "source": "arch",
+      "keywords": [
+        "3d",
+        "cad",
+        "modelling",
+        "parametric",
+        "stl",
+        "3d printing"
       ]
     },
     {
@@ -2568,6 +3314,25 @@
       ]
     },
     {
+      "id": "prusa-slicer",
+      "name": "PrusaSlicer",
+      "category": "media",
+      "description": "Prepare 3D models for printing, on Prusa and many other 3D printers",
+      "icon": "PrusaSlicer",
+      "packages": [
+        "prusa-slicer"
+      ],
+      "source": "arch",
+      "keywords": [
+        "3d printing",
+        "3d printer",
+        "slicer",
+        "gcode",
+        "stl",
+        "prusa"
+      ]
+    },
+    {
       "id": "qmmp",
       "name": "Qmmp",
       "category": "media",
@@ -2581,6 +3346,24 @@
         "music player",
         "audio player",
         "mp3"
+      ]
+    },
+    {
+      "id": "qpwgraph",
+      "name": "qpwgraph",
+      "category": "media",
+      "description": "Patchbay for PipeWire: connect the sound of apps and devices by drawing wires",
+      "icon": "",
+      "packages": [
+        "qpwgraph"
+      ],
+      "source": "arch",
+      "keywords": [
+        "audio",
+        "pipewire",
+        "patchbay",
+        "routing",
+        "jack"
       ]
     },
     {
@@ -2612,6 +3395,24 @@
         "raw",
         "lightroom",
         "photos"
+      ]
+    },
+    {
+      "id": "reaper",
+      "name": "REAPER",
+      "category": "media",
+      "description": "Record, edit and mix music (60-day evaluation, then a paid licence)",
+      "icon": "cockos-reaper",
+      "packages": [
+        "reaper"
+      ],
+      "source": "arch",
+      "keywords": [
+        "daw",
+        "music production",
+        "recording",
+        "mixing",
+        "audio"
       ]
     },
     {
@@ -2757,6 +3558,61 @@
       ]
     },
     {
+      "id": "snapshot",
+      "name": "Snapshot",
+      "category": "media",
+      "description": "Take photos and videos with the webcam",
+      "icon": "org.gnome.Snapshot",
+      "packages": [
+        "snapshot"
+      ],
+      "source": "arch",
+      "keywords": [
+        "camera",
+        "webcam",
+        "photo",
+        "video",
+        "cheese"
+      ]
+    },
+    {
+      "id": "sound-juicer",
+      "name": "Sound Juicer",
+      "category": "media",
+      "description": "Copy the music from audio CDs to files",
+      "icon": "org.gnome.SoundJuicer",
+      "packages": [
+        "sound-juicer"
+      ],
+      "source": "arch",
+      "keywords": [
+        "cd",
+        "rip",
+        "ripper",
+        "audio cd",
+        "music",
+        "flac"
+      ]
+    },
+    {
+      "id": "gnome-sound-recorder",
+      "name": "Sound Recorder",
+      "category": "media",
+      "description": "Record from the microphone with one click",
+      "icon": "org.gnome.SoundRecorder",
+      "packages": [
+        "gnome-sound-recorder"
+      ],
+      "source": "arch",
+      "keywords": [
+        "record",
+        "microphone",
+        "voice",
+        "audio",
+        "memo"
+      ]
+    },
+    {
       "id": "soundconverter",
       "name": "SoundConverter",
       "category": "media",
@@ -2861,6 +3717,24 @@
       ]
     },
     {
+      "id": "tauon",
+      "name": "Tauon",
+      "category": "media",
+      "description": "Music player for large collections, with gapless playback",
+      "icon": "tauonmb",
+      "packages": [
+        "tauon-music-box"
+      ],
+      "source": "arch",
+      "keywords": [
+        "music",
+        "player",
+        "library",
+        "flac",
+        "albums"
+      ]
+    },
+    {
       "id": "tenacity",
       "name": "Tenacity",
       "category": "media",
@@ -2889,6 +3763,23 @@
       "keywords": [
         "convert video",
         "transcode"
+      ]
+    },
+    {
+      "id": "video-downloader",
+      "name": "Video Downloader",
+      "category": "media",
+      "description": "Download videos from YouTube and other sites in a simple window",
+      "icon": "com.github.unrud.VideoDownloader",
+      "packages": [
+        "video-downloader"
+      ],
+      "source": "arch",
+      "keywords": [
+        "youtube",
+        "download",
+        "video",
+        "yt-dlp"
       ]
     },
     {
@@ -2957,6 +3848,24 @@
       ]
     },
     {
+      "id": "yt-dlp",
+      "name": "yt-dlp",
+      "category": "media",
+      "description": "Download video and audio from YouTube and thousands of other sites, from the terminal",
+      "icon": "youtube-dl",
+      "packages": [
+        "yt-dlp"
+      ],
+      "source": "arch",
+      "keywords": [
+        "youtube",
+        "download",
+        "video",
+        "audio",
+        "youtube-dl"
+      ]
+    },
+    {
       "id": "0-a-d",
       "name": "0 A.D.",
       "category": "gaming",
@@ -2980,6 +3889,40 @@
       "keywords": [
         "solitaire",
         "cards"
+      ]
+    },
+    {
+      "id": "antimicrox",
+      "name": "AntiMicroX",
+      "category": "gaming",
+      "description": "Map a controller's buttons and sticks to keyboard keys and the mouse",
+      "icon": "io.github.antimicrox.antimicrox",
+      "packages": [
+        "antimicrox"
+      ],
+      "source": "arch",
+      "keywords": [
+        "controller",
+        "gamepad",
+        "joystick",
+        "mapping",
+        "keyboard"
+      ]
+    },
+    {
+      "id": "wesnoth",
+      "name": "Battle for Wesnoth",
+      "category": "gaming",
+      "description": "Turn-based fantasy strategy game with campaigns and multiplayer",
+      "icon": "wesnoth",
+      "packages": [
+        "wesnoth"
+      ],
+      "source": "arch",
+      "keywords": [
+        "strategy",
+        "turn-based",
+        "fantasy"
       ]
     },
     {
@@ -3011,6 +3954,23 @@
       "keywords": [
         "games",
         "game launcher"
+      ]
+    },
+    {
+      "id": "cataclysm-dda",
+      "name": "Cataclysm: Dark Days Ahead",
+      "category": "gaming",
+      "description": "Survival roguelike set after the end of the world",
+      "icon": "cataclysm-dda",
+      "packages": [
+        "cataclysm-dda-tiles"
+      ],
+      "source": "arch",
+      "keywords": [
+        "roguelike",
+        "survival",
+        "zombies",
+        "cdda"
       ]
     },
     {
@@ -3059,6 +4019,41 @@
         "emulator",
         "gamecube",
         "wii"
+      ]
+    },
+    {
+      "id": "dosbox",
+      "name": "DOSBox",
+      "category": "gaming",
+      "description": "Run old DOS games and programs",
+      "icon": "dosbox",
+      "packages": [
+        "dosbox"
+      ],
+      "source": "arch",
+      "keywords": [
+        "dos",
+        "emulator",
+        "retro",
+        "ms-dos",
+        "old games"
+      ]
+    },
+    {
+      "id": "dwarf-fortress",
+      "name": "Dwarf Fortress",
+      "category": "gaming",
+      "description": "Build and run a dwarven fortress in a deeply simulated world (the free classic version)",
+      "icon": "",
+      "packages": [
+        "dwarffortress"
+      ],
+      "source": "arch",
+      "keywords": [
+        "simulation",
+        "roguelike",
+        "colony",
+        "strategy"
       ]
     },
     {
@@ -3140,6 +4135,21 @@
         "gamescope"
       ],
       "source": "arch"
+    },
+    {
+      "id": "gnome-chess",
+      "name": "GNOME Chess",
+      "category": "gaming",
+      "description": "Play chess against the computer or a friend",
+      "icon": "org.gnome.Chess",
+      "packages": [
+        "gnome-chess"
+      ],
+      "source": "arch",
+      "keywords": [
+        "chess",
+        "board game"
+      ]
     },
     {
       "id": "gnome-mahjongg",
@@ -3370,6 +4380,24 @@
       "source": "arch"
     },
     {
+      "id": "mgba",
+      "name": "mGBA",
+      "category": "gaming",
+      "description": "Game Boy Advance emulator, also for Game Boy and Game Boy Color",
+      "icon": "io.mgba.mGBA",
+      "packages": [
+        "mgba-qt"
+      ],
+      "source": "arch",
+      "keywords": [
+        "emulator",
+        "gba",
+        "game boy",
+        "nintendo",
+        "retro"
+      ]
+    },
+    {
       "id": "minecraft-launcher",
       "name": "Minecraft Launcher",
       "category": "gaming",
@@ -3381,6 +4409,23 @@
       "source": "omarchy",
       "keywords": [
         "minecraft"
+      ]
+    },
+    {
+      "id": "modrinth-app",
+      "name": "Modrinth App",
+      "category": "gaming",
+      "description": "Minecraft launcher that installs mods and modpacks from Modrinth",
+      "icon": "",
+      "packages": [
+        "modrinth-app"
+      ],
+      "source": "arch",
+      "keywords": [
+        "minecraft",
+        "mods",
+        "modpacks",
+        "launcher"
       ]
     },
     {
@@ -3415,6 +4460,23 @@
       ]
     },
     {
+      "id": "nethack",
+      "name": "NetHack",
+      "category": "gaming",
+      "description": "The classic dungeon-crawling roguelike, in the terminal",
+      "icon": "nethack",
+      "packages": [
+        "nethack"
+      ],
+      "source": "arch",
+      "keywords": [
+        "roguelike",
+        "dungeon",
+        "terminal",
+        "rpg"
+      ]
+    },
+    {
       "id": "ntsync-autoload",
       "name": "NTSync autoload",
       "category": "gaming",
@@ -3435,6 +4497,42 @@
         "openmw"
       ],
       "source": "arch"
+    },
+    {
+      "id": "openrct2",
+      "name": "OpenRCT2",
+      "category": "gaming",
+      "description": "RollerCoaster Tycoon 2 rebuilt, with fixes and multiplayer (needs the original game's files)",
+      "icon": "openrct2",
+      "packages": [
+        "openrct2"
+      ],
+      "source": "arch",
+      "keywords": [
+        "rollercoaster tycoon",
+        "theme park",
+        "simulation",
+        "rct2"
+      ]
+    },
+    {
+      "id": "openttd",
+      "name": "OpenTTD",
+      "category": "gaming",
+      "description": "Build a transport empire of trains, buses, ships and planes (Transport Tycoon Deluxe rebuilt)",
+      "icon": "openttd",
+      "packages": [
+        "openttd",
+        "openttd-opengfx",
+        "openttd-opensfx"
+      ],
+      "source": "arch",
+      "keywords": [
+        "transport tycoon",
+        "trains",
+        "simulation",
+        "strategy"
+      ]
     },
     {
       "id": "osu",
@@ -3703,6 +4801,22 @@
       "source": "arch"
     },
     {
+      "id": "warzone-2100",
+      "name": "Warzone 2100",
+      "category": "gaming",
+      "description": "Real-time strategy game with units you design yourself",
+      "icon": "warzone2100",
+      "packages": [
+        "warzone2100"
+      ],
+      "source": "arch",
+      "keywords": [
+        "strategy",
+        "rts",
+        "real-time"
+      ]
+    },
+    {
       "id": "wine-helpers",
       "name": "Wine helpers",
       "category": "gaming",
@@ -3767,6 +4881,30 @@
       ]
     },
     {
+      "id": "c-cpp",
+      "name": "C and C++",
+      "category": "languages",
+      "description": "Clang, CMake and Ninja for building C and C++ projects, beside the GCC and make that come with karchy",
+      "icon": "",
+      "packages": [
+        "clang",
+        "cmake",
+        "ninja"
+      ],
+      "source": "arch",
+      "keywords": [
+        "c",
+        "c++",
+        "cpp",
+        "clang",
+        "cmake",
+        "ninja",
+        "compiler",
+        "llvm",
+        "gcc"
+      ]
+    },
+    {
       "id": "clojure",
       "name": "Clojure",
       "category": "languages",
@@ -3778,6 +4916,22 @@
         "rlwrap"
       ],
       "source": "arch"
+    },
+    {
+      "id": "common-lisp",
+      "name": "Common Lisp (SBCL)",
+      "category": "languages",
+      "description": "Steel Bank Common Lisp: compiler and interactive prompt",
+      "icon": "",
+      "packages": [
+        "sbcl"
+      ],
+      "source": "arch",
+      "keywords": [
+        "lisp",
+        "sbcl",
+        "repl"
+      ]
     },
     {
       "id": "laravel",
@@ -3873,6 +5027,23 @@
       "source": "arch",
       "keywords": [
         "golang"
+      ]
+    },
+    {
+      "id": "gradle",
+      "name": "Gradle",
+      "category": "languages",
+      "description": "Build tool for Java, Kotlin and Android projects",
+      "icon": "",
+      "packages": [
+        "gradle"
+      ],
+      "source": "arch",
+      "keywords": [
+        "java",
+        "kotlin",
+        "build",
+        "android"
       ]
     },
     {
@@ -3976,6 +5147,23 @@
         "luarocks"
       ],
       "source": "arch"
+    },
+    {
+      "id": "maven",
+      "name": "Maven",
+      "category": "languages",
+      "description": "Build and dependency tool for Java projects",
+      "icon": "",
+      "packages": [
+        "maven"
+      ],
+      "source": "arch",
+      "keywords": [
+        "java",
+        "build",
+        "mvn",
+        "dependencies"
+      ]
     },
     {
       "id": "nim",
@@ -4091,6 +5279,24 @@
       ]
     },
     {
+      "id": "poetry",
+      "name": "Poetry",
+      "category": "languages",
+      "description": "Manage a Python project's dependencies and packaging",
+      "icon": "",
+      "packages": [
+        "python-poetry"
+      ],
+      "source": "arch",
+      "keywords": [
+        "python",
+        "dependencies",
+        "packaging",
+        "virtualenv",
+        "pip"
+      ]
+    },
+    {
       "id": "pypy",
       "name": "PyPy",
       "category": "languages",
@@ -4116,6 +5322,23 @@
       "source": "arch",
       "keywords": [
         "statistics"
+      ]
+    },
+    {
+      "id": "racket",
+      "name": "Racket",
+      "category": "languages",
+      "description": "The Racket language with its DrRacket editor, used for teaching and for making languages",
+      "icon": "drracket",
+      "packages": [
+        "racket"
+      ],
+      "source": "arch",
+      "keywords": [
+        "scheme",
+        "lisp",
+        "drracket",
+        "teaching"
       ]
     },
     {
@@ -4179,6 +5402,23 @@
       "source": "omarchy"
     },
     {
+      "id": "typescript",
+      "name": "TypeScript",
+      "category": "languages",
+      "description": "JavaScript with types: the tsc compiler",
+      "icon": "",
+      "packages": [
+        "typescript"
+      ],
+      "source": "arch",
+      "keywords": [
+        "javascript",
+        "tsc",
+        "types",
+        "node"
+      ]
+    },
+    {
       "id": "uv",
       "name": "Uv",
       "category": "languages",
@@ -4237,6 +5477,25 @@
       ]
     },
     {
+      "id": "antigravity",
+      "name": "Antigravity",
+      "category": "editors",
+      "description": "Google's agent-first development app: AI agents plan, write and test code beside you",
+      "icon": "antigravity",
+      "packages": [
+        "antigravity"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "ide",
+        "google",
+        "gemini",
+        "agent",
+        "code editor"
+      ]
+    },
+    {
       "id": "apostrophe",
       "name": "Apostrophe",
       "category": "editors",
@@ -4265,6 +5524,23 @@
       "keywords": [
         "ide",
         "jetbrains"
+      ]
+    },
+    {
+      "id": "codeblocks",
+      "name": "Code::Blocks",
+      "category": "editors",
+      "description": "IDE for C, C++ and Fortran",
+      "icon": "codeblocks",
+      "packages": [
+        "codeblocks"
+      ],
+      "source": "arch",
+      "keywords": [
+        "c",
+        "c++",
+        "ide",
+        "fortran"
       ]
     },
     {
@@ -4356,6 +5632,41 @@
       "keywords": [
         "code editor",
         "ide"
+      ]
+    },
+    {
+      "id": "gnome-text-editor",
+      "name": "GNOME Text Editor",
+      "category": "editors",
+      "description": "Simple text editor that keeps unsaved changes between sessions",
+      "icon": "org.gnome.TextEditor",
+      "packages": [
+        "gnome-text-editor"
+      ],
+      "source": "arch",
+      "keywords": [
+        "text",
+        "notepad",
+        "editor",
+        "gnome"
+      ]
+    },
+    {
+      "id": "godot",
+      "name": "Godot",
+      "category": "editors",
+      "description": "Game engine and editor for 2D and 3D games",
+      "icon": "godot",
+      "packages": [
+        "godot"
+      ],
+      "source": "arch",
+      "keywords": [
+        "game engine",
+        "game development",
+        "gamedev",
+        "2d",
+        "3d"
       ]
     },
     {
@@ -4480,6 +5791,23 @@
       ]
     },
     {
+      "id": "neovide",
+      "name": "Neovide",
+      "category": "editors",
+      "description": "A window for Neovim, with smooth scrolling and an animated cursor",
+      "icon": "",
+      "packages": [
+        "neovide"
+      ],
+      "source": "arch",
+      "keywords": [
+        "neovim",
+        "nvim",
+        "vim",
+        "gui"
+      ]
+    },
+    {
       "id": "neovim",
       "name": "Neovim",
       "category": "editors",
@@ -4572,6 +5900,59 @@
       ]
     },
     {
+      "id": "rstudio",
+      "name": "RStudio",
+      "category": "editors",
+      "description": "IDE for R: data analysis, statistics and plots",
+      "icon": "rstudio",
+      "packages": [
+        "rstudio-desktop-bin"
+      ],
+      "source": "aur",
+      "keywords": [
+        "r",
+        "statistics",
+        "data science",
+        "ide",
+        "posit"
+      ]
+    },
+    {
+      "id": "rubymine",
+      "name": "RubyMine",
+      "category": "editors",
+      "description": "JetBrains IDE for Ruby and Rails",
+      "icon": "rubymine",
+      "packages": [
+        "rubymine"
+      ],
+      "source": "aur",
+      "keywords": [
+        "ruby",
+        "rails",
+        "jetbrains",
+        "ide"
+      ]
+    },
+    {
+      "id": "spyder",
+      "name": "Spyder",
+      "category": "editors",
+      "description": "Python IDE for science and data analysis, with a variable explorer and plots",
+      "icon": "spyder",
+      "packages": [
+        "spyder"
+      ],
+      "source": "arch",
+      "keywords": [
+        "python",
+        "data science",
+        "ide",
+        "scientific",
+        "matlab"
+      ]
+    },
+    {
       "id": "sublime-text-4",
       "name": "Sublime Text 4",
       "category": "editors",
@@ -4586,6 +5967,23 @@
         "notepad",
         "code editor",
         "ide"
+      ]
+    },
+    {
+      "id": "typora",
+      "name": "Typora",
+      "category": "editors",
+      "description": "Markdown editor that shows the formatted text as you type (paid, with a trial)",
+      "icon": "typora",
+      "packages": [
+        "typora"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "markdown",
+        "writing",
+        "notes",
+        "preview"
       ]
     },
     {
@@ -4685,6 +6083,23 @@
       ]
     },
     {
+      "id": "act",
+      "name": "act",
+      "category": "devtools",
+      "description": "Run GitHub Actions workflows on this computer (needs Docker or Podman)",
+      "icon": "",
+      "packages": [
+        "act"
+      ],
+      "source": "arch",
+      "keywords": [
+        "github actions",
+        "ci",
+        "workflow",
+        "docker"
+      ]
+    },
+    {
       "id": "actionlint",
       "name": "Actionlint",
       "category": "devtools",
@@ -4729,6 +6144,23 @@
         "fastboot",
         "screen mirror",
         "phone"
+      ]
+    },
+    {
+      "id": "asciinema",
+      "name": "asciinema",
+      "category": "devtools",
+      "description": "Record terminal sessions and share them as text-based videos",
+      "icon": "",
+      "packages": [
+        "asciinema"
+      ],
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "record",
+        "screencast",
+        "demo"
       ]
     },
     {
@@ -4788,6 +6220,23 @@
       "keywords": [
         "diff",
         "merge"
+      ]
+    },
+    {
+      "id": "chezmoi",
+      "name": "chezmoi",
+      "category": "devtools",
+      "description": "Keep your dotfiles in Git and the same on every computer",
+      "icon": "",
+      "packages": [
+        "chezmoi"
+      ],
+      "source": "arch",
+      "keywords": [
+        "dotfiles",
+        "config",
+        "sync",
+        "git"
       ]
     },
     {
@@ -4926,6 +6375,24 @@
       ]
     },
     {
+      "id": "gdb",
+      "name": "GDB",
+      "category": "devtools",
+      "description": "The GNU debugger for C, C++, Rust and other compiled programs",
+      "icon": "",
+      "packages": [
+        "gdb"
+      ],
+      "source": "arch",
+      "keywords": [
+        "debugger",
+        "debug",
+        "c",
+        "c++",
+        "rust"
+      ]
+    },
+    {
       "id": "ghex",
       "name": "GHex",
       "category": "devtools",
@@ -5002,6 +6469,23 @@
       ]
     },
     {
+      "id": "github-desktop",
+      "name": "GitHub Desktop",
+      "category": "devtools",
+      "description": "GitHub's Git app: commit, branch and open pull requests without the command line",
+      "icon": "github-desktop",
+      "packages": [
+        "github-desktop"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "git",
+        "github",
+        "gui",
+        "pull request"
+      ]
+    },
+    {
       "id": "gitkraken",
       "name": "GitKraken",
       "category": "devtools",
@@ -5032,6 +6516,24 @@
       ]
     },
     {
+      "id": "gitleaks",
+      "name": "Gitleaks",
+      "category": "devtools",
+      "description": "Find passwords, keys and tokens committed to a Git repository",
+      "icon": "",
+      "packages": [
+        "gitleaks"
+      ],
+      "source": "arch",
+      "keywords": [
+        "git",
+        "secrets",
+        "security",
+        "scan",
+        "leak"
+      ]
+    },
+    {
       "id": "gitui",
       "name": "Gitui",
       "category": "devtools",
@@ -5058,6 +6560,39 @@
       "source": "arch",
       "keywords": [
         "markdown viewer"
+      ]
+    },
+    {
+      "id": "stow",
+      "name": "GNU Stow",
+      "category": "devtools",
+      "description": "Manage dotfiles by symlinking them from one folder",
+      "icon": "",
+      "packages": [
+        "stow"
+      ],
+      "source": "arch",
+      "keywords": [
+        "dotfiles",
+        "symlink",
+        "config"
+      ]
+    },
+    {
+      "id": "graphviz",
+      "name": "Graphviz",
+      "category": "devtools",
+      "description": "Draw graphs and diagrams from text (the dot language)",
+      "icon": "",
+      "packages": [
+        "graphviz"
+      ],
+      "source": "arch",
+      "keywords": [
+        "graph",
+        "diagram",
+        "dot",
+        "visualize"
       ]
     },
     {
@@ -5109,6 +6644,24 @@
       ]
     },
     {
+      "id": "hugo",
+      "name": "Hugo",
+      "category": "devtools",
+      "description": "Build websites from Markdown files, very fast",
+      "icon": "",
+      "packages": [
+        "hugo"
+      ],
+      "source": "arch",
+      "keywords": [
+        "static site",
+        "website",
+        "blog",
+        "markdown",
+        "generator"
+      ]
+    },
+    {
       "id": "hurl",
       "name": "Hurl",
       "category": "devtools",
@@ -5136,6 +6689,23 @@
       "source": "arch"
     },
     {
+      "id": "jujutsu",
+      "name": "Jujutsu",
+      "category": "devtools",
+      "description": "Version control (jj) that works on Git repositories and makes rewriting history easy",
+      "icon": "",
+      "packages": [
+        "jujutsu"
+      ],
+      "source": "arch",
+      "keywords": [
+        "git",
+        "version control",
+        "vcs",
+        "jj"
+      ]
+    },
+    {
       "id": "just",
       "name": "Just",
       "category": "devtools",
@@ -5148,6 +6718,23 @@
       "keywords": [
         "make",
         "task runner"
+      ]
+    },
+    {
+      "id": "kdiff3",
+      "name": "KDiff3",
+      "category": "devtools",
+      "description": "Compare and merge two or three files or folders",
+      "icon": "kdiff3",
+      "packages": [
+        "kdiff3"
+      ],
+      "source": "arch",
+      "keywords": [
+        "diff",
+        "merge",
+        "compare",
+        "mergetool"
       ]
     },
     {
@@ -5228,6 +6815,42 @@
       ]
     },
     {
+      "id": "mkcert",
+      "name": "mkcert",
+      "category": "devtools",
+      "description": "Make HTTPS certificates that browsers trust, for local development",
+      "icon": "",
+      "packages": [
+        "mkcert"
+      ],
+      "source": "arch",
+      "keywords": [
+        "https",
+        "tls",
+        "ssl",
+        "certificate",
+        "localhost"
+      ]
+    },
+    {
+      "id": "perf",
+      "name": "perf",
+      "category": "devtools",
+      "description": "Linux's profiler: where a program, or the whole system, spends its time",
+      "icon": "",
+      "packages": [
+        "perf"
+      ],
+      "source": "arch",
+      "keywords": [
+        "profiler",
+        "performance",
+        "cpu",
+        "flamegraph",
+        "tracing"
+      ]
+    },
+    {
       "id": "pre-commit",
       "name": "Pre-commit",
       "category": "devtools",
@@ -5255,6 +6878,26 @@
         "rg",
         "grep",
         "search"
+      ]
+    },
+    {
+      "id": "ruff",
+      "name": "Ruff",
+      "category": "devtools",
+      "description": "Very fast Python linter and code formatter",
+      "icon": "",
+      "packages": [
+        "ruff"
+      ],
+      "source": "arch",
+      "keywords": [
+        "python",
+        "lint",
+        "format",
+        "linter",
+        "formatter",
+        "black",
+        "flake8"
       ]
     },
     {
@@ -5329,6 +6972,24 @@
       ]
     },
     {
+      "id": "go-task",
+      "name": "Task",
+      "category": "devtools",
+      "description": "Task runner with a simple YAML file, an alternative to make (its command is go-task)",
+      "icon": "",
+      "packages": [
+        "go-task"
+      ],
+      "source": "arch",
+      "keywords": [
+        "taskfile",
+        "make",
+        "build",
+        "runner",
+        "go-task"
+      ]
+    },
+    {
       "id": "tig",
       "name": "Tig",
       "category": "devtools",
@@ -5390,6 +7051,44 @@
       "keywords": [
         "count lines",
         "loc"
+      ]
+    },
+    {
+      "id": "valgrind",
+      "name": "Valgrind",
+      "category": "devtools",
+      "description": "Find memory leaks and memory errors in compiled programs",
+      "icon": "",
+      "packages": [
+        "valgrind"
+      ],
+      "source": "arch",
+      "keywords": [
+        "memory",
+        "leak",
+        "debug",
+        "profiler",
+        "c",
+        "c++"
+      ]
+    },
+    {
+      "id": "visidata",
+      "name": "VisiData",
+      "category": "devtools",
+      "description": "Explore and edit CSV, JSON, Excel and database tables in the terminal",
+      "icon": "",
+      "packages": [
+        "visidata"
+      ],
+      "source": "arch",
+      "keywords": [
+        "csv",
+        "spreadsheet",
+        "data",
+        "json",
+        "terminal",
+        "table"
       ]
     },
     {
@@ -5460,6 +7159,24 @@
       ]
     },
     {
+      "id": "zeal",
+      "name": "Zeal",
+      "category": "devtools",
+      "description": "Browse programming documentation offline",
+      "icon": "org.zealdocs.Zeal",
+      "packages": [
+        "zeal"
+      ],
+      "source": "arch",
+      "keywords": [
+        "docs",
+        "documentation",
+        "offline",
+        "api",
+        "dash"
+      ]
+    },
+    {
       "id": "zellij",
       "name": "Zellij",
       "category": "devtools",
@@ -5518,6 +7235,25 @@
         "database",
         "sql",
         "db client"
+      ]
+    },
+    {
+      "id": "duckdb",
+      "name": "DuckDB",
+      "category": "databases",
+      "description": "Fast analytics database in one file; queries CSV, Parquet and JSON files directly",
+      "icon": "",
+      "packages": [
+        "duckdb"
+      ],
+      "source": "arch",
+      "keywords": [
+        "sql",
+        "analytics",
+        "olap",
+        "parquet",
+        "csv",
+        "database"
       ]
     },
     {
@@ -5758,6 +7494,41 @@
       ]
     },
     {
+      "id": "caddy",
+      "name": "Caddy",
+      "category": "cloud",
+      "description": "Web server with automatic HTTPS",
+      "icon": "",
+      "packages": [
+        "caddy"
+      ],
+      "source": "arch",
+      "keywords": [
+        "web server",
+        "https",
+        "reverse proxy",
+        "tls"
+      ]
+    },
+    {
+      "id": "certbot",
+      "name": "Certbot",
+      "category": "cloud",
+      "description": "Get and renew free HTTPS certificates from Let's Encrypt",
+      "icon": "",
+      "packages": [
+        "certbot"
+      ],
+      "source": "arch",
+      "keywords": [
+        "https",
+        "tls",
+        "ssl",
+        "certificate",
+        "letsencrypt"
+      ]
+    },
+    {
       "id": "cloudflare",
       "name": "Cloudflare",
       "category": "cloud",
@@ -5771,6 +7542,23 @@
       "keywords": [
         "workers",
         "tunnel"
+      ]
+    },
+    {
+      "id": "ctop",
+      "name": "ctop",
+      "category": "cloud",
+      "description": "Live view of running containers, like top",
+      "icon": "",
+      "packages": [
+        "ctop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "containers",
+        "docker",
+        "monitor",
+        "top"
       ]
     },
     {
@@ -5804,6 +7592,23 @@
       ]
     },
     {
+      "id": "eksctl",
+      "name": "eksctl",
+      "category": "cloud",
+      "description": "Create and manage Kubernetes clusters on Amazon EKS",
+      "icon": "",
+      "packages": [
+        "eksctl"
+      ],
+      "source": "arch",
+      "keywords": [
+        "aws",
+        "eks",
+        "kubernetes",
+        "cluster"
+      ]
+    },
+    {
       "id": "google-cloud-cli",
       "name": "Google Cloud CLI",
       "category": "cloud",
@@ -5831,6 +7636,23 @@
       "keywords": [
         "k8s",
         "kubernetes"
+      ]
+    },
+    {
+      "id": "hetzner-cloud-cli",
+      "name": "Hetzner Cloud CLI",
+      "category": "cloud",
+      "description": "Manage Hetzner Cloud servers, networks and volumes from the terminal",
+      "icon": "",
+      "packages": [
+        "hcloud"
+      ],
+      "source": "arch",
+      "keywords": [
+        "hetzner",
+        "hcloud",
+        "cloud",
+        "servers"
       ]
     },
     {
@@ -5926,6 +7748,23 @@
       ]
     },
     {
+      "id": "nginx",
+      "name": "nginx",
+      "category": "cloud",
+      "description": "Web server and reverse proxy",
+      "icon": "",
+      "packages": [
+        "nginx"
+      ],
+      "source": "arch",
+      "keywords": [
+        "web server",
+        "reverse proxy",
+        "http",
+        "load balancer"
+      ]
+    },
+    {
       "id": "ngrok",
       "name": "Ngrok",
       "category": "cloud",
@@ -5967,6 +7806,24 @@
       "keywords": [
         "iac",
         "infrastructure as code"
+      ]
+    },
+    {
+      "id": "podman-desktop",
+      "name": "Podman Desktop",
+      "category": "cloud",
+      "description": "Manage containers, images and pods in a window, with Podman or Docker",
+      "icon": "podman-desktop",
+      "packages": [
+        "podman-desktop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "containers",
+        "docker",
+        "podman",
+        "kubernetes",
+        "gui"
       ]
     },
     {
@@ -6043,6 +7900,76 @@
       "keywords": [
         "iac",
         "infrastructure as code"
+      ]
+    },
+    {
+      "id": "terragrunt",
+      "name": "Terragrunt",
+      "category": "cloud",
+      "description": "Keep Terraform and OpenTofu setups for many environments short and consistent",
+      "icon": "",
+      "packages": [
+        "terragrunt"
+      ],
+      "source": "arch",
+      "keywords": [
+        "terraform",
+        "opentofu",
+        "infrastructure",
+        "iac"
+      ]
+    },
+    {
+      "id": "trivy",
+      "name": "Trivy",
+      "category": "cloud",
+      "description": "Scan container images, code and infrastructure files for known vulnerabilities and secrets",
+      "icon": "",
+      "packages": [
+        "trivy"
+      ],
+      "source": "arch",
+      "keywords": [
+        "security",
+        "scanner",
+        "vulnerabilities",
+        "containers",
+        "cve"
+      ]
+    },
+    {
+      "id": "vault",
+      "name": "Vault",
+      "category": "cloud",
+      "description": "HashiCorp's server and command line for storing and handing out secrets",
+      "icon": "",
+      "packages": [
+        "vault"
+      ],
+      "source": "arch",
+      "keywords": [
+        "secrets",
+        "hashicorp",
+        "tokens",
+        "security"
+      ]
+    },
+    {
+      "id": "amp",
+      "name": "Amp",
+      "category": "ai",
+      "description": "Amp's coding agent for your terminal",
+      "icon": "",
+      "packages": [
+        "amp-cli"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "ampcode",
+        "sourcegraph"
       ]
     },
     {
@@ -6181,6 +8108,42 @@
       ]
     },
     {
+      "id": "grok-build",
+      "name": "Grok Build",
+      "category": "ai",
+      "description": "xAI's coding agent for your terminal",
+      "icon": "",
+      "packages": [
+        "grok-cli"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "xai",
+        "grok"
+      ]
+    },
+    {
+      "id": "kilo-code",
+      "name": "Kilo Code",
+      "category": "ai",
+      "description": "Open-source coding agent for your terminal",
+      "icon": "",
+      "packages": [
+        "kilocode-cli"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "kilo",
+        "kilocode"
+      ]
+    },
+    {
       "id": "llama-cpp",
       "name": "Llama.cpp",
       "category": "ai",
@@ -6197,6 +8160,25 @@
         "local models",
         "local ai",
         "gguf"
+      ]
+    },
+    {
+      "id": "llmfit",
+      "name": "LLMfit",
+      "category": "ai",
+      "description": "Tells you which local AI models will run well on this computer's hardware",
+      "icon": "",
+      "packages": [
+        "llmfit"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "llm",
+        "local models",
+        "local ai",
+        "gpu",
+        "vram"
       ]
     },
     {
@@ -6257,6 +8239,78 @@
       ]
     },
     {
+      "id": "opencode-desktop",
+      "name": "OpenCode Desktop",
+      "category": "ai",
+      "description": "The open source coding agent, as a desktop app",
+      "icon": "",
+      "packages": [
+        "opencode-desktop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant"
+      ]
+    },
+    {
+      "id": "perplexity",
+      "name": "Perplexity",
+      "category": "ai",
+      "description": "Official Perplexity desktop app: AI search that answers with its sources",
+      "icon": "",
+      "packages": [
+        "perplexity"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "assistant",
+        "chat",
+        "search",
+        "answers"
+      ]
+    },
+    {
+      "id": "pi-coding-agent",
+      "name": "Pi",
+      "category": "ai",
+      "description": "A small terminal coding agent that works with any model provider and that you extend yourself",
+      "icon": "",
+      "packages": [
+        "pi-coding-agent"
+      ],
+      "source": "omarchy",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "pi-agent",
+        "pi agent",
+        "pi coding agent",
+        "pi.dev"
+      ]
+    },
+    {
+      "id": "qwen-code",
+      "name": "Qwen Code",
+      "category": "ai",
+      "description": "Open-source coding agent for your terminal, made for Alibaba's Qwen models",
+      "icon": "",
+      "packages": [
+        "qwen-code"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "coding agent",
+        "assistant",
+        "alibaba",
+        "qwen"
+      ]
+    },
+    {
       "id": "ramalama",
       "name": "Ramalama",
       "category": "ai",
@@ -6288,6 +8342,26 @@
         "ai",
         "coding agent",
         "assistant"
+      ]
+    },
+    {
+      "id": "whisper-cpp",
+      "name": "Whisper.cpp",
+      "category": "ai",
+      "description": "Turn speech in audio files into text on this computer, with OpenAI's Whisper models (whisper-cli)",
+      "icon": "",
+      "packages": [
+        "whisper-cpp"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ai",
+        "speech to text",
+        "transcribe",
+        "transcription",
+        "subtitles",
+        "local ai",
+        "whisper"
       ]
     },
     {
@@ -6339,6 +8413,24 @@
       ]
     },
     {
+      "id": "bitwarden-cli",
+      "name": "Bitwarden CLI",
+      "category": "security",
+      "description": "Use your Bitwarden vault from the terminal and in scripts",
+      "icon": "bitwarden",
+      "packages": [
+        "bitwarden-cli"
+      ],
+      "source": "arch",
+      "keywords": [
+        "password",
+        "bitwarden",
+        "bw",
+        "terminal",
+        "vault"
+      ]
+    },
+    {
       "id": "clamui",
       "name": "ClamUI",
       "category": "security",
@@ -6352,6 +8444,24 @@
         "virus",
         "malware",
         "clamav"
+      ]
+    },
+    {
+      "id": "cryptomator",
+      "name": "Cryptomator",
+      "category": "security",
+      "description": "Encrypt files before they sync to Dropbox, Google Drive or any other cloud",
+      "icon": "org.cryptomator.Cryptomator",
+      "packages": [
+        "cryptomator"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "encryption",
+        "cloud",
+        "vault",
+        "dropbox",
+        "privacy"
       ]
     },
     {
@@ -6400,6 +8510,25 @@
       ]
     },
     {
+      "id": "kleopatra",
+      "name": "Kleopatra",
+      "category": "security",
+      "description": "Manage GPG keys and certificates; encrypt and sign files",
+      "icon": "kleopatra",
+      "packages": [
+        "kleopatra"
+      ],
+      "source": "arch",
+      "keywords": [
+        "gpg",
+        "pgp",
+        "keys",
+        "encrypt",
+        "sign",
+        "certificates"
+      ]
+    },
+    {
       "id": "kwalletmanager",
       "name": "KWalletManager",
       "category": "security",
@@ -6412,6 +8541,23 @@
       "keywords": [
         "kwallet",
         "passwords"
+      ]
+    },
+    {
+      "id": "lynis",
+      "name": "Lynis",
+      "category": "security",
+      "description": "Audit this computer's security settings and get suggestions",
+      "icon": "",
+      "packages": [
+        "lynis"
+      ],
+      "source": "arch",
+      "keywords": [
+        "audit",
+        "hardening",
+        "security",
+        "scan"
       ]
     },
     {
@@ -6442,6 +8588,41 @@
       "keywords": [
         "redact",
         "blur"
+      ]
+    },
+    {
+      "id": "onionshare",
+      "name": "OnionShare",
+      "category": "security",
+      "description": "Share files, host a site or chat anonymously over Tor",
+      "icon": "org.onionshare.OnionShare",
+      "packages": [
+        "onionshare"
+      ],
+      "source": "arch",
+      "keywords": [
+        "tor",
+        "share",
+        "anonymous",
+        "privacy",
+        "files"
+      ]
+    },
+    {
+      "id": "pass",
+      "name": "pass",
+      "category": "security",
+      "description": "Password manager for the terminal: each password a GPG-encrypted file, synced with Git",
+      "icon": "",
+      "packages": [
+        "pass"
+      ],
+      "source": "arch",
+      "keywords": [
+        "password",
+        "gpg",
+        "terminal",
+        "password-store"
       ]
     },
     {
@@ -6505,6 +8686,123 @@
         "KeePass",
         "password manager",
         "passwords"
+      ]
+    },
+    {
+      "id": "veracrypt",
+      "name": "VeraCrypt",
+      "category": "security",
+      "description": "Encrypt drives, USB sticks and file containers",
+      "icon": "veracrypt",
+      "packages": [
+        "veracrypt"
+      ],
+      "source": "arch",
+      "keywords": [
+        "encryption",
+        "disk",
+        "truecrypt",
+        "encrypted volume",
+        "usb"
+      ]
+    },
+    {
+      "id": "yubikey-manager",
+      "name": "YubiKey Manager",
+      "category": "security",
+      "description": "Set up a YubiKey from the terminal (ykman): PIN, FIDO2, one-time codes",
+      "icon": "",
+      "packages": [
+        "yubikey-manager"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "pcscd.socket"
+        ]
+      },
+      "keywords": [
+        "yubikey",
+        "yubico",
+        "2fa",
+        "fido2",
+        "security key",
+        "ykman"
+      ]
+    },
+    {
+      "id": "anydesk",
+      "name": "AnyDesk",
+      "category": "network",
+      "description": "Remote desktop: control another computer, or get help on this one",
+      "icon": "anydesk",
+      "packages": [
+        "anydesk-bin"
+      ],
+      "source": "aur",
+      "keywords": [
+        "remote desktop",
+        "remote support",
+        "teamviewer"
+      ]
+    },
+    {
+      "id": "aria2",
+      "name": "aria2",
+      "category": "network",
+      "description": "Download manager for the terminal: HTTP, FTP and BitTorrent, over several connections at once",
+      "icon": "",
+      "packages": [
+        "aria2"
+      ],
+      "source": "arch",
+      "keywords": [
+        "download",
+        "torrent",
+        "http",
+        "terminal",
+        "wget"
+      ]
+    },
+    {
+      "id": "cloudflare-warp",
+      "name": "Cloudflare WARP",
+      "category": "network",
+      "description": "Cloudflare's 1.1.1.1 VPN and Zero Trust client",
+      "icon": "",
+      "packages": [
+        "cloudflare-warp-bin"
+      ],
+      "source": "cachyos",
+      "setup": {
+        "services": [
+          "warp-svc.service"
+        ],
+        "note": "Register once in a terminal with warp-cli registration new, then connect with warp-cli connect."
+      },
+      "keywords": [
+        "vpn",
+        "cloudflare",
+        "1.1.1.1",
+        "zero trust",
+        "warp"
+      ]
+    },
+    {
+      "id": "croc",
+      "name": "croc",
+      "category": "network",
+      "description": "Send files between two computers with a short code phrase, from the terminal",
+      "icon": "",
+      "packages": [
+        "croc"
+      ],
+      "source": "arch",
+      "keywords": [
+        "file transfer",
+        "send",
+        "share",
+        "p2p"
       ]
     },
     {
@@ -6601,6 +8899,24 @@
       ]
     },
     {
+      "id": "freefilesync",
+      "name": "FreeFileSync",
+      "category": "network",
+      "description": "Compare two folders and sync them, for backups to drives and network shares",
+      "icon": "freefilesync",
+      "packages": [
+        "freefilesync"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "sync",
+        "backup",
+        "folders",
+        "compare",
+        "mirror"
+      ]
+    },
+    {
       "id": "omarchy-windows-vm",
       "name": "FreeRDP",
       "category": "network",
@@ -6615,6 +8931,40 @@
         "remote desktop",
         "xfreerdp",
         "windows"
+      ]
+    },
+    {
+      "id": "insync",
+      "name": "Insync",
+      "category": "network",
+      "description": "Sync folders with Google Drive, OneDrive and Dropbox (paid, with a trial)",
+      "icon": "insync",
+      "packages": [
+        "insync"
+      ],
+      "source": "aur",
+      "keywords": [
+        "google drive",
+        "onedrive",
+        "sync",
+        "cloud"
+      ]
+    },
+    {
+      "id": "jdownloader",
+      "name": "JDownloader 2",
+      "category": "network",
+      "description": "Download manager for file hosts and video sites: grabs links, resumes and unpacks",
+      "icon": "jdownloader",
+      "packages": [
+        "jdownloader2"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "download",
+        "file hosting",
+        "links",
+        "manager"
       ]
     },
     {
@@ -6673,6 +9023,23 @@
       ]
     },
     {
+      "id": "mosh",
+      "name": "Mosh",
+      "category": "network",
+      "description": "Remote terminal like SSH that survives sleep, roaming and bad connections",
+      "icon": "",
+      "packages": [
+        "mosh"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ssh",
+        "remote",
+        "terminal",
+        "mobile shell"
+      ]
+    },
+    {
       "id": "mullvad-vpn",
       "name": "Mullvad VPN",
       "category": "network",
@@ -6707,6 +9074,40 @@
       ]
     },
     {
+      "id": "nicotine",
+      "name": "Nicotine+",
+      "category": "network",
+      "description": "Share and download music on the Soulseek network",
+      "icon": "org.nicotine_plus.Nicotine",
+      "packages": [
+        "nicotine+"
+      ],
+      "source": "arch",
+      "keywords": [
+        "soulseek",
+        "p2p",
+        "music",
+        "share"
+      ]
+    },
+    {
+      "id": "nmap",
+      "name": "Nmap",
+      "category": "network",
+      "description": "Scan a network for devices, open ports and services, from the terminal",
+      "icon": "nmap",
+      "packages": [
+        "nmap"
+      ],
+      "source": "arch",
+      "keywords": [
+        "network scanner",
+        "ports",
+        "scan",
+        "security"
+      ]
+    },
+    {
       "id": "nordvpn",
       "name": "NordVPN",
       "category": "network",
@@ -6726,6 +9127,67 @@
       },
       "keywords": [
         "vpn"
+      ]
+    },
+    {
+      "id": "onedrive",
+      "name": "OneDrive",
+      "category": "network",
+      "description": "Sync a folder with Microsoft OneDrive (a command-line client)",
+      "icon": "",
+      "packages": [
+        "onedrive-abraunegg"
+      ],
+      "source": "aur",
+      "setup": {
+        "note": "Sign in once in a terminal: run onedrive and follow the link it prints. Then keep it syncing with systemctl --user enable --now onedrive."
+      },
+      "keywords": [
+        "onedrive",
+        "microsoft",
+        "cloud",
+        "sync",
+        "sharepoint"
+      ]
+    },
+    {
+      "id": "openconnect",
+      "name": "OpenConnect",
+      "category": "network",
+      "description": "Connect to company VPNs: Cisco AnyConnect, GlobalProtect, Pulse Secure and Fortinet",
+      "icon": "",
+      "packages": [
+        "openconnect",
+        "networkmanager-openconnect"
+      ],
+      "source": "arch",
+      "keywords": [
+        "vpn",
+        "cisco",
+        "anyconnect",
+        "globalprotect",
+        "work vpn",
+        "corporate"
+      ]
+    },
+    {
+      "id": "openvpn",
+      "name": "OpenVPN",
+      "category": "network",
+      "description": "Connect to OpenVPN servers, such as a provider's or your company's",
+      "icon": "openvpn",
+      "packages": [
+        "openvpn",
+        "networkmanager-openvpn"
+      ],
+      "source": "arch",
+      "setup": {
+        "note": "Add a VPN from its .ovpn file in a terminal: nmcli connection import type openvpn file <file>. Then connect with nmcli connection up <name>."
+      },
+      "keywords": [
+        "vpn",
+        "ovpn",
+        "tunnel"
       ]
     },
     {
@@ -6855,6 +9317,41 @@
       ]
     },
     {
+      "id": "speedtest-cli",
+      "name": "Speedtest CLI",
+      "category": "network",
+      "description": "Measure the internet connection's download and upload speed, from the terminal",
+      "icon": "",
+      "packages": [
+        "speedtest-cli"
+      ],
+      "source": "arch",
+      "keywords": [
+        "speed test",
+        "internet speed",
+        "bandwidth",
+        "ookla"
+      ]
+    },
+    {
+      "id": "sshfs",
+      "name": "SSHFS",
+      "category": "network",
+      "description": "Mount a folder from another computer over SSH",
+      "icon": "",
+      "packages": [
+        "sshfs"
+      ],
+      "source": "arch",
+      "keywords": [
+        "ssh",
+        "mount",
+        "remote",
+        "sftp",
+        "fuse"
+      ]
+    },
+    {
       "id": "syncthing",
       "name": "Syncthing",
       "category": "network",
@@ -6892,6 +9389,22 @@
       },
       "keywords": [
         "vpn"
+      ]
+    },
+    {
+      "id": "tigervnc",
+      "name": "TigerVNC",
+      "category": "network",
+      "description": "See and control another computer's screen over VNC",
+      "icon": "tigervnc",
+      "packages": [
+        "tigervnc"
+      ],
+      "source": "arch",
+      "keywords": [
+        "vnc",
+        "remote desktop",
+        "viewer"
       ]
     },
     {
@@ -6940,6 +9453,29 @@
       ]
     },
     {
+      "id": "zerotier",
+      "name": "ZeroTier",
+      "category": "network",
+      "description": "Join your devices into one private network across the internet",
+      "icon": "",
+      "packages": [
+        "zerotier-one"
+      ],
+      "source": "arch",
+      "setup": {
+        "services": [
+          "zerotier-one.service"
+        ],
+        "note": "Join a network in a terminal: sudo zerotier-cli join <network id>."
+      },
+      "keywords": [
+        "vpn",
+        "mesh",
+        "private network",
+        "lan"
+      ]
+    },
+    {
       "id": "alacritty",
       "name": "Alacritty",
       "category": "utilities",
@@ -6969,6 +9505,25 @@
         "volume",
         "sound",
         "pulseaudio"
+      ]
+    },
+    {
+      "id": "bleachbit",
+      "name": "BleachBit",
+      "category": "utilities",
+      "description": "Free disk space by clearing caches, logs and browser data",
+      "icon": "bleachbit",
+      "packages": [
+        "bleachbit"
+      ],
+      "source": "arch",
+      "keywords": [
+        "clean",
+        "cleanup",
+        "cache",
+        "privacy",
+        "disk space",
+        "ccleaner"
       ]
     },
     {
@@ -7061,6 +9616,23 @@
       ]
     },
     {
+      "id": "czkawka",
+      "name": "Czkawka",
+      "category": "utilities",
+      "description": "Find duplicate files, similar photos, empty folders and other clutter",
+      "icon": "com.github.qarmin.czkawka",
+      "packages": [
+        "czkawka-gui"
+      ],
+      "source": "cachyos",
+      "keywords": [
+        "duplicates",
+        "cleanup",
+        "disk space",
+        "similar images"
+      ]
+    },
+    {
       "id": "decoder",
       "name": "Decoder",
       "category": "utilities",
@@ -7128,6 +9700,23 @@
       }
     },
     {
+      "id": "dolphin",
+      "name": "Dolphin",
+      "category": "utilities",
+      "description": "KDE's file manager, with split view, tabs and a terminal panel",
+      "icon": "org.kde.dolphin",
+      "packages": [
+        "dolphin"
+      ],
+      "source": "arch",
+      "keywords": [
+        "files",
+        "file manager",
+        "kde",
+        "explorer"
+      ]
+    },
+    {
       "id": "droidcam",
       "name": "DroidCam",
       "category": "utilities",
@@ -7157,6 +9746,23 @@
         "webcam",
         "phone camera",
         "camera"
+      ]
+    },
+    {
+      "id": "duf",
+      "name": "duf",
+      "category": "utilities",
+      "description": "Free space on every disk at a glance, in the terminal",
+      "icon": "",
+      "packages": [
+        "duf"
+      ],
+      "source": "arch",
+      "keywords": [
+        "disk",
+        "free space",
+        "df",
+        "terminal"
       ]
     },
     {
@@ -7210,6 +9816,25 @@
       ]
     },
     {
+      "id": "file-roller",
+      "name": "File Roller",
+      "category": "utilities",
+      "description": "Open and create archives: zip, tar, 7z and more",
+      "icon": "org.gnome.FileRoller",
+      "packages": [
+        "file-roller"
+      ],
+      "source": "arch",
+      "keywords": [
+        "archive",
+        "zip",
+        "unzip",
+        "extract",
+        "compress",
+        "rar"
+      ]
+    },
+    {
       "id": "filelight",
       "name": "Filelight",
       "category": "utilities",
@@ -7222,6 +9847,24 @@
       "keywords": [
         "disk usage",
         "disk space"
+      ]
+    },
+    {
+      "id": "fish",
+      "name": "Fish",
+      "category": "utilities",
+      "description": "A shell that suggests commands as you type and colors mistakes, with no setup",
+      "icon": "fish",
+      "packages": [
+        "fish"
+      ],
+      "source": "arch",
+      "keywords": [
+        "shell",
+        "terminal",
+        "bash",
+        "prompt",
+        "autosuggestions"
       ]
     },
     {
@@ -7342,6 +9985,23 @@
       ]
     },
     {
+      "id": "hardinfo2",
+      "name": "Hardinfo2",
+      "category": "utilities",
+      "description": "System information and benchmarks: hardware, sensors, drivers",
+      "icon": "hardinfo2",
+      "packages": [
+        "hardinfo2"
+      ],
+      "source": "arch",
+      "keywords": [
+        "hardware",
+        "system info",
+        "benchmark",
+        "sensors"
+      ]
+    },
+    {
       "id": "health",
       "name": "Health",
       "category": "utilities",
@@ -7355,6 +10015,24 @@
         "fitness",
         "steps",
         "weight"
+      ]
+    },
+    {
+      "id": "htop",
+      "name": "htop",
+      "category": "utilities",
+      "description": "Interactive process viewer for the terminal",
+      "icon": "htop",
+      "packages": [
+        "htop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "processes",
+        "task manager",
+        "cpu",
+        "memory",
+        "top"
       ]
     },
     {
@@ -7385,6 +10063,22 @@
       "keywords": [
         "terminal",
         "terminal emulator",
+        "console"
+      ]
+    },
+    {
+      "id": "konsole",
+      "name": "Konsole",
+      "category": "utilities",
+      "description": "KDE's terminal, with tabs, splits and profiles",
+      "icon": "org.kde.konsole",
+      "packages": [
+        "konsole"
+      ],
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "kde",
         "console"
       ]
     },
@@ -7436,6 +10130,24 @@
       ]
     },
     {
+      "id": "midnight-commander",
+      "name": "Midnight Commander",
+      "category": "utilities",
+      "description": "Two-pane file manager for the terminal",
+      "icon": "MidnightCommander",
+      "packages": [
+        "mc"
+      ],
+      "source": "arch",
+      "keywords": [
+        "files",
+        "file manager",
+        "terminal",
+        "norton commander",
+        "mc"
+      ]
+    },
+    {
       "id": "mission-center",
       "name": "Mission Center",
       "category": "utilities",
@@ -7475,6 +10187,57 @@
       ]
     },
     {
+      "id": "ncdu",
+      "name": "ncdu",
+      "category": "utilities",
+      "description": "Find what fills a disk, in the terminal",
+      "icon": "",
+      "packages": [
+        "ncdu"
+      ],
+      "source": "arch",
+      "keywords": [
+        "disk usage",
+        "space",
+        "du",
+        "terminal",
+        "cleanup"
+      ]
+    },
+    {
+      "id": "nemo",
+      "name": "Nemo",
+      "category": "utilities",
+      "description": "Cinnamon's file manager, with two panes and many options",
+      "icon": "nemo",
+      "packages": [
+        "nemo"
+      ],
+      "source": "arch",
+      "keywords": [
+        "files",
+        "file manager",
+        "cinnamon"
+      ]
+    },
+    {
+      "id": "nushell",
+      "name": "Nushell",
+      "category": "utilities",
+      "description": "A shell that treats command output as tables you can filter and sort",
+      "icon": "",
+      "packages": [
+        "nushell"
+      ],
+      "source": "arch",
+      "keywords": [
+        "shell",
+        "terminal",
+        "nu",
+        "structured data"
+      ]
+    },
+    {
       "id": "nvtop",
       "name": "Nvtop",
       "category": "utilities",
@@ -7506,6 +10269,59 @@
       ]
     },
     {
+      "id": "peazip",
+      "name": "PeaZip",
+      "category": "utilities",
+      "description": "Archive manager for over 200 formats, with encryption and splitting",
+      "icon": "peazip",
+      "packages": [
+        "peazip"
+      ],
+      "source": "arch",
+      "keywords": [
+        "archive",
+        "zip",
+        "7z",
+        "rar",
+        "extract",
+        "compress"
+      ]
+    },
+    {
+      "id": "powertop",
+      "name": "PowerTOP",
+      "category": "utilities",
+      "description": "See what drains the battery and how much power each part uses",
+      "icon": "",
+      "packages": [
+        "powertop"
+      ],
+      "source": "arch",
+      "keywords": [
+        "battery",
+        "power",
+        "laptop",
+        "energy"
+      ]
+    },
+    {
+      "id": "ptyxis",
+      "name": "Ptyxis",
+      "category": "utilities",
+      "description": "GNOME's terminal, with tabs and one-click shells inside containers",
+      "icon": "org.gnome.Ptyxis",
+      "packages": [
+        "ptyxis"
+      ],
+      "source": "arch",
+      "keywords": [
+        "terminal",
+        "gnome",
+        "containers",
+        "distrobox"
+      ]
+    },
+    {
       "id": "railway",
       "name": "Railway",
       "category": "utilities",
@@ -7522,6 +10338,25 @@
       ]
     },
     {
+      "id": "resources",
+      "name": "Resources",
+      "category": "utilities",
+      "description": "See CPU, memory, GPU, disk and network use, and stop apps and processes",
+      "icon": "",
+      "packages": [
+        "resources"
+      ],
+      "source": "arch",
+      "keywords": [
+        "task manager",
+        "system monitor",
+        "cpu",
+        "memory",
+        "gpu",
+        "processes"
+      ]
+    },
+    {
       "id": "rofi",
       "name": "Rofi",
       "category": "utilities",
@@ -7534,6 +10369,24 @@
       "keywords": [
         "launcher",
         "dmenu"
+      ]
+    },
+    {
+      "id": "starship",
+      "name": "Starship",
+      "category": "utilities",
+      "description": "Prompt for any shell that shows the Git branch, language versions and more",
+      "icon": "",
+      "packages": [
+        "starship"
+      ],
+      "source": "arch",
+      "keywords": [
+        "prompt",
+        "shell",
+        "terminal",
+        "zsh",
+        "bash"
       ]
     },
     {
@@ -7669,6 +10522,24 @@
         "terminal",
         "terminal emulator",
         "console"
+      ]
+    },
+    {
+      "id": "yazi",
+      "name": "Yazi",
+      "category": "utilities",
+      "description": "Fast file manager for the terminal, with previews",
+      "icon": "",
+      "packages": [
+        "yazi"
+      ],
+      "source": "arch",
+      "keywords": [
+        "files",
+        "file manager",
+        "terminal",
+        "ranger",
+        "tui"
       ]
     },
     {
@@ -7866,6 +10737,42 @@
       ]
     },
     {
+      "id": "font-intel-one-mono",
+      "name": "Intel One Mono",
+      "category": "fonts",
+      "description": "Intel's coding font, drawn with low-vision developers to reduce eye strain",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-intone-nerd"
+      ],
+      "source": "arch",
+      "font": "IntoneMono Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "IntoneMono Nerd Font"
+      ]
+    },
+    {
+      "id": "font-iosevka",
+      "name": "Iosevka",
+      "category": "fonts",
+      "description": "A tall, narrow coding font that fits more columns on a line (a large download)",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-iosevka-nerd"
+      ],
+      "source": "arch",
+      "font": "Iosevka Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "Iosevka Nerd Font"
+      ]
+    },
+    {
       "id": "font-meslo",
       "name": "Meslo",
       "category": "fonts",
@@ -7881,6 +10788,42 @@
         "monospace",
         "nerd font",
         "MesloLGS Nerd Font"
+      ]
+    },
+    {
+      "id": "font-monaspace",
+      "name": "Monaspace Neon",
+      "category": "fonts",
+      "description": "GitHub's coding font family; Neon is its plain sans, and the package brings Argon, Xenon, Radon and Krypton too",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "otf-monaspace-nerd"
+      ],
+      "source": "arch",
+      "font": "MonaspiceNe Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "MonaspiceNe Nerd Font"
+      ]
+    },
+    {
+      "id": "font-mononoki",
+      "name": "Mononoki",
+      "category": "fonts",
+      "description": "A rounded coding font with clear, friendly shapes",
+      "icon": "preferences-desktop-font",
+      "packages": [
+        "ttf-mononoki-nerd"
+      ],
+      "source": "arch",
+      "font": "Mononoki Nerd Font",
+      "keywords": [
+        "font",
+        "monospace",
+        "nerd font",
+        "Mononoki Nerd Font"
       ]
     },
     {
@@ -8016,6 +10959,23 @@
       "keywords": [
         "backup",
         "backups"
+      ]
+    },
+    {
+      "id": "boxbuddy",
+      "name": "BoxBuddy",
+      "category": "system",
+      "description": "Manage Distrobox containers in a window",
+      "icon": "io.github.dvlv.boxbuddyrs",
+      "packages": [
+        "boxbuddy"
+      ],
+      "source": "arch",
+      "keywords": [
+        "distrobox",
+        "containers",
+        "toolbox",
+        "gui"
       ]
     },
     {
@@ -8241,6 +11201,25 @@
       ]
     },
     {
+      "id": "framework-tool",
+      "name": "Framework laptop tool",
+      "category": "system",
+      "description": "Check a Framework laptop's firmware versions, battery charge limit, fans and expansion cards from the terminal (framework_tool)",
+      "icon": "",
+      "packages": [
+        "framework-system"
+      ],
+      "source": "arch",
+      "keywords": [
+        "framework",
+        "laptop",
+        "firmware",
+        "battery limit",
+        "bios",
+        "ec"
+      ]
+    },
+    {
       "id": "genymotion",
       "name": "Genymotion",
       "category": "system",
@@ -8368,6 +11347,45 @@
       ]
     },
     {
+      "id": "gsmartcontrol",
+      "name": "GSmartControl",
+      "category": "system",
+      "description": "Check a disk's health and run its self-tests (SMART)",
+      "icon": "gsmartcontrol",
+      "packages": [
+        "gsmartcontrol"
+      ],
+      "source": "arch",
+      "keywords": [
+        "disk",
+        "health",
+        "smart",
+        "ssd",
+        "hdd",
+        "failing"
+      ]
+    },
+    {
+      "id": "gutenprint-printer-drivers",
+      "name": "Gutenprint printer drivers",
+      "category": "system",
+      "description": "Drivers for many Canon, Epson and other inkjet and photo printers",
+      "icon": "printer",
+      "packages": [
+        "gutenprint",
+        "foomatic-db-gutenprint-ppds"
+      ],
+      "source": "arch",
+      "keywords": [
+        "printer",
+        "driver",
+        "canon",
+        "epson",
+        "cups",
+        "gutenprint"
+      ]
+    },
+    {
       "id": "hp-printer-drivers",
       "name": "HP printer drivers",
       "category": "system",
@@ -8434,6 +11452,24 @@
       ]
     },
     {
+      "id": "kdiskmark",
+      "name": "KDiskMark",
+      "category": "system",
+      "description": "Measure how fast a disk reads and writes",
+      "icon": "kdiskmark",
+      "packages": [
+        "kdiskmark"
+      ],
+      "source": "arch",
+      "keywords": [
+        "disk",
+        "benchmark",
+        "speed",
+        "ssd",
+        "crystaldiskmark"
+      ]
+    },
+    {
       "id": "kopia",
       "name": "Kopia",
       "category": "system",
@@ -8488,6 +11524,24 @@
         "fans",
         "corsair",
         "nzxt"
+      ]
+    },
+    {
+      "id": "gnome-logs",
+      "name": "Logs",
+      "category": "system",
+      "description": "Read the system's logs in a window, by boot and by importance",
+      "icon": "org.gnome.Logs",
+      "packages": [
+        "gnome-logs"
+      ],
+      "source": "arch",
+      "keywords": [
+        "logs",
+        "journal",
+        "journalctl",
+        "errors",
+        "troubleshooting"
       ]
     },
     {
@@ -8711,6 +11765,25 @@
         "keyboard",
         "unifying",
         "bolt"
+      ]
+    },
+    {
+      "id": "testdisk",
+      "name": "TestDisk and PhotoRec",
+      "category": "system",
+      "description": "Recover lost partitions and deleted files, from the terminal",
+      "icon": "",
+      "packages": [
+        "testdisk"
+      ],
+      "source": "arch",
+      "keywords": [
+        "recover",
+        "undelete",
+        "deleted files",
+        "partition",
+        "photorec",
+        "rescue"
       ]
     },
     {

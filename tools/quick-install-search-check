@@ -61,12 +61,12 @@ check("vs code (with a space) still finds VSCodium", () => {
   assert.ok(rank("vs code", "VSCodium") >= 0)
 })
 
-// Names that contain "ff" (Kaffeine, OnlyOffice) come first, as a substring
-// ranks above letters in order, and FontForge's two word starts beat
-// Firefox's one; Firefox still shows on the first screen.
-check("ff finds Firefox in the first ten", () => {
+// Names that contain "ff" (Kaffeine, OnlyOffice, Ruff) come first, as a
+// substring ranks above letters in order, and FontForge's two word starts
+// beat Firefox's one; Firefox still shows without much scrolling.
+check("ff finds Firefox in the first fifteen", () => {
   const at = rank("ff", "Firefox")
-  assert.ok(at >= 0 && at < 10, "Firefox at " + at + ": " + names("ff", 12).join(", "))
+  assert.ok(at >= 0 && at < 15, "Firefox at " + at + ": " + names("ff", 16).join(", "))
 })
 
 check("word starts beat scattered letters: kpx finds KeePassXC", () => {
@@ -90,8 +90,11 @@ check("a whole keyword or package name beats letters inside other names", () => 
 
 check("a word people type finds the apps of that kind, before chance letters", () => {
   // The word in keywords or the description outranks its letters scattered
-  // through a name: ssh was Sched-ext schedulers, dj was Deja Dup.
-  assert.equal(names("ssh", 1)[0], "PuTTY")
+  // through a name: ssh was Sched-ext schedulers, dj was Deja Dup. SSHFS
+  // has it at the start of its name, which still comes first.
+  assert.equal(names("ssh", 1)[0], "SSHFS")
+  assert.ok(rank("ssh", "PuTTY") < rank("ssh", "Sched-ext schedulers"))
+  assert.ok(rank("ssh", "PuTTY") < 4)
   assert.equal(names("dj", 1)[0], "Mixxx")
   assert.equal(names("vnc", 1)[0], "Remmina")
   assert.ok(names("excel", 4).includes("LibreOffice"))
