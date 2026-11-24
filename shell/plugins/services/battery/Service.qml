@@ -22,7 +22,14 @@ Item {
     ? shell.shellConfig.battery : ({})
   readonly property var thresholds: BatteryModel.warningThresholds(batteryConfig, defaultLowPercent, defaultCriticalPercent)
   onThresholdsChanged: checkBattery()
+  // The charger going in or out brings the source's own power profile and
+  // screen brightness (karchy-power-source, Settings › Power). The first
+  // battery warning of a discharge asks for the battery's profile again, which
+  // is Power saver while `battery.saver` is on: karchy-powerprofiles-set
+  // decides that from the charge, so the session's start agrees with it.
   property string pendingPowerSource: ""
+  property bool pendingLowBattery: false
+  property string runningPowerSource: ""
   // Follows power-profiles-daemon's change signals, so nothing polls it.
   // Quickshell never attaches that listener if the daemon failed when the
   // shell started, so a one-off read on startup, on a power source change and
@@ -57,8 +64,10 @@ Item {
 
   function checkBattery() {
     var sample = batterySample()
-    var step = BatteryModel.warningStep(persisted.warned, sample, thresholds)
+    var before = persisted.warned
+    var step = BatteryModel.warningStep(before, sample, thresholds)
     persisted.warned = step.warned
+    if (step.notify && before === "") applyLowBattery()
     if (step.notify) sendBatteryWarning(step.notify, sample.level)
     else if (step.clear) clearWarningsProcess.running = true
   }
@@ -72,14 +81,36 @@ Item {
     process.running = true
   }
 
-  function applyPowerProfile() {
+  function applyPowerSource() {
     pendingPowerSource = UPower.onBattery ? "battery" : "ac"
-    if (!powerProfileProcess.running) runPendingPowerProfile()
+    // The source's command picks the profile for the charge as it is now.
+    pendingLowBattery = false
+    runPendingPowerCommand()
   }
 
-  function runPendingPowerProfile() {
-    powerProfileProcess.command = ["karchy-powerprofiles-set", pendingPowerSource]
-    pendingPowerSource = ""
+  function applyLowBattery() {
+    if (batteryConfig.saver !== true) return
+    // A change to battery power that is pending or running covers it.
+    if (pendingPowerSource !== "" || (powerProfileProcess.running && runningPowerSource === "battery")) return
+    pendingLowBattery = true
+    runPendingPowerCommand()
+  }
+
+  // The newest power source wins over one still waiting; the low-battery
+  // request waits its turn.
+  function runPendingPowerCommand() {
+    if (powerProfileProcess.running) return
+    if (pendingPowerSource !== "") {
+      runningPowerSource = pendingPowerSource
+      powerProfileProcess.command = ["karchy-power-source", pendingPowerSource]
+      pendingPowerSource = ""
+    } else if (pendingLowBattery) {
+      runningPowerSource = ""
+      powerProfileProcess.command = ["karchy-powerprofiles-set", "battery"]
+      pendingLowBattery = false
+    } else {
+      return
+    }
     powerProfileProcess.running = true
   }
 
@@ -117,7 +148,8 @@ Item {
   Process {
     id: powerProfileProcess
     onExited: {
-      if (root.pendingPowerSource !== "") root.runPendingPowerProfile()
+      // Deferred: the process still reports running while it signals exit.
+      Qt.callLater(root.runPendingPowerCommand)
       root.refreshPowerProfile()
     }
   }
@@ -179,8 +211,8 @@ Item {
   Connections {
     target: UPower
     function onOnBatteryChanged() {
+      root.applyPowerSource()
       root.checkBattery()
-      root.applyPowerProfile()
       root.refreshPowerProfile()
     }
   }

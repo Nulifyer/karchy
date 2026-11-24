@@ -48,7 +48,10 @@ Use `set` so that each value lands where the system reads it. The files matter w
 Power profiles exist where `power-profiles-daemon` is installed, which karchy does on laptops.
 
 - `karchy-powerprofiles-list` lists the profiles this machine has.
-- `karchy-powerprofiles-set ac|battery <power-saver|balanced|performance>` sets and remembers the profile for that power source. The default is `balanced` on both.
+- `karchy-powerprofiles-set ac|battery <power-saver|balanced|performance>` remembers the profile for that power source and switches to it when that source is the one in use. The default is `balanced` on both. `karchy-settings-power set profile.ac|profile.battery` does the same.
+- `karchy-powerprofiles-set ac|battery` without a profile switches to the remembered one. On battery at or under the first battery warning with `battery.saver` on, it switches to `power-saver` instead.
+- `karchy-power-source ac|battery` applies a source's profile and screen brightness. The shell's battery service runs it when the charger goes in or out. Do not run it on a timer.
+- If the profile running now (`profile` in `status`) is not the one set for the source in use, a low battery with `battery.saver` on, an app holding a profile, or `powerprofilesctl` run by hand set it.
 
 ## Battery warnings
 

@@ -3,6 +3,18 @@
 # karchy:summary=Set and remember the power profile for AC or battery use
 # karchy:args=[autodetect|ac|battery] [power-saver|balanced|performance]
 
+# With a profile: remember it for that power source, and switch to it when
+# that source is the one in use. So the bar's power panel changes the profile
+# running now, and Settings › Power can also set the other source's.
+#
+# Without one: switch to the source's remembered profile, Balanced until one
+# is picked. On battery at or under the low-battery warning, with
+# `battery.saver` on in shell.json (Settings › Power), that is Power saver
+# instead and nothing is remembered: the charger, or a profile picked by
+# hand, ends it. The decision is made here so that every caller agrees: the
+# session's start (karchy-powerprofiles-init), the charger going in or out
+# and the low-battery warning (the shell's battery service).
+
 action="${1:-autodetect}"
 requested_profile="${2:-}"
 
@@ -13,16 +25,15 @@ usage() {
 
 (( $# <= 2 )) || usage
 
+# The same signal as the shell (UPower.onBattery), so every entry point saves
+# and restores the profile under the same ac/battery key.
+in_use=ac
+if [[ $(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower OnBattery 2>/dev/null) == "b true" ]]; then
+  in_use=battery
+fi
+
 case "$action" in
-  autodetect)
-    # Use the same signal as the shell (UPower.onBattery) so every entry point
-    # saves and restores the profile under the same ac/battery key.
-    if [[ $(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower OnBattery 2>/dev/null) == "b true" ]]; then
-      action=battery
-    else
-      action=ac
-    fi
-    ;;
+  autodetect) action=$in_use ;;
   ac | battery) ;;
   *) usage ;;
 esac
@@ -33,8 +44,39 @@ profile_available() {
   [[ " ${profiles[*]} " == *" $1 "* ]]
 }
 
+# Whether the battery is low enough for Power saver: `battery.saver` is on
+# and the charge is at or under the first battery warning that is on (the
+# low one, else the critical one). The levels are read as the shell reads
+# them (BatteryModel.js `warningThresholds`); keep the two in step.
+battery_saver_due() {
+  local level reading percent
+  # shellcheck source=bin/karchy-shell-config
+  level=$(source karchy-shell-config 2>/dev/null && effective_config 2>/dev/null | jq -r '
+    def percent($fallback):
+      (if type == "string" then (tonumber? // null) else . end)
+      | if type == "number" then (if . < 0 then 0 elif . > 100 then 100 else floor end) else $fallback end;
+    (.battery | if type == "object" then . else {} end) as $battery
+    | if $battery.saver != true then 0
+      else ($battery.low | percent(15)) as $low | ($battery.critical | percent(5)) as $critical
+        | if $critical >= $low then $critical else $low end
+      end') || return 1
+  [[ $level =~ ^[0-9]+$ ]] && (( level > 0 )) || return 1
+
+  # A battery that powers the machine, as the shell counts one, and its charge.
+  reading=$(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower/devices/DisplayDevice \
+    org.freedesktop.UPower.Device Type PowerSupply IsPresent Percentage 2>/dev/null | tr '\n' ' ') || return 1
+  [[ $reading =~ ^u\ 2\ b\ true\ b\ true\ d\ ([0-9]+(\.[0-9]+)?)\ $ ]] || return 1
+  percent=$(LC_ALL=C printf '%.0f' "${BASH_REMATCH[1]}")
+  (( percent <= level ))
+}
+
 state_dir="${KARCHY_POWERPROFILES_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/karchy/powerprofiles}"
 state_file="$state_dir/$action"
+
+remember() {
+  mkdir -p "$state_dir"
+  printf '%s\n' "$requested_profile" >"$state_file"
+}
 
 if [[ -n $requested_profile ]]; then
   profile_available "$requested_profile" || {
@@ -42,7 +84,14 @@ if [[ -n $requested_profile ]]; then
     exit 1
   }
 
+  # The other source's profile waits for that source.
+  if [[ $action != "$in_use" ]]; then
+    remember
+    exit 0
+  fi
   profile="$requested_profile"
+elif [[ $action == battery ]] && profile_available power-saver && battery_saver_due; then
+  profile=power-saver
 elif [[ -r $state_file ]]; then
   profile=$(<"$state_file")
 fi
@@ -56,7 +105,4 @@ fi
 powerprofilesctl set "$profile" || exit
 karchy-shell -q battery refreshPowerProfile >/dev/null 2>&1 || true
 
-if [[ -n $requested_profile ]]; then
-  mkdir -p "$state_dir"
-  printf '%s\n' "$requested_profile" >"$state_file"
-fi
+[[ -z $requested_profile ]] || remember

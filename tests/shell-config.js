@@ -39,6 +39,7 @@ eq(M.merge(defaults, M.userFileFor(defaults, c)), c)
 
 // an old full copy: defaults changed since (lock 300 -> 240, new widget, new key)
 const old = JSON.parse(JSON.stringify(defaults))
+delete old.battery
 const next = JSON.parse(JSON.stringify(defaults))
 next.idle.lock = 240; next.bar.layout.right.push({ id: "karchy.new" }); next.battery = { low: 15, critical: 5 }
 m = M.merge(next, old)

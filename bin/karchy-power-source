@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# karchy:summary=Apply what Settings › Power sets for a power source: its power profile and screen brightness
+# karchy:args=<ac|battery>
+# karchy:hidden=true
+
+# The shell's battery service runs this when the charger goes in or comes
+# out (UPower's signal; nothing polls). The power profile is the source's own
+# (karchy-powerprofiles-set). The built-in screen goes to
+# `power.brightness.ac` or `power.brightness.battery` from shell.json when
+# that is set (percent; 0 leaves the screen as it is). That happens once, at
+# the change: the brightness keys work as before afterwards, and the session's
+# start does not touch the brightness.
+
+supply="${1:-}"
+
+if (( $# != 1 )) || [[ $supply != ac && $supply != battery ]]; then
+  echo "Usage: karchy-power-source <ac|battery>" >&2
+  exit 1
+fi
+
+# A machine without power-profiles-daemon still has a screen to set.
+karchy-powerprofiles-set "$supply" || true
+
+# shellcheck source=bin/karchy-shell-config
+percent=$(source karchy-shell-config 2>/dev/null && effective_config 2>/dev/null | jq -r --arg supply "$supply" '
+  (.power.brightness[$supply])? // 0
+  | if type == "string" then (tonumber? // 0) else . end
+  | if type == "number" and . >= 1 and . <= 100 then floor else 0 end') || exit 0
+[[ $percent =~ ^[0-9]+$ ]] && (( percent > 0 )) || exit 0
+
+# The kernel backlight is the built-in panel's; an external monitor keeps its own.
+device=$(karchy-hw-display) || exit 0
+brightnessctl -d "$device" set "$percent%" >/dev/null

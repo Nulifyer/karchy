@@ -12,7 +12,14 @@
   },
   "battery": {
     "low": 15,
-    "critical": 5
+    "critical": 5,
+    "saver": false
+  },
+  "power": {
+    "brightness": {
+      "ac": 0,
+      "battery": 0
+    }
   },
   "bar": {
     "position": "top",
