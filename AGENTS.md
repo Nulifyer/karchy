@@ -19,6 +19,7 @@ karchy is a personal Arch-based Linux setup built from selected Omarchy v4.5.0 c
 - Follow Omarchy's bash style for scripts: `#!/bin/bash`, `[[ ]]` for string and file tests, `(( ))` for numeric tests, two-space indent.
 - A script the menu runs in its floating terminal (`karchy-launch-floating-terminal-with-presentation`) exits 130 when a prompt is cancelled (Esc) or declined, so the window closes instead of showing Failed. A wrong answer asks again, keeping what was typed (a password is asked again empty, as login prompts do). The wrapper shows Done or Failed and waits for a key, so the script doesn't add its own "Press Enter".
 - Long-running code reacts to events instead of polling (Omarchy's rule; this applies to plugins too).
+- Settings use the words people already know. For a label, an option or a description in Settings, start from the wording of the same setting in Windows Settings (then macOS, GNOME, KDE) and change it only where karchy behaves differently; don't coin new phrasing. The effort goes into the setting working (user, 2026-11-24).
 
 ## Delivery
 
