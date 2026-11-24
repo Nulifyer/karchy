@@ -24,6 +24,11 @@ import "Model.js" as Model
 // apps, system components (the ones that need a restart first) and AUR
 // packages, each a Section; then firmware (run by itself in a terminal) and
 // the channel last.
+//
+// Narrow (a tile beside other windows): less padding at the sides, the
+// header's buttons under the title, and a row keeps the name and the new
+// version; the version it replaces and the package behind a friendly name
+// are what a narrow row leaves out.
 Item {
   id: root
 
@@ -51,6 +56,10 @@ Item {
   readonly property var retiredRemove: Model.retired(plan, "remove")
   readonly property var retiredKeep: Model.retired(plan, "keep")
   readonly property var restartParts: Model.restartParts(plan)
+
+  // Less room at the sides in a narrow window, where the lists need it.
+  readonly property bool narrow: window.width < Style.spacing.windowNarrow
+  readonly property int pagePadding: narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 2
 
   // `karchy-updates firmware` opens the window at its Firmware part.
   function open(payloadJson) {
@@ -165,7 +174,9 @@ Item {
     // The page's width (`page` below), from the window: the columns are
     // sized from it and not from the row's own width, which the layout sets
     // from those very sizes ("recursive rearrange" in the log).
-    readonly property real room: Math.max(0, Window.width - Style.spacing.panelPadding * 4)
+    readonly property real room: Math.max(0, Math.min(Window.width - root.pagePadding * 2, Style.spacing.pageMaxWidth))
+    // Too narrow for a pair of versions beside the name: the new one stays.
+    readonly property bool compact: room < Style.spacing.formWide
     Layout.fillWidth: true
     spacing: Style.spacing.lg
     Text {
@@ -177,17 +188,19 @@ Item {
       elide: Text.ElideRight
       // Long names (a news title) give way before the version column does;
       // beside a pair of versions the name keeps what they leave.
-      Layout.maximumWidth: Math.round(parent.room * (parent.detail !== "" ? 0.65 : 0.36))
+      // In a narrow row the name has what the rest leaves, and gives way first.
+      Layout.fillWidth: parent.compact
+      Layout.maximumWidth: parent.compact ? Number.POSITIVE_INFINITY : Math.round(parent.room * (parent.detail !== "" ? 0.65 : 0.36))
     }
     Text {
-      visible: parent.secondary !== ""
+      visible: parent.secondary !== "" && !parent.compact
       text: parent.secondary
       color: Commons.Color.textSecondary
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       elide: Text.ElideRight
     }
-    Item { Layout.fillWidth: true }
+    Item { visible: !parent.compact; Layout.fillWidth: true }
     Text {
       visible: parent.restart
       text: "Restart"
@@ -214,8 +227,10 @@ Item {
       spacing: Style.spacing.md
       readonly property var pair: Model.versionPair(parent.oldVersion, parent.newVersion)
       // Room for a nightly version (0.1.0rc5.r149.g8e001de-1) in each column.
-      readonly property real column: Math.max(Style.space(96), Math.round((parent.room * 0.6 - arrow.implicitWidth) / 2 - spacing))
+      readonly property real column: parent.compact ? Math.round(parent.room * 0.4)
+        : Math.max(Style.space(96), Math.round((parent.room * 0.6 - arrow.implicitWidth) / 2 - spacing))
       Text {
+        visible: !versions.parent.compact
         text: versions.pair.old !== "" ? versions.pair.old : "new"
         color: Commons.Color.textSecondary
         font.family: Style.font.family
@@ -226,6 +241,7 @@ Item {
       }
       Text {
         id: arrow
+        visible: !versions.parent.compact
         textFormat: Text.PlainText
         text: Icons.glyph("ui.arrow.right")
         color: Commons.Color.textSecondary
@@ -280,8 +296,9 @@ Item {
       // The header stays put while the lists scroll: the action is always in reach.
       PageHeader {
         Layout.fillWidth: true
-        Layout.leftMargin: Style.spacing.panelPadding * 2
-        Layout.rightMargin: Style.spacing.panelPadding * 2
+        Layout.leftMargin: root.pagePadding
+        Layout.rightMargin: root.pagePadding
+        Layout.maximumWidth: Style.spacing.pageMaxWidth
         Layout.topMargin: Style.spacing.panelPadding
         Layout.bottomMargin: Style.spacing.lg
         iconName: "update"
@@ -329,9 +346,9 @@ Item {
 
         ColumnLayout {
           id: page
-          x: Style.spacing.panelPadding * 2
+          x: root.pagePadding
           y: Style.spacing.lg
-          width: content.width - Style.spacing.panelPadding * 4
+          width: Math.min(content.width - root.pagePadding * 2, Style.spacing.pageMaxWidth)
           spacing: Style.spacing.xxl
 
           InlineMessage {
