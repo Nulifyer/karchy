@@ -16,6 +16,10 @@ Item {
   readonly property string home: Quickshell.env("HOME")
   readonly property string stayAwakeStateDir: home + "/.local/state/karchy/indicators"
   readonly property string stayAwakeStatePath: stayAwakeStateDir + "/stay-awake"
+  // The screensaver starts after this long idle where something else happens
+  // on the power source in use too (the screen turns off, the session locks
+  // or the computer sleeps); where nothing does, it doesn't either, unless
+  // idle.<source>.screensaver says so. See IdleModel.screensaverSeconds.
   readonly property int defaultScreensaverSeconds: 150
   readonly property int defaultLockSeconds: 300
   // The screen turns off after this long idle, locked or not. 0 turns it off.
@@ -43,24 +47,33 @@ Item {
     dim: defaultDimSeconds,
     dimBrightness: defaultDimBrightness
   })
+  // The kernel backlight karchy-hw-display picks, which the brightness keys
+  // already look up: only a built-in screen is dimmed.
+  readonly property bool hasBacklight: !!(shell && shell.brightnessKeys && shell.brightnessKeys.device)
+  // What an idle stretch does on those times, each step in seconds idle and
+  // 0 where it doesn't happen: the screensaver only before the screen turns
+  // off or the session locks, the dimming before the screen goes dark.
+  readonly property var plan: IdleModel.plan(timeouts, hasBacklight)
+  // The screensaver's time as set, and when it starts (0: it doesn't).
   readonly property int screensaverTimeoutSeconds: timeouts.screensaver
+  readonly property int screensaverAfterSeconds: plan.screensaver
   readonly property int screenOffTimeoutSeconds: timeouts.screenOff
   readonly property int lockTimeoutSeconds: timeouts.lock
   readonly property int suspendTimeoutSeconds: timeouts.suspend
   readonly property bool suspendNow: suspendTimeoutSeconds > 0
-  readonly property bool screensaverEnabled: screensaverTimeoutSeconds > 0
+  readonly property bool screensaverEnabled: screensaverAfterSeconds > 0
   readonly property bool screenOffEnabled: screenOffTimeoutSeconds > 0
   readonly property bool lockEnabled: lockTimeoutSeconds > 0
   readonly property bool idleTimersEnabled: screensaverEnabled || screenOffEnabled || lockEnabled || suspendNow
-  // The kernel backlight karchy-hw-display picks, which the brightness keys
-  // already look up: only a built-in screen is dimmed.
-  readonly property bool hasBacklight: !!(shell && shell.brightnessKeys && shell.brightnessKeys.device)
   // Seconds idle until the screen is dimmed on this power source, 0 for never.
-  readonly property int dimAfterSeconds: IdleModel.dimAfter(timeouts, hasBacklight)
+  readonly property int dimAfterSeconds: plan.dim
+  // Seconds idle until this service turns the screen off, 0 where it doesn't:
+  // at Never, and where the lock comes first and turns it off itself.
+  readonly property int screenOffAfterSeconds: plan.screenOff
   readonly property int firstIdleTimeoutSeconds: IdleModel.firstIdleTimeout(
-    screensaverTimeoutSeconds, screenOffTimeoutSeconds, lockTimeoutSeconds, suspendTimeoutSeconds, dimAfterSeconds)
+    screensaverAfterSeconds, screenOffTimeoutSeconds, lockTimeoutSeconds, suspendTimeoutSeconds, dimAfterSeconds)
   readonly property int dimDelaySeconds: IdleModel.delayAfterFirstIdle(dimAfterSeconds, firstIdleTimeoutSeconds)
-  readonly property int screensaverDelaySeconds: IdleModel.delayAfterFirstIdle(screensaverTimeoutSeconds, firstIdleTimeoutSeconds)
+  readonly property int screensaverDelaySeconds: IdleModel.delayAfterFirstIdle(screensaverAfterSeconds, firstIdleTimeoutSeconds)
   readonly property int screenOffDelaySeconds: IdleModel.delayAfterFirstIdle(screenOffTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int lockDelaySeconds: IdleModel.delayAfterFirstIdle(lockTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int suspendDelaySeconds: IdleModel.delayAfterFirstIdle(suspendTimeoutSeconds, firstIdleTimeoutSeconds)
@@ -260,7 +273,7 @@ Item {
       return
     }
 
-    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " dim=" + root.dimAfterSeconds
+    logEvent("idle-cycle-start", "screensaver=" + root.screensaverAfterSeconds + " dim=" + root.dimAfterSeconds
       + " screenOff=" + root.screenOffTimeoutSeconds + " lock=" + root.lockTimeoutSeconds + " suspend=" + root.suspendTimeoutSeconds)
     root.idledThisCycle = true
     root.screensaverStartedThisCycle = false
@@ -288,7 +301,7 @@ Item {
 
     // A screen-off time at or after the lock's is the lock screen's to keep:
     // it turns the screen off 5 seconds after locking.
-    if (root.screenOffEnabled && !(root.lockEnabled && root.lockTimeoutSeconds <= root.screenOffTimeoutSeconds)) {
+    if (root.screenOffAfterSeconds > 0) {
       if (root.screenOffDelaySeconds === 0) turnScreenOff()
       else {
         screenOffTimer.interval = root.screenOffDelaySeconds * 1000
@@ -423,6 +436,7 @@ Item {
       screensaverStarted: root.screensaverStartedThisCycle,
       onBattery: root.onBattery,
       screensaver: root.screensaverTimeoutSeconds,
+      screensaverAfter: root.screensaverAfterSeconds,
       screenOff: root.screenOffTimeoutSeconds,
       screenOffDone: root.screenOffThisCycle,
       dim: root.timeouts.dim,
@@ -524,7 +538,7 @@ Item {
   Timer {
     id: screensaverTimer
     repeat: false
-    onTriggered: if (root.screensaverEnabled) root.launchScreensaver()
+    onTriggered: if (root.idleEnabled && root.idledThisCycle && root.screensaverEnabled) root.launchScreensaver()
   }
 
   Timer {

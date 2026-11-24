@@ -1,6 +1,6 @@
 # Power, idle, sleep and notifications
 
-Read this before you change idle times, screen dimming, the lid or power button, hibernation, the power profile, screen brightness on battery or plugged in, battery warnings, or notification settings.
+Read this before you change idle times, the screensaver's time, screen dimming, the lid or power button, hibernation, the power profile, screen brightness on battery or plugged in, battery warnings, or notification settings.
 
 ## Power settings
 
@@ -13,6 +13,7 @@ Read this before you change idle times, screen dimming, the lid or power button,
 | --- | --- |
 | `profile.battery`, `profile.ac` | `power-saver`, `balanced`, `performance` (those in `profiles`) |
 | `brightness.battery`, `brightness.ac` | `keep`, or percent (1 to 100) |
+| `screensaver.battery`, `screensaver.ac` | `never`, or seconds idle (10 to 86400): "Start the screensaver" |
 | `screenOff.battery`, `screenOff.ac`, `lock.battery`, `lock.ac`, `sleep.battery`, `sleep.ac` | `never`, or seconds idle (10 to 86400) |
 | `dim.battery`, `dim.ac` | `never`, or seconds (5 to 600) before the screen turns off |
 | `battery.low`, `battery.critical` | percent (low 5 to 50, critical 3 to 30 and under low; both above `criticalBattery.level`). These are the two warnings, "Warn at" and "Warn again at" |
@@ -29,6 +30,7 @@ A desktop uses only the `.ac` settings. Example: `karchy-settings-power set lock
 What the `.battery` and `.ac` settings do when the power source changes:
 
 - The idle times follow the source at once, also during an idle stretch.
+- `screensaver.*` is when the screensaver starts. When it is not set, it follows the other three times of that source: 150 seconds where the screen turns off, the session locks or the computer sleeps, and `never` where none of them does. So a source with `screenOff`, `lock` and `sleep` all at `never` has no screensaver, and `status` reports 0 for it. A time set with `set screensaver.ac <seconds>` wins over that rule in both directions. Setting the value the rule gives removes the setting again, as with every other value here. A screensaver time at or after the first of the screen-off, lock and sleep times never comes; the setting keeps its value and the page says so. A shared `idle.screensaver` written by hand in `shell.json` counts for both sources when it is not 150; 150 is karchy's own value and follows the rule.
 - `dim.*` dims the built-in screen that long before it turns off: before the screen-off time, before the lock where that comes first, or before sleep. The default is 30 seconds on battery and `never` plugged in. A shared `idle.dim` written by hand in `shell.json` counts on battery only, because karchy's own `idle.ac.dim` is 0. The screen goes to 10% (`idle.dimBrightness` in `shell.json`) and gets its level back at the first key or pointer movement. A screen already darker is not touched. A machine without a built-in screen has no such setting in effect.
 - `profile.*` is the power profile the source switches to. Setting the one for the source in use switches now. Setting the other one waits for that source.
 - `brightness.*` sets the built-in screen once, when the charger goes in or out. A charger that went in or out while the computer was off counts too: the session's start then sets the new source's brightness. A session that starts on the same source as the last one leaves the screen as it is. `keep` (the default) leaves the screen as it is. The brightness keys work as before afterwards. Setting the one for the source in use changes the screen now.
@@ -38,7 +40,7 @@ What the `.battery` and `.ac` settings do when the power source changes:
 
 Use `set` so that each value lands where the system reads it. The files matter when a value does not take effect.
 
-- Idle times, dimming, screen brightness and battery warnings are the `idle`, `power.brightness` and `battery` keys of `~/.config/karchy/shell.json`. The user can edit that file. A value there is what runs.
+- Idle times, the screensaver's time, dimming, screen brightness and battery warnings are the `idle`, `power.brightness` and `battery` keys of `~/.config/karchy/shell.json` (`idle.ac.screensaver`, `idle.battery.lock` and so on). The user can edit that file. A value there is what runs.
 - The power profile of each source is in `~/.local/state/karchy/powerprofiles/ac` and `battery`. `karchy-powerprofiles-set` writes them, for Settings and for the bar's power panel alike. `power.json` does not record them.
 - The power button is a binding in `~/.local/state/karchy/hypr/power.lua`. A binding for the key in `~/.config/hypr` wins.
 - The lid, the hibernate delay and hibernation while plugged in are in `/etc/systemd/logind.conf.d/60-karchy-settings.conf` and `/etc/systemd/sleep.conf.d/60-karchy-settings.conf`. The level and action for a critical battery (`criticalBattery.*`) are in `/etc/UPower/UPower.conf.d/60-karchy-settings.conf`. The root helper `/usr/lib/karchy/power-settings` writes all three through pkexec, with no password for the person at the computer, and restarts `upower.service` when its file changed. Do not write those three files by hand.
@@ -57,7 +59,7 @@ Use `set` so that each value lands where the system reads it. The files matter w
 ## Session commands
 
 - `karchy system lock` locks and turns off the display. `karchy system wake` wakes the displays.
-- `karchy-brightness-display dim <percent>` and `karchy-brightness-display undim` are the idle service's. Do not call `dim` yourself. If the built-in screen stays dark after an idle stretch, `karchy-brightness-display undim` puts back the level noted in `/var/lib/karchy/brightness-dim/<uid>`. That note survives a reboot. Root's `karchy-backlight-dim@.service` (`/usr/lib/karchy/backlight-dim`) puts the level back before systemd saves the backlight at shutdown, and undoes a dimming an earlier boot left. The session undims when it starts and ends (`karchy-brightness-restore.service`). A level set since the dimming is never changed. Do not edit or remove the note by hand. `karchy-shell idle status` shows `karchy-shell idle status` shows `dimAfter` (seconds idle before dimming, 0 for never) and `dimmed`.
+- `karchy-brightness-display dim <percent>` and `karchy-brightness-display undim` are the idle service's. Do not call `dim` yourself. If the built-in screen stays dark after an idle stretch, `karchy-brightness-display undim` puts back the level noted in `/var/lib/karchy/brightness-dim/<uid>`. That note survives a reboot. Root's `karchy-backlight-dim@.service` (`/usr/lib/karchy/backlight-dim`) puts the level back before systemd saves the backlight at shutdown, and undoes a dimming an earlier boot left. The session undims when it starts and ends (`karchy-brightness-restore.service`). A level set since the dimming is never changed. Do not edit or remove the note by hand. `karchy-shell idle status` shows `dimAfter` (seconds idle before dimming, 0 for never) and `dimmed`, and for the screensaver `screensaver` (the time in effect on the power source in use) and `screensaverAfter` (when it starts, 0 when it never does).
 - `karchy system logout`, `karchy system reboot` and `karchy system shutdown` close applications first. Never run reboot, shutdown or logout without the user's request in the same turn. They end the session that runs the agent.
 
 ## Power profiles
@@ -73,14 +75,14 @@ Power profiles exist where `power-profiles-daemon` is installed, which karchy do
 ## Battery warnings
 
 - The shell warns at `battery.low` (default 15) and `battery.critical` (default 5).
-- On battery at or under the first warning the battery counts as low (`karchy-battery-running-low` exits 0). Two things follow: Power saver (unless `battery.saver` is off) and no screensaver. The idle cycle still dims, locks and sleeps. Nothing turns the screensaver rule off; `karchy-launch-screensaver force` starts the screensaver anyway.
+- On battery at or under the first warning the battery counts as low (`karchy-battery-running-low` exits 0). Two things follow: Power saver (unless `battery.saver` is off) and no screensaver, whatever `screensaver.battery` says. The idle cycle still dims, locks and sleeps. Nothing turns the screensaver rule off; `karchy-launch-screensaver force` starts the screensaver anyway.
 - A little below the second warning UPower hibernates the machine, or powers it off where it cannot hibernate. The level is `criticalBattery.level` (3 by default) and the action `criticalBattery.action`. Do not mix them up with `battery.critical`, which is only the second warning. `set` refuses a `criticalBattery.level` at or above the last warning, and a warning at or under `criticalBattery.level`: change the other one first. Only a hand edit of `shell.json` can put a warning under the level; the page then says so.
 - UPower reads `/etc/UPower/UPower.conf`, then the files in `/etc/UPower/UPower.conf.d` named two digits, a dash, then letters, digits, dashes or underscores, then `.conf`. A drop-in overrides only keys the main file has. If `PercentageLow`, `PercentageCritical` and `PercentageAction` do not descend, UPower uses 20, 5 and 2 for all three. It reads its files only when it starts: after a hand edit run `sudo systemctl try-restart upower.service`, with the user's agreement. `busctl call org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower GetCriticalAction` prints what the running UPower will do.
 - `karchy-battery-status` prints the charge and the power draw.
 
 ## Feature toggles
 
-`karchy-toggle <flag> [toggle|on|off]` creates or removes a flag file in `~/.local/state/karchy/toggles/`. It is a small, reversible change. Flags that karchy reads include `suspend-off` and `screensaver-off`. A flag that nothing reads does nothing, so check that the flag name appears in `/usr/share/karchy` before you set it.
+`karchy-toggle <flag> [toggle|on|off]` creates or removes a flag file in `~/.local/state/karchy/toggles/`. It is a small, reversible change. Flags that karchy reads include `suspend-off` and `screensaver-off`. `screensaver-off` stops the screensaver on both power sources whatever Settings › Power says, and the page does not show it: to turn the screensaver off, prefer `karchy-settings-power set screensaver.ac never` and `screensaver.battery never`. A flag that nothing reads does nothing, so check that the flag name appears in `/usr/share/karchy` before you set it.
 
 ## Notifications
 

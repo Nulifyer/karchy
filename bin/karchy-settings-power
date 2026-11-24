@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Read and save power settings: power mode, screen brightness, dimming and idle times on battery and plugged in, lid, power button, hibernation and battery warnings (Settings › Power)
+# karchy:summary=Read and save power settings: power mode, screen brightness, screensaver, dimming and idle times on battery and plugged in, lid, power button, hibernation and battery warnings (Settings › Power)
 # karchy:args=[status | set <setting> <value> | reset]
 # karchy:examples=karchy settings power | karchy-settings-power status | karchy-settings-power set lock.ac 600 | karchy-settings-power set profile.battery power-saver
 # karchy:hidden=true
@@ -13,7 +13,7 @@
 #       source, ~/.local/state/karchy/powerprofiles/{ac,battery}, through
 #       karchy-powerprofiles-set: the same two files the bar's power panel
 #       writes, so both show one setting. Not recorded in power.json.
-#   idle times, dimming, screen brightness and battery warnings
+#   idle times, the screensaver, dimming, screen brightness and battery warnings
 #                                     the `idle`, `power` and `battery` keys of
 #       ~/.config/karchy/shell.json, through karchy-shell-config, one key per
 #       change. That file is also the user's to edit, and the shell reads
@@ -53,6 +53,13 @@
 #       screenOff.battery, screenOff.ac, lock.battery, lock.ac, sleep.battery,
 #       sleep.ac           never, or seconds idle (10 to 86400). "ac" is
 #                          plugged in, and the only one a desktop uses
+#       screensaver.battery, screensaver.ac
+#                          never, or seconds idle (10 to 86400): when the
+#                          screensaver starts. karchy's: 150 where the screen
+#                          turns off, the session locks or the computer
+#                          sleeps on that source, and never where none of
+#                          them does. A time at or after the first of those
+#                          never comes
 #       dim.battery, dim.ac
 #                          never, or seconds (5 to 600): the built-in screen
 #                          is dimmed that long before it turns off (karchy's:
@@ -196,10 +203,14 @@ profile_in_use() {
 }
 
 # The idle times in effect on both power sources, from a shell config on
-# stdin: {battery: {screenOff, lock, sleep, dim}, ac: {…}} in seconds, 0 for
-# never (`dim` counts back from when the screen turns off).
-# shell/plugins/services/idle/IdleModel.js `timeouts` is the shell's side of
-# this; keep the two in step.
+# stdin: {battery: {screensaver, screenOff, lock, sleep, dim}, ac: {…}} in
+# seconds, 0 for never (`dim` counts back from when the screen turns off).
+# The screensaver's time is the source's own idle.<source>.screensaver; or a
+# shared idle.screensaver that is not karchy's 150, which was written by hand
+# for both sources; or 150 where something else happens on that source, and
+# never where nothing does (D-176).
+# shell/plugins/services/idle/IdleModel.js `timeouts` and `screensaverSeconds`
+# are the shell's side of this; keep the two in step.
 # shellcheck disable=SC2016 # jq variables, not shell ones
 IDLE_TIMES='
   def number_of: if type == "number" then . elif type == "string" then (tonumber? // null) else null end;
@@ -219,7 +230,11 @@ IDLE_TIMES='
             sleep: (if ($own.suspend | is_set) then ($own.suspend | number_of | floor)
                     elif $name == "battery" or $idle.suspendOnAC == true then ($idle.suspend | seconds(900))
                     else 0 end)
-          };
+          }
+          | ($idle.screensaver | seconds(150)) as $shared
+          | .screensaver = (if ($own.screensaver | is_set) then ($own.screensaver | number_of | floor)
+                            elif $shared != 150 or .screenOff > 0 or .lock > 0 or .sleep > 0 then $shared
+                            else 0 end);
       {battery: source("battery"), ac: source("ac")};
 '
 
@@ -440,6 +455,7 @@ shell_values_of() {
       | if type == "number" and . >= 1 and . <= 100 then floor else 0 end;
     idle_times as $idle
     | {
+        "screensaver.battery": $idle.battery.screensaver, "screensaver.ac": $idle.ac.screensaver,
         "screenOff.battery": $idle.battery.screenOff, "screenOff.ac": $idle.ac.screenOff,
         "lock.battery": $idle.battery.lock, "lock.ac": $idle.ac.lock,
         "sleep.battery": $idle.battery.sleep, "sleep.ac": $idle.ac.sleep,
@@ -502,8 +518,11 @@ status() {
     {
       battery: $battery, lid: $lid, hibernation: $hibernation, backlight: $backlight, profiles: $profiles,
       values: $values,
-      # A record that only repeats the default of today is no choice.
-      saved: (($saved | with_entries(select(.value != $shellDefaults[.key])))
+      # A record that only repeats the default of today is no choice. The
+      # default of the screensaver follows the other times, so its record
+      # is one for as long as it is what runs.
+      saved: (($saved | with_entries(select(.value != $shellDefaults[.key]
+                                            or ((.key | startswith("screensaver.")) and .value == $values[.key]))))
               + ($values | with_entries(select((.key | startswith("profile.")) and .value != "balanced")))),
       foreign: [$defaults | keys[] | select(($saved[.] // $defaults[.]) != $values[.])],
       source: $source, profile: $profile
@@ -512,8 +531,9 @@ status() {
 
 # One idle time: written to shell.json for its power source, or taken out of
 # it when what is left without it (the shared idle.<key>, or karchy's own for
-# that source, as idle.ac.dim) already gives that time, so only a difference
-# is kept. Prints "set" or "default".
+# that source, as idle.ac.dim or the screensaver's, which follows the other
+# times) already gives that time, so only a difference is kept. Prints "set"
+# or "default".
 apply_idle() {
   local setting="$1" seconds="$2" source key user fallback
   source=${setting#*.}
@@ -640,7 +660,7 @@ apply_system() {
 reconciled() {
   local settings="$1"
   jq -c --argjson values "$(shell_values)" '
-    with_entries(select((.key | test("^(screenOff|lock|sleep|dim|brightness|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
+    with_entries(select((.key | test("^(screensaver|screenOff|lock|sleep|dim|brightness|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
 }
 
 set_value() {
@@ -681,7 +701,7 @@ set_value() {
       esac
       json=$(jq -n --arg v "$value" '$v')
       ;;
-    screenOff.battery | screenOff.ac | lock.battery | lock.ac | sleep.battery | sleep.ac)
+    screensaver.battery | screensaver.ac | screenOff.battery | screenOff.ac | lock.battery | lock.ac | sleep.battery | sleep.ac)
       if [[ $value == never ]]; then
         number=0
       else
@@ -800,7 +820,7 @@ reset_all() {
   settings=$(reconciled "$(saved)")
   while IFS= read -r key; do
     case $key in
-      screenOff.* | lock.* | sleep.* | dim.*)
+      screensaver.* | screenOff.* | lock.* | sleep.* | dim.*)
         # shellcheck disable=SC2016 # jq variables, not shell ones
         commit 'if (.idle | type) == "object" and (.idle[$source] | type) == "object"
                 then del(.idle[$source][$key]) | (if .idle[$source] == {} then del(.idle[$source]) else . end)

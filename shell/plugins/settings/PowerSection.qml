@@ -17,7 +17,10 @@ import qs.Ui
 // the power mode appears where power-profiles-daemon runs, and hibernation
 // only where it works. Every control shows the value in effect, read back after each
 // change, and a group says in a sentence what its choices add up to when
-// that isn't plain from them.
+// that isn't plain from them. The screensaver's time is the one value that
+// follows the others when it isn't chosen: Never on a power source where the
+// screen never turns off, the session never locks and the computer never
+// sleeps, so that "nothing happens" is true there (D-176).
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -102,7 +105,7 @@ ColumnLayout {
   // The dropdowns hold "0" for never and for a brightness left as it is; the
   // command calls those by name.
   function set(setting, value) {
-    var timed = setting.indexOf("screenOff.") === 0 || setting.indexOf("lock.") === 0
+    var timed = setting.indexOf("screensaver.") === 0 || setting.indexOf("screenOff.") === 0 || setting.indexOf("lock.") === 0
       || setting.indexOf("sleep.") === 0 || setting.indexOf("dim.") === 0 || setting === "hibernateAfter"
     var zero = timed ? "never" : setting.indexOf("brightness.") === 0 ? "keep" : "0"
     root.run(["set", setting, String(value) === "0" ? zero : String(value)])
@@ -112,7 +115,8 @@ ColumnLayout {
     var name = String(setting).split(".")[0]
     if (name === "profile" || name === "brightness") return "use"
     if (name === "criticalBattery") return "battery"
-    if (name === "screenOff" || name === "dim" || name === "lock" || name === "sleep" || name === "hibernateAfter" || name === "hibernate") return "idle"
+    if (name === "screensaver" || name === "screenOff" || name === "dim" || name === "lock" || name === "sleep"
+        || name === "hibernateAfter" || name === "hibernate") return "idle"
     return name
   }
 
@@ -120,9 +124,10 @@ ColumnLayout {
 
   function plural(n, unit) { return n + " " + unit + (n === 1 ? "" : "s") }
 
-  // "5 minutes", "1 hour 30 minutes", "45 seconds".
+  // "5 minutes", "2.5 minutes", "1 hour 30 minutes", "45 seconds".
   function duration(seconds) {
     seconds = Number(seconds)
+    if (seconds > 60 && seconds < 600 && seconds % 60 === 30) return (seconds / 60) + " minutes"
     if (seconds < 60 || (seconds < 600 && seconds % 60 !== 0)) return plural(seconds, "second")
     var minutes = Math.round(seconds / 60)
     if (minutes < 60) return plural(minutes, "minute")
@@ -186,13 +191,17 @@ ColumnLayout {
   }
 
   readonly property var screenChoices: timeChoices([1, 2, 5, 10, 15, 30, 60])
+  // karchy's own time is 2.5 minutes, half way to its screen-off time.
+  readonly property var screensaverChoices: timeChoices([1, 2.5, 5, 10, 15, 30])
   readonly property var sleepChoices: timeChoices([5, 10, 15, 30, 45, 60, 120])
 
-  // What the three idle times add up to on one power source ("battery" or
-  // "ac"). The lock screen turns the screen off itself, 5 seconds after it
-  // appears, so a later (or no) screen-off time is the lock's; and nothing
-  // happens after the computer is asleep.
+  // What the idle times add up to on one power source ("battery" or "ac").
+  // The lock screen turns the screen off itself, 5 seconds after it appears,
+  // so a later (or no) screen-off time is the lock's; nothing happens after
+  // the computer is asleep; and the screensaver starts only before the first
+  // of the three, there being nothing to draw on a dark or locked screen.
   function idleSummary(source) {
+    var saver = Number(root.values["screensaver." + source] || 0)
     var off = Number(root.values["screenOff." + source] || 0)
     var lock = Number(root.values["lock." + source] || 0)
     var sleep = Number(root.values["sleep." + source] || 0)
@@ -206,21 +215,46 @@ ColumnLayout {
     }
     if (sleep > 0) steps.push("sleeps after " + duration(sleep))
 
+    var nothingElse = steps.length === 0
+    var first = root.firstOf(off, lock, sleep)
+    var saverStarts = saver > 0 && (first === 0 || saver < first)
+    if (saverStarts) steps.unshift("starts the screensaver after " + duration(saver))
+
     var text = steps.length === 0 ? "stays on, unlocked, with the screen lit"
+      : nothingElse ? steps[0] + " and stays on, unlocked"
       : steps.length === 1 ? steps[0]
       : steps.slice(0, -1).join(", ") + ", then " + steps[steps.length - 1]
-    return text + (sleep === 0 ? ". Never goes to sleep on its own." : ".")
+    text += sleep === 0 ? ". Never goes to sleep on its own." : "."
+    if (saver > 0 && !saverStarts) {
+      text += " The screensaver, set to " + duration(saver) + ", never starts: "
+        + (first === sleep ? "the computer is asleep" : first === lock ? "the session is locked" : "the screen is off") + " by then."
+    } else if (saver === 0 && nothingElse) {
+      text += " No screensaver either, unless a time is chosen for it."
+    }
+    return text
   }
 
-  // Whether the three times don't simply do what each says: one never comes
-  // (the computer is asleep first, or the lock has already turned the screen
-  // off), the screen goes off without locking, or nothing happens at all.
-  // Only then is the summary worth its line.
+  // The soonest of the times that are set, 0 with none.
+  function firstOf(off, lock, sleep) {
+    var first = 0
+    var times = [sleep, lock, off]
+    for (var i = 0; i < times.length; i++)
+      if (times[i] > 0 && (first === 0 || times[i] < first)) first = times[i]
+    return first
+  }
+
+  // Whether the times don't simply do what each says: one never comes (the
+  // computer is asleep first, the lock has already turned the screen off, or
+  // the screensaver's time is not before the others), the screen goes off
+  // without locking, or nothing happens at all. Only then is the summary
+  // worth its line.
   function idleNeedsSaying(source) {
+    var saver = Number(root.values["screensaver." + source] || 0)
     var off = Number(root.values["screenOff." + source] || 0)
     var lock = Number(root.values["lock." + source] || 0)
     var sleep = Number(root.values["sleep." + source] || 0)
     if (off === 0 && lock === 0 && sleep === 0) return true
+    if (saver > 0 && saver >= root.firstOf(off, lock, sleep)) return true
     if (sleep > 0 && ((off > 0 && off >= sleep) || (lock > 0 && lock >= sleep))) return true
     if (lock > 0 && off > lock) return true
     return off > 0 && lock === 0
@@ -465,12 +499,18 @@ ColumnLayout {
       text: root.profileNote
     }
 
-    // ---------- When left alone: screen, lock, sleep, hibernation ----------
+    // ---------- When left alone: screensaver, screen, lock, sleep, hibernation ----------
     GroupRule { Layout.topMargin: table.useGroup ? Style.spacing.xxl + Style.spacing.lg - table.rowSpacing : Style.spacing.lg }
     GroupName { text: "When left alone" }
     SourceHeading { name: "On battery"; now: root.onBattery }
     SourceHeading { name: "Plugged in"; now: !root.onBattery }
     NoHeading {}
+
+    // First in the list as it is first in time. Where it isn't chosen it
+    // follows the rows under it: Never where all three of them are.
+    RowLabel { text: "Start the screensaver" }
+    PowerChoice { visible: root.battery; page: root; setting: "screensaver.battery"; choices: root.screensaverChoices; nameFor: root.timeName }
+    PowerChoice { page: root; setting: "screensaver.ac"; choices: root.screensaverChoices; nameFor: root.timeName }
 
     RowLabel { text: "Turn off the screen" }
     PowerChoice { visible: root.battery; page: root; setting: "screenOff.battery"; choices: root.screenChoices; nameFor: root.timeName }
@@ -671,7 +711,7 @@ ColumnLayout {
     text: "Back to karchy's defaults"
     bordered: true
     // Drops every power choice saved here, so it asks first.
-    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every power mode, brightness, dimming, idle time, lid, power button, hibernation and battery choice made here is forgotten.",
+    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every power mode, brightness, screensaver, dimming, idle time, lid, power button, hibernation and battery choice made here is forgotten.",
       "Back to defaults", function() { root.run(["reset"]) })
   }
 }

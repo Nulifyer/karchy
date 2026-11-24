@@ -9,6 +9,7 @@ function secondsFromConfig(value, fallback) {
 // set one source apart, "ac" being plugged in or a machine with no battery.
 // Sleep differs: the shared idle.suspend counts on battery only, unless
 // idle.suspendOnAC is true, so a plugged-in machine sleeps only when asked.
+// The screensaver differs too: see screensaverSeconds.
 // `dim` is how long before the screen turns off it is dimmed (see dimAfter),
 // per source like the others, and `dimBrightness` the percent it is dimmed to.
 // bin/karchy-settings-power reads the same keys the same way (Settings ›
@@ -29,13 +30,61 @@ function timeouts(config, onBattery, defaults) {
   if (set(own.suspend)) suspend = Math.floor(Number(own.suspend))
   else if (onBattery || idle.suspendOnAC === true) suspend = secondsFromConfig(idle.suspend, defaults.suspend)
 
+  var screenOff = pick("screenOff")
+  var lock = pick("lock")
+
   return {
-    screensaver: secondsFromConfig(idle.screensaver, defaults.screensaver),
-    screenOff: pick("screenOff"),
-    lock: pick("lock"),
+    screensaver: screensaverSeconds(set(own.screensaver) ? Math.floor(Number(own.screensaver)) : -1,
+      secondsFromConfig(idle.screensaver, defaults.screensaver), defaults.screensaver,
+      screenOff > 0 || lock > 0 || suspend > 0),
+    screenOff: screenOff,
+    lock: lock,
     suspend: suspend,
     dim: pick("dim"),
     dimBrightness: dimBrightness(idle.dimBrightness, defaults.dimBrightness)
+  }
+}
+
+// The screensaver's time on one power source (0 is never), D-176.
+// - `own`, the source's idle.<source>.screensaver (Settings › Power "Start
+//   the screensaver"), decides when it is set (-1 when it is not).
+// - A shared idle.screensaver that is not karchy's own time was written by
+//   hand, for both sources, and decides next.
+// - Otherwise karchy's time where something else happens on that source, and
+//   never where nothing does: with the screen never turning off, the session
+//   never locking and the computer never sleeping, the page says nothing
+//   happens when the computer is left alone, and then nothing does.
+// A shared time equal to karchy's is karchy's: saving shell.json drops a
+// value that repeats a default, so it could not be kept apart anyway.
+function screensaverSeconds(own, shared, karchys, somethingHappens) {
+  if (own >= 0) return own
+  if (shared !== karchys) return shared
+  return somethingHappens ? karchys : 0
+}
+
+// How long idle until the screensaver starts on these times, 0 for never: its
+// time, where that is before the screen turns off, the session locks and the
+// computer sleeps. A time at or after the first of those never comes: there
+// is nothing to draw on a dark or locked screen. The time itself stays as it
+// was chosen, as a screen-off time after the lock's does.
+function screensaverAfter(times) {
+  if (!(times.screensaver > 0)) return 0
+  var first = firstIdleTimeout(times.screenOff, times.lock, times.suspend)
+  return first > 0 && times.screensaver >= first ? 0 : times.screensaver
+}
+
+// What an idle stretch does on these times: each step in seconds idle from
+// its start, 0 where it doesn't happen. The idle service arms its timers
+// from this and nothing else.
+function plan(times, hasBacklight) {
+  return {
+    screensaver: screensaverAfter(times),
+    dim: dimAfter(times, hasBacklight),
+    // A screen-off time at or after the lock's is the lock screen's to keep:
+    // it turns the screen off 5 seconds after locking.
+    screenOff: times.screenOff > 0 && !(times.lock > 0 && times.lock <= times.screenOff) ? times.screenOff : 0,
+    lock: times.lock > 0 ? times.lock : 0,
+    suspend: times.suspend > 0 ? times.suspend : 0
   }
 }
 
@@ -227,6 +276,9 @@ if (typeof module !== "undefined") {
     dimBrightness: dimBrightness,
     screenDarkAfter: screenDarkAfter,
     dimAfter: dimAfter,
+    screensaverSeconds: screensaverSeconds,
+    screensaverAfter: screensaverAfter,
+    plan: plan,
     dimStep: dimStep,
     dimPending: dimPending,
     firstIdleTimeout: firstIdleTimeout,

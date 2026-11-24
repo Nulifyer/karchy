@@ -237,6 +237,8 @@ is "desktop: no battery, no profiles, no backlight" \
   "$(field '[.battery, .lid, .hibernation, .backlight, .profiles, .source]')" '[false,false,false,false,[],"ac"]'
 is "desktop: no profile settings to show" "$(value profile.ac)" none
 is "desktop: brightness is left alone" "$(value brightness.ac)" 0
+is "desktop: the screensaver at karchy's 150 seconds, the screen off and the lock at 300" \
+  "$(value screensaver.ac) $(value screenOff.ac) $(value lock.ac) $(value sleep.ac)" "150 300 300 0"
 is "desktop: nothing saved" "$(field .saved)" '{}'
 refused "desktop: a power mode can't be set" "no power modes" set profile.ac balanced
 
@@ -350,6 +352,63 @@ is "idle.dim edited by hand: battery, plugged in keeps karchy's never" "$(value 
 power set dim.ac 120 >/dev/null
 is "one source set apart from a shared time by hand" "$(value dim.battery)/$(value dim.ac)" 10/120
 jq 'del(.idle.dim)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
+
+# The screensaver, for each source (D-176): karchy's 150 seconds where
+# something else happens on that source, never where nothing does.
+edit_shell() { jq "$1" "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"; }
+savers() { echo "$(value screensaver.battery)/$(value screensaver.ac)"; }
+own_saver() { echo "$(shell_json '.idle.ac | has("screensaver")')$(field '.saved | has("screensaver.ac")')"; }
+shell_before=$(shell_json .)
+is "screensaver: 150 seconds on both sources" "$(savers)" 150/150
+power set screenOff.ac never >/dev/null
+is "screen-off at Never plugged in: the session still locks, so the screensaver stays" "$(savers)" 150/150
+power set lock.ac never >/dev/null
+is "…and the lock at Never too (sleep is Never plugged in): nothing happens there, so no screensaver" "$(savers)" 150/0
+is "that is the report's shell.json" "$(shell_json '.idle.ac | {lock, screenOff}')" '{"lock":0,"screenOff":0}'
+is "the default is no choice: nothing written or recorded for it" "$(own_saver)" falsefalse
+power set sleep.ac 1800 >/dev/null
+is "sleep plugged in is something happening: the screensaver is back" "$(savers)" 150/150
+power set sleep.ac never >/dev/null
+is "…and gone with it" "$(savers)" 150/0
+# A choice wins over the default, in both directions.
+power set screensaver.ac 300 >/dev/null
+is "a time chosen where nothing else happens: written, in effect, recorded" \
+  "$(shell_json .idle.ac.screensaver) $(savers) $(field '.saved["screensaver.ac"]')" "300 150/300 300"
+power set lock.ac 600 >/dev/null
+is "…and kept when something happens again" "$(savers)" 150/300
+power set screensaver.ac 150 >/dev/null
+is "karchy's time where something happens is the default: out of shell.json and the record" "$(own_saver) $(savers)" "falsefalse 150/150"
+power set screensaver.ac never >/dev/null
+is "Never chosen where something happens: written, in effect, recorded" \
+  "$(shell_json .idle.ac.screensaver) $(savers) $(field '.saved["screensaver.ac"]')" "0 150/0 0"
+power set lock.ac never >/dev/null
+is "…and still a choice where nothing happens" "$(shell_json .idle.ac.screensaver) $(field '.saved["screensaver.ac"]')" "0 0"
+power set screensaver.ac 150 >/dev/null
+is "karchy's time chosen where nothing happens: a choice, and it is what runs" \
+  "$(shell_json .idle.ac.screensaver) $(savers) $(field '.saved["screensaver.ac"]')" "150 150/150 150"
+power set screensaver.ac never >/dev/null
+is "Never where nothing happens is the default: nothing kept" "$(own_saver) $(savers)" "falsefalse 150/0"
+power set screensaver.battery 600 >/dev/null
+is "screensaver.battery: the battery only" "$(shell_json .idle.battery.screensaver) $(savers)" "600 600/0"
+power set screensaver.battery 150 >/dev/null
+is "…and back at karchy's: nothing of the battery's kept" "$(shell_json '.idle | has("battery")')" false
+for wrong in 9 86401 0 x 30s ""; do refused "screensaver '$wrong' is refused" "Usage" set screensaver.ac "$wrong"; done
+# A shared idle.screensaver written by hand keeps working, for both sources;
+# karchy's own time there is the default and follows the rule.
+edit_shell '.idle.screensaver = 900'
+is "idle.screensaver edited by hand: both sources, also where nothing else happens" "$(savers)" 900/900
+power set screensaver.ac never >/dev/null
+is "one source set apart from the shared time" "$(shell_json '[.idle.screensaver, .idle.ac.screensaver]') $(savers)" "[900,0] 900/0"
+power set screensaver.ac 900 >/dev/null
+is "…and back to it: nothing of its own kept, the shared time stays" "$(shell_json '[.idle.screensaver, (.idle.ac | has("screensaver"))]')" "[900,false]"
+edit_shell '.idle.screensaver = 0'
+is "idle.screensaver 0 by hand: never on both sources" "$(savers)" 0/0
+edit_shell '.idle.screensaver = 150'
+is "idle.screensaver 150 by hand is karchy's own: the rule decides" "$(savers)" 150/0
+edit_shell 'del(.idle.screensaver)'
+power set screenOff.ac 300 >/dev/null
+power set lock.ac 300 >/dev/null
+is "back as it was: shell.json holds nothing of the screensaver" "$(shell_json .)" "$shell_before"
 
 # Power saver at the first battery warning: karchy's default, off a choice.
 power set profile.battery performance >/dev/null
@@ -604,10 +663,11 @@ is "lid.ac back to sleep: no drop-in left" "$(ls /etc/systemd/logind.conf.d 2>/d
 power set hibernate.ac same >/dev/null
 power set battery.saver off >/dev/null
 power set lock.battery 120 >/dev/null
+power set screensaver.battery never >/dev/null
 power set criticalBattery.level 4 >/dev/null
 power set criticalBattery.action poweroff >/dev/null
-is "before the reset: nine choices" "$(power status | jq -r '.saved | keys | join(" ")')" \
-  "battery.saver brightness.battery criticalBattery.action criticalBattery.level dim.ac hibernate.ac lock.battery profile.ac profile.battery"
+is "before the reset: ten choices" "$(power status | jq -r '.saved | keys | join(" ")')" \
+  "battery.saver brightness.battery criticalBattery.action criticalBattery.level dim.ac hibernate.ac lock.battery profile.ac profile.battery screensaver.battery"
 clear_log
 power reset >/dev/null
 is "reset: nothing saved" "$(field .saved)" '{}'
@@ -615,8 +675,8 @@ is "reset: the profiles are forgotten and Balanced runs" "$(ls "$profiles_dir" |
 is "reset: shell.json holds none of it" "$(shell_json '[has("power"), has("battery"), has("idle")]')" '[false,false,false]'
 is "reset: no drop-in, no record" "$([[ -e $sleep_file || -e $upower_file ]] && echo drop-in)$([[ -e $HOME/.config/karchy/power.json ]] && echo record)" ""
 is "reset: UPower is started again without the choices" "$(log | grep -c 'try-restart upower')$(value criticalBattery.level)$(value criticalBattery.action)" "13hibernate"
-is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery) $(value dim.ac)" \
-  "balanced 0 on never 300 0"
+is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery) $(value dim.ac) $(value screensaver.battery)" \
+  "balanced 0 on never 300 0 150"
 
 exit "$fails"
 CASES

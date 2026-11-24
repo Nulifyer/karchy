@@ -34,6 +34,77 @@ eq([M.timeouts({}, true, fallback(true)).dim, M.timeouts({}, false, fallback(fal
 eq([M.timeouts(merged({ dim: 60 }), true, d).dim, M.timeouts(merged({ dim: 60 }), false, d).dim], [60, 0], "a shared idle.dim by hand: battery only, plugged in keeps never")
 eq(M.timeouts(merged({ ac: { dim: 10 } }), false, d).dim, 10, "idle.ac.dim turns it on plugged in")
 
+// The screensaver, per power source (D-176). Its default follows the other
+// times: karchy's 150 seconds where something else happens on that source,
+// never where nothing does.
+const saver = (user, onBattery) => M.timeouts(merged(user), onBattery, d).screensaver
+eq(karchyIdle.screensaver, d.screensaver, "karchy's shell.json and the service's fallback name the same time")
+eq([saver({}, true), saver({}, false)], [150, 150], "the defaults: the screen turns off and locks on both sources")
+// The report this is for: plugged in, screen-off and lock at Never (sleep is
+// Never there by default); on battery the defaults.
+const reported = { ac: { lock: 0, screenOff: 0 } }
+eq([saver(reported, true), saver(reported, false)], [150, 0], "nothing else happens plugged in: no screensaver there")
+eq(M.plan(M.timeouts(merged(reported), false, d), true), { screensaver: 0, dim: 0, screenOff: 0, lock: 0, suspend: 0 }, "…and so nothing at all")
+eq(saver({ ac: { lock: 0, screenOff: 0, suspend: 1800 } }, false), 150, "sleep alone is something happening")
+eq(saver({ ac: { lock: 0 } }, false), 150, "so is the screen turning off")
+eq(saver({ ac: { screenOff: 0 } }, false), 150, "and the lock")
+eq(saver({ screenOff: 0, lock: 0, suspendOnAC: true }, false), 150, "sleep plugged in through idle.suspendOnAC")
+eq([saver({ screenOff: 0, lock: 0, suspend: 0 }, true), saver({ screenOff: 0, lock: 0 }, true)], [0, 150], "on battery the same rule; sleep counts there by default")
+eq(saver({ battery: { screenOff: 0, lock: 0, suspend: 0 } }, false), 150, "one source's Never leaves the other alone")
+// A choice in the row wins over the default, in both directions.
+eq(saver({ ac: { lock: 0, screenOff: 0, screensaver: 300 } }, false), 300, "chosen where nothing else happens: it starts")
+eq([saver({ ac: { screensaver: 0 } }, false), saver({ ac: { screensaver: 0 } }, true)], [0, 150], "Never chosen where something does: that source only")
+eq([saver({ battery: { screensaver: 600 } }, true), saver({ battery: { screensaver: 600 } }, false)], [600, 150], "a time of its own on battery")
+eq(saver({ ac: { screensaver: 150, lock: 0, screenOff: 0 } }, false), 150, "karchy's time, chosen: a choice like any other")
+eq(saver({ ac: { screensaver: "x" } }, false), 150, "junk falls back")
+eq(saver({ ac: { screensaver: -5, lock: 0, screenOff: 0 } }, false), 0, "…to the rule")
+// A shared idle.screensaver written by hand keeps working, on both sources,
+// when it is not karchy's own time; that one follows the rule.
+eq([saver({ screensaver: 600 }, true), saver({ screensaver: 600 }, false)], [600, 600], "a shared time by hand: both sources")
+eq(saver({ screensaver: 600, ac: { lock: 0, screenOff: 0 } }, false), 600, "…also where nothing else happens")
+eq([saver({ screensaver: 0 }, true), saver({ screensaver: 0 }, false)], [0, 0], "a shared 0 by hand: never, as before")
+eq(saver({ screensaver: 0, ac: { screensaver: 120 } }, false), 120, "the source's own wins over the shared one")
+eq(saver({ screensaver: 150, ac: { lock: 0, screenOff: 0 } }, false), 0, "a shared 150 is karchy's default and follows the rule")
+eq(saver({ screensaver: "150" }, true), 150, "a number written as text")
+// Without shell.json's idle block at all (the shell's built-in fallback).
+eq([M.timeouts({}, true, d).screensaver, M.timeouts({ ac: { lock: 0, screenOff: 0 } }, false, d).screensaver], [150, 0])
+
+// When the screensaver starts: its time, where that is before the screen
+// turns off, the session locks and the computer sleeps.
+const S = (screensaver, screenOff, lock, suspend) => ({ screensaver, screenOff, lock, suspend, dim: 30 })
+eq(M.screensaverAfter(S(150, 300, 300, 900)), 150, "the defaults")
+eq(M.screensaverAfter(S(0, 300, 300, 900)), 0, "Never")
+eq(M.screensaverAfter(S(300, 0, 0, 0)), 300, "alone: it starts and stays")
+eq(M.screensaverAfter(S(600, 300, 0, 0)), 0, "after the screen has turned off: never")
+eq(M.screensaverAfter(S(300, 300, 0, 0)), 0, "at the screen-off time: never")
+eq(M.screensaverAfter(S(600, 0, 300, 0)), 0, "after the lock: never")
+eq(M.screensaverAfter(S(600, 0, 0, 300)), 0, "after the computer sleeps: never")
+eq(M.screensaverAfter(S(150, 600, 120, 0)), 0, "the lock before the screen-off time counts")
+eq(M.screensaverAfter(S(299, 300, 300, 900)), 299)
+// The order holds for every combination: the screensaver, where it starts,
+// is before the screen-off time, the lock and sleep; the dimming is before
+// the screen goes dark and counts back from there whatever the screensaver
+// does; this service turns the screen off only before the lock.
+{
+  const values = [0, 10, 60, 150, 300, 600, 900]
+  for (const screensaver of values) for (const screenOff of values) for (const lock of values) for (const suspend of values)
+    for (const lead of [0, 30, 120]) {
+      const times = { screensaver, screenOff, lock, suspend, dim: lead }
+      const plan = M.plan(times, true), name = JSON.stringify(times)
+      for (const other of [screenOff, lock, suspend])
+        assert.ok(plan.screensaver === 0 || other === 0 || plan.screensaver < other, "screensaver before the rest: " + name)
+      assert.ok(plan.screensaver === 0 || plan.screensaver === screensaver, "its own time or never: " + name)
+      eq(plan.dim, M.dimAfter(Object.assign({}, times, { screensaver: 0 }), true), "the dimming doesn't depend on the screensaver: " + name)
+      const dark = M.screenDarkAfter(times)
+      assert.ok(plan.dim === 0 || (plan.dim > 0 && plan.dim < dark), "dimmed before dark: " + name)
+      assert.ok(plan.screenOff === 0 || lock === 0 || plan.screenOff < lock, "screen off by this service only before the lock: " + name)
+      eq([plan.lock, plan.suspend], [lock, suspend], name)
+      // What starts the idle cycle is the first step of the plan.
+      eq(M.firstIdleTimeout(plan.screensaver, screenOff, lock, suspend, plan.dim),
+        M.firstIdleTimeout(plan.screensaver, plan.screenOff, plan.lock, plan.suspend, plan.dim), "first step: " + name)
+    }
+}
+
 // When the screen goes dark by itself, and when it is dimmed before that.
 const T = (screenOff, lock, suspend, dimSeconds) => ({ screenOff, lock, suspend, dim: dimSeconds })
 eq(M.screenDarkAfter(T(300, 300, 900)), 300)
