@@ -141,7 +141,7 @@ karchy takes a snapshot of the system before and after every package change. The
 
 ## Help from an AI agent
 
-karchy installs [Agent Skills](https://agentskills.io) that tell an AI coding agent how this system works, in `~/.agents/skills`. Claude Code, Codex, Gemini CLI and other agents read them from there. An agent then makes a small change directly and tells you how to undo it, and plans with you and takes a snapshot before a large one.
+karchy installs [Agent Skills](https://agentskills.io) that tell an AI coding agent how this system works, in `~/.agents/skills`. Claude Code, Codex, Gemini CLI and other agents read them from there. Keep your own skills there too: for an agent that looks only in its own folder, such as Claude Code's `~/.claude/skills`, karchy makes that folder a link to `~/.agents/skills`, and `karchy update` moves what such a folder already held into it and says what it moved. An agent then makes a small change directly and tells you how to undo it, and plans with you and takes a snapshot before a large one.
 
 ## Commands
 

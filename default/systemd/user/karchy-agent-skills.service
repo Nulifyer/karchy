@@ -2,10 +2,12 @@
 # coding agents read (karchy-agent-skills). Runs when the user's session
 # starts (default.target.wants) and when a package adds or removes a skill
 # (karchy-agent-skills.path). Changes nothing when the links are in place.
+# --no-move: nobody reads this output, so an agent's real skills folder is
+# brought into ~/.agents/skills only by karchy update, which shows it.
 [Unit]
 Description=Link karchy's agent skills
 ConditionPathExists=/usr/bin/karchy-agent-skills
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/karchy-agent-skills
+ExecStart=/usr/bin/karchy-agent-skills --no-move

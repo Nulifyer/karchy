@@ -16,7 +16,8 @@
 #      and karchy-settings' hooks pause Hyprland's auto-reload meanwhile)
 #   5. AUR packages (paru)
 #   6. config files left as .pacnew, then karchy migrations, the agent skills
-#      of the installed packages (karchy-agent-skills), a desktop reload and
+#      of the installed packages, with an agent's own skills folder brought
+#      into ~/.agents/skills (karchy-agent-skills), a desktop reload and
 #      the user's post-update hook (karchy-hook);
 #      at the end, the release notes and a restart offer when the kernel or
 #      other boot-time parts changed
@@ -174,8 +175,11 @@ if [[ -z $repo_updates && -z $aur_updates && ${#retire_remove[@]} -eq 0 ]]; then
     exit 0
   fi
   good "Everything is up to date."
-  # A feature added or removed since the last run gains or loses its skill.
-  karchy-agent-skills >/dev/null 2>&1 || true
+  # A feature added or removed since the last run gains or loses its skill,
+  # and an agent's skills folder is brought into ~/.agents/skills.
+  while read -r line; do
+    note "agent skills: $line"
+  done < <(karchy-agent-skills 2>&1 || true)
   karchy-update-check --quiet >/dev/null 2>&1 || true
   exit 0
 fi
@@ -500,9 +504,13 @@ if ((${#failed_migrations[@]} > 0)); then
     "${#failed_migrations[@]} karchy migration(s) failed and will run again at the next update. Logs: $state_dir/migrations" || true
 fi
 # Agent skills (karchy-agent-skills): a feature package this update added or
-# removed gains or loses its skill in the user's agent folders.
+# removed gains or loses its skill in the user's agent folders, and an
+# agent's own skills folder is brought into ~/.agents/skills (D-168). What
+# that moved is said again in the summary.
+agent_skills_moved=()
 while read -r line; do
   note "agent skills: $line"
+  [[ $line == "brought "* ]] && agent_skills_moved+=("$line")
 done < <(karchy-agent-skills 2>&1 || true)
 if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   karchy-reload-desktop
@@ -535,6 +543,9 @@ if [[ -n $after && $after != "$before" ]]; then
   notes=$(notes_url "$after")
   [[ -z $notes ]] || printf '  %sRelease notes: %s%s\n' "$dim" "$notes" "$reset"
 fi
+for line in "${agent_skills_moved[@]}"; do
+  printf '  Agent skills: %s %s(details above)%s\n' "$line" "$dim" "$reset"
+done
 # Packages nothing needs any more that karchy didn't retire: yours to judge.
 mapfile -t orphans < <(karchy-package-retire orphans 2>/dev/null || true)
 if ((${#orphans[@]} > 0)); then

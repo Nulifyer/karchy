@@ -521,8 +521,9 @@ user_setup() {
   while read -r cmd; do
     [[ -z $cmd ]] || bash -c "$cmd" >&2 || echo "running $cmd"
   done < <(field "$app" '.setup.run[]? // empty')
-  # A coding agent installed just now sees the skills on its first run.
-  if [[ $(field "$app" '.category // empty') == ai ]]; then karchy-agent-skills >&2 || true; fi
+  # A coding agent installed just now sees the skills on its first run. Its
+  # output goes to the log, so nothing is moved here (karchy-agent-skills).
+  if [[ $(field "$app" '.category // empty') == ai ]]; then karchy-agent-skills --no-move >&2 || true; fi
 }
 
 # The window's install or removal of several apps (D-109).
