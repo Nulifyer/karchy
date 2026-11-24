@@ -1,0 +1,24 @@
+#!/bin/bash
+# Made-up containers, projects and images for tools/shell-render.
+case "$1" in
+  engine) echo podman ;;
+  watch) echo ready; exec sleep 25 ;;
+  list) cat <<'J'
+{"engine":"podman","also":"","cli":"podman","containers":[
+{"id":"a1b2c3d4e5f6","name":"blog-web-1","image":"docker.io/library/nginx:1.29-alpine","state":"running","status":"Up 3 hours","ports":[{"ip":"","host":8080,"container":80,"proto":"tcp"},{"ip":"","host":8443,"container":443,"proto":"tcp"}],"project":"blog","service":"web","workdir":"/home/u/src/blog","files":"compose.yaml","created":1795459964},
+{"id":"b2c3d4e5f6a7","name":"blog-db-1","image":"docker.io/library/postgres:18","state":"running","status":"Up 3 hours","ports":[{"ip":"127.0.0.1","host":5432,"container":5432,"proto":"tcp"}],"project":"blog","service":"db","workdir":"/home/u/src/blog","files":"compose.yaml","created":1795459964},
+{"id":"c3d4e5f6a7b8","name":"jellyfin","image":"docker.io/jellyfin/jellyfin:latest","state":"exited","status":"Exited (0) 2 days ago","ports":[{"ip":"","host":8096,"container":8096,"proto":"tcp"}],"project":"","service":"","workdir":"","files":"","created":1794649964},
+{"id":"d4e5f6a7b8c9","name":"a-container-with-a-rather-long-name-for-testing","image":"ghcr.io/example/some-service:2026.11","state":"exited","status":"Exited (137) 5 weeks ago","ports":[],"project":"","service":"","workdir":"","files":"","created":1792549964}],
+"projects":[{"name":"blog","workdir":"/home/u/src/blog","files":"compose.yaml","running":2,"total":2},{"name":"paperless","workdir":"/home/u/src/paperless","files":"compose.yaml","running":0,"total":0}]}
+J
+  ;;
+  images) cat <<'J'
+[{"id":"111111111111","name":"docker.io/library/nginx:1.29-alpine","tags":1,"size":"52 MB","created":1795049964,"containers":1},
+{"id":"222222222222","name":"docker.io/library/postgres:18","tags":2,"size":"438 MB","created":1794749964,"containers":1},
+{"id":"333333333333","name":"docker.io/jellyfin/jellyfin:latest","tags":1,"size":"1.2 GB","created":1793549964,"containers":1},
+{"id":"444444444444","name":"ghcr.io/example/some-service:2026.11","tags":1,"size":"210 MB","created":1792549964,"containers":0}]
+J
+  ;;
+  logs) for i in $(seq 1 40); do echo "2026/11/24 12:00:$(printf %02d "$i") [notice] 1#1: worker process $i started and is serving requests on 0.0.0.0:80"; done ;;
+  *) exit 0 ;;
+esac

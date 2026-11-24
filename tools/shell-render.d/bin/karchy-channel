@@ -1,0 +1,4 @@
+#!/bin/bash
+# The update channels, for the Updates window under tools/shell-render.
+[[ ${1:-} == available ]] && printf 'nightly\nrc\n'
+exit 0

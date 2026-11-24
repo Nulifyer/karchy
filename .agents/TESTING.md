@@ -54,6 +54,21 @@ tests/app-packages-container.sh   # the root helper with the real pacman in a st
 tools/keyring-check          # the same lock change against the real oo7 of today's repositories, in a stock Arch container (podman): a keyring made with a key takes a password and the key back, keeps its secrets, and reads as locked with a wrong secret. On every push and in the daily upkeep
 ```
 
+## A shell window without a VM
+
+`tools/shell-render` draws one of the shell's windows offscreen (Quickshell with `QT_QPA_PLATFORM=offscreen`, no compositor) at any size, plays keys and clicks in it, and saves a picture and a listing of the visible text for each shot. Use it while working on a window's layout, words or keyboard path; its header lists the options, the stand-in data and what it cannot show.
+
+```text
+tools/shell-render --payload '{"section":"power"}' settings wide:0x0 narrow:480x740   # Settings › Power on a made-up laptop, at the window's own size and as a tile
+RENDER_MACHINE=desktop tools/shell-render --payload '{"section":"power"}' settings desktop:0x0   # the same page on a desktop
+tools/shell-render vms closed:480x700 open:480x700:Return chosen:480x700:Down\ Return   # the narrow pane: closed, opened with Enter, the next VM chosen
+tools/shell-render --repo <export of main> --out out/before quick-install wide:0x0   # another checkout's window, to compare (magick compare -metric AE)
+```
+
+- Each shot prints where the keyboard is, and anything that reaches past the window's edge ("cut") or was cut short ("elided"). `<out>/<name>.txt` is the visible text with its place.
+- It is the real QML on Qt's software renderer with stand-in commands: a layout, its words and where the keyboard goes. It is not Hyprland (tiling, rules, the real size of a tile), not the bar or the panels, and not a real machine. Check behaviour in a VM before calling it done.
+- Settings › Network, Users, Storage, Sound and About show this host's own data there. Keep those pictures out of anything shared.
+
 ## Full checks
 
 ```text

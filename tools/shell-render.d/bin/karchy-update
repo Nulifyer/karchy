@@ -1,0 +1,27 @@
+#!/bin/bash
+# A made-up update plan for tools/shell-render.
+[[ $1 == --plan ]] || exit 0
+cat <<'J'
+{"checked":"2026-11-24T14:52:44-05:00","channel":"nightly","release":{"installed":"0.1.0rc13.r12.g29ad7a5-1","available":"0.1.0rc14","notes":"https://example.org/notes"},"size":"412 MiB","restart":true,
+"news":[{"date":"2026-11-20","title":"plasma 6.6 will need manual intervention before the upgrade"},{"date":"2026-11-12","title":"linux-firmware >= 20261110 splits its packages"}],
+"changes":[
+{"name":"karchy","old":"0.1.0rc13.r12.g29ad7a5-1","new":"0.1.0rc14-1","kind":"karchy","app":"","restart":false,"label":"karchy"},
+{"name":"karchy-settings","old":"0.1.0rc13.r12.g29ad7a5-1","new":"0.1.0rc14-1","kind":"karchy","app":"","restart":false,"label":"karchy-settings"},
+{"name":"karchy-themes","old":"0.1.0rc13.r12.g29ad7a5-1","new":"0.1.0rc14-1","kind":"karchy","app":"","restart":false,"label":"karchy-themes"},
+{"name":"firefox","old":"146.0-1","new":"146.0.1-1","kind":"app","app":"Firefox","restart":false,"label":"Firefox"},
+{"name":"visual-studio-code-bin","old":"1.106.2-1","new":"1.107.0-1","kind":"app","app":"Visual Studio Code","restart":false,"label":"Visual Studio Code"},
+{"name":"libreoffice-fresh","old":"26.2.0-1","new":"26.2.1-2","kind":"app","app":"LibreOffice","restart":false,"label":"LibreOffice"},
+{"name":"linux-cachyos","old":"7.3.4-1","new":"7.3.5-1","kind":"system","app":"","restart":true,"label":"Linux kernel"},
+{"name":"nvidia-utils","old":"590.44.01-2","new":"590.48.02-1","kind":"system","app":"","restart":true,"label":"NVIDIA driver"},
+{"name":"mesa","old":"1:26.2.3-1","new":"1:26.2.4-1","kind":"system","app":"","restart":false,"label":"mesa"},
+{"name":"glibc","old":"2.43+r5+g856c426a7534-1","new":"2.43+r12+g0a1b2c3d4e5f-1","kind":"system","app":"","restart":false,"label":"glibc"},
+{"name":"systemd","old":"262.1-1","new":"262.2-1","kind":"system","app":"","restart":false,"label":"systemd"},
+{"name":"pipewire","old":"1:1.6.2-1","new":"1:1.6.3-1","kind":"system","app":"","restart":false,"label":"pipewire"},
+{"name":"qt6-base","old":"6.12.0-3","new":"6.12.0-4","kind":"system","app":"","restart":false,"label":"qt6-base"},
+{"name":"hyprland","old":"0.56.1-2","new":"0.56.2-1","kind":"system","app":"","restart":false,"label":"hyprland"},
+{"name":"openssl","old":"3.6.1-1","new":"3.6.2-1","kind":"system","app":"","restart":false,"label":"openssl"},
+{"name":"curl","old":"8.19.0-1","new":"8.19.1-1","kind":"system","app":"","restart":false,"label":"curl"},
+{"name":"localsend-bin","old":"1.17.0-1","new":"1.18.0-1","kind":"aur","app":"","restart":false,"label":"localsend-bin"},
+{"name":"t3code-bin","old":"0.9.2-1","new":"0.9.3-1","kind":"aur","app":"","restart":false,"label":"t3code-bin"}],
+"retired":{"remove":["wofi"],"keep":["alacritty"]}}
+J

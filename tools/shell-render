@@ -1,0 +1,172 @@
+#!/bin/bash
+
+# Draw one of the shell's windows offscreen, at any size, and save what it
+# shows: the real QML of this checkout under Quickshell with no compositor
+# (QT_QPA_PLATFORM=offscreen), fed by stand-in commands. For looking at a
+# layout, a label or a keyboard path while working on a window, without a VM.
+#
+# Usage: tools/shell-render [options] <window> <shot>...
+#
+#   <window>   settings, quick-install, updates, vms, containers, or the path
+#              of a plugin's QML under shell/ (plugins/settings/Settings.qml)
+#   <shot>     name:WIDTHxHEIGHT[:steps]   one picture; 0x0 keeps the size the
+#              window gives itself. The steps are played first, in order,
+#              separated by spaces:
+#                Tab Shift+Tab Up Down Left Right Return Escape Space Home End
+#                PageUp PageDown Backspace Delete F5      a key
+#                Ctrl+f                                    a chord
+#                j                                         one character
+#                text=firefox                              typed text (no spaces)
+#                click=120,48  right=120,48  move=120,48   the pointer, in the
+#                                                          window's own pixels
+#                wait=800                                  a pause, milliseconds
+#              Shots are taken one after another in the same window, so each
+#              starts where the last one ended.
+#
+#   --payload <json>   what the window is opened with, as `karchy-shell -q
+#                      shell summon` would pass it: '{"section":"power"}',
+#                      '{"vm":"win11"}', '{"category":"ai"}'
+#   --theme <name>     a folder of themes/ (default: tokyo-night)
+#   --out <dir>        where the files go (default: out/shell-render)
+#   --bin <dir>        commands of your own, found before the stand-ins
+#                      (repeatable): a made-up `karchy-update --plan`, an
+#                      engine that fails
+#   --real             no stand-ins: the checkout's own commands on this host
+#   --repo <dir>       draw another checkout's shell with this tool: the same
+#                      window before a change, from an export of main
+#                      (`git archive main | tar -x -C <dir>`)
+#   --wait <ms>        how long the window gets to load its data (2500)
+#   --timeout <s>      give up after this long (60)
+#   --log              print Quickshell's whole output, not only the shots
+#                      and the warnings
+#
+# Each shot writes <out>/<name>.png and <out>/<name>.txt, the visible text
+# with its place (y, x, width; "elided" where a label was cut short), and
+# prints one line: the size and where the keyboard is. It also prints
+# anything that reaches past the window's edge ("cut") or was cut short
+# ("elided"), and what QML warns about. Exit status 1 when the window didn't
+# load, a step is unknown, or a step closed the window before a shot.
+#
+# Stand-in data (tools/shell-render.d/bin, before the checkout's bin on PATH):
+#   karchy-vm, karchy-containers, karchy-update, karchy-channel
+#                        three VMs, four containers, an update of 18 packages
+#   karchy-settings-power
+#                        the real command on the made-up machine of
+#                        tests/settings-power.sh: a laptop, or with
+#                        RENDER_MACHINE=desktop a desktop. Choices made in
+#                        the page are kept for the run. RENDER_MACHINE_DIR
+#                        keeps the machine between runs (see that test's
+#                        header for unplugging and draining it).
+#   hyprctl              answers nothing: there is no compositor
+# Everything else a page reads is this host's own: Settings › Network, Users,
+# Storage, Sound and About show the real network, accounts and disks. Keep
+# those pictures out of anything shared.
+#
+# What it cannot show:
+#   - anything Hyprland does: tiling, floating, focus between windows,
+#     window rules, blur, borders, the real size a tile gets
+#   - the bar, panels and overlays (layer-shell surfaces), and a window as
+#     the running shell holds it, with its services: serviceFor() is null
+#     here, so Settings › Power reads the profile from the command only
+#   - "On battery" as the source in use: that comes from this host's UPower
+#   - the GPU renderer: this is Qt's software renderer, so no blur or shader
+#     effects, and text may differ from the screen by a pixel
+#   - pointer hover states unless a `move=` step puts the pointer there, and
+#     nothing about real input devices or screen scaling
+# A picture here is the layout and the words. Check behaviour in a VM
+# (tools/vm) before calling it done.
+#
+# Needs quickshell (with QtTest) and jq. Stops every stand-in it started.
+
+set -u
+root=$(cd "$(dirname "$0")/.." && pwd)
+here=$root/tools/shell-render.d
+
+usage() { sed -n '3,/^# Needs/s/^# \{0,1\}//p' "$0" >&2; exit 2; }
+
+repo=$root theme=tokyo-night out="" payload='{}' wait=2500 limit=60 log=0 real=0
+extra=()
+while (( $# > 0 )); do
+  case "$1" in
+    --payload) payload=${2:?}; shift 2 ;;
+    --theme) theme=${2:?}; shift 2 ;;
+    --out) out=${2:?}; shift 2 ;;
+    --bin) extra+=("$(realpath "${2:?}")"); shift 2 ;;
+    --real) real=1; shift ;;
+    --repo) repo=$(realpath "${2:?}"); shift 2 ;;
+    --wait) wait=${2:?}; shift 2 ;;
+    --timeout) limit=${2:?}; shift 2 ;;
+    --log) log=1; shift ;;
+    -h | --help) usage ;;
+    -*) echo "shell-render: unknown option $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+(( $# >= 2 )) || usage
+
+case "$1" in
+  settings) plugin=plugins/settings/Settings.qml ;;
+  quick-install | updates | vms | containers) plugin=plugins/$1/Window.qml ;;
+  *) plugin=${1#shell/} ;;
+esac
+shift
+[[ -f $repo/shell/$plugin ]] || { echo "shell-render: no $repo/shell/$plugin" >&2; exit 2; }
+[[ -d $repo/themes/$theme ]] || { echo "shell-render: no theme $theme in $repo/themes" >&2; exit 2; }
+for needed in quickshell jq; do
+  command -v "$needed" >/dev/null || { echo "shell-render: $needed is needed" >&2; exit 2; }
+done
+for shot in "$@"; do
+  [[ $shot =~ ^[A-Za-z0-9._-]+:[0-9]+x[0-9]+(:.*)?$ ]] || { echo "shell-render: a shot is name:WIDTHxHEIGHT[:steps], not '$shot'" >&2; exit 2; }
+done
+
+out=${out:-$root/out/shell-render}
+mkdir -p "$out" || exit 2
+out=$(realpath "$out")
+
+work=$(mktemp -d)
+job=""
+cleanup() {
+  # Whatever the window started and left running (a stand-in that waits).
+  [[ -n $job ]] && kill -- "-$job" 2>/dev/null
+  chmod -R u+rwx "$work" 2>/dev/null
+  rm -rf "$work"
+}
+trap cleanup EXIT
+
+# A Quickshell config: this tool's shell.qml beside the checkout's modules.
+mkdir -p "$work/config" "$work/state" "$work/xdg-config"
+ln -s "$here/shell.qml" "$work/config/shell.qml"
+for module in Commons Ui plugins services; do ln -s "$repo/shell/$module" "$work/config/$module"; done
+
+path=$repo/bin:$PATH
+(( real )) || path=$here/bin:$path
+for dir in "${extra[@]}"; do path=$dir:$path; done
+
+shots=$(printf '%s\n' "$@")
+set -m
+env PATH="$path" KARCHY_PATH="$repo" KARCHY_THEME_DIR="$repo/themes/$theme" \
+  XDG_STATE_HOME="$work/state" XDG_CONFIG_HOME="$work/xdg-config" \
+  QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+  RENDER_PLUGIN="file://$repo/shell/$plugin" RENDER_PAYLOAD="$payload" RENDER_SHOTS="$shots" \
+  RENDER_OUT="$out" RENDER_WAIT="$wait" RENDER_STATE="$work/state" RENDER_MACHINE="${RENDER_MACHINE:-laptop}" \
+  timeout "$limit" quickshell -p "$work/config" >"$work/log" 2>&1 &
+job=$!
+wait "$job"
+status=$?
+set +m
+
+if (( log )); then
+  cat "$work/log"
+else
+  # Its own lines, and every warning but the ones any offscreen run gives.
+  sed -E 's/\x1b\[[0-9;]*m//g' "$work/log" \
+    | grep -E 'RENDER |^ *(WARN|ERROR)' \
+    | grep -v -E 'HYPRLAND_INSTANCE_SIGNATURE|QT_QPA_PLATFORM|window masks|--- WARNING ---' \
+    | sed -E 's/^.*RENDER /  /; s/^ *(WARN|ERROR)[^:]*: /  qml: /' | cut -c1-400
+fi
+if (( status == 124 )); then
+  echo "shell-render: gave up after $limit s (--timeout); --log shows why" >&2
+elif (( status != 0 )) && ! grep -q 'RENDER shot' "$work/log"; then
+  echo "shell-render: nothing was drawn; --log shows why" >&2
+fi
+exit "$status"

@@ -1,0 +1,7 @@
+#!/bin/bash
+# Settings › Power for tools/shell-render: the real karchy-settings-power on
+# the made-up machine of tests/settings-power.sh, a laptop or (with
+# RENDER_MACHINE=desktop) a desktop, so the page shows what the command
+# answers and keeps the choices made in it.
+kind=${RENDER_MACHINE:-laptop}
+exec "$KARCHY_PATH/tests/settings-power.sh" --machine "${RENDER_MACHINE_DIR:-$RENDER_STATE/machine-$kind}" "$kind" karchy-settings-power "$@"

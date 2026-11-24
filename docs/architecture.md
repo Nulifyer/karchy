@@ -122,7 +122,7 @@ karchy's five windows (Settings, Quick install, Updates, Virtual machines, Conta
 - **A page grows no wider than `spacing.pageMaxWidth`:** a lone tile is the whole screen, and a form's controls would end a screen away from their labels.
 - **Nothing is cut off, and nothing can only be reached by pointer.** What a narrow window leaves out is said somewhere else in it (Quick install's key hints keep Enter, Space and Esc, and go where the window is also under 480 high; its "N apps · N installed" line heads the pane).
 
-To see a window at a tile's size without a compositor, load its plugin in a Quickshell config of your own with `QT_QPA_PLATFORM=offscreen`, set its window's width and height and save `grabToImage` of its content; walking the items and comparing each right edge with the window's finds anything cut off.
+To see a window at a tile's size without a compositor, `tools/shell-render <window> <name>:<width>x<height>[:keys]` draws it offscreen with stand-in data, plays keys and clicks in it, and reports anything cut off or cut short; its header says what it cannot show.
 
 ### Components
 
