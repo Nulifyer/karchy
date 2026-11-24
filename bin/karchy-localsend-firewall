@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Open LocalSend's and KDE Connect's ports only while a trusted network is connected (D-33)
+# karchy:summary=Open LocalSend's, KDE Connect's and the media servers' ports only while a trusted network is connected (D-33)
 # karchy:args=[status]
 # karchy:hidden=true
 
@@ -14,13 +14,20 @@
 
 set -euo pipefail
 
-# The apps karchy opens ports for: "<id> <ports> <protocols> <program>".
-# One port takes both protocols in one ufw rule ("any"); a range needs a rule
-# per protocol. KDE Connect's ports open only while it is installed; LocalSend
-# ships with karchy and its port keeps the behaviour it had.
+# The apps karchy opens ports for: "<id> <ports> <protocols> <installed>",
+# where <installed> is a file the app's package installs. One port takes both
+# protocols in one ufw rule ("any"); a range needs a rule per protocol. The
+# ports of KDE Connect and the media servers open only while the app is
+# installed; LocalSend ships with karchy and its port keeps the behaviour it
+# had. The media servers get only the port their clients connect to (D-166):
+# Jellyfin's HTTP port, not HTTPS (off until a certificate is set up) or the
+# client discovery port; Plex's one required port, not DLNA, GDM discovery,
+# Bonjour or Roku's companion port.
 APPS=(
   "localsend 53317 any -"
   "kdeconnect 1714:1764 tcp,udp /usr/bin/kdeconnectd"
+  "jellyfin 8096 tcp /usr/lib/systemd/system/jellyfin.service"
+  "plex 32400 tcp /usr/lib/systemd/system/plexmediaserver.service"
 )
 # What this script opened last, for Settings (`status`): "<id> <device>" lines.
 STATE=/run/karchy/firewall-open
@@ -34,7 +41,7 @@ if [[ ${1:-} == "status" ]]; then
   apps=$(for app in "${APPS[@]}"; do
     read -r id ports _ program <<<"$app"
     [[ $program == - ]] && program=/usr/bin/$id
-    [[ -x $program ]] && installed=true || installed=false
+    [[ -e $program ]] && installed=true || installed=false
     jq -n --arg id "$id" --arg ports "$ports" --argjson installed "$installed" \
       --arg open "$(sed -n "s/^$id //p" "$STATE" 2>/dev/null || true)" \
       '{id: $id, ports: $ports, installed: $installed, open_on: ($open | split("\n") | map(select(length > 0)))}'
@@ -73,7 +80,7 @@ for app in "${APPS[@]}"; do
   read -r id ports protocols program <<<"$app"
   comment=karchy-$id
   wanted=()
-  [[ $program != - && ! -x $program ]] || wanted=("${trusted[@]}")
+  [[ $program != - && ! -e $program ]] || wanted=("${trusted[@]}")
 
   # Rules this script added earlier: "53317 on wlan0 ... # karchy-localsend"
   # or "1714:1764/tcp on wlan0 ... # karchy-kdeconnect", plus the (v6) twins;

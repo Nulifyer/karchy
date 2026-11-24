@@ -52,7 +52,7 @@ ColumnLayout {
   SettingsHeader {
     id: header
     text: "Sharing and firewall"
-    info: "The firewall turns away connections from other devices. It opens only LocalSend's port, and only on trusted networks. Rules you add with ufw yourself aren't listed here."
+    info: "The firewall turns away connections from other devices. It opens only the ports of LocalSend and of the Quick install apps that need them (KDE Connect, Jellyfin, Plex), and only on trusted networks. Rules you add with ufw yourself aren't listed here."
   }
 
   KeyValueGrid {

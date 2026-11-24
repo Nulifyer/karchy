@@ -131,7 +131,7 @@ karchy treats a network as untrusted until you mark it as trusted in **Settings 
 
 - The firewall refuses incoming connections on every network.
 - On an untrusted network, DNS goes to Quad9 over an encrypted connection, and file sharing with LocalSend stays closed.
-- On a trusted network, such as your home, LocalSend's port opens so nearby devices can send you files.
+- On a trusted network, such as your home, LocalSend's port opens so nearby devices can send you files. So do the ports of KDE Connect, Jellyfin and Plex when you install them from Quick install, so a phone can link and a TV can play from your media server.
 
 ## Snapshots
 

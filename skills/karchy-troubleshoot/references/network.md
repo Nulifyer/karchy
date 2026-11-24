@@ -52,7 +52,7 @@ The network panel's "Sign in to network" runs `karchy-network-captive-portal <ur
 ## Incoming connections and local discovery
 
 - ufw denies incoming connections by default. `sudo ufw status verbose` lists the rules.
-- karchy writes one kind of rule: LocalSend's port 53317, and KDE Connect's 1714 to 1764 while it is installed, open only while a trusted network is connected. `karchy-localsend-firewall status` shows the state. If LocalSend cannot find devices, check trust first.
+- karchy writes one kind of rule: LocalSend's port 53317, and while each is installed KDE Connect's 1714 to 1764, Jellyfin's 8096 and Plex's 32400, open only while a trusted network is connected. `karchy-localsend-firewall status` shows the state. If LocalSend cannot find devices, check trust first.
 - avahi (`.local` names and discovery) runs only on trusted networks. `karchy-network-privacy status` shows it.
 - Opening a port is a firewall change: a large change under the `karchy` skill.
 

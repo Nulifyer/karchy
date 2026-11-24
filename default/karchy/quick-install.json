@@ -3207,6 +3207,33 @@
       ]
     },
     {
+      "id": "jellyfin",
+      "name": "Jellyfin Server",
+      "category": "media",
+      "group": "video",
+      "description": "Free media server: stream your films, shows and music to the Jellyfin apps on phones, TVs and other computers at home",
+      "icon": "jellyfin",
+      "packages": [
+        "jellyfin-server",
+        "jellyfin-web"
+      ],
+      "source": "arch",
+      "keywords": [
+        "media server",
+        "home server",
+        "streaming",
+        "emby",
+        "plex"
+      ],
+      "setup": {
+        "services": [
+          "jellyfin.service"
+        ],
+        "firewall": true,
+        "note": "Open http://localhost:8096 in a browser to set up the server and add your media folders. It runs as its own user, so the folders must be ones that user can read. The firewall lets other devices reach it (port 8096) only on networks you trust: Settings > Network."
+      }
+    },
+    {
       "id": "k3b",
       "name": "K3b",
       "category": "media",
@@ -3852,6 +3879,31 @@
         "video editing",
         "premiere"
       ]
+    },
+    {
+      "id": "plex-media-server",
+      "name": "Plex Media Server",
+      "category": "media",
+      "group": "video",
+      "description": "Media server: stream your films, shows and music to the Plex apps on phones, TVs and other computers",
+      "icon": "plex-desktop",
+      "packages": [
+        "plex-media-server"
+      ],
+      "source": "aur",
+      "keywords": [
+        "plex",
+        "media server",
+        "home server",
+        "streaming"
+      ],
+      "setup": {
+        "services": [
+          "plexmediaserver.service"
+        ],
+        "firewall": true,
+        "note": "Open http://localhost:32400/web in a browser to sign in with a Plex account and add your media folders. It runs as its own user, so the folders must be ones that user can read. The firewall lets other devices reach it (port 32400) only on networks you trust: Settings > Network; streaming from outside your network isn't opened."
+      }
     },
     {
       "id": "prusa-slicer",

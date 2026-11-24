@@ -53,7 +53,7 @@ On a network that is not trusted, karchy applies its own DNS to the live connect
 ## Sharing and the firewall
 
 - ufw is on and denies incoming connections.
-- karchy opens LocalSend's port (53317), and KDE Connect's ports (1714 to 1764) while KDE Connect is installed, only on the devices of trusted connections. `karchy-localsend-firewall` does this as root from NetworkManager's dispatcher. Do not run it by hand and do not remove its ufw rules.
+- karchy opens LocalSend's port (53317), and while each is installed KDE Connect's ports (1714 to 1764), Jellyfin's (8096) and Plex's (32400), only on the devices of trusted connections. `karchy-localsend-firewall` does this as root from NetworkManager's dispatcher. Do not run it by hand and do not remove its ufw rules.
 - avahi runs only while a trusted network is connected and is masked otherwise. If `.local` names or printers do not resolve, check trust first. Do not unmask or enable avahi by hand.
 - To open a port for the user's own service, plan it with the user and add the user's own rule with `sudo ufw allow ...`. Prefer a rule limited to an interface or source network. Say how to remove it (`sudo ufw delete allow ...`).
 
