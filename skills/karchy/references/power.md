@@ -13,13 +13,13 @@ Read this before you change idle times, the screensaver's time, screen dimming, 
 | --- | --- |
 | `profile.battery`, `profile.ac` | `power-saver`, `balanced`, `performance` (those in `profiles`) |
 | `brightness.battery`, `brightness.ac` | `keep`, or percent (1 to 100) |
-| `screensaver.battery`, `screensaver.ac` | `never`, or seconds idle (10 to 86400): "Start the screensaver" |
+| `screensaver.battery`, `screensaver.ac` | `never`, or seconds idle (10 to 86400): "Start the screensaver after" |
 | `screenOff.battery`, `screenOff.ac`, `lock.battery`, `lock.ac`, `sleep.battery`, `sleep.ac` | `never`, or seconds idle (10 to 86400) |
 | `dim.battery`, `dim.ac` | `never`, or seconds (5 to 600) before the screen turns off |
-| `battery.low`, `battery.critical` | percent (low 5 to 50, critical 3 to 30 and under low; both above `criticalBattery.level`). These are the two warnings, "Warn at" and "Warn again at" |
+| `battery.low`, `battery.critical` | percent (low 5 to 50, critical 3 to 30 and under low; both above `criticalBattery.level`). These are the two warnings, "Low battery warning" and "Second warning" |
 | `battery.saver` | `on` (the default), `off` |
-| `criticalBattery.level` | percent (2 to 20, under the last battery warning that is on): "Critical battery at", where UPower acts |
-| `criticalBattery.action` | `hibernate` (the default where the machine can hibernate), `poweroff`: "At critical battery" |
+| `criticalBattery.level` | percent (2 to 20, under the last battery warning that is on): "Critical battery level", where UPower acts |
+| `criticalBattery.action` | `hibernate` (the default where the machine can hibernate), `poweroff`: "Critical battery action" |
 | `powerKey` | `menu`, `sleep`, `hibernate`, `shutdown`, `nothing` |
 | `lid.battery`, `lid.ac`, `lid.docked` | `sleep`, `ignore`, `poweroff`, `hibernate` |
 | `hibernateAfter` | `never`, or minutes asleep (5 to 1440) |

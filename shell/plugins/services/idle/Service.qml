@@ -206,7 +206,7 @@ Item {
   property double idleSince: 0
 
   // Dimming. The built-in screen's backlight is lowered some time before the
-  // screen turns off (Settings › Power, "Dim it first") and put back at the
+  // screen turns off (Settings › Power, "Dim my screen") and put back at the
   // first sign of activity. What was there, and whether it is still this
   // service's to put back, is karchy-brightness-display's note: it dims
   // nothing that is already darker and undoes nothing somebody else has set

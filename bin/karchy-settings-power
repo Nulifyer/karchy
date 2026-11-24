@@ -67,16 +67,16 @@
 #       battery.low, battery.critical
 #                          percent (low 5 to 50, critical 3 to 30, under low
 #                          and both above criticalBattery.level): the two
-#                          warnings, "Warn at" and "Warn again at"
+#                          warnings, "Low battery warning" and "Second warning"
 #       battery.saver      on (karchy's default), off: Power saver from
 #                          the first battery warning until the charger goes in
 #       criticalBattery.level
 #                          percent (2 to 20, under the last battery
 #                          warning): where a laptop left on its battery is
-#                          hibernated or shut down ("Critical battery at")
+#                          hibernated or shut down ("Critical battery level")
 #       criticalBattery.action
 #                          hibernate (karchy's, where the machine can),
-#                          poweroff ("At critical battery")
+#                          poweroff ("Critical battery action")
 #       powerKey           menu, sleep, hibernate, shutdown, nothing
 #       lid.battery, lid.ac, lid.docked
 #                          sleep, ignore (karchy still locks the session),
@@ -88,11 +88,11 @@
 #   reset                  Forget every choice made here
 #
 # Two settings sound alike and are not the same thing:
-#   battery.critical       the second battery warning ("Warn again at"), a
+#   battery.critical       the second battery warning ("Second warning"), a
 #                          notification the shell shows: shell.json's
 #                          battery.critical
 #   criticalBattery.*      UPower's last resort under every warning ("Critical
-#                          battery at", "At critical battery"): the level
+#                          battery level", "Critical battery action"): the level
 #                          where the computer hibernates or shuts down by
 #                          itself, UPower's PercentageAction and
 #                          CriticalPowerAction, through the root helper's

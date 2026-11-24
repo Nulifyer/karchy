@@ -1,6 +1,6 @@
 #!/bin/bash
 # The dimming of the built-in screen before it turns off (Settings › Power,
-# "Dim it first"): `karchy-brightness-display dim N` and `undim`, and
+# "Dim my screen"): `karchy-brightness-display dim N` and `undim`, and
 # everything that can come between the two. The idle service only says when
 # to dim and undim (its order is tests/idle-times.js); what is put back, and
 # whether it still is this dimming's to put back, is decided here.

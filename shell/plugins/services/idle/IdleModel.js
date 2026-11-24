@@ -47,7 +47,7 @@ function timeouts(config, onBattery, defaults) {
 
 // The screensaver's time on one power source (0 is never), D-176.
 // - `own`, the source's idle.<source>.screensaver (Settings › Power "Start
-//   the screensaver"), decides when it is set (-1 when it is not).
+//   the screensaver after"), decides when it is set (-1 when it is not).
 // - A shared idle.screensaver that is not karchy's own time was written by
 //   hand, for both sources, and decides next.
 // - Otherwise karchy's time where something else happens on that source, and

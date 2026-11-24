@@ -7,20 +7,28 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Settings › Power: how the computer runs and what it does when left alone
-// or closed, on battery and plugged in; the power button; and the battery
-// warnings, through karchy-settings-power.
+// Settings › Power: the power mode, the screen and sleep times, the lid and
+// the power button, on battery and plugged in; and the battery levels,
+// through karchy-settings-power.
+//
+// The words and the grouping are the ones people know from Windows Settings ›
+// System › Power & battery (D-177): "Power mode", "Screen and sleep" with
+// "Turn my screen off after" and "Make my device sleep after", the lid and
+// the power button together, "Critical battery level" and "Critical battery
+// action"; macOS, GNOME and KDE for what Windows has no row for (the
+// screensaver, dimming, a brightness for each power source). A new row takes
+// its name from there first.
 //
 // Everything that can differ by power source is one table: a row a setting,
 // "On battery" beside "Plugged in". The page shows what this machine has: a
 // desktop gets one column and no lid, brightness, dimming or battery rows,
 // the power mode appears where power-profiles-daemon runs, and hibernation
-// only where it works. Every control shows the value in effect, read back after each
-// change, and a group says in a sentence what its choices add up to when
-// that isn't plain from them. The screensaver's time is the one value that
-// follows the others when it isn't chosen: Never on a power source where the
-// screen never turns off, the session never locks and the computer never
-// sleeps, so that "nothing happens" is true there (D-176).
+// only where it works. Every control shows the value in effect, read back
+// after each change. A line under a group is said only for what its rows
+// don't show: a time that never comes, work that would be lost. The
+// screensaver's time is the one value that follows the others when it isn't
+// chosen: Never on a power source where the screen never turns off, the
+// session never locks and the computer never sleeps (D-176).
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -43,7 +51,7 @@ ColumnLayout {
   property bool hibernation: false
   property bool ready: false
   // Why the last change didn't (fully) take, shown under the group it was in:
-  // "use", "idle", "lid", "powerKey", "battery", or "" for the page.
+  // "mode", "idle", "buttons", "battery", or "" for the page.
   property string error: ""
   property string errorGroup: ""
   property string runningGroup: ""
@@ -113,7 +121,8 @@ ColumnLayout {
 
   function groupOf(setting) {
     var name = String(setting).split(".")[0]
-    if (name === "profile" || name === "brightness") return "use"
+    if (name === "profile" || name === "brightness") return "mode"
+    if (name === "lid" || name === "powerKey") return "buttons"
     if (name === "criticalBattery") return "battery"
     if (name === "screensaver" || name === "screenOff" || name === "dim" || name === "lock" || name === "sleep"
         || name === "hibernateAfter" || name === "hibernate") return "idle"
@@ -160,10 +169,10 @@ ColumnLayout {
   readonly property string profileNote: {
     var chosen = String(root.values["profile." + root.sourceNow] || "")
     if (!root.ready || chosen === "" || root.runningProfile === "" || root.runningProfile === chosen) return ""
-    return root.profileName(root.runningProfile) + " is running now, not this choice: a low battery or an app can hold another mode for a while."
+    return root.profileName(root.runningProfile) + " is on now: a low battery or an app can hold another power mode for a while."
   }
 
-  function brightnessName(percent) { return Number(percent) === 0 ? "Leave as it is" : percent + "%" }
+  function brightnessName(percent) { return Number(percent) === 0 ? "Don't change" : percent + "%" }
 
   readonly property var brightnessChoices: {
     var out = []
@@ -195,43 +204,28 @@ ColumnLayout {
   readonly property var screensaverChoices: timeChoices([1, 2.5, 5, 10, 15, 30])
   readonly property var sleepChoices: timeChoices([5, 10, 15, 30, 45, 60, 120])
 
-  // What the idle times add up to on one power source ("battery" or "ac").
-  // The lock screen turns the screen off itself, 5 seconds after it appears,
-  // so a later (or no) screen-off time is the lock's; nothing happens after
-  // the computer is asleep; and the screensaver starts only before the first
-  // of the three, there being nothing to draw on a dark or locked screen.
-  function idleSummary(source) {
+  // What the times of one power source ("battery" or "ac") do that their
+  // rows don't show, as sentences; none when each time simply comes.
+  // - The screensaver starts only before the first of the screen-off time,
+  //   the lock and sleep: there is nothing to draw on a dark or locked screen.
+  // - The lock screen turns the screen off itself, 5 seconds after it
+  //   appears, so a screen-off time after the lock's never comes.
+  // A time at or after sleep's never comes either, and the rows say so by
+  // themselves: the computer is asleep.
+  function idleNotes(source) {
     var saver = Number(root.values["screensaver." + source] || 0)
     var off = Number(root.values["screenOff." + source] || 0)
     var lock = Number(root.values["lock." + source] || 0)
     var sleep = Number(root.values["sleep." + source] || 0)
-    var asleep = function(t) { return sleep > 0 && t >= sleep }
-    var steps = []
-    if (lock > 0 && !asleep(lock)) {
-      if (off > 0 && off < lock) steps.push("turns the screen off after " + duration(off))
-      steps.push((off > 0 && off < lock ? "locks after " : "locks and turns the screen off after ") + duration(lock))
-    } else if (off > 0 && !asleep(off)) {
-      steps.push("turns the screen off after " + duration(off) + (lock > 0 ? "" : ", without locking"))
-    }
-    if (sleep > 0) steps.push("sleeps after " + duration(sleep))
-
-    var nothingElse = steps.length === 0
+    var notes = []
     var first = root.firstOf(off, lock, sleep)
-    var saverStarts = saver > 0 && (first === 0 || saver < first)
-    if (saverStarts) steps.unshift("starts the screensaver after " + duration(saver))
-
-    var text = steps.length === 0 ? "stays on, unlocked, with the screen lit"
-      : nothingElse ? steps[0] + " and stays on, unlocked"
-      : steps.length === 1 ? steps[0]
-      : steps.slice(0, -1).join(", ") + ", then " + steps[steps.length - 1]
-    text += sleep === 0 ? ". Never goes to sleep on its own." : "."
-    if (saver > 0 && !saverStarts) {
-      text += " The screensaver, set to " + duration(saver) + ", never starts: "
-        + (first === sleep ? "the computer is asleep" : first === lock ? "the session is locked" : "the screen is off") + " by then."
-    } else if (saver === 0 && nothingElse) {
-      text += " No screensaver either, unless a time is chosen for it."
+    if (saver > 0 && first > 0 && saver >= first) {
+      notes.push("the screensaver never starts: "
+        + (first === sleep ? "the computer is asleep" : first === lock ? "the screen is locked" : "the screen is off") + " by then")
     }
-    return text
+    if (lock > 0 && off > lock && !(sleep > 0 && lock >= sleep))
+      notes.push("the screen turns off when it locks, after " + duration(lock))
+    return notes
   }
 
   // The soonest of the times that are set, 0 with none.
@@ -243,21 +237,18 @@ ColumnLayout {
     return first
   }
 
-  // Whether the times don't simply do what each says: one never comes (the
-  // computer is asleep first, the lock has already turned the screen off, or
-  // the screensaver's time is not before the others), the screen goes off
-  // without locking, or nothing happens at all. Only then is the summary
-  // worth its line.
-  function idleNeedsSaying(source) {
-    var saver = Number(root.values["screensaver." + source] || 0)
-    var off = Number(root.values["screenOff." + source] || 0)
-    var lock = Number(root.values["lock." + source] || 0)
-    var sleep = Number(root.values["sleep." + source] || 0)
-    if (off === 0 && lock === 0 && sleep === 0) return true
-    if (saver > 0 && saver >= root.firstOf(off, lock, sleep)) return true
-    if (sleep > 0 && ((off > 0 && off >= sleep) || (lock > 0 && lock >= sleep))) return true
-    if (lock > 0 && off > lock) return true
-    return off > 0 && lock === 0
+  // The notes of both power sources, a line each, named by its source on a
+  // laptop.
+  readonly property string idleNote: {
+    if (!root.ready) return ""
+    var lines = []
+    var sources = root.battery ? [["battery", "On battery, "], ["ac", "Plugged in, "]] : [["ac", ""]]
+    for (var i = 0; i < sources.length; i++) {
+      var notes = root.idleNotes(sources[i][0])
+      for (var j = 0; j < notes.length; j++)
+        lines.push(sources[i][1] === "" ? root.capitalized(notes[j]) + "." : sources[i][1] + notes[j] + ".")
+    }
+    return lines.join("\n")
   }
 
   function capitalized(text) { return text.charAt(0).toUpperCase() + text.slice(1) }
@@ -326,15 +317,13 @@ ColumnLayout {
     return names[action] || String(action)
   }
 
-  readonly property string lastResort: {
+  // What the critical battery action loses, where it loses something:
+  // hibernation and a sleep saved to disk keep what is open.
+  readonly property string criticalNote: {
     var action = String(root.values["criticalBattery.action"] || "")
-    if (root.criticalLevel <= 0 || action === "") return ""
-    var does = action === "hibernate" ? "hibernates, so nothing open is lost"
-      : action === "poweroff" ? "shuts down; unsaved work is lost"
-      : action === "hybridsleep" ? "sleeps, with the session also saved to disk"
-      : action === "ignore" ? "does nothing, and the battery runs out"
-      : "sleeps, and what is open is lost when the battery runs out"
-    return "At " + root.criticalLevel + "% it " + does + "."
+    if (root.criticalLevel <= 0 || action === "" || action === "hibernate" || action === "hybridsleep") return ""
+    return action === "poweroff" ? "Unsaved work is lost when it shuts down."
+      : "Unsaved work is lost when the battery runs out."
   }
 
   function hibernateName(minutes) {
@@ -383,7 +372,7 @@ ColumnLayout {
     }
   }
 
-  // The line under a group that says what its choices add up to.
+  // A line under a group for what its rows don't show.
   component Outcome: Text {
     Layout.fillWidth: true
     Layout.maximumWidth: Style.space(620)
@@ -455,7 +444,7 @@ ColumnLayout {
 
   PageHeader {
     title: "Power"
-    explanation: "The power mode is the one the battery in the bar sets. Screen brightness, idle times and battery warnings you edit by hand in shell.json win over these. Lid, hibernation and the critical battery are system settings, changed without a password at this computer."
+    explanation: "Power mode is the same setting as in the bar's battery panel. Screen brightness is set once, when you plug in or unplug; the brightness keys work as usual afterwards. Hibernation counts from when the computer goes to sleep. What you set by hand in shell.json wins over the brightness, the times and the battery warnings here. Lid, hibernation and critical battery are system settings, changed without a password at this computer."
     ConfigFileLink { closes: root.settings; file: ".config/karchy/shell.json" }
   }
 
@@ -473,14 +462,18 @@ ColumnLayout {
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
-    readonly property bool useGroup: root.profiles.length > 0 || (root.battery && root.backlight)
+    readonly property bool modeGroup: root.profiles.length > 0 || (root.battery && root.backlight)
+    // Both columns of a laptop, for a setting with one value.
+    readonly property int bothSources: root.wide ? (root.battery ? 2 : 1) : table.columns
 
-    // ---------- While in use: how it runs ----------
-    GroupRule { visible: table.useGroup; Layout.topMargin: Style.spacing.lg }
-    GroupName { visible: table.useGroup; text: "While in use" }
-    SourceHeading { visible: table.useGroup && root.battery; name: "On battery"; now: root.onBattery }
-    SourceHeading { visible: table.useGroup && root.battery; name: "Plugged in"; now: !root.onBattery }
-    NoHeading { visible: table.useGroup && !root.battery && root.wide }
+    // ---------- Power mode, and the brightness that goes with a source ----------
+    // The first group has no name of its own: its first row is "Power
+    // mode", as the group is called in Windows and GNOME. Only the two
+    // sources are named, where there are two.
+    GroupRule { visible: table.modeGroup; Layout.topMargin: Style.spacing.lg }
+    Item { visible: table.modeGroup && root.battery && root.wide; implicitWidth: 1; implicitHeight: 1 }
+    SourceHeading { visible: table.modeGroup && root.battery; name: "On battery"; now: root.onBattery }
+    SourceHeading { visible: table.modeGroup && root.battery; name: "Plugged in"; now: !root.onBattery }
 
     RowLabel { visible: root.profiles.length > 0; text: "Power mode" }
     PowerChoice { visible: root.profiles.length > 0 && root.battery; page: root; setting: "profile.battery"; choices: root.profileChoices; nameFor: root.profileName }
@@ -492,32 +485,32 @@ ColumnLayout {
     PowerChoice { visible: root.battery && root.backlight; page: root; setting: "brightness.battery"; choices: root.brightnessChoices; nameFor: root.brightnessName }
     PowerChoice { visible: root.battery && root.backlight; page: root; setting: "brightness.ac"; choices: root.brightnessChoices; nameFor: root.brightnessName }
 
-    TableError { group: "use" }
+    TableError { group: "mode" }
 
     TableOutcome {
       visible: root.profiles.length > 0 && root.profileNote !== ""
       text: root.profileNote
     }
 
-    // ---------- When left alone: screensaver, screen, lock, sleep, hibernation ----------
-    GroupRule { Layout.topMargin: table.useGroup ? Style.spacing.xxl + Style.spacing.lg - table.rowSpacing : Style.spacing.lg }
-    GroupName { text: "When left alone" }
+    // ---------- Screen and sleep: screensaver, screen, lock, sleep, hibernation ----------
+    GroupRule { Layout.topMargin: table.modeGroup ? Style.spacing.xxl + Style.spacing.lg - table.rowSpacing : Style.spacing.lg }
+    GroupName { text: "Screen and sleep" }
     SourceHeading { name: "On battery"; now: root.onBattery }
     SourceHeading { name: "Plugged in"; now: !root.onBattery }
     NoHeading {}
 
     // First in the list as it is first in time. Where it isn't chosen it
     // follows the rows under it: Never where all three of them are.
-    RowLabel { text: "Start the screensaver" }
+    RowLabel { text: "Start the screensaver after" }
     PowerChoice { visible: root.battery; page: root; setting: "screensaver.battery"; choices: root.screensaverChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "screensaver.ac"; choices: root.screensaverChoices; nameFor: root.timeName }
 
-    RowLabel { text: "Turn off the screen" }
+    RowLabel { text: "Turn my screen off after" }
     PowerChoice { visible: root.battery; page: root; setting: "screenOff.battery"; choices: root.screenChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "screenOff.ac"; choices: root.screenChoices; nameFor: root.timeName }
 
     // The built-in screen only, and only where it ever turns off by itself.
-    RowLabel { visible: root.backlight; text: "Dim it first" }
+    RowLabel { visible: root.backlight; text: "Dim my screen" }
     PowerChoice {
       visible: root.backlight && root.battery
       enabled: current !== "" && root.screenTurnsOff("battery")
@@ -529,17 +522,18 @@ ColumnLayout {
       page: root; setting: "dim.ac"; choices: root.dimChoices; nameFor: root.dimName
     }
 
-    RowLabel { text: "Lock" }
+    RowLabel { text: "Lock my screen after" }
     PowerChoice { visible: root.battery; page: root; setting: "lock.battery"; choices: root.screenChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "lock.ac"; choices: root.screenChoices; nameFor: root.timeName }
 
-    RowLabel { text: "Sleep" }
+    RowLabel { text: "Make my device sleep after" }
     PowerChoice { visible: root.battery; page: root; setting: "sleep.battery"; choices: root.sleepChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "sleep.ac"; choices: root.sleepChoices; nameFor: root.timeName }
 
     // After any sleep: idle, the lid, the power button or the menu. A
     // desktop has the one time; a laptop also says whether it counts while
-    // plugged in.
+    // plugged in. "Then": the time counts from when sleep begins, where
+    // Windows' "hibernate after" counts from when the device was last used.
     RowLabel { visible: root.hibernation; text: "Then hibernate after" }
     PowerChoice { visible: root.hibernation; page: root; setting: "hibernateAfter"; choices: root.hibernateChoices; nameFor: root.hibernateName }
     PowerChoice {
@@ -552,12 +546,10 @@ ColumnLayout {
 
     TableError { group: "idle" }
 
-    // Said only when the times interact: one of them never comes.
+    // A time that never comes, though its row shows it.
     TableOutcome {
-      visible: root.ready && (root.idleNeedsSaying("ac") || (root.battery && root.idleNeedsSaying("battery")))
-      text: root.battery
-        ? "On battery: " + root.idleSummary("battery") + "\nPlugged in: " + root.idleSummary("ac")
-        : root.capitalized(root.idleSummary("ac"))
+      visible: root.idleNote !== ""
+      text: root.idleNote
     }
 
     TableWarning {
@@ -566,36 +558,50 @@ ColumnLayout {
       details: "A file in /etc/systemd/sleep.conf.d that sorts after 60-karchy-settings.conf."
     }
 
-    // What the choice costs, or what happens with none made.
+    // What "Never" costs a laptop.
     TableOutcome {
-      visible: root.hibernation && root.ready && !root.isForeign("hibernateAfter") && Number(root.values.hibernateAfter) <= 0
-      text: Number(root.values.hibernateAfter) === 0
-        ? "Sleep still uses power: a battery runs down over days."
-        : "Hibernates at the critical battery level."
+      visible: root.hibernation && root.battery && root.ready && !root.isForeign("hibernateAfter") && Number(root.values.hibernateAfter) === 0
+      text: "Sleep still uses the battery: it runs down over days."
     }
 
-    // ---------- Lid ----------
-    GroupRule { visible: root.lid }
-    GroupName { visible: root.lid; text: "Lid" }
+    // ---------- Lid and power button ----------
+    GroupRule {}
+    GroupName { text: root.lid ? "Lid & power button" : "Power button" }
     SourceHeading { visible: root.lid && root.battery; name: "On battery"; now: root.onBattery }
     SourceHeading { visible: root.lid && root.battery; name: "Plugged in"; now: !root.onBattery }
-    NoHeading { visible: root.lid && !root.battery && root.wide }
+    // No lid: nothing here differs by power source.
+    Item { visible: root.wide && !(root.lid && root.battery); Layout.columnSpan: table.bothSources; implicitWidth: 1; implicitHeight: 1 }
 
-    RowLabel { visible: root.lid; text: "When the lid closes" }
+    RowLabel { visible: root.lid; text: "Closing the lid" }
     PowerChoice { visible: root.lid && root.battery; page: root; setting: "lid.battery"; choices: root.lidChoices; nameFor: root.actionName }
     PowerChoice { visible: root.lid; page: root; setting: "lid.ac"; choices: root.lidChoices; nameFor: root.actionName }
 
-    RowLabel { visible: root.lid; text: "External display" }
+    RowLabel { visible: root.lid; text: "With an external display" }
     PowerChoice {
       visible: root.lid
-      Layout.columnSpan: root.wide ? (root.battery ? 2 : 1) : table.columns
+      Layout.columnSpan: table.bothSources
       page: root
       setting: "lid.docked"
       choices: root.dockedChoices
       nameFor: root.actionName
     }
 
-    TableError { group: "lid" }
+    RowLabel { text: "Pressing the power button" }
+    PowerChoice {
+      Layout.columnSpan: table.bothSources
+      page: root
+      setting: "powerKey"
+      choices: root.powerKeyChoices
+      nameFor: root.actionName
+    }
+
+    TableError { group: "buttons" }
+
+    TableWarning {
+      visible: root.error === "" && root.isForeign("powerKey") && root.values.powerKey === "custom"
+      text: "Your own Hyprland binding for the power button overrides this setting."
+      details: "A binding for XF86PowerOff in ~/.config/hypr."
+    }
 
     // Stays while the choice does: a consequence, not an explanation.
     TableWarning {
@@ -611,28 +617,7 @@ ColumnLayout {
     }
   }
 
-  SettingsHeader { text: "Power button" }
-
-  GridLayout {
-    Layout.fillWidth: true
-    columns: root.wide ? 2 : 1
-    columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.md
-
-    SettingsLabel { text: "Pressing it" }
-    PowerChoice { page: root; setting: "powerKey"; choices: root.powerKeyChoices; nameFor: root.actionName }
-  }
-
-  GroupError { group: "powerKey" }
-
-  InlineMessage {
-    visible: root.error === "" && root.isForeign("powerKey") && root.values.powerKey === "custom"
-    kind: "warning"
-    text: "Your own Hyprland binding for the power button overrides this setting."
-    details: "A binding for XF86PowerOff in ~/.config/hypr."
-  }
-
-  SettingsHeader { visible: root.battery; text: "Low battery" }
+  SettingsHeader { visible: root.battery; text: "Battery" }
 
   GridLayout {
     visible: root.battery
@@ -641,37 +626,37 @@ ColumnLayout {
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
-    SettingsLabel { text: "Warn at" }
+    SettingsLabel { text: "Low battery warning" }
     PowerChoice {
       page: root
       setting: "battery.low"
       choices: root.percentChoices([10, 15, 20, 25, 30], function(level) {
         return level > Number(root.values["battery.critical"] || 0) && level > root.criticalLevel })
-      nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
+      nameFor: function(level) { return Number(level) === 0 ? "Off" : level + "%" }
     }
 
-    SettingsLabel { text: "Warn again at" }
+    SettingsLabel { text: "Second warning" }
     PowerChoice {
       page: root
       setting: "battery.critical"
       choices: root.percentChoices([5, 7, 10], function(level) {
         return level > root.criticalLevel && (Number(root.values["battery.low"] || 0) === 0 || level < Number(root.values["battery.low"])) })
-      nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
+      nameFor: function(level) { return Number(level) === 0 ? "Off" : level + "%" }
     }
 
     // Power saver from the first warning until the charger goes in, or until
     // another mode is picked by hand: karchy's default.
-    SettingsLabel { visible: root.profiles.indexOf("power-saver") !== -1; text: "At the first warning" }
+    SettingsLabel { visible: root.profiles.indexOf("power-saver") !== -1; text: "Automatic Power saver" }
     PowerChoice {
       visible: root.profiles.indexOf("power-saver") !== -1
       page: root
       setting: "battery.saver"
-      choices: [{ value: "on", label: "Switch to Power saver" }, { value: "off", label: "Keep the power mode" }]
+      choices: [{ value: "on", label: "At the low battery warning" }, { value: "off", label: "Off" }]
     }
 
     // UPower's last resort for a laptop nobody plugs in: always under the
     // last warning, so the warnings come first.
-    SettingsLabel { text: "Critical battery at" }
+    SettingsLabel { text: "Critical battery level" }
     PowerChoice {
       page: root
       setting: "criticalBattery.level"
@@ -679,7 +664,7 @@ ColumnLayout {
       nameFor: function(level) { return level + "%" }
     }
 
-    SettingsLabel { text: "At critical battery" }
+    SettingsLabel { text: "Critical battery action" }
     PowerChoice { page: root; setting: "criticalBattery.action"; choices: root.criticalChoices; nameFor: root.criticalName }
   }
 
@@ -689,7 +674,7 @@ ColumnLayout {
   InlineMessage {
     visible: root.battery && root.ready && root.lastWarning > 0 && root.criticalLevel >= root.lastWarning
     kind: "warning"
-    text: "The computer acts at " + root.criticalLevel + "%, at or before the last warning (" + root.lastWarning + "%), so that warning is never seen."
+    text: "The critical battery level (" + root.criticalLevel + "%) is not under the last warning (" + root.lastWarning + "%), so that warning never shows."
   }
 
   InlineMessage {
@@ -700,8 +685,8 @@ ColumnLayout {
   }
 
   Outcome {
-    visible: root.battery && root.lastResort !== ""
-    text: root.lastResort
+    visible: root.battery && root.criticalNote !== ""
+    text: root.criticalNote
   }
 
   Button {
@@ -711,7 +696,7 @@ ColumnLayout {
     text: "Back to karchy's defaults"
     bordered: true
     // Drops every power choice saved here, so it asks first.
-    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every power mode, brightness, screensaver, dimming, idle time, lid, power button, hibernation and battery choice made here is forgotten.",
+    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every choice made on this page is forgotten.",
       "Back to defaults", function() { root.run(["reset"]) })
   }
 }
