@@ -23,6 +23,9 @@ ColumnLayout {
 
   // The Settings window, for its confirm dialog (set by its Loader).
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   property var listing: ({ rows: [], errors: [], stale: [], changes: 0 })
   property bool loaded: false
   property string error: ""
@@ -387,13 +390,18 @@ ColumnLayout {
     onAction: root.run(["reset", "--stale"])
   }
 
-  RowLayout {
+  // The search, then what narrows or adds to the list; on a narrow page the
+  // search has a line of its own.
+  GridLayout {
     Layout.fillWidth: true
-    spacing: Style.spacing.md
+    columns: root.wide ? 4 : 3
+    columnSpacing: Style.spacing.md
+    rowSpacing: Style.spacing.md
 
     TextField {
       id: searchField
       Layout.fillWidth: true
+      Layout.columnSpan: root.wide ? 1 : 3
       visible: !root.recording
       placeholderText: "Search actions and keys"
       onTextEdited: root.searchText = text
@@ -403,6 +411,7 @@ ColumnLayout {
     RowLayout {
       visible: root.recording
       Layout.fillWidth: true
+      Layout.columnSpan: root.wide ? 1 : 3
       spacing: Style.spacing.md
       Quiet {
         visible: root.recordedKeys === ""
@@ -432,6 +441,8 @@ ColumnLayout {
     Dropdown {
       id: filterDropdown
       Layout.preferredWidth: Style.space(130)
+      Layout.fillWidth: !root.wide
+      Layout.minimumWidth: Style.space(80)
       showLabel: false
       value: root.filter
       options: Model.FILTERS
@@ -462,7 +473,7 @@ ColumnLayout {
 
     GridLayout {
       Layout.fillWidth: true
-      columns: 2
+      columns: root.wide ? 2 : 1
       columnSpacing: Style.spacing.xxl
       rowSpacing: Style.spacing.md
 
@@ -607,16 +618,24 @@ ColumnLayout {
                 onDoubleClicked: { root.currentId = rowItem.modelData.id; root.startCapture("change") }
               }
 
-              RowLayout {
+              // One line: the action, its keys, where they come from, the
+              // row's buttons. On a narrow page two: the action and the
+              // buttons, then the keys and where they come from.
+              GridLayout {
                 id: line
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.leftMargin: Style.spacing.md
                 anchors.rightMargin: Style.spacing.sm
-                spacing: Style.spacing.lg
+                columns: root.wide ? 4 : 3
+                columnSpacing: Style.spacing.lg
+                rowSpacing: Style.spacing.xxs
 
                 Text {
+                  Layout.row: 0
+                  Layout.column: 0
+                  Layout.columnSpan: root.wide ? 1 : 2
                   Layout.fillWidth: true
                   textFormat: Text.PlainText
                   text: rowItem.modelData.action
@@ -627,6 +646,8 @@ ColumnLayout {
                 }
 
                 Item {
+                  Layout.row: root.wide ? 0 : 1
+                  Layout.column: root.wide ? 1 : 0
                   Layout.preferredWidth: Style.space(180)
                   implicitHeight: caps.implicitHeight
                   KeyCaps { id: caps; anchors.verticalCenter: parent.verticalCenter; labels: rowItem.modelData.labels }
@@ -635,7 +656,12 @@ ColumnLayout {
 
                 // Where the binding in effect comes from.
                 Quiet {
-                  Layout.preferredWidth: Style.space(128)
+                  Layout.row: root.wide ? 0 : 1
+                  Layout.column: root.wide ? 2 : 1
+                  Layout.columnSpan: root.wide ? 1 : 2
+                  Layout.preferredWidth: root.wide ? Style.space(128) : -1
+                  Layout.fillWidth: !root.wide
+                  horizontalAlignment: root.wide ? Text.AlignLeft : Text.AlignRight
                   text: rowItem.modelData.source
                   color: rowItem.modelData.layer === "settings" ? Commons.Color.focus
                     : rowItem.modelData.layer === "user" ? Commons.Color.foreground : Commons.Color.textSecondary
@@ -644,6 +670,8 @@ ColumnLayout {
 
                 // Shown for the current row; the room is always kept.
                 Item {
+                  Layout.row: 0
+                  Layout.column: root.wide ? 3 : 2
                   implicitWidth: actions.implicitWidth
                   implicitHeight: actions.implicitHeight
                   RowLayout {
@@ -721,10 +749,16 @@ ColumnLayout {
               Layout.bottomMargin: Style.spacing.lg
               spacing: Style.spacing.md
 
-              RowLayout {
-                spacing: Style.spacing.lg
+              GridLayout {
+                Layout.fillWidth: true
+                columns: root.wide ? 4 : 2
+                columnSpacing: Style.spacing.lg
+                rowSpacing: Style.spacing.sm
                 Text {
+                  Layout.columnSpan: root.wide ? 1 : 2
+                  Layout.fillWidth: !root.wide
                   textFormat: Text.PlainText
+                  wrapMode: Text.Wrap
                   text: root.confirming ? "New keys:" : root.capture === "another" ? "Press one more key combination, then Enter." : "Press the new key combination, then Enter."
                   color: Commons.Color.foreground
                   font.family: Style.font.family
@@ -746,9 +780,12 @@ ColumnLayout {
                 font.pixelSize: Style.font.body
               }
               // Keys another action has: unbind that, keep both, or leave it.
-              RowLayout {
+              GridLayout {
                 visible: rowItem.editing && root.confirming
-                spacing: Style.spacing.md
+                Layout.fillWidth: true
+                columns: root.wide ? 4 : 3
+                columnSpacing: Style.spacing.md
+                rowSpacing: Style.spacing.sm
                 onVisibleChanged: if (visible) replaceButton.forceActiveFocus()
                 Button {
                   id: replaceButton
@@ -761,7 +798,12 @@ ColumnLayout {
                 }
                 Button { focusable: true; bordered: true; text: "Keep both"; onClicked: root.commit("--keep-both"); Keys.onEscapePressed: root.endCapture(true) }
                 Button { focusable: true; bordered: true; text: "Cancel"; onClicked: root.endCapture(true); Keys.onEscapePressed: root.endCapture(true) }
-                Quiet { text: "Replace unbinds the other action. Keep both runs both." }
+                Quiet {
+                  Layout.columnSpan: root.wide ? 1 : 3
+                  Layout.fillWidth: true
+                  wrapMode: Text.Wrap
+                  text: "Replace unbinds the other action. Keep both runs both."
+                }
               }
             }
           }

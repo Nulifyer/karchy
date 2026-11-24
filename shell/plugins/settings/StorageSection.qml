@@ -48,6 +48,9 @@ ColumnLayout {
 
   // The Settings window, for its confirm dialog (set by its Loader).
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
 
   // karchy-settings-storage usage: the newest space figures, by filesystem
   // UUID. Empty until the first reading; `status` carries the same figures

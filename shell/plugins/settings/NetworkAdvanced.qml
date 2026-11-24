@@ -19,7 +19,7 @@ ColumnLayout {
   property var country: ({ effective: null, override: null, timezone: null, countries: [] })
   property bool checkEnabled: true
   property string checkHost: ""
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
 
   function refresh() {
     if (!countryQuery.running) countryQuery.running = true

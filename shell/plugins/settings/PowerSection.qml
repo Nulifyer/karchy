@@ -24,6 +24,9 @@ ColumnLayout {
 
   // The Settings window, for its confirm dialog (set by its Loader).
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   property var values: ({})
   property var saved: ({})
   property var foreign: []
@@ -379,6 +382,7 @@ ColumnLayout {
   }
 
   component GroupName: PanelSectionHeader {
+    Layout.columnSpan: root.wide ? 1 : table.columns
     Layout.alignment: Qt.AlignVCenter
     Layout.bottomMargin: Style.spacing.xxl - table.rowSpacing
   }
@@ -395,9 +399,17 @@ ColumnLayout {
     elide: Text.ElideRight
   }
 
-  // The second cell of a group's heading on a desktop.
+  // A setting's name in the table: the first column, or on a narrow page a
+  // line across the table above the setting's choices.
+  component RowLabel: SettingsLabel {
+    Layout.columnSpan: root.wide ? 1 : table.columns
+    Layout.fillWidth: !root.wide
+  }
+
+  // The second cell of a group's heading on a desktop (a narrow page has no
+  // second cell).
   component NoHeading: Item {
-    visible: !root.battery
+    visible: !root.battery && root.wide
     implicitWidth: 1
     implicitHeight: 1
   }
@@ -421,7 +433,9 @@ ColumnLayout {
   GridLayout {
     id: table
     Layout.fillWidth: true
-    columns: root.battery ? 3 : 2
+    // A narrow page has no label column: each setting's name is a line of
+    // its own above its choices, which keep their two columns on a laptop.
+    columns: root.wide ? (root.battery ? 3 : 2) : (root.battery ? 2 : 1)
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
@@ -432,15 +446,15 @@ ColumnLayout {
     GroupName { visible: table.useGroup; text: "While in use" }
     SourceHeading { visible: table.useGroup && root.battery; name: "On battery"; now: root.onBattery }
     SourceHeading { visible: table.useGroup && root.battery; name: "Plugged in"; now: !root.onBattery }
-    NoHeading { visible: table.useGroup && !root.battery }
+    NoHeading { visible: table.useGroup && !root.battery && root.wide }
 
-    SettingsLabel { visible: root.profiles.length > 0; text: "Power mode" }
+    RowLabel { visible: root.profiles.length > 0; text: "Power mode" }
     PowerChoice { visible: root.profiles.length > 0 && root.battery; page: root; setting: "profile.battery"; choices: root.profileChoices; nameFor: root.profileName }
     PowerChoice { visible: root.profiles.length > 0; page: root; setting: "profile.ac"; choices: root.profileChoices; nameFor: root.profileName }
 
     // Set once, when the charger goes in or out; the brightness keys work as
     // before afterwards.
-    SettingsLabel { visible: root.battery && root.backlight; text: "Screen brightness" }
+    RowLabel { visible: root.battery && root.backlight; text: "Screen brightness" }
     PowerChoice { visible: root.battery && root.backlight; page: root; setting: "brightness.battery"; choices: root.brightnessChoices; nameFor: root.brightnessName }
     PowerChoice { visible: root.battery && root.backlight; page: root; setting: "brightness.ac"; choices: root.brightnessChoices; nameFor: root.brightnessName }
 
@@ -458,12 +472,12 @@ ColumnLayout {
     SourceHeading { name: "Plugged in"; now: !root.onBattery }
     NoHeading {}
 
-    SettingsLabel { text: "Turn off the screen" }
+    RowLabel { text: "Turn off the screen" }
     PowerChoice { visible: root.battery; page: root; setting: "screenOff.battery"; choices: root.screenChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "screenOff.ac"; choices: root.screenChoices; nameFor: root.timeName }
 
     // The built-in screen only, and only where it ever turns off by itself.
-    SettingsLabel { visible: root.backlight; text: "Dim it first" }
+    RowLabel { visible: root.backlight; text: "Dim it first" }
     PowerChoice {
       visible: root.backlight && root.battery
       enabled: current !== "" && root.screenTurnsOff("battery")
@@ -475,18 +489,18 @@ ColumnLayout {
       page: root; setting: "dim.ac"; choices: root.dimChoices; nameFor: root.dimName
     }
 
-    SettingsLabel { text: "Lock" }
+    RowLabel { text: "Lock" }
     PowerChoice { visible: root.battery; page: root; setting: "lock.battery"; choices: root.screenChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "lock.ac"; choices: root.screenChoices; nameFor: root.timeName }
 
-    SettingsLabel { text: "Sleep" }
+    RowLabel { text: "Sleep" }
     PowerChoice { visible: root.battery; page: root; setting: "sleep.battery"; choices: root.sleepChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "sleep.ac"; choices: root.sleepChoices; nameFor: root.timeName }
 
     // After any sleep: idle, the lid, the power button or the menu. A
     // desktop has the one time; a laptop also says whether it counts while
     // plugged in.
-    SettingsLabel { visible: root.hibernation; text: "Then hibernate after" }
+    RowLabel { visible: root.hibernation; text: "Then hibernate after" }
     PowerChoice { visible: root.hibernation; page: root; setting: "hibernateAfter"; choices: root.hibernateChoices; nameFor: root.hibernateName }
     PowerChoice {
       visible: root.hibernation && root.battery
@@ -525,16 +539,16 @@ ColumnLayout {
     GroupName { visible: root.lid; text: "Lid" }
     SourceHeading { visible: root.lid && root.battery; name: "On battery"; now: root.onBattery }
     SourceHeading { visible: root.lid && root.battery; name: "Plugged in"; now: !root.onBattery }
-    NoHeading { visible: root.lid && !root.battery }
+    NoHeading { visible: root.lid && !root.battery && root.wide }
 
-    SettingsLabel { visible: root.lid; text: "When the lid closes" }
+    RowLabel { visible: root.lid; text: "When the lid closes" }
     PowerChoice { visible: root.lid && root.battery; page: root; setting: "lid.battery"; choices: root.lidChoices; nameFor: root.actionName }
     PowerChoice { visible: root.lid; page: root; setting: "lid.ac"; choices: root.lidChoices; nameFor: root.actionName }
 
-    SettingsLabel { visible: root.lid; text: "External display" }
+    RowLabel { visible: root.lid; text: "External display" }
     PowerChoice {
       visible: root.lid
-      Layout.columnSpan: root.battery ? 2 : 1
+      Layout.columnSpan: root.wide ? (root.battery ? 2 : 1) : table.columns
       page: root
       setting: "lid.docked"
       choices: root.dockedChoices
@@ -561,7 +575,7 @@ ColumnLayout {
 
   GridLayout {
     Layout.fillWidth: true
-    columns: 2
+    columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
@@ -583,7 +597,7 @@ ColumnLayout {
   GridLayout {
     visible: root.battery
     Layout.fillWidth: true
-    columns: 2
+    columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 

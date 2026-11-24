@@ -26,7 +26,7 @@ ColumnLayout {
 
   property var settings: null
   property var target: ({})
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
 
   // { output, input, canTest } from `karchy-settings-sound status`; each
   // part is { device, port, ports, card, cardLabel, profile, profiles } or null.

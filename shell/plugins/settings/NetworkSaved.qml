@@ -14,7 +14,7 @@ ColumnLayout {
   spacing: Style.spacing.md
 
   property var page: null
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
   readonly property var profiles: page ? page.profiles : []
   // The UUID of the open row, "" for none.
   property string expanded: ""

@@ -17,7 +17,7 @@ ColumnLayout {
   property var settings: null
   property var roles: ({})
   property string error: ""
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
   readonly property var order: [
     { id: "browser", label: "Web browser" },
     { id: "files", label: "File manager" },

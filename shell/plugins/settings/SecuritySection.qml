@@ -24,6 +24,9 @@ ColumnLayout {
 
   // The Settings window, for its confirm dialog (set by its Loader).
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   property bool loaded: false
   property var fingerprint: ({})
   property var fido2: ({})
@@ -100,22 +103,25 @@ ColumnLayout {
     }
   }
 
-  // One thing and its state on a line, its actions at the end.
-  component StateRow: RowLayout {
+  // One thing and its state on a line, its actions at the end. On a narrow
+  // page the name is on a line of its own above them.
+  component StateRow: GridLayout {
     id: row
     property string label: ""
     property string value: ""
     property string info: ""
     default property alias actions: actionRow.data
     Layout.fillWidth: true
-    spacing: Style.spacing.xxl
+    columns: root.wide ? 3 : 2
+    columnSpacing: Style.spacing.xxl
+    rowSpacing: 0
 
-    SettingsLabel { text: row.label }
+    SettingsLabel { text: row.label; Layout.columnSpan: root.wide ? 1 : 2 }
     RowLayout {
       Layout.fillWidth: true
       spacing: Style.spacing.sm
       Text {
-        Layout.maximumWidth: Math.max(0, row.width - Style.spacing.formLabelWidth - actionRow.implicitWidth - Style.space(90))
+        Layout.maximumWidth: Math.max(0, row.width - (root.wide ? Style.spacing.formLabelWidth : 0) - actionRow.implicitWidth - Style.space(root.wide ? 90 : 50))
         textFormat: Text.PlainText
         text: row.value
         color: Commons.Color.textSecondary

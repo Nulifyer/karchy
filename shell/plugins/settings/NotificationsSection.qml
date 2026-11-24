@@ -19,6 +19,9 @@ ColumnLayout {
   spacing: Style.spacing.xxl
 
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   property var target: ({})
   property var apps: []
   property string filter: ""
@@ -136,11 +139,13 @@ ColumnLayout {
       id: appRepeater
       model: root.shownApps
 
-      RowLayout {
+      GridLayout {
         id: appRow
         required property var modelData
         Layout.fillWidth: true
-        spacing: Style.spacing.xxl
+        columns: root.wide ? 3 : 1
+        columnSpacing: Style.spacing.xxl
+        rowSpacing: 0
 
         function focusChoice() { choice.forceActiveFocus() }
 
@@ -163,7 +168,7 @@ ColumnLayout {
           onChanged: function(value) { root.setMode(appRow.modelData, value) }
         }
 
-        Item { Layout.fillWidth: true; implicitHeight: 1 }
+        Item { visible: root.wide; Layout.fillWidth: true; implicitHeight: 1 }
       }
     }
   }

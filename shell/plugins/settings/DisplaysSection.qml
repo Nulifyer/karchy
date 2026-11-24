@@ -20,7 +20,7 @@ ColumnLayout {
   property string error: ""
   readonly property var scalePresets: MonitorModel.SCALE_PRESETS
   // Labels beside the controls when there is room, above them when not.
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
 
   function apply(args) {
     root.error = ""

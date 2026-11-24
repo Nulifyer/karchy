@@ -15,6 +15,9 @@ ColumnLayout {
 
   // Set by Settings when it loads the section; the bar's style comes from it.
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
 
   function run(command) {
     actionProc.command = ["bash", "-c", command]
@@ -58,7 +61,8 @@ ColumnLayout {
   }
 
   GridLayout {
-    columns: 2
+    Layout.fillWidth: true
+    columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 

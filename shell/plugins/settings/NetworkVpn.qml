@@ -22,7 +22,7 @@ ColumnLayout {
   spacing: Style.spacing.md
 
   property var page: null
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
   // karchy-network-vpn status.
   property var info: ({ package: false, configured: false, home_lan: true, connection: "", connect_timeout: 30, profiles: [] })
   property var vpn: NetModel.parseVpnStatus("")

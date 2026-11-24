@@ -20,7 +20,7 @@ ColumnLayout {
   // karchy-network-dns status.
   property var dns: ({ provider: "quad9", servers: [], encrypted: true, trusted_too: false, fallback_allowed: true, links: [] })
   property bool loaded: false
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
 
   // Custom servers as typed, until saved.
   property bool customEdited: false

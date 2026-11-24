@@ -17,6 +17,9 @@ ColumnLayout {
   spacing: Style.spacing.xxl
 
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   property bool loaded: false
   property string timezone: ""
   property bool ntp: false
@@ -140,7 +143,7 @@ ColumnLayout {
 
   GridLayout {
     Layout.fillWidth: true
-    columns: 2
+    columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
@@ -170,7 +173,7 @@ ColumnLayout {
     }
 
     SettingRow {
-      Layout.columnSpan: 2
+      Layout.columnSpan: root.wide ? 2 : 1
       label: "Set time automatically"
       checked: root.ntp
       busy: root.busy === "ntp"
@@ -209,7 +212,7 @@ ColumnLayout {
 
     GridLayout {
       Layout.fillWidth: true
-      columns: 2
+      columns: root.wide ? 2 : 1
       columnSpacing: Style.spacing.xxl
       rowSpacing: Style.spacing.md
 

@@ -90,7 +90,10 @@ ColumnLayout {
     font.features: { "tnum": 1 }
   }
 
+  // On a narrow page a meter's name is a line of its own above it.
+  readonly property bool wide: !page || page.wide !== false
   component RowLabel: Text {
+    Layout.columnSpan: root.wide ? 1 : 2
     Layout.preferredWidth: Style.space(110)
     Layout.alignment: Qt.AlignVCenter
     textFormat: Text.PlainText
@@ -283,7 +286,7 @@ ColumnLayout {
   GridLayout {
     visible: root.figures !== null
     Layout.fillWidth: true
-    columns: 3
+    columns: root.wide ? 3 : 2
     columnSpacing: Style.spacing.xl
     rowSpacing: Style.spacing.md
 
@@ -340,13 +343,18 @@ ColumnLayout {
       Layout.fillWidth: true
       spacing: Style.spacing.xxs
       RowLayout {
+        Layout.fillWidth: true
         spacing: Style.spacing.sm
         Text {
+          // Its own width, on two lines where the card is narrow.
+          Layout.fillWidth: true
+          Layout.maximumWidth: Math.ceil(implicitWidth)
           textFormat: Text.PlainText
           text: "Background deduplication"
           color: Commons.Color.foreground
           font.family: Style.font.family
           font.pixelSize: Style.font.body
+          wrapMode: Text.Wrap
         }
         InfoTip {
           subject: "Background deduplication"
@@ -381,6 +389,8 @@ ColumnLayout {
     ButtonGroup {
       id: beesSwitch
       Layout.alignment: Qt.AlignVCenter
+      // Two short chips stay one row; the words beside them wrap instead.
+      Layout.minimumWidth: rowWidth
       enabled: !!root.page && !root.page.bees.lockedOff && root.page.acting === ""
       opacity: enabled ? 1 : 0.5
       spacing: Style.spacing.sm

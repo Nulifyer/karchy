@@ -21,7 +21,8 @@ Dropdown {
 
   showLabel: false
   Layout.fillWidth: true
-  Layout.minimumWidth: implicitWidth * 0.6
+  // Two of them share a narrow page's width (On battery, Plugged in).
+  Layout.minimumWidth: page && page.wide === false ? 0 : implicitWidth * 0.6
   enabled: current !== ""
 
   options: {

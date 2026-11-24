@@ -19,6 +19,9 @@ ColumnLayout {
 
   // The Settings window (set by its Loader), which a config file link closes.
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   readonly property var textSizeStops: [9, 10, 11, 12, 14, 16, 20]
 
   // `karchy-font-list --json`.
@@ -224,7 +227,7 @@ ColumnLayout {
 
   GridLayout {
     Layout.fillWidth: true
-    columns: 2
+    columns: root.wide ? 2 : 1
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 

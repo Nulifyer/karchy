@@ -19,6 +19,8 @@ ColumnLayout {
 
   // The Users page: its state, its one running change and its Settings window.
   property var page: null
+  // The page's: labels beside their controls, or above them where it is narrow.
+  readonly property bool wide: !page || page.wide !== false
   property var user: ({})
   property bool open: false
   signal toggleRequested()
@@ -173,12 +175,14 @@ ColumnLayout {
       onDismissed: root.page.failed = ({})
     }
 
-    RowLayout {
+    GridLayout {
       visible: root.canChange
       Layout.fillWidth: true
-      spacing: Style.spacing.xxl
+      columns: root.wide ? 4 : 2
+      columnSpacing: Style.spacing.xxl
+      rowSpacing: 0
 
-      SettingsLabel { text: "Full name" }
+      SettingsLabel { text: "Full name"; Layout.columnSpan: root.wide ? 1 : 2 }
       TextField {
         id: nameField
         Layout.fillWidth: true
@@ -199,7 +203,7 @@ ColumnLayout {
         busy: !!root.page && root.page.busy("name:" + root.user.name)
         onClicked: root.saveName()
       }
-      Item { Layout.fillWidth: true; implicitHeight: 1 }
+      Item { visible: root.wide; Layout.fillWidth: true; implicitHeight: 1 }
     }
 
     SettingRow {
@@ -214,10 +218,12 @@ ColumnLayout {
     }
 
     // Your own password is changed where it asks for the current one.
-    RowLayout {
+    GridLayout {
       visible: root.you
       Layout.fillWidth: true
-      spacing: Style.spacing.xxl
+      columns: root.wide ? 3 : 1
+      columnSpacing: Style.spacing.xxl
+      rowSpacing: 0
       SettingsLabel { text: "Password" }
       Button {
         focusable: true
@@ -226,13 +232,15 @@ ColumnLayout {
         accessibleName: "Change your password in Settings, Security"
         onClicked: if (root.page && root.page.settings) root.page.settings.section = "security"
       }
-      Item { Layout.fillWidth: true; implicitHeight: 1 }
+      Item { visible: root.wide; Layout.fillWidth: true; implicitHeight: 1 }
     }
 
-    RowLayout {
+    GridLayout {
       visible: root.canChange && !root.you && !root.resetting
       Layout.fillWidth: true
-      spacing: Style.spacing.xxl
+      columns: root.wide ? 3 : 1
+      columnSpacing: Style.spacing.xxl
+      rowSpacing: 0
       SettingsLabel { text: "Password" }
       Button {
         focusable: true
@@ -245,13 +253,13 @@ ColumnLayout {
           Qt.callLater(function() { newPassword.forceActiveFocus() })
         }
       }
-      Item { Layout.fillWidth: true; implicitHeight: 1 }
+      Item { visible: root.wide; Layout.fillWidth: true; implicitHeight: 1 }
     }
 
     GridLayout {
       visible: root.resetting
       Layout.fillWidth: true
-      columns: 2
+      columns: root.wide ? 2 : 1
       columnSpacing: Style.spacing.xxl
       rowSpacing: Style.spacing.md
 
@@ -274,7 +282,7 @@ ColumnLayout {
         onAccepted: root.setPassword()
       }
 
-      Item { implicitWidth: 1; implicitHeight: 1 }
+      Item { visible: root.wide; implicitWidth: 1; implicitHeight: 1 }
       ColumnLayout {
         Layout.fillWidth: true
         spacing: Style.spacing.md
@@ -364,7 +372,7 @@ ColumnLayout {
       GridLayout {
         visible: root.removing
         Layout.fillWidth: true
-        columns: 2
+        columns: root.wide ? 2 : 1
         columnSpacing: Style.spacing.xxl
         rowSpacing: Style.spacing.md
 
@@ -382,8 +390,10 @@ ColumnLayout {
             font.pixelSize: Style.font.body
             wrapMode: Text.Wrap
           }
-          RowLayout {
-            spacing: Style.spacing.controlGap
+          GridLayout {
+            columns: root.wide ? 2 : 1
+            columnSpacing: Style.spacing.controlGap
+            rowSpacing: Style.spacing.md
             Button {
               focusable: true
               bordered: true

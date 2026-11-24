@@ -24,6 +24,9 @@ ColumnLayout {
 
   // The Settings window, for its confirm dialog (set by its Loader).
   property var settings: null
+  // Labels beside their controls where the page has room, above them where
+  // it is narrow (the window is a tile).
+  readonly property bool wide: width >= Style.spacing.formWide
   property bool loaded: false
   property string loadError: ""
   property string lastStatus: ""
@@ -262,7 +265,7 @@ ColumnLayout {
 
     GridLayout {
       Layout.fillWidth: true
-      columns: 2
+      columns: root.wide ? 2 : 1
       columnSpacing: Style.spacing.xxl
       rowSpacing: Style.spacing.md
 
@@ -275,7 +278,7 @@ ColumnLayout {
         onTextEdited: root.nameError = ""
         onAccepted: addFullName.forceActiveFocus()
       }
-      Item { visible: root.nameError !== ""; implicitWidth: 1; implicitHeight: 1 }
+      Item { visible: root.wide && root.nameError !== ""; implicitWidth: 1; implicitHeight: 1 }
       FieldError { text: root.nameError }
 
       SettingsLabel { text: "Full name" }
@@ -287,7 +290,7 @@ ColumnLayout {
         onTextEdited: root.fullNameError = ""
         onAccepted: addPassword.forceActiveFocus()
       }
-      Item { visible: root.fullNameError !== ""; implicitWidth: 1; implicitHeight: 1 }
+      Item { visible: root.wide && root.fullNameError !== ""; implicitWidth: 1; implicitHeight: 1 }
       FieldError { text: root.fullNameError }
 
       SettingsLabel { text: "Password" }
@@ -309,7 +312,7 @@ ColumnLayout {
         onTextEdited: root.passwordError = ""
         onAccepted: root.add()
       }
-      Item { visible: root.passwordError !== ""; implicitWidth: 1; implicitHeight: 1 }
+      Item { visible: root.wide && root.passwordError !== ""; implicitWidth: 1; implicitHeight: 1 }
       FieldError { text: root.passwordError }
 
       SettingsLabel { text: "Role" }
@@ -318,7 +321,7 @@ ColumnLayout {
         value: root.addRole
         onChanged: function(value) { root.addRole = value }
       }
-      Item { implicitWidth: 1; implicitHeight: 1 }
+      Item { visible: root.wide; implicitWidth: 1; implicitHeight: 1 }
       Text {
         Layout.fillWidth: true
         Layout.maximumWidth: Style.space(460)

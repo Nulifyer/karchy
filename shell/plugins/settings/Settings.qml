@@ -21,6 +21,11 @@ import qs.Ui
 // Keyboard: Tab and Shift+Tab walk the section list, then every control of
 // the page; Up/Down or j/k move through the section list; Escape closes. The
 // focused control shows the FocusRing and is scrolled into view.
+//
+// Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
+// section list is a SidebarSwitcher across the top, one Tab stop that opens
+// the list of pages, and the page takes the whole width. Each page puts its
+// labels above their controls where it is under Style.spacing.formWide.
 Item {
   id: root
 
@@ -192,9 +197,23 @@ Item {
     return !!(t.item || t.connection || t.device || t.anchor)
   }
 
+  // The keyboard on the page list: the open page's row, or the switcher that
+  // stands for the list in a narrow window.
   function focusSection(index) {
+    if (root.narrow) { switcher.takeFocus(); return }
     var item = navRepeater.itemAt(index)
     if (item) item.forceActiveFocus()
+  }
+
+  // The window is too narrow for the page list beside the page.
+  readonly property bool narrow: window.width < Style.spacing.windowNarrow
+  // The list changes form with the keyboard in it (the window was tiled, or
+  // floated again): the keyboard goes to the form that is there now.
+  onNarrowChanged: {
+    if (!root.opened) return
+    var focused = frame.Window.activeFocusItem
+    for (var p = focused; p; p = p.parent)
+      if (p === sidebar || p === switcher) { Qt.callLater(function() { root.focusSection(root.currentSectionIndex()) }); return }
   }
 
   function currentSectionIndex() {
@@ -254,10 +273,13 @@ Item {
       // Start on the open section's entry, so Tab and Escape work at once.
       if (visible && !root.targetsItem()) Qt.callLater(function() { root.focusSection(root.currentSectionIndex()) })
     }
-    RowLayout {
+    GridLayout {
       id: frame
       anchors.fill: parent
-      spacing: 0
+      // The page list beside the page, or over it in a narrow window.
+      columns: root.narrow ? 1 : 2
+      columnSpacing: 0
+      rowSpacing: 0
       readonly property Item focusedItem: frame.Window.activeFocusItem
       onFocusedItemChanged: root.revealFocused(focusedItem)
       // Keys the focused control leaves unhandled end up here. An open
@@ -271,6 +293,8 @@ Item {
 
       // Section list
       Rectangle {
+        id: sidebar
+        visible: !root.narrow
         Layout.fillHeight: true
         Layout.preferredWidth: Style.spacing.sidebarWidth
         color: Util.alpha(Commons.Color.foreground, 0.04)
@@ -357,6 +381,18 @@ Item {
         }
       }
 
+      // The same list for a narrow window.
+      SidebarSwitcher {
+        id: switcher
+        visible: root.narrow
+        Layout.fillWidth: true
+        value: root.section
+        options: root.sections.map(function(entry) {
+          return { value: entry.id, label: entry.label, icon: Icons.glyph(entry.iconName) }
+        })
+        onChanged: function(value) { root.section = value }
+      }
+
       // Section content. The page's padding at the top and bottom is the
       // view's own margin, not part of what scrolls: a long page (the
       // keybindings, the notification apps, a disk's parts) ends at the
@@ -374,8 +410,9 @@ Item {
 
         Loader {
           id: sectionLoader
-          x: Style.spacing.panelPadding * 2
-          width: content.width - Style.spacing.panelPadding * 4
+          // Less room at the sides in a narrow window, where the page needs it.
+          x: root.narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 2
+          width: Math.min(content.width - x * 2, Style.spacing.pageMaxWidth)
           active: root.opened
           source: {
             switch (root.section) {

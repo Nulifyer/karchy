@@ -24,7 +24,7 @@ ColumnLayout {
 
   property var settings: null
   property var target: ({})
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
 
   readonly property var adapter: BluetoothControl.adapter
   readonly property bool on: BluetoothControl.enabled

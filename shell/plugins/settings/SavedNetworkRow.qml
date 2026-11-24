@@ -17,7 +17,7 @@ ColumnLayout {
   spacing: Style.spacing.md
 
   property var page: null
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
   property var profile: ({})
   // This network's entry in karchy-trusted-networks status --json.
   property var trust: null

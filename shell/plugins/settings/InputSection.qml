@@ -18,7 +18,7 @@ ColumnLayout {
   property var saved: ({})
   property bool touchpad: false
   property string error: ""
-  readonly property bool wide: width >= Style.space(560)
+  readonly property bool wide: width >= Style.spacing.formWide
 
   function refresh() { if (!setProc.running) statusProc.running = true }
 
