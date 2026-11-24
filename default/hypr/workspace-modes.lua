@@ -289,11 +289,14 @@ local function claim_opened(window)
   end
 end
 
--- A maximized window has a floating workspace to itself until another one
--- opens there, which brings it back to its own size so the two can share it.
+-- A maximized window has a floating workspace to itself until another app
+-- window opens there, which brings it back to its own size so the two can
+-- share it. A dialog, and a window that floats on its own account (karchy's
+-- Settings, its floating terminal), opens in front of the maximized window
+-- and leaves it as it is.
 local function unmaximize_others(window)
   local id = window.workspace and window.workspace.id
-  if not floating_workspace(id) then
+  if not floating_workspace(id) or not o.tagged_at_open(window, OPENED_TAG) then
     return
   end
 
