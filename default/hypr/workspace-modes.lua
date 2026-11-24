@@ -289,24 +289,6 @@ local function claim_opened(window)
   end
 end
 
--- A maximized window has a floating workspace to itself until another app
--- window opens there, which brings it back to its own size so the two can
--- share it. A dialog, and a window that floats on its own account (karchy's
--- Settings, its floating terminal), opens in front of the maximized window
--- and leaves it as it is.
-local function unmaximize_others(window)
-  local id = window.workspace and window.workspace.id
-  if not floating_workspace(id) or not o.tagged_at_open(window, OPENED_TAG) then
-    return
-  end
-
-  for _, other in ipairs(hl.get_workspace_windows(tostring(id))) do
-    if other.address ~= window.address and (other.fullscreen or 0) == 1 then
-      hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "unset", window = other }))
-    end
-  end
-end
-
 -- The workspace is passed in when a window is still on its way to it.
 local function arrange(windows, workspace)
   local floating = {}
@@ -402,7 +384,6 @@ local function watch()
 
   hl.on("window.open", function(window)
     claim_opened(window)
-    unmaximize_others(window)
     arrange({ window })
   end)
 

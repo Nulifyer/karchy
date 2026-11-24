@@ -65,7 +65,7 @@ A workspace tiles or floats (Settings › Appearance › Workspace layout sets t
 
 - Every app window floats, with a titlebar: drag it to move, double-click it or □ to maximize, − to minimize, × to close, drag an edge to resize. Windows open at a comfortable size, each stepped from the last.
 - A click gives a window the keyboard and brings it to the front; the pointer alone does neither. A window given the keyboard any other way comes to the front too: Alt+Tab, a launcher that finds it open, an app that asks for focus, the window in front closing.
-- A maximized window is in front when it has the keyboard, and the other windows wait behind it; one of them given the keyboard comes in front of it again. It stays maximized when a dialog, or a window that floats on its own account (Settings, the floating terminal), opens over it; another app window opening there brings it back to its own size, so the two share the workspace.
+- A maximized window is in front when it has the keyboard, and the other windows wait behind it; one of them given the keyboard comes in front of it again. It stays maximized when another window opens: an app window, a dialog or one of karchy's own opens in front of it, at its own size (D-165). One window on a workspace is maximized at a time, which is Hyprland's rule: maximizing a second brings the first back to its own size.
 - A dialog keeps the size its app gave it and stays in front of its app's windows. The portal's file chooser stays in front of every window on its workspace until it is answered.
 - Nothing else stays on top. karchy's own windows and its floating terminal go behind the window you click, like any other.
 

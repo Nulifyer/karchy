@@ -99,6 +99,12 @@ local actions = {
       focus(window, 4)
     end
   end,
+  fullscreen = function(args)
+    local window = args.window and selected(args.window) or (find(history[1]))
+    if window then
+      window.fullscreen = args.action == "unset" and 0 or (args.mode == "maximized" and 1 or 2)
+    end
+  end,
 }
 
 local function action(kind)
@@ -108,7 +114,7 @@ end
 hl = setmetatable({
   dsp = setmetatable({
     focus = action("focus"),
-    window = setmetatable({ alter_zorder = action("zorder"), tag = action("tag"), bring_to_top = action("none") }, {
+    window = setmetatable({ alter_zorder = action("zorder"), tag = action("tag"), bring_to_top = action("none"), fullscreen = action("fullscreen") }, {
       __index = function() return action("none") end,
     }),
   }, { __index = function() return action("none") end }),
@@ -250,6 +256,7 @@ eq(open_rule ~= nil and open_rule.match.float, false, "the rule that floats what
 
 local big = open("big", { floating = true, pid = 7, fullscreen = 1, tags = { workspace_modes.OPENED_TAG .. "*" } })
 local small = open("small", { floating = true, pid = 8, tags = { workspace_modes.OPENED_TAG .. "*" } })
+eq(big.fullscreen, 1, "a maximized window stays maximized when another app window opens (D-165)")
 local prompt = open("prompt", { floating = true, pid = 7 })
 focus(small, 256)
 eq(small.allowed_over_fullscreen, true, "a window given the keyboard comes in front of the maximized one")
