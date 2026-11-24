@@ -24,6 +24,12 @@ import "Model.js" as Model
 // Keyboard: Tab walks the filter, the VM list, "New VM", then the page;
 // j/k or Up/Down move through the list; Ctrl+F filters; Escape closes.
 //
+// Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
+// list is a SidebarSwitcher across the top, each VM with its state and "New
+// VM" last; the keyboard starts there and Ctrl+F goes there. The page puts
+// its labels above their controls, a snapshot's date under its name, and a
+// "Can't be undone" action's button under what it says.
+//
 // Open it with: karchy vm manage [name]
 Item {
   id: root
@@ -54,6 +60,25 @@ Item {
   readonly property var current: Model.find(vms, selected)
   readonly property bool currentRunning: Model.isRunning(current)
   readonly property string home: Quickshell.env("HOME")
+
+  // The window is too narrow for the list beside the page; the page for
+  // labels beside their controls.
+  readonly property bool narrow: window.width < Style.spacing.windowNarrow
+  readonly property bool wide: page.width >= Style.spacing.formWide
+  // The list changes form with the keyboard in it (the window was tiled, or
+  // floated again): the keyboard goes to the form that is there now.
+  onNarrowChanged: {
+    if (!root.opened) return
+    var focused = frame.Window.activeFocusItem
+    for (var p = focused; p; p = p.parent)
+      if (p === sidebar || p === switcher) { Qt.callLater(root.focusList); return }
+  }
+
+  // The keyboard on the VM list, or on the switcher that stands for it.
+  function focusList() {
+    if (root.narrow) switcher.takeFocus()
+    else vmList.forceActiveFocus()
+  }
 
   function open(payloadJson) {
     var payload = {}
@@ -285,19 +310,22 @@ Item {
     onVisibleChanged: {
       if (!visible && root.opened) root.close()
       // Start in the VM list, so j/k, Tab and Escape work at once.
-      if (visible) Qt.callLater(function() { vmList.forceActiveFocus() })
+      if (visible) Qt.callLater(root.focusList)
     }
 
     Shortcut {
       sequence: "Ctrl+F"
       enabled: root.opened && !confirm.opened
-      onActivated: filterField.forceActiveFocus(Qt.ShortcutFocusReason)
+      onActivated: root.narrow ? switcher.takeFocus() : filterField.forceActiveFocus(Qt.ShortcutFocusReason)
     }
 
-    RowLayout {
+    GridLayout {
       id: frame
       anchors.fill: parent
-      spacing: 0
+      // The list beside the page, or over it in a narrow window.
+      columns: root.narrow ? 1 : 2
+      columnSpacing: 0
+      rowSpacing: 0
       readonly property Item focusedItem: frame.Window.activeFocusItem
       onFocusedItemChanged: root.revealFocused(focusedItem)
       // Keys the focused control leaves unhandled end up here. An open
@@ -306,6 +334,8 @@ Item {
 
       // ---------- VM list ----------
       Rectangle {
+        id: sidebar
+        visible: !root.narrow
         Layout.fillHeight: true
         Layout.preferredWidth: Style.space(250)
         color: Util.alpha(Commons.Color.foreground, 0.04)
@@ -416,6 +446,19 @@ Item {
         }
       }
 
+      // The same list for a narrow window: every VM with its state, then
+      // "New VM".
+      SidebarSwitcher {
+        id: switcher
+        visible: root.narrow && (root.installed || root.rows.length > 0)
+        Layout.fillWidth: true
+        value: root.selected
+        options: root.rows.map(function(vm) {
+          return { value: vm.name, label: vm.name, icon: Icons.glyph(Model.osIcon(vm.os)), detail: Model.stateLabel(vm.state) }
+        }).concat(root.installed ? [{ value: "", label: "New VM", icon: Icons.glyph("ui.add") }] : [])
+        onChanged: function(value) { root.selected = value }
+      }
+
       // ---------- Page ----------
       Flickable {
         id: content
@@ -428,9 +471,10 @@ Item {
 
         ColumnLayout {
           id: page
-          x: Style.spacing.panelPadding * 2
+          // Less room at the sides in a narrow window, where the page needs it.
+          x: root.narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 2
           y: Style.spacing.panelPadding
-          width: content.width - Style.spacing.panelPadding * 4
+          width: Math.min(content.width - x * 2, Style.spacing.pageMaxWidth)
           spacing: Style.spacing.xxl
 
           Loader {
@@ -523,7 +567,7 @@ Item {
       Section {
         GridLayout {
           Layout.fillWidth: true
-          columns: 2
+          columns: root.wide ? 2 : 1
           columnSpacing: Style.spacing.xxl
           rowSpacing: Style.spacing.md
 
@@ -694,7 +738,7 @@ Item {
 
         GridLayout {
           Layout.fillWidth: true
-          columns: 2
+          columns: root.wide ? 2 : 1
           columnSpacing: Style.spacing.xxl
           rowSpacing: Style.spacing.md
           enabled: detail.editable
@@ -827,19 +871,27 @@ Item {
 
         Repeater {
           model: root.snapshots
-          delegate: RowLayout {
+          // One line; on a narrow page the date goes under the name.
+          delegate: GridLayout {
             required property var modelData
             Layout.fillWidth: true
-            spacing: Style.spacing.lg
+            columns: root.wide ? 5 : 4
+            columnSpacing: Style.spacing.lg
+            rowSpacing: 0
 
             Text {
+              Layout.row: 0
+              Layout.column: 0
               text: Icons.glyph("snapshot")
               color: Commons.Color.textSecondary
               font.family: Icons.family
               font.pixelSize: Style.font.icon
             }
-            Value { text: modelData.name; Layout.fillWidth: true }
+            Value { text: modelData.name; Layout.fillWidth: true; Layout.row: 0; Layout.column: 1 }
             Text {
+              Layout.row: root.wide ? 0 : 1
+              Layout.column: root.wide ? 2 : 1
+              Layout.columnSpan: root.wide ? 1 : 3
               text: Model.formatDate(modelData.date)
               color: Commons.Color.textSecondary
               font.family: Style.font.family
@@ -847,6 +899,8 @@ Item {
               font.features: { "tnum": 1 }
             }
             Button {
+              Layout.row: 0
+              Layout.column: root.wide ? 3 : 2
               focusable: true
               text: "Restore…"
               bordered: true
@@ -856,6 +910,8 @@ Item {
               })
             }
             PanelActionButton {
+              Layout.row: 0
+              Layout.column: root.wide ? 4 : 3
               focusable: true
               iconText: Icons.glyph("ui.delete")
               tooltipText: "Delete snapshot"
@@ -869,10 +925,13 @@ Item {
         }
 
         RowLayout {
+          Layout.fillWidth: !root.wide
           spacing: Style.spacing.lg
           enabled: detail.editable
           TextField {
             id: snapName
+            Layout.fillWidth: !root.wide
+            Layout.minimumWidth: Style.space(80)
             Layout.preferredWidth: Style.space(200)
             placeholderText: "Snapshot name"
             onAccepted: takeSnap.clicked()
@@ -975,8 +1034,9 @@ Item {
   }
 
 
-  // One destructive action with what it does, in the "Can't be undone" section.
-  component DangerRow: RowLayout {
+  // One destructive action with what it does, in the "Can't be undone"
+  // section: its button beside the words, or under them on a narrow page.
+  component DangerRow: GridLayout {
     id: danger
     property string title: ""
     property string description: ""
@@ -984,7 +1044,9 @@ Item {
     property bool actionEnabled: true
     signal triggered()
     Layout.fillWidth: true
-    spacing: Style.spacing.xxl
+    columns: root.wide ? 2 : 1
+    columnSpacing: Style.spacing.xxl
+    rowSpacing: Style.spacing.md
     ColumnLayout {
       Layout.fillWidth: true
       spacing: Style.spacing.xxs
