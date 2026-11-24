@@ -1,44 +1,28 @@
 #!/bin/bash
 
-# karchy:summary=Open a clipboard history entry
+# karchy:summary=Open a clipboard history entry in the app for it
 # karchy:group=clipboard
-# karchy:args=--history-index <index>
+# karchy:args=<text|image|files> <path>
 # karchy:hidden=true
 
-history_index=""
-history_path="$HOME/.local/state/karchy/clipboard-history.json"
+# What the history's picker runs for Alt+Enter: an image opens in the
+# annotator, a web address in the browser, other text in the editor, and a
+# file copy opens its first file.
 
-while (( $# > 0 )); do
-  case "$1" in
-    --history-index)
-      history_index="${2:-}"
-      shift 2
-      ;;
-    *)
-      echo "Usage: karchy-clipboard-open --history-index <index>" >&2
-      exit 1
-      ;;
-  esac
-done
+entry_type=${1:-}
+path=${2:-}
 
-[[ $history_index =~ ^[0-9]+$ ]] || exit 1
-[[ -r $history_path ]] || exit 1
+if [[ -z $entry_type || -z $path ]]; then
+  echo "Usage: karchy-clipboard-open <text|image|files> <path>" >&2
+  exit 1
+fi
 
-entry_type=$(jq -er --argjson index "$history_index" '.[$index].type' "$history_path") || exit 1
-
-open_image() {
-  local path="$1"
-
-  [[ -r $path ]] || exit 1
-  exec omasnap --notify "$path"
-}
+[[ -r $path ]] || exit 1
 
 open_text() {
-  local text="$1"
-  local url=""
-  local open_dir=""
-  local open_file=""
+  local text url="" open_dir open_file
 
+  text=$(<"$path")
   url=$(grep -Eom1 'https?://[^[:space:]"'\''<>]+' <<<"$text" || true)
   if [[ -z $url && $text =~ ^[[:space:]]*([[:alnum:]][[:alnum:].-]+\.[[:alpha:]]{2,})(/[^[:space:]]*)?[[:space:]]*$ ]]; then
     url="https://${BASH_REMATCH[1]}${BASH_REMATCH[2]}"
@@ -48,21 +32,25 @@ open_text() {
     exec karchy-launch-browser "$url"
   fi
 
-  open_dir="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/clipboard-open"
+  # A copy of its own for the editor, in memory like the history.
+  umask 077
+  open_dir="${XDG_RUNTIME_DIR:-/tmp}/karchy/clipboard-open"
   mkdir -p "$open_dir"
   open_file=$(mktemp --tmpdir="$open_dir" clipboard.XXXXXX.txt) || exit 1
-  printf '%s' "$text" >"$open_file"
+  cat -- "$path" >"$open_file"
   exec karchy-launch-editor "$open_file"
 }
 
 case "$entry_type" in
   image)
-    path=$(jq -er --argjson index "$history_index" '.[$index].path' "$history_path") || exit 1
-    open_image "$path"
+    exec omasnap --notify "$path"
     ;;
   text)
-    text=$(jq -er --argjson index "$history_index" '.[$index].text' "$history_path") || exit 1
-    open_text "$text"
+    open_text
+    ;;
+  files)
+    first=$(grep -m1 '^file://' "$path") || exit 1
+    exec xdg-open "$first"
     ;;
   *)
     exit 1

@@ -56,6 +56,17 @@ The bar has quick panels for the things you change often: sound, microphone, net
 - `Alt` + `Tab` goes back to the window you used last; keep `Alt` down and press `Tab` again to go further back. `Super` + `Tab` goes to the next workspace.
 - `Super` + `M` minimizes every window on the workspace. `Super` + `Shift` + `M` brings them back.
 
+## Copy and paste
+
+The clipboard works as on Windows.
+
+- `Ctrl` + `C`, `Ctrl` + `X` and `Ctrl` + `V` copy, cut and paste in apps. What you copied stays after you close the app it came from.
+- In a terminal `Ctrl` + `C` stops the running program, so copy and paste are `Ctrl` + `Shift` + `C` and `Ctrl` + `Shift` + `V` there.
+- `Super` + `Ctrl` + `V` opens the clipboard history: everything you copied since you logged in, text, pictures and files. Type to search, and press `Enter` or click an entry to paste it where your cursor is.
+- In the history, `Ctrl` + `P` pins an entry, `Delete` removes it and `Shift` + `Delete` clears everything that is not pinned.
+
+The history is kept in memory and is empty again after a restart or after you log out. A pinned entry stays until you unpin or delete it. What a password manager copies is never put in the history.
+
 ## Install and remove apps
 
 **Quick install** (menu › Packages › Quick Install) lists about 720 apps, fonts and optional features by category. In a category the apps sit under headings that say what they are for, such as Coding agents or Read and write email. Select what you want and press Install; installed apps show as installed, and you remove them the same way.

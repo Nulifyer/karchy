@@ -13,7 +13,7 @@ startup; other panels, overlays, and menus are loaded on demand.
 |---|---|---|---|
 | Background | `karchy.background` | `service` | `background/Background.qml` |
 | Bar | `karchy.bar` | `bar` | `bar/Bar.qml` |
-| Clipboard | `karchy.clipboard` | `overlay` | `clipboard/Clipboard.qml` |
+| Clipboard (history) | `karchy.clipboard` | `service`, `overlay` | `clipboard/Service.qml`, `clipboard/Clipboard.qml` |
 | Containers | `karchy.containers` | `bar-widget`, `panel` | `containers/Panel.qml`, `containers/Window.qml` |
 | Image picker | `karchy.image-picker` | `overlay` | `image-picker/ImagePicker.qml` |
 | Lock Screen | `karchy.lock` | `service` | `lock/Service.qml` |

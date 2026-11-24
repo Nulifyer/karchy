@@ -62,6 +62,7 @@ Do not edit these files. Find the command that writes them.
 | `~/.local/state/karchy/hypr/{displays,input,power}.lua` | `karchy-settings-displays`, `-input`, `-power` |
 | `~/.local/state/karchy/toggles/` | `karchy toggle`, `karchy hyprland toggle` |
 | `~/.local/state/karchy/migrations/` | `karchy-migrate`: one mark for each migration done, and a `.log` for each run |
+| `~/.local/state/karchy/clipboard/` | the clipboard history's pinned entries (`pinned.json` and one file each). Pin, unpin and delete them in the history (Super+Ctrl+V). The entries that are not pinned are in memory, in `$XDG_RUNTIME_DIR/karchy/clipboard`, and are gone at logout |
 
 ## Hooks
 

@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# karchy:summary=Paste the clipboard into the focused window
+# karchy:group=clipboard
+# karchy:examples=karchy clipboard paste keys
+# karchy:hidden=true
+
+# Sends the focused window the keys a person would press to paste: Ctrl+V, or
+# Ctrl+Shift+V in a terminal, where Ctrl+V is the shell's. Hyprland sends them
+# (o.clipboard_paste in default/hypr/bindings/clipboard.lua), so "terminal"
+# means here what it means for Super+V.
+
+# The panel that asked has to close and hand the keyboard back first.
+sleep 0.15
+
+if ! hyprctl eval 'o.clipboard_paste()' >/dev/null 2>&1; then
+  # Without Hyprland's help: Shift+Insert pastes the clipboard in most apps.
+  wtype -M shift -k Insert -m shift 2>/dev/null || true
+fi

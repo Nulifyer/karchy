@@ -42,6 +42,14 @@ local function universal_clipboard_shortcut(default_mods, default_key, terminal_
   end
 end
 
+-- What the clipboard history sends after it has put an entry back on the
+-- clipboard (karchy-clipboard-paste-keys, through `hyprctl eval`): the paste
+-- keys of the focused window, the same as Universal paste. No key is held
+-- when it runs, so nothing merges into the chord.
+function o.clipboard_paste()
+  universal_clipboard_shortcut("CTRL", "V", "CTRL SHIFT", "V")()
+end
+
 o.bind_group("Clipboard")
 o.bind("SUPER + A", "Select all", send_shortcut_once("CTRL", "A"))
 o.bind("SUPER + C", "Universal copy", universal_clipboard_shortcut("CTRL", "C", "CTRL SHIFT", "C"))

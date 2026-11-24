@@ -15,6 +15,9 @@
   "lock": {
     "clock": true
   },
+  "clipboard": {
+    "history": true
+  },
   "battery": {
     "low": 15,
     "critical": 5,

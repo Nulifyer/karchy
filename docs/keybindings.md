@@ -39,6 +39,21 @@ This is the complete default set. Anything not listed is unbound. New default bi
 | Super+C / Super+V / Super+X / Super+A | Universal copy / paste / cut / select all (terminal-aware) | [O] |
 | Super+Ctrl+V | Clipboard history | [O] |
 
+The clipboard works as on Windows (D-167). Ctrl+C, Ctrl+X and Ctrl+V are the apps' own keys and karchy binds nothing over them. In a terminal Ctrl+C interrupts the running program, so copy and paste are Ctrl+Shift+C and Ctrl+Shift+V there (also Ctrl+Insert and Shift+Insert), in every terminal karchy configures: foot, Ghostty, Alacritty and kitty. Super+C and Super+V send whichever pair the focused window takes.
+
+Super+Ctrl+V opens the history of what was copied: text, images and file copies. Its keys are the picker's own, not Hyprland bindings:
+
+| Key in the history | Action |
+|---|---|
+| typing | Search |
+| Enter, or a click | Paste the entry where the cursor is |
+| Shift+Enter | Copy the entry without pasting |
+| Alt+Enter | Open it: a link in the browser, text in the editor, an image in the annotator, a file in its app |
+| Ctrl+P | Pin or unpin it; a pinned entry stays through Clear all and a restart |
+| Delete | Remove the entry |
+| Shift+Delete | Clear all that is not pinned (asks first) |
+| Escape | Clear the search, then close |
+
 ## Shell and system
 
 | Key | Action | Tag |

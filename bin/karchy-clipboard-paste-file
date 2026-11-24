@@ -1,10 +1,15 @@
 #!/bin/bash
 
-# karchy:summary=Copy a file to the clipboard and paste it
+# karchy:summary=Copy a file's content to the clipboard and paste it
 # karchy:group=clipboard
 # karchy:args=[--copy-only] <mime-type> <path>
-# karchy:examples=karchy clipboard paste file image/png /tmp/screenshot.png
+# karchy:examples=karchy clipboard paste file image/png /tmp/screenshot.png | karchy clipboard paste file --copy-only text/plain notes.txt
 # karchy:hidden=true
+
+# The clipboard history (D-167) pastes an entry with this: the entry's file
+# goes back on the clipboard, then the focused window is sent the paste keys,
+# as if the user had pressed them. A text/uri-list file is a list of files
+# and is copied the way a file manager copies them.
 
 copy_only=false
 
@@ -23,11 +28,14 @@ fi
 
 [[ -r $path ]] || exit 1
 
-wl-copy --type "$mime" < "$path"
+if [[ $mime == text/uri-list ]]; then
+  karchy-clipboard-copy-files --uri-list "$path" || exit 1
+else
+  wl-copy --type "$mime" <"$path" || exit 1
+fi
 
 if [[ $copy_only == "true" ]]; then
   exit
 fi
 
-sleep 0.15
-wtype -M shift -k Insert -m shift 2>/dev/null || true
+karchy-clipboard-paste-keys

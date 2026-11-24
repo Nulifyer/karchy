@@ -2,14 +2,16 @@
   "schemaVersion": 1,
   "id": "karchy.clipboard",
   "name": "Clipboard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "author": "Karchy",
-  "description": "A clipboard manager to view and paste history",
+  "description": "Clipboard history: what was copied, to search, pin and paste again",
   "kinds": [
+    "service",
     "overlay"
   ],
   "keepLoaded": true,
   "entryPoints": {
+    "service": "Service.qml",
     "overlay": "Clipboard.qml"
   }
 }

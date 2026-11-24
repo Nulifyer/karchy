@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import qs.Commons
@@ -7,19 +6,29 @@ import qs.Commons as Commons
 import qs.Ui
 import "ClipboardHistory.js" as ClipboardHistory
 
+// The clipboard history's picker (D-167; Super+Ctrl+V), which works as Win+V
+// does on Windows: type to search, Enter (or a click) pastes the entry where
+// the cursor is. Shift+Enter only copies it, Alt+Enter opens it in its app,
+// Ctrl+P pins or unpins it (a pinned entry stays through Clear and a
+// restart), Delete removes it and Shift+Delete clears everything that is not
+// pinned. The entries and every change to them belong to Service.qml.
 Item {
   id: root
 
+  property var shell: null
   property string karchyPath: Quickshell.env("KARCHY_PATH")
+  // The shell hands over the service when it loads the picker; shell.services
+  // is replaced as each service registers, so a service that starts after the
+  // picker is found too.
+  property var service: null
+  readonly property var store: service || (shell ? shell.services["karchy.clipboard"] || null : null)
+  readonly property var history: store ? store.history : []
   property bool opened: false
   property string filterText: ""
   property int selectedIndex: 0
   property bool cursorActive: false
   property bool clearConfirmOpen: false
-  property var history: []
 
-  property string historyPath: Quickshell.env("HOME") + "/.local/state/karchy/clipboard-history.json"
-  property string captureScript: root.karchyPath + "/shell/plugins/clipboard/capture.sh"
   // Shares the [menu] surface tokens — themes that style the menu also
   // style the clipboard. Selected-row colors composed in the
   // singleton so consumers drop them straight into Rectangle bindings.
@@ -34,11 +43,11 @@ Item {
   property string fontFamily: Style.font.menuFamily
   property int contentMargin: Style.spacing.panelPadding
   property int headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
+  property int footerHeight: Style.font.caption + Style.spacing.sm * 2
   property int contentSpacing: Style.spacing.md
   property int cardWidth: Math.min(Style.space(875), panel.width - Style.gapsOut * 2)
   property int cardHeight: Math.min(Style.space(600), panel.height - Style.gapsOut * 2)
   property int rowHeight: Math.max(Style.space(50), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX * 2)
-  property int historyLimit: 500
 
   function open(payloadJson) {
     root.opened = true
@@ -46,7 +55,7 @@ Item {
     root.selectedIndex = 0
     root.cursorActive = true
     root.disarmPointer()
-    root.rebuildDisplay()
+    root.rebuildDisplay("")
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
@@ -60,38 +69,8 @@ Item {
     else root.open("{}")
   }
 
-  function normalizeEntry(value) {
-    return ClipboardHistory.normalizeEntry(value)
-  }
-
-  function entryKey(entry) {
-    return ClipboardHistory.entryKey(entry)
-  }
-
-  function loadHistory(raw) {
-    root.history = ClipboardHistory.parseHistory(raw)
-    if (root.opened) root.rebuildDisplay()
-  }
-
-  function saveHistory() {
-    historyFile.setText(JSON.stringify(root.history.slice(0, root.historyLimit), null, 2) + "\n")
-  }
-
-  function addClipboardEntry(entry) {
-    var normalized = ClipboardHistory.normalizeEntry(entry)
-    if (!normalized) return
-
-    root.history = ClipboardHistory.addEntry(root.history, normalized, root.historyLimit)
-    root.saveHistory()
-    if (root.opened) root.rebuildDisplay()
-  }
-
-  function addClipboardJson(line) {
-    root.addClipboardEntry(ClipboardHistory.parseEntryJson(line))
-  }
-
   function requestClearHistory() {
-    if (root.history.length === 0) return
+    if (!root.store || root.store.unpinnedCount === 0) return
     root.clearConfirmOpen = true
   }
 
@@ -102,49 +81,34 @@ Item {
   }
 
   function confirmClearHistory() {
-    root.history = ClipboardHistory.clearHistory()
-    root.saveHistory()
+    if (root.store) root.store.clear()
     root.selectedIndex = 0
-    root.cursorActive = false
     root.disarmPointer()
     root.clearConfirmOpen = false
-    root.rebuildDisplay()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
 
-  function removeDisplayIndex(index) {
-    if (index < 0 || index >= displayModel.count) return
-
-    var row = displayModel.get(index)
-    root.history = ClipboardHistory.removeEntryAt(root.history, row.historyIndex)
-    root.saveHistory()
-
-    if (displayModel.count <= 1) {
-      root.selectedIndex = 0
-      root.cursorActive = false
-    } else if (root.selectedIndex >= displayModel.count - 1) {
-      root.selectedIndex = displayModel.count - 2
-    }
-
-    root.disarmPointer()
-    root.rebuildDisplay()
+  function rowAt(index) {
+    return index >= 0 && index < displayModel.count ? displayModel.get(index) : null
   }
 
-  function rebuildDisplay() {
+  // keepId is the entry the cursor stays on when the list changes under it
+  // (a copy arriving, a pin); without one the cursor keeps its place.
+  function rebuildDisplay(keepId) {
     var rows = ClipboardHistory.displayRows(root.history, root.filterText, 50, Commons.I18n.t, Commons.I18n.tn, Commons.I18n.formatNumber)
 
     displayModel.clear()
     for (var i = 0; i < rows.length; i++) {
       var row = rows[i]
       displayModel.append({
+        entryId: row.id,
         entryType: row.entryType,
+        pinned: row.pinned,
         fullText: row.fullText,
         previewText: row.previewText,
-        previewImage: row.previewImage ? Util.fileUrl(row.previewImage) : "",
-        path: row.path,
-        mime: row.mime,
-        historyIndex: row.index
+        previewImage: row.previewImage ? Util.fileUrl(row.previewImage) : ""
       })
+      if (keepId && row.id === keepId) selectedIndex = i
     }
 
     if (displayModel.count === 0) selectedIndex = 0
@@ -156,11 +120,17 @@ Item {
     })
   }
 
+  onHistoryChanged: {
+    if (!root.opened) return
+    var current = root.rowAt(root.selectedIndex)
+    root.rebuildDisplay(current ? current.entryId : "")
+  }
+
   // Preview text is composed imperatively, so rebuild it when the
   // language (and with it the string catalog) changes under an open panel.
   Connections {
     target: Commons.I18n
-    function onStringsChanged() { if (root.opened) root.rebuildDisplay() }
+    function onStringsChanged() { if (root.opened) root.rebuildDisplay("") }
   }
 
   function select(delta) {
@@ -188,7 +158,7 @@ Item {
     root.selectedIndex = 0
     root.cursorActive = true
     root.disarmPointer()
-    root.rebuildDisplay()
+    root.rebuildDisplay("")
   }
 
   function disarmPointer() {
@@ -201,121 +171,47 @@ Item {
     root.selectedIndex = index
   }
 
+  // Paste: the picker closes first, so the keyboard is back in the window
+  // the entry goes to.
   function activateIndex(index) {
-    if (index < 0 || index >= displayModel.count) return
-    var row = displayModel.get(index)
-    root.applySelected(row)
+    var row = root.rowAt(index)
+    if (!row || !root.store) return
+    root.opened = false
+    root.store.paste(row.entryId, false)
   }
 
   function copyIndex(index) {
-    if (index < 0 || index >= displayModel.count) return
-    var row = displayModel.get(index)
-    root.copySelected(row)
+    var row = root.rowAt(index)
+    if (!row || !root.store) return
+    root.opened = false
+    root.store.paste(row.entryId, true)
   }
 
   function openIndex(index) {
-    if (index < 0 || index >= displayModel.count) return
-    var row = displayModel.get(index)
-    root.openSelected(row)
-  }
-
-  function applySelected(row) {
-    if (!row) return
+    var row = root.rowAt(index)
+    if (!row || !root.store) return
     root.opened = false
-    if (row.entryType === "image") {
-      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-file", row.mime, row.path])
-    } else if (row.fullText) {
-      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-text", "--shift-insert", "--history-index", String(row.historyIndex)])
-    }
+    root.store.open(row.entryId)
   }
 
-  function copySelected(row) {
-    if (!row) return
-    root.opened = false
-    if (row.entryType === "image") {
-      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-file", "--copy-only", row.mime, row.path])
-    } else if (row.fullText) {
-      Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-paste-text", "--copy-only", "--history-index", String(row.historyIndex)])
-    }
+  function pinIndex(index) {
+    var row = root.rowAt(index)
+    if (row && root.store) root.store.togglePin(row.entryId)
   }
 
-  function openSelected(row) {
-    if (!row) return
-    root.opened = false
-    Quickshell.execDetached([root.karchyPath + "/bin/karchy-clipboard-open", "--history-index", String(row.historyIndex)])
+  function removeIndex(index) {
+    var row = root.rowAt(index)
+    if (!row || !root.store) return
+    root.disarmPointer()
+    // The cursor stays where it is: on the entry that moves up.
+    root.store.remove(row.entryId)
   }
-
-  Component.onCompleted: initProc.running = true
 
   ListModel { id: displayModel }
 
   PointerMoveGate {
     id: pointerGate
     referenceItem: card
-  }
-
-  FileView {
-    id: historyFile
-    path: root.historyPath
-    watchChanges: true
-    atomicWrites: true
-    printErrors: false
-    onLoaded: root.loadHistory(text())
-    onLoadFailed: root.loadHistory("[]")
-    onFileChanged: reload()
-  }
-
-  // Reap watchers left behind by a previous shell instance, then start our
-  // own. The pdeathsig on the watchers makes the kernel kill them whenever
-  // the shell exits, however it exits, so no further lifecycle management.
-  Process {
-    id: initProc
-    command: ["pkill", "-f", "wl-paste .*--watch .*/shell/plugins/clipboard/capture\\.sh"]
-    onExited: {
-      currentProc.running = true
-      textWatchProc.running = true
-      imageWatchProc.running = true
-    }
-  }
-
-  Process {
-    id: currentProc
-    command: [root.captureScript]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: root.addClipboardJson(text)
-    }
-  }
-
-  Process {
-    id: textWatchProc
-    command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--type", "text", "--watch", root.captureScript, "text"]
-    onExited: watchRestartTimer.restart()
-    stdout: SplitParser {
-      onRead: function(data) { root.addClipboardJson(data) }
-    }
-  }
-
-  Process {
-    id: imageWatchProc
-    command: ["setpriv", "--pdeathsig", "TERM", "wl-paste", "--type", "image/png", "--watch", root.captureScript, "image/png"]
-    onExited: watchRestartTimer.restart()
-    stdout: SplitParser {
-      onRead: function(data) { root.addClipboardJson(data) }
-    }
-  }
-
-  // A watcher that dies takes clipboard history with it, silently: copying still
-  // works, the picker still opens, and the old entries are all still there, so
-  // nothing recorded until the next shell reload. Bring it back instead.
-  Timer {
-    id: watchRestartTimer
-    interval: 1000
-    repeat: false
-    onTriggered: {
-      if (!textWatchProc.running) textWatchProc.running = true
-      if (!imageWatchProc.running) imageWatchProc.running = true
-    }
   }
 
   OverlayWindow {
@@ -368,7 +264,10 @@ Item {
             event.accepted = true
           } else if (event.key === Qt.Key_Delete) {
             if (event.modifiers & Qt.ShiftModifier) root.requestClearHistory()
-            else root.removeDisplayIndex(root.selectedIndex)
+            else root.removeIndex(root.selectedIndex)
+            event.accepted = true
+          } else if (event.key === Qt.Key_P && event.modifiers === Qt.ControlModifier) {
+            root.pinIndex(root.selectedIndex)
             event.accepted = true
           } else if (event.key === Qt.Key_Up) {
             root.select(-1)
@@ -407,7 +306,7 @@ Item {
           opened: root.clearConfirmOpen
           z: 10
           message: Commons.I18n.t("clipboard.deleteHistory")
-          confirmText: Commons.I18n.t("common.delete")
+          confirmText: Commons.I18n.t("clipboard.clearAll")
           background: root.background
           foreground: root.foreground
           scrim: root.scrim
@@ -450,7 +349,7 @@ Item {
 
         Item {
           width: parent.width
-          height: parent.height - root.headerHeight - root.contentSpacing
+          height: parent.height - root.headerHeight - root.footerHeight - root.contentSpacing * 2
 
           Row {
             anchors.fill: parent
@@ -473,12 +372,18 @@ Item {
                 delegate: Rectangle {
                   id: row
                   required property int index
+                  required property string entryId
                   required property string entryType
+                  required property bool pinned
                   required property string previewText
                   required property string fullText
                   required property string previewImage
 
                   readonly property bool hasCursor: root.cursorActive && index === root.selectedIndex
+                  readonly property color textColor: hasCursor ? root.selectedText : root.foreground
+                  // Pin and Delete show on the row under the cursor; the pin
+                  // of a pinned entry always shows, as its mark.
+                  readonly property real actionsWidth: (row.hasCursor ? deleteButton.width + pinButton.width : row.pinned ? pinButton.width : 0)
 
                   width: ListView.view.width
                   height: root.rowHeight
@@ -490,29 +395,29 @@ Item {
                   Row {
                     anchors.fill: parent
                     anchors.leftMargin: Style.space(12)
-                    anchors.rightMargin: Style.space(12)
+                    anchors.rightMargin: Style.space(12) + row.actionsWidth
                     anchors.topMargin: Style.space(8)
                     anchors.bottomMargin: Style.space(8)
                     spacing: Style.space(10)
 
                     SizedImage {
-                      visible: parent.parent.previewImage.length > 0
+                      visible: row.previewImage.length > 0
                       width: visible ? parent.height : 0
                       height: parent.height
-                      url: parent.parent.previewImage
+                      url: row.previewImage
                       asynchronous: true
                       smooth: true
                     }
 
                     Text {
                       textFormat: Text.PlainText
-                      width: parent.width - (parent.parent.previewImage.length > 0 ? parent.height + parent.spacing : 0)
+                      width: parent.width - (row.previewImage.length > 0 ? parent.height + parent.spacing : 0)
                       height: parent.height
-                      text: parent.parent.previewText
-                      color: parent.parent.hasCursor ? root.selectedText : root.foreground
+                      text: row.previewText
+                      color: row.textColor
                       font.family: root.fontFamily
                       font.pixelSize: Style.font.title
-                      opacity: parent.parent.entryType === "image" || parent.parent.entryType === "file" ? 0.72 : 1.0
+                      opacity: row.entryType === "image" || row.entryType === "file" ? 0.72 : 1.0
                       elide: Text.ElideRight
                       wrapMode: Text.NoWrap
                       verticalAlignment: Text.AlignVCenter
@@ -531,6 +436,35 @@ Item {
                       root.selectedIndex = row.index
                       root.activateIndex(row.index)
                     }
+                  }
+
+                  PanelActionButton {
+                    id: pinButton
+                    visible: row.hasCursor || row.pinned
+                    anchors.right: deleteButton.visible ? deleteButton.left : parent.right
+                    anchors.rightMargin: deleteButton.visible ? 0 : Style.space(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconText: Icons.glyph("ui.pin")
+                    tooltipText: row.pinned ? Commons.I18n.t("clipboard.unpin") : Commons.I18n.t("clipboard.pin")
+                    // Faint until it is pinned, so the pin reads as off or on.
+                    foreground: row.pinned ? row.textColor : Util.alpha(row.textColor, 0.4)
+                    hoverColor: row.textColor
+                    fontFamily: root.fontFamily
+                    onClicked: root.pinIndex(row.index)
+                  }
+
+                  PanelActionButton {
+                    id: deleteButton
+                    visible: row.hasCursor
+                    anchors.right: parent.right
+                    anchors.rightMargin: Style.space(8)
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconText: Icons.glyph("ui.delete")
+                    tooltipText: Commons.I18n.t("common.delete")
+                    foreground: Commons.Color.secondaryText(row.textColor, root.background)
+                    hoverColor: Commons.Color.status.error
+                    fontFamily: root.fontFamily
+                    onClicked: root.removeIndex(row.index)
                   }
                 }
               }
@@ -602,7 +536,9 @@ Item {
 
             Text {
               textFormat: Text.PlainText
-              text: root.history.length === 0 ? Commons.I18n.t("clipboard.empty") : Commons.I18n.t("common.noMatchesFor").arg(root.filterText)
+              text: root.history.length > 0 ? Commons.I18n.t("common.noMatchesFor").arg(root.filterText)
+                : root.store && !root.store.recording ? Commons.I18n.t("clipboard.historyOffBody")
+                : Commons.I18n.t("clipboard.empty")
               color: root.foreground
               opacity: 0.7
               font.family: root.fontFamily
@@ -612,6 +548,19 @@ Item {
               elide: Text.ElideRight
             }
           }
+        }
+
+        // What the keys do: the picker has no menus to find them in.
+        Text {
+          textFormat: Text.PlainText
+          width: parent.width
+          height: root.footerHeight
+          text: Commons.I18n.t("clipboard.keys")
+          color: Commons.Color.secondaryText(root.foreground, root.background)
+          font.family: root.fontFamily
+          font.pixelSize: Style.font.caption
+          elide: Text.ElideRight
+          verticalAlignment: Text.AlignVCenter
         }
       }
     }
