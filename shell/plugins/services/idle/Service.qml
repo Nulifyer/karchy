@@ -142,6 +142,58 @@ Item {
     logEvent("suspend-rearm", "in " + Math.round(suspendTimer.interval / 1000) + "s")
   }
 
+  // The times changed under an idle stretch: the charger was pulled or
+  // plugged in (or the power failed) with nobody there, or shell.json was
+  // edited. What has not happened yet follows the new times, counted from
+  // when the stretch began, and what has stays, as a locked session stays
+  // locked. A screensaver this service started is the one thing taken back,
+  // and only where the new times have none: it would otherwise run for as
+  // long as nobody comes on a source that was told not to have one
+  // (IdleModel.retimed, D-176). The idle time then starts again: once the
+  // screensaver is up, its being dismissed is how this service learns that
+  // somebody came back (see handleActiveSignal), so a stretch carried on
+  // without it could lock under somebody's hands.
+  // Waits a moment for the times to settle: a saved shell.json reaches the
+  // shell in more than one step (karchy's defaults show through in between).
+  onPlanChanged: retimeTimer.restart()
+
+  // The steps the running cycle's timers were set for, to tell a change of
+  // them from shell.json saved for something that is none of this service's.
+  property string cyclePlan: ""
+  function planKey() {
+    return root.plan.screensaver + "/" + root.plan.dim + "/" + root.plan.screenOff + "/" + root.plan.lock
+  }
+
+  function retimeIdleCycle() {
+    if (!root.idledThisCycle || !root.idleEnabled || root.idleSince <= 0) return
+    if (root.planKey() === root.cyclePlan) return
+    root.cyclePlan = root.planKey()
+    var next = IdleModel.retimed(root.plan,
+      { screensaver: root.screensaverStartedThisCycle, screenOff: root.screenOffThisCycle }, Date.now() - root.idleSince)
+
+    if (next.endScreensaver) {
+      endScreensaver("the times in effect now have none")
+      cancelIdleCycle("screensaver-ended")
+      // A new idle notification, so the count starts now whether or not the
+      // monitor was reporting idle.
+      idleMonitorRearmTimer.restart()
+      return
+    }
+    function arm(timer, ms) {
+      timer.stop()
+      if (ms > 0) {
+        timer.interval = ms
+        timer.restart()
+      }
+    }
+    arm(screensaverTimer, next.screensaver)
+    arm(dimTimer, next.dim)
+    arm(screenOffTimer, next.screenOff)
+    arm(lockTimer, next.lock)
+    logEvent("idle-cycle-retime", "in screensaver=" + Math.round(next.screensaver / 1000) + "s dim=" + Math.round(next.dim / 1000)
+      + "s screenOff=" + Math.round(next.screenOff / 1000) + "s lock=" + Math.round(next.lock / 1000) + "s (0s: not)")
+  }
+
   property bool stayAwake: false
   property bool stayAwakeStateLoaded: false
   property bool hasPendingStayAwakePersist: false
@@ -231,6 +283,18 @@ Item {
     runProcess(screensaverProcess, "screensaver", "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || karchy-launch-screensaver")
   }
 
+  // Ends a screensaver this service started, as the lock does. The window
+  // closing is then not the screensaver being dismissed by somebody; the
+  // caller ends the idle cycle itself.
+  function endScreensaver(reason) {
+    if (!root.screensaverStartedThisCycle) return
+    logEvent("screensaver-end", reason)
+    root.screensaverStartedThisCycle = false
+    screensaverLaunchGraceTimer.stop()
+    runProcess(screensaverEndProcess, "screensaver-end",
+      "pkill -x ttfx; timeout 1s pidwait -x ttfx; pkill -f '[o]rg.karchy.screensaver'; true")
+  }
+
   // The screen turns off on its own deadline, whether or not the session
   // locks (settings audit F4). A locked session is left alone: the lock screen
   // turns the screen off itself, 5 seconds after it appears or was last used.
@@ -279,6 +343,7 @@ Item {
     root.screensaverStartedThisCycle = false
     root.screenOffThisCycle = false
     root.idleSince = Date.now() - idleMonitor.timeout * 1000
+    root.cyclePlan = root.planKey()
     resetScreensaverWindows()
 
     // Set this cycle's deadlines once: a bound interval would restart a pending
@@ -513,8 +578,14 @@ Item {
     return applyStayAwake(!value, true, "ipc")
   }
 
-  // With both timeouts at 0 the monitor stops reporting, so nothing else would end a running cycle.
-  onIdleTimersEnabledChanged: if (!idleTimersEnabled) cancelIdleCycle("idle-timers-disabled")
+  // With every time at 0 the monitor stops reporting, so nothing else would
+  // end a running cycle, or a screensaver it started: nothing happens on
+  // these times, so none runs on.
+  onIdleTimersEnabledChanged: {
+    if (idleTimersEnabled) return
+    endScreensaver("nothing happens on the times in effect now")
+    cancelIdleCycle("idle-timers-disabled")
+  }
 
   // The timeout is set by retimeIdleMonitor, never bound. Disabled while a
   // D-Bus or logind inhibitor holds idle, so the countdown starts afresh when
@@ -533,6 +604,13 @@ Item {
     id: idleMonitorRearmTimer
     interval: 150
     repeat: false
+  }
+
+  Timer {
+    id: retimeTimer
+    interval: 250
+    repeat: false
+    onTriggered: root.retimeIdleCycle()
   }
 
   Timer {
@@ -594,6 +672,10 @@ Item {
   Process {
     id: screensaverProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver exitCode=" + exitCode + " status=" + exitStatus) }
+  }
+  Process {
+    id: screensaverEndProcess
+    onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver-end exitCode=" + exitCode + " status=" + exitStatus) }
   }
   Process {
     id: screenOffProcess

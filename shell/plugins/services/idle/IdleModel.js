@@ -88,6 +88,41 @@ function plan(times, hasBacklight) {
   }
 }
 
+// How long (ms) until a step is due, `elapsedMs` into an idle stretch, 0 for
+// a step that doesn't happen. One whose time has passed is due in a second.
+function dueIn(seconds, elapsedMs) {
+  if (!(seconds > 0)) return 0
+  return Math.max(1000, seconds * 1000 - elapsedMs)
+}
+
+// The times changed under an idle stretch (the charger went in or out, or
+// shell.json was edited) `elapsedMs` into it. What has not happened yet
+// follows the new `plan`, counted from when the stretch began; what has
+// (`done`: { screensaver, screenOff }) stays, as a locked session stays
+// locked. The result is each timer's new time in ms, 0 to stop it, and:
+// - endScreensaver: the screensaver runs and the new times have none. It is
+//   the one step taken back, because it would otherwise go on for as long as
+//   nobody comes, on a source that was told not to have one. The idle
+//   service then starts the idle time again instead of arming the rest.
+// - dim: only a time still ahead. The change itself undims the screen (the
+//   new source's brightness may follow), and a dimming whose time has passed
+//   is not made up.
+// Sleep is armed by its own rule, which also holds after the lock.
+function retimed(plan, done, elapsedMs) {
+  var started = !!(done && done.screensaver)
+  var dark = !!(done && done.screenOff)
+  function passed(seconds) { return seconds > 0 && seconds * 1000 <= elapsedMs }
+  // Not started only to be ended by a step that is due at once as well.
+  var tooLate = passed(plan.screenOff) || passed(plan.lock) || passed(plan.suspend)
+  return {
+    endScreensaver: started && !(plan.screensaver > 0),
+    screensaver: started || dark || tooLate ? 0 : dueIn(plan.screensaver, elapsedMs),
+    dim: !dark && plan.dim * 1000 > elapsedMs ? plan.dim * 1000 - elapsedMs : 0,
+    screenOff: dark ? 0 : dueIn(plan.screenOff, elapsedMs),
+    lock: dueIn(plan.lock, elapsedMs)
+  }
+}
+
 // The percent a screen is dimmed to: 1 to 99, or the fallback.
 function dimBrightness(value, fallback) {
   var n = Number(value)
@@ -279,6 +314,8 @@ if (typeof module !== "undefined") {
     screensaverSeconds: screensaverSeconds,
     screensaverAfter: screensaverAfter,
     plan: plan,
+    dueIn: dueIn,
+    retimed: retimed,
     dimStep: dimStep,
     dimPending: dimPending,
     firstIdleTimeout: firstIdleTimeout,

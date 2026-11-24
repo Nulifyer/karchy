@@ -105,6 +105,53 @@ eq(M.screensaverAfter(S(299, 300, 300, 900)), 299)
     }
 }
 
+// The times change under an idle stretch: the charger goes in or out, the
+// power fails, or shell.json is edited. What has not happened follows the
+// new times, counted from when the stretch began.
+eq([M.dueIn(300, 100000), M.dueIn(300, 299500), M.dueIn(300, 400000), M.dueIn(0, 5000)], [200000, 1000, 1000, 0])
+const P = (user, onBattery) => M.plan(M.timeouts(merged(user), onBattery, d), true)
+const ms = (s) => s * 1000
+// On battery with the defaults, 100 seconds in, the charger goes in.
+eq(M.retimed(P(reported, false), {}, ms(100)), { endScreensaver: false, screensaver: 0, dim: 0, screenOff: 0, lock: 0 },
+  "plugged in where nothing happens, the screensaver about to start: it doesn't")
+eq(M.retimed(P(reported, false), { screensaver: true }, ms(200)), { endScreensaver: true, screensaver: 0, dim: 0, screenOff: 0, lock: 0 },
+  "…and one already running ends")
+// Plugged in with a screensaver of its own and nothing else; the power fails.
+const savingOnly = { ac: { lock: 0, screenOff: 0, screensaver: 150 } }
+eq(M.retimed(P(savingOnly, true), { screensaver: true }, ms(200)), { endScreensaver: false, screensaver: 0, dim: ms(70), screenOff: 0, lock: ms(100) },
+  "on battery after a power cut: the screensaver stays, and the battery's dimming and lock are armed")
+eq(M.retimed(P(savingOnly, true), {}, ms(100)), { endScreensaver: false, screensaver: ms(50), dim: ms(170), screenOff: 0, lock: ms(200) },
+  "before it started: at the battery's time, counted from the stretch's start")
+// A later time on the new source: a running one stays, a pending one waits.
+const later = { ac: { screensaver: 240 } }
+eq(M.retimed(P(later, false), { screensaver: true }, ms(200)).endScreensaver, false, "a running screensaver stays where the new source has one")
+eq(M.retimed(P(later, false), {}, ms(100)).screensaver, ms(140), "a pending one moves to the new time")
+// Times already past on the new source.
+const quick = { battery: { screensaver: 60, screenOff: 120, lock: 0, suspend: 0 } }
+eq(M.retimed(P(quick, true), {}, ms(90)), { endScreensaver: false, screensaver: 1000, dim: 0, screenOff: ms(30), lock: 0 },
+  "its time has passed: it starts now; the dimming's time has passed too and is not made up")
+eq(M.retimed(P(quick, true), {}, ms(130)), { endScreensaver: false, screensaver: 0, dim: 0, screenOff: 1000, lock: 0 },
+  "…but not only to be ended by the screen turning off at once")
+eq(M.retimed(P({ battery: { lock: 60 } }, true), { screensaver: true }, ms(200)).lock, 1000, "a lock whose time has passed locks now (and ends the screensaver)")
+eq(M.retimed(P({}, true), { screensaver: true, screenOff: true }, ms(400)), { endScreensaver: false, screensaver: 0, dim: 0, screenOff: 0, lock: 1000 },
+  "a screen already off stays off and is not dimmed")
+eq(M.retimed(P({ battery: { screensaver: 0 } }, true), { screensaver: true }, ms(200)).endScreensaver, true, "Never chosen on the new source ends it")
+// Every combination: nothing is armed that the new times don't have, and
+// the screensaver never starts at or after another step that is due.
+{
+  const values = [0, 60, 150, 300, 600]
+  for (const screensaver of values) for (const screenOff of values) for (const lock of values) for (const suspend of values)
+    for (const elapsed of [ms(30), ms(100), ms(200), ms(700)]) for (const started of [false, true]) {
+      const plan = M.plan({ screensaver, screenOff, lock, suspend, dim: 30 }, true)
+      const next = M.retimed(plan, { screensaver: started }, elapsed), name = JSON.stringify([plan, elapsed, started])
+      eq(next.endScreensaver, started && plan.screensaver === 0, name)
+      for (const step of ["screensaver", "dim", "screenOff", "lock"]) assert.ok(plan[step] > 0 || next[step] === 0, step + " not armed: " + name)
+      if (next.screensaver > 0) for (const step of ["screenOff", "lock"])
+        assert.ok(next[step] === 0 || next.screensaver < next[step], "screensaver before " + step + ": " + name)
+      assert.ok(!started || next.screensaver === 0, "not started twice: " + name)
+    }
+}
+
 // When the screen goes dark by itself, and when it is dimmed before that.
 const T = (screenOff, lock, suspend, dimSeconds) => ({ screenOff, lock, suspend, dim: dimSeconds })
 eq(M.screenDarkAfter(T(300, 300, 900)), 300)
