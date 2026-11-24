@@ -306,8 +306,32 @@ touch $t/on-battery
 karchy-power-source battery
 is "no backlight: only the profile" "$(log)" "profile power-saver;"
 touch $t/backlight
-is "karchy-power-source wants a source" "$(karchy-power-source 2>&1; echo $?)" "Usage: karchy-power-source <ac|battery>
+is "karchy-power-source wants a source" "$(karchy-power-source 2>&1; echo $?)" "Usage: karchy-power-source <ac|battery> | session
 1"
+
+# The session's start: the source the last run applied is kept, and only a
+# different one is applied (a charger pulled or plugged in while the computer
+# was off). Here the last run was on battery.
+source_file=$HOME/.local/state/karchy/power-source
+is "each run keeps its source" "$(<"$source_file")" battery
+power set brightness.ac 70 >/dev/null
+clear_log
+karchy-power-source session
+is "start on the same source: nothing set, the screen as it is" "$(log)" ""
+rm $t/on-battery
+clear_log
+karchy-power-source session
+is "start plugged in after a shutdown on battery: the AC profile and brightness" "$(log)" "profile performance;brightness -d fake_bl set 70%;"
+is "…and plugged in is kept" "$(<"$source_file")" ac
+clear_log
+karchy-power-source session
+is "…once: the next start changes nothing" "$(log)" ""
+touch $t/on-battery
+rm "$source_file"
+clear_log
+karchy-power-source session
+is "nothing kept yet (the first session): nothing set, the source kept" "$(log) $(<"$source_file")" " battery"
+power set brightness.ac keep >/dev/null
 
 # Dimming before the screen turns off, for each source: karchy's is 30
 # seconds before on battery and never plugged in.

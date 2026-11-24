@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Apply what Settings › Power sets for a power source: its power profile and screen brightness
-# karchy:args=<ac|battery>
+# karchy:args=<ac|battery> | session
 # karchy:hidden=true
 
 # The shell's battery service runs this when the charger goes in or comes
@@ -9,17 +9,48 @@
 # (karchy-powerprofiles-set). The built-in screen goes to
 # `power.brightness.ac` or `power.brightness.battery` from shell.json when
 # that is set (percent; 0 leaves the screen as it is). That happens once, at
-# the change: the brightness keys work as before afterwards, and the session's
-# start does not touch the brightness. A screen the idle service has dimmed is
-# first put back to its level, so the charger never leaves it dim and the
-# source's brightness is not mistaken for the dimming later.
+# the change: the brightness keys work as before afterwards. A screen the idle
+# service has dimmed is first put back to its level, so the charger never
+# leaves it dim and the source's brightness is not mistaken for the dimming
+# later.
+#
+# `session` is the battery service's start. The source each run applied is
+# kept in ~/.local/state/karchy/power-source, so a charger that went in or out
+# while nothing ran (the computer off, asleep without the shell, or the shell
+# not running) still counts as that change: when the source in use differs
+# from the one kept, it is applied as above. With the same source, or nothing
+# kept yet, the session's start leaves the brightness as it is (D-160, D-172).
+
+state_file="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/power-source"
+
+remember() {
+  mkdir -p "${state_file%/*}" 2>/dev/null && printf '%s\n' "$1" >"$state_file" 2>/dev/null
+}
 
 supply="${1:-}"
 
+if (( $# == 1 )) && [[ $supply == session ]]; then
+  # What UPower says now; without an answer nothing is known, so nothing changes.
+  answer=$(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower OnBattery 2>/dev/null) || exit 0
+  case $answer in
+    "b true") supply=battery ;;
+    "b false") supply=ac ;;
+    *) exit 0 ;;
+  esac
+  last=""
+  read -r last 2>/dev/null <"$state_file" || true
+  if [[ $last != ac && $last != battery ]] || [[ $last == "$supply" ]]; then
+    remember "$supply" || true
+    exit 0
+  fi
+fi
+
 if (( $# != 1 )) || [[ $supply != ac && $supply != battery ]]; then
-  echo "Usage: karchy-power-source <ac|battery>" >&2
+  echo "Usage: karchy-power-source <ac|battery> | session" >&2
   exit 1
 fi
+
+remember "$supply" || true
 
 # A machine without power-profiles-daemon still has a screen to set.
 karchy-powerprofiles-set "$supply" || true

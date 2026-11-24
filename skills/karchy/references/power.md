@@ -31,7 +31,7 @@ What the `.battery` and `.ac` settings do when the power source changes:
 - The idle times follow the source at once, also during an idle stretch.
 - `dim.*` dims the built-in screen that long before it turns off: before the screen-off time, before the lock where that comes first, or before sleep. The default is 30 seconds on battery and `never` plugged in. A shared `idle.dim` written by hand in `shell.json` counts on battery only, because karchy's own `idle.ac.dim` is 0. The screen goes to 10% (`idle.dimBrightness` in `shell.json`) and gets its level back at the first key or pointer movement. A screen already darker is not touched. A machine without a built-in screen has no such setting in effect.
 - `profile.*` is the power profile the source switches to. Setting the one for the source in use switches now. Setting the other one waits for that source.
-- `brightness.*` sets the built-in screen once, when the charger goes in or out. `keep` (the default) leaves the screen as it is. The brightness keys work as before afterwards. Setting the one for the source in use changes the screen now.
+- `brightness.*` sets the built-in screen once, when the charger goes in or out. A charger that went in or out while the computer was off counts too: the session's start then sets the new source's brightness. A session that starts on the same source as the last one leaves the screen as it is. `keep` (the default) leaves the screen as it is. The brightness keys work as before afterwards. Setting the one for the source in use changes the screen now.
 - `battery.saver on`, the default, switches to `power-saver` at the first battery warning of a discharge. It ends when the charger goes in or when a profile is picked by hand. The battery's own profile stays remembered. `battery.saver off` keeps the battery's profile at any charge.
 
 ## Where each value is stored
@@ -67,7 +67,7 @@ Power profiles exist where `power-profiles-daemon` is installed, which karchy do
 - `karchy-powerprofiles-list` lists the profiles this machine has.
 - `karchy-powerprofiles-set ac|battery <power-saver|balanced|performance>` remembers the profile for that power source and switches to it when that source is the one in use. The default is `balanced` on both. `karchy-settings-power set profile.ac|profile.battery` does the same.
 - `karchy-powerprofiles-set ac|battery` without a profile switches to the remembered one. On battery at or under the first battery warning it switches to `power-saver` instead, unless `battery.saver` is off. `karchy-battery-running-low` is that test: it exits 0 on battery at or under the first warning level.
-- `karchy-power-source ac|battery` applies a source's profile and screen brightness. The shell's battery service runs it when the charger goes in or out. Do not run it on a timer.
+- `karchy-power-source ac|battery` applies a source's profile and screen brightness. The shell's battery service runs it when the charger goes in or out, and `karchy-power-source session` when it starts. `session` applies the source in use only when it differs from the one kept in `~/.local/state/karchy/power-source`. Do not run it on a timer.
 - If the profile running now (`profile` in `status`) is not the one set for the source in use, a low battery (`battery.saver`), an app holding a profile, or `powerprofilesctl` run by hand set it.
 
 ## Battery warnings

@@ -30,6 +30,9 @@ Item {
   // decides that from the charge, so the session's start agrees with it.
   property string pendingPowerSource: ""
   property bool pendingLowBattery: false
+  // At the start: a charger that went in or out while the shell wasn't
+  // running still brings that source's settings (karchy-power-source session).
+  property bool pendingSessionStart: false
   property string runningPowerSource: ""
   // Follows power-profiles-daemon's change signals, so nothing polls it.
   // Quickshell never attaches that listener if the daemon failed when the
@@ -105,6 +108,12 @@ Item {
       runningPowerSource = pendingPowerSource
       powerProfileProcess.command = ["karchy-power-source", pendingPowerSource]
       pendingPowerSource = ""
+      // A change seen now covers the one the start would look for.
+      pendingSessionStart = false
+    } else if (pendingSessionStart) {
+      runningPowerSource = ""
+      powerProfileProcess.command = ["karchy-power-source", "session"]
+      pendingSessionStart = false
     } else if (pendingLowBattery) {
       runningPowerSource = ""
       powerProfileProcess.command = ["karchy-powerprofiles-set", "battery"]
@@ -219,6 +228,8 @@ Item {
   }
 
   Component.onCompleted: {
+    root.pendingSessionStart = true
+    root.runPendingPowerCommand()
     root.checkBattery()
     root.refreshPowerProfile()
   }
