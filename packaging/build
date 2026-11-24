@@ -58,6 +58,13 @@ the PKGBUILD no longer makes is taken out of the repository. A PKGBUILD can
 also ask for a file of the packaged tree beside it ("# karchy:beside=<path>"),
 to read while makepkg sources it, before any source is unpacked.
 
+A package whose PKGBUILD is gone is taken out of the repository by the next
+full build (one with no PKG named), so a package that was renamed or split
+doesn't stay installable beside the ones that replace it (karchy-containers,
+which became karchy-podman and karchy-containers-app). A package this run
+merely skips (a native one without --native, one whose requirement is
+missing) still has its PKGBUILD and stays.
+
 Hashes live next to the database in karchy.versions, so the repository is the
 only state: CI downloads a channel's repository, builds, signs and uploads it.
 
@@ -211,6 +218,16 @@ def package_name(filename):
     return m.group(1) if m else None
 
 
+def unmade(published, pkgbuilds, prefixes):
+    """The published packages no PKGBUILD makes any more.
+
+    PKGBUILDS are the folder names in pkgbuilds/, PREFIXES the name prefixes
+    of the split ones, whose own packages the split build accounts for.
+    """
+    return sorted(n for n in published
+                  if n not in pkgbuilds and not any(n.startswith(p) for p in prefixes))
+
+
 def drop_stale_signature(pkgfile):
     """Remove the signature beside a package just written unsigned; say whether there was one.
 
@@ -264,6 +281,12 @@ def self_test():
             (repo / name).write_text(name)
         assert drop_superseded(repo, "karchy-app-go", None) == gone
         assert (repo / "karchy-app-go-extras-1-1-any.pkg.tar.zst").exists()
+    # A package whose PKGBUILD is gone leaves the repository; one that a run
+    # skips keeps its PKGBUILD, and a split PKGBUILD's packages are its own.
+    published = ["karchy", "karchy-app-go", "karchy-bees", "karchy-containers", "karchy-podman"]
+    assert unmade(published, {"karchy", "karchy-apps", "karchy-bees", "karchy-podman"}, ["karchy-app-"]) \
+        == ["karchy-containers"]
+    assert unmade(published, set(published) | {"karchy-apps"}, ["karchy-app-"]) == []
     print("build: self-test passed")
 
 
@@ -425,6 +448,13 @@ def main():
                 digest = content_hash(pkgfile)
                 if changed_since(pkg, version, digest):
                     take(pkg, version, pkgfile, digest)
+
+    if not args.packages:
+        prefixes = [p for p in map(split_prefix, packages) if p]
+        gone = [n for n in unmade(versions, set(packages), prefixes) if n not in dropped]
+        for name in gone:
+            print(f"{name}: its PKGBUILD is gone")
+        dropped += gone
 
     sign = ["--sign", "--key", args.sign] if args.sign else []
     if changed:

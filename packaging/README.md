@@ -32,6 +32,8 @@ Versions come from git tags (`v3.0.0`, `v3.1.0-rc.1`) through `git describe`, in
 
 Within a channel every package is rebuilt and compared by content hash with the repository's copy; only packages whose contents changed take the new version, so an update downloads what changed (`karchy` always changes: it carries the release file). Native packages and packages built from another repository compute their own version (`# karchy:version-cmd=`) and rebuild when it changes: for the titlebars when Arch's Hyprland changes, for `karchy-bees` when its `pkgver` is moved to a new tag. A version command that prints nothing skips the package. The add-ons (`karchy-project-picker`) are built from this repository like `karchy` and take its version.
 
+A package whose folder in `pkgbuilds/` is deleted is taken out of each channel's repository by that channel's next full build, so a renamed or split package doesn't stay installable beside the ones that replace it (`karchy-containers`, D-164).
+
 `pkgbuilds/karchy-apps` is the one PKGBUILD that makes several packages (`# karchy:split=karchy-app-`). It reads the catalog, which the build puts beside it (`# karchy:beside=`), so an app's packages are written down once. Each `karchy-app-<id>` is compared and versioned on its own, so a release that changes one entry publishes one small package; an entry that stops being several packages has its package taken out of the repository.
 
 ## Building
