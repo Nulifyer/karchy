@@ -20,6 +20,9 @@
 #   done <id>                installed (or removed) with its setup
 #   failed <id> <reason>     not installed (or not removed); the reason is
 #                            one line of plain text for a person
+# karchy-quick-install makes the refusals that need no root (conflicts,
+# required, still needed, pacman busy) itself before pkexec asks for the
+# password, in the same words; the checks here stay as the second line.
 # pacman's own output goes to stderr, which the caller keeps as the log.
 #
 # Threat reasoning. polkit asks for an administrator's password for every

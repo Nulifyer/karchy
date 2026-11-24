@@ -14,6 +14,9 @@
 # the window; AUR apps and karchy's features then open in a floating
 # terminal, where paru's review and build or the feature's own steps are
 # visible. install and remove are those terminal steps, one app each.
+# A refusal that needs no root (pacman busy, an app beside one it conflicts
+# with, one that is part of karchy or still needed) comes before any
+# password is asked for, in both; the helper checks again as root.
 #
 #   [search], window [search]
 #                 open the Quick install window (the default), searching for
@@ -89,6 +92,53 @@ TARGET='if (.packages | length) > 1 or .setup.gpu32 == true then "karchy-app-" +
 # Exact names: pacman -Q also answers for what a package provides.
 installed() { [[ $(pacman -Qq -- "$1" 2>/dev/null) == "$1" ]]; }
 installed_explicitly() { [[ $(pacman -Qeq -- "$1" 2>/dev/null) == "$1" ]]; }
+
+# The first package the entry says the app can't be installed beside
+# (`conflicts`) that is installed, and the words for it: "It can't be
+# installed beside Podman (podman-docker)". The root helper has the same
+# check and the reason for it; asked here first, so the refusal comes before
+# the password.
+conflict_of() {
+  local other
+  while read -r other; do
+    [[ -n $other ]] && installed "$other" && { echo "$other"; return 0; }
+  done < <(field "$1" '.conflicts[]? // empty')
+  return 1
+}
+beside() {
+  local owner
+  owner=$(jq -r --arg p "$1" '[.apps[] | select(.packages | index($p)) | .name][0] // empty' "$CATALOG")
+  echo "It can't be installed beside ${owner:-$1}${owner:+ ($1)}. Remove that first"
+}
+
+# Why the root helper would refuse an app in the window's list, when that
+# needs no root, so the refusal comes before the password prompt (the helper
+# checks again as root). Empty when it would go ahead. Its words are the
+# helper's (system/packages/app-packages).
+refusal() {
+  local verb=$1 app=$2 id=$3 other target main gone=() needs by name
+  if [[ $verb == install ]]; then
+    other=$(conflict_of "$app") && beside "$other"
+    return 0
+  fi
+  if [[ -n $(field "$app" '.required // empty') ]]; then
+    echo "It is part of karchy and can't be removed"
+    return 0
+  fi
+  target=$(field "$app" "$TARGET")
+  main=$(field "$app" '.packages[0]')
+  installed "$target" && gone+=("$target")
+  [[ $main != "$target" ]] && installed_explicitly "$main" && gone+=("$main")
+  [[ $target != "karchy-app-$id" ]] && installed "karchy-app-$id" && gone+=("karchy-app-$id")
+  ((${#gone[@]})) || return 0
+  needs=$(LC_ALL=C pacman -Rs --print -- "${gone[@]}" 2>&1) && return 0
+  by=$(sed -n 's/.* required by \([^ ]*\)$/\1/p' <<<"$needs" | sort -u | head -n 3 | while read -r by; do
+    name=""
+    [[ $by == karchy-app-* ]] && name=$(jq -r --arg id "${by#karchy-app-}" '.apps[] | select(.id == $id) | .name' "$CATALOG" 2>/dev/null)
+    echo "${name:-$by}"
+  done | paste -sd, - | sed 's/,/, /g')
+  if [[ -n $by ]]; then echo "$by still needs it; nothing was changed"; else echo "Another installed package needs it; nothing was changed"; fi
+}
 
 # pacman takes one lock; say so instead of failing midway in the terminal.
 pacman_free() {
@@ -325,14 +375,13 @@ install_app() {
   target=$(field "$app" "$TARGET")
   pacman_free
 
-  # Packages the entry says the app can't be installed beside (the root
-  # helper has the same check and the reason for it).
-  local other owner
-  while read -r other; do
-    [[ -n $other ]] && installed "$other" || continue
-    owner=$(jq -r --arg p "$other" '[.apps[] | select(.packages | index($p)) | .name][0] // empty' "$CATALOG")
-    die "$name can't be installed beside ${owner:-$other}${owner:+ ($other)}. Remove that first. Nothing was changed."
-  done < <(field "$app" '.conflicts[]? // empty')
+  # Packages the entry says the app can't be installed beside, before any
+  # password is asked for (the root helper has the same check).
+  local other
+  if other=$(conflict_of "$app"); then
+    other=$(beside "$other")
+    die "$name ${other#It }. Nothing was changed."
+  fi
 
   if [[ $(field "$app" '.multilib // false') == true ]]; then
     if ! grep -q '^\[multilib\]' /etc/pacman.conf; then
@@ -562,6 +611,28 @@ apply() {
       repo+=("$id")
     fi
   done
+
+  # Refusals that need no root come before the password prompt: pacman busy,
+  # an app beside one it can't be installed with, one that is part of karchy
+  # or still needed. The helper checks them again as root.
+  if ((${#repo[@]})); then
+    local asked=() reason
+    for id in "${repo[@]}"; do
+      if [[ -e /var/lib/pacman/db.lck ]]; then
+        reason="Another install or update is running. Try again when it's done."
+      else
+        reason=$(refusal "$verb" "$(entry "$id")" "$id")
+      fi
+      if [[ -n $reason ]]; then
+        echo "failed $id $reason"
+        printf '%s: %s\n' "$id" "$reason" >>"$log"
+      else
+        asked+=("$id")
+      fi
+    done
+    repo=("${asked[@]}")
+    ((${#repo[@]})) || refresh_window >/dev/null 2>&1
+  fi
 
   if ((${#repo[@]})); then
     declare -A final=()

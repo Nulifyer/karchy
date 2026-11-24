@@ -110,5 +110,53 @@ printf '%s\n' karchy-app-node-js nodejs npm pnpm >"$FAKE_DB/all"
 printf '%s\n' karchy-app-node-js >"$FAKE_DB/explicit"
 check "an app of one package counts whenever it is there" "$(installed)" "node-js pnpm"
 
+# ------------------------------------------- refusals before the password
+# The window's install or removal (apply) refuses what needs no root before
+# pkexec asks for the password: Docker beside karchy's Podman setup, an app
+# that is part of karchy, one another package still needs. The rest goes to
+# the helper.
+cat >"$tmp/bin/pacman" <<'FAKE'
+#!/bin/bash
+case $1 in
+  -Qq) shift; [[ $1 == -- ]] && shift; grep -xF -- "$1" "$FAKE_DB/all" ;;
+  -Qeq) shift; [[ $1 == -- ]] && shift; grep -xF -- "$1" "$FAKE_DB/explicit" ;;
+  -Rs)
+    [[ " $* " == *" docker "* ]] || exit 0
+    echo "error: failed to prepare transaction (could not satisfy dependencies)"
+    echo ":: removing docker breaks dependency 'docker' required by karchy-app-winboat"
+    exit 1
+    ;;
+  *) exit 1 ;;
+esac
+FAKE
+cat >"$tmp/bin/pkexec" <<'FAKE'
+#!/bin/bash
+echo "$*" >>"$FAKE_DB/pkexec"
+shift 2
+for id in "$@"; do echo "done $id"; done
+FAKE
+chmod +x "$tmp/bin/pkexec"
+export XDG_STATE_HOME=$tmp/state # apply's log, never the real home's
+apply() { rm -f "$FAKE_DB/pkexec"; PATH=$tmp/bin:$PATH "$root/bin/karchy-quick-install" apply "$@" 2>/dev/null | grep -E '^(done|failed) ' | paste -sd';' -; }
+asked() { cat "$FAKE_DB/pkexec" 2>/dev/null; }
+printf '%s\n' podman podman-docker mpv foot docker >"$FAKE_DB/all"
+printf '%s\n' mpv foot docker >"$FAKE_DB/explicit"
+check "Docker beside Podman: refused before the password" "$(apply install docker)" \
+  "failed docker It can't be installed beside Podman (podman-docker). Remove that first"
+check "and no password was asked" "$(asked)" ""
+check "the log the window points to says why" "$(tail -n 1 "$XDG_STATE_HOME/karchy/quick-install.log")" \
+  "docker: It can't be installed beside Podman (podman-docker). Remove that first"
+check "Docker refused, mpv still goes to the helper" "$(apply install docker mpv)" \
+  "failed docker It can't be installed beside Podman (podman-docker). Remove that first;done mpv"
+check "only mpv was asked for" "$(asked)" "/usr/lib/karchy/app-packages install mpv"
+check "a part of karchy: refused before the password" "$(apply remove foot)" "failed foot It is part of karchy and can't be removed"
+check "and no password was asked" "$(asked)" ""
+check "still needed: refused before the password, naming the app" "$(apply remove docker)" \
+  "failed docker WinBoat still needs it; nothing was changed"
+check "and no password was asked" "$(asked)" ""
+check "the command refuses Docker as well, before sudo" \
+  "$(PATH=$tmp/bin:$PATH "$root/bin/karchy-quick-install" install docker 2>&1)" \
+  "Docker can't be installed beside Podman (podman-docker). Remove that first. Nothing was changed."
+
 echo "app-packages-rule: $pass passed, $failures failed"
 ((failures == 0))
