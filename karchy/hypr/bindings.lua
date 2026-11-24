@@ -51,12 +51,13 @@ o.bind("SUPER + SHIFT + code:21", "Make window taller", hl.dsp.window.resize({ x
 o.bind("SUPER + mouse:272", "Move window", hl.dsp.window.drag(), { mouse = true })
 o.bind("SUPER + mouse:273", "Resize window", hl.dsp.window.resize(), { mouse = true })
 -- Alt+Tab goes to the window used before this one, and further back while Alt
--- stays down. Each chord carries two binds, as in Omarchy: focus, then raise.
+-- stays down; letting go of Alt switches, Alt+Escape stays (window-switch.lua).
+-- A floating window that gets the keyboard is raised by stacking.lua, so the
+-- chords no longer carry Omarchy's second bind, which raised it.
 require("default.hypr.window-switch")
 o.bind("ALT + TAB", "Focus on next window", o.switch_window(1))
-o.bind("ALT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
 o.bind("ALT + SHIFT + TAB", "Focus on previous window", o.switch_window(-1))
-o.bind("ALT + SHIFT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
+o.bind("ALT + ESCAPE", "Cancel window switch", o.cancel_window_switch())
 
 -- Per-monitor blocks of 10 (D-13 in the audit)
 o.bind_group("Workspaces and monitors")

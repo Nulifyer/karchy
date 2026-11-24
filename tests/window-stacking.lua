@@ -17,6 +17,8 @@ local handlers = {} -- event name -> functions
 local rules = {} -- every hl.window_rule call
 local workspace = { id = 1 }
 local executed = {} -- every hl.exec_cmd
+local said = {} -- every custom event: what the shell's switcher is told
+local alt_down = true -- whether the key that ends an Alt+Tab walk is held
 -- Two monitors side by side, the bar's 31 pixels reserved on each.
 local monitors = {
   { name = "LEFT", x = 0, y = 0, width = 1280, height = 800, scale = 1, transform = 0, reserved = { top = 31 } },
@@ -122,6 +124,9 @@ local actions = {
       focus(window, 4)
     end
   end,
+  event = function(text)
+    table.insert(said, text)
+  end,
   fullscreen = function(args)
     local window = args.window and selected(args.window) or (find(history[1]))
     if window then
@@ -152,9 +157,21 @@ local function action(kind)
   return function(args) return { kind = kind, args = args or {} } end
 end
 
+-- A window list as Hyprland filters it: by workspace, by tag.
+local function windows_where(keep)
+  local found = {}
+  for _, window in ipairs(stack) do
+    if keep(window) then
+      table.insert(found, window)
+    end
+  end
+  return found
+end
+
 hl = setmetatable({
   dsp = setmetatable({
     focus = action("focus"),
+    event = action("event"),
     window = setmetatable({
       alter_zorder = action("zorder"),
       tag = action("tag"),
@@ -188,8 +205,25 @@ hl = setmetatable({
   timer = function(fn) fn() end,
   window_rule = function(rule) table.insert(rules, rule) end,
   get_window = selected,
-  get_windows = function() return { table.unpack(stack) } end,
-  get_workspace_windows = function() return { table.unpack(stack) } end,
+  get_windows = function(filter)
+    return windows_where(function(window)
+      if not (filter and filter.tag) then
+        return true
+      end
+      for _, name in ipairs(window.tags) do
+        if name == filter.tag or name == filter.tag .. "*" then
+          return true
+        end
+      end
+      return false
+    end)
+  end,
+  get_workspace_windows = function(selector)
+    local id = type(selector) == "table" and selector.id or tonumber(selector)
+    return windows_where(function(window) return window.workspace.id == id end)
+  end,
+  -- Alt, by its keycode.
+  is_key_down = function(keycode) return alt_down and keycode == 64 end,
   get_active_window = function() return (find(history[1])) end,
   get_active_workspace = function() return workspace end,
   get_config = function(key) return config[key] end,
@@ -239,34 +273,95 @@ require("default.hypr.stacking")
 
 local ALT, RELEASED = 64, 0
 local next_window, previous_window = o.switch_window(1), o.switch_window(-1)
+local cancel = o.cancel_window_switch()
+local function let_go()
+  fire("input.keyboard.key", ALT, 0, RELEASED)
+end
 
--- Alt+Tab swaps the two windows used last, however many are open.
+-- Alt+Tab swaps the two windows used last, however many are open, and
+-- nothing changes before Alt is let go.
 local a, b, c, d = open("a"), open("b"), open("c"), open("d")
 next_window()
-fire("input.keyboard.key", ALT, 0, RELEASED)
-eq(history[1], "c", "Alt+Tab goes to the window used before this one")
+eq(history[1], "d", "pressing Tab alone changes no focus")
+eq(said[#said], "karchy-window-switch show 2 d c b a", "the switcher is told the windows, last used first, and the target")
+let_go()
+eq(history[1] .. history[2], "cd", "letting go goes to the window used before this one")
+eq(said[#said], "karchy-window-switch hide", "and the switcher is told the walk is over")
 next_window()
-fire("input.keyboard.key", ALT, 0, RELEASED)
+let_go()
 eq(history[1], "d", "and back with one more press")
 
 -- With Alt held each press goes one further back, Shift+Tab forward again.
 next_window()
 next_window()
 next_window()
-eq(history[1], "a", "three presses with Alt held go three windows back")
+eq(said[#said], "karchy-window-switch show 4 d c b a", "three presses with Alt held go three windows back")
 previous_window()
-eq(history[1], "b", "Shift+Tab goes one forward again")
+eq(said[#said], "karchy-window-switch show 3 d c b a", "Shift+Tab goes one forward again")
 eq(#handlers["input.keyboard.key"], 1, "the key release is watched during a walk")
-fire("input.keyboard.key", ALT, 0, RELEASED)
-eq(history[1] .. history[2], "bd", "after the walk the window it left is second")
+let_go()
+eq(history[1] .. history[2], "bd", "after the walk the window it left is second, and the ones passed were never focused")
 eq(#handlers["input.keyboard.key"], 0, "and no key is watched once the walk is over")
 
--- A walk broken off by a click starts again from the windows as they are.
+-- Alt+Escape gives the walk up: nothing moves.
+next_window()
+next_window()
+cancel()
+eq(said[#said], "karchy-window-switch hide", "Alt+Escape closes the switcher")
+let_go()
+eq(history[1] .. history[2], "bd", "and the window stays the one it was")
+
+-- A walk broken off by a click ends where things are; focus that only
+-- followed the pointer does not break it.
 next_window()
 focus(a, 48)
+eq(said[#said], "karchy-window-switch hide", "a click ends the walk")
+let_go()
+eq(history[1], "a", "and letting go changes nothing after it")
 next_window()
-eq(history[1], "d", "a click ends the walk; the next press goes back from the clicked window")
-fire("input.keyboard.key", ALT, 0, RELEASED)
+focus(c, 1)
+let_go()
+eq(history[1], "b", "focus that followed the pointer leaves the walk going where it went")
+
+-- A window that closes during the walk leaves it.
+next_window()
+next_window()
+eq(said[#said], "karchy-window-switch show 3 b c a d", "two presses: the third window")
+table.remove(stack, select(2, find("a")))
+fire("window.close", a)
+eq(said[#said], "karchy-window-switch show 3 b c d", "a window that closed is gone from the switcher, the target the next one")
+let_go()
+eq(history[1], "d", "and letting go goes to what the switcher showed")
+for index, address in ipairs(history) do
+  if address == "a" then
+    table.remove(history, index)
+  end
+end
+
+-- Without a key to let go (the action run from a command) a press is a whole switch.
+alt_down = false
+next_window()
+eq(history[1], "b", "with no modifier held one press switches at once")
+eq(#handlers["input.keyboard.key"], 0, "and leaves no walk behind")
+alt_down = true
+
+-- Minimized windows come after the open ones, however recently they were
+-- used, and stopping on one brings it back (D-165).
+local minimized = open("min", { workspace = { id = -98, name = "special:minimized" }, tags = { "karchy-minimized-from-1" } })
+local elsewhere = open("far", { workspace = { id = -98, name = "special:minimized" }, tags = { "karchy-minimized-from-2" } })
+focus(b, 4)
+next_window()
+eq(said[#said], "karchy-window-switch show 2 b d c min*", "a window minimized from this workspace is last, marked; one from another is not there")
+previous_window()
+previous_window()
+eq(said[#said], "karchy-window-switch show 4 b d c min*", "Shift+Tab from the first window goes round to it")
+executed = {}
+let_go()
+eq(executed[1], "karchy-hyprland-window-restore min", "stopping on a minimized window restores it")
+eq(history[1], "b", "which is the restore command's to focus")
+table.remove(stack, select(2, find("min")))
+table.remove(stack, select(2, find("far")))
+executed = {}
 
 -- A floating window that gets the keyboard is raised, unless the pointer gave it.
 reset()

@@ -444,7 +444,8 @@ def resolve(events, keymap=None):
         })
 
     # Two different actions on the same keys both run. karchy's own pairs
-    # (Alt+Tab focuses, then raises) are meant; anything else is a conflict.
+    # (Super+Left moves the focus on a tiling workspace and snaps the window
+    # on a floating one) are meant; anything else is a conflict.
     by_identity = {}
     for row in rows:
         if row["identity"]:

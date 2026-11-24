@@ -10,7 +10,7 @@
 # (--all); the titlebar's − button minimizes its window (an address); with no
 # argument, the active window. Minimized windows wait on the special workspace
 # "special:minimized", tagged with the workspace they came from; the bar's
-# minimized indicator and Super + Shift + M bring them back
+# minimized indicator, Super + Shift + M and Alt + Tab bring them back
 # (karchy-hyprland-window-restore).
 
 set -euo pipefail

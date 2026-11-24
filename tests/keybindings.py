@@ -49,7 +49,8 @@ def bind(keys, name, what="", layer="default", **more):
 DEFAULTS = [
     bind("ALT + F4", "Close window", group="Windows"),
     bind("ALT + TAB", "Focus on next window", group="Windows"),
-    bind("ALT + TAB", "Reveal active window on top", group="Windows"),
+    bind("SUPER + LEFT", "Focus on left window", group="Windows"),
+    bind("SUPER + LEFT", "Snap window to the left half", group="Windows"),
     bind("SUPER + mouse:272", "Move window", group="Windows", mouse=True),
     bind("SUPER + code:10", "Switch to workspace 1", group="Workspaces and monitors"),
     bind("SUPER + code:20", "Make window narrower", group="Windows"),
@@ -99,7 +100,7 @@ eq(kb.valid_keys('SUPER + "); os.exit()'), False)
 rows, stale = rows_for([])
 eq(len(rows), len(DEFAULTS) - 1, "the lid switch is no row")
 eq(stale, [])
-eq([r["conflicts"] for r in rows if r["conflicts"]], [], "karchy's own Alt+Tab pair is no conflict")
+eq([r["conflicts"] for r in rows if r["conflicts"]], [], "karchy's own pair on Super+Left is no conflict")
 eq(row(rows, "Terminal")["state"], "default")
 eq(row(rows, "Terminal")["source"], "karchy")
 eq(row(rows, "Project picker")["source"], "Project picker")
@@ -140,10 +141,10 @@ rules = change(rules, [], "File manager", "SUPER + SHIFT + E")
 eq(rules, [{"unbind": "SUPER + E", "action": "File manager"}, {"bind": "SUPER + SHIFT + E", "action": "File manager", "replaces": "SUPER + E"}])
 
 # ---- one action off a key two actions share: the other stays
-rules = change([], [], "Reveal active window on top", "")
+rules = change([], [], "Snap window to the left half", "")
 rows, _ = rows_for(rules)
-eq(row(rows, "Focus on next window")["keys"], "ALT + TAB")
-eq(row(rows, "Reveal active window on top")["state"], "removed")
+eq(row(rows, "Focus on left window")["keys"], "SUPER + LEFT")
+eq(row(rows, "Snap window to the left half")["state"], "removed")
 
 # ---- bindings of the person's own
 custom = [{"bind": "SUPER + SHIFT + R", "description": "SSH", "command": "footclient ssh my-server"}]
@@ -284,7 +285,7 @@ if lua_bin:
     rules = [
         {"unbind": "SUPER + RETURN", "action": "Terminal"}, {"bind": "SUPER + T", "action": "Terminal", "replaces": "SUPER + RETURN"},
         {"unbind": "SUPER + T", "action": "Toggle window floating/tiling"},
-        {"unbind": "ALT + TAB", "action": "Reveal active window on top"},
+        {"unbind": "SUPER + LEFT", "action": "Snap window to the left half"},
         {"bind": "SUPER + SHIFT + R", "description": 'Say "hi"', "command": 'notify-send "hi\\there"'},
         {"unbind": "SUPER + J", "action": "Gone"},
     ]
@@ -295,8 +296,8 @@ if lua_bin:
     eq(with_lid(bound(rows), live), live, "after Settings rules and a bindings.lua: the rows are what is bound")
     eq([s["rule"] for s in stale], [6])
     eq([(l["source"], l["keys"], l["state"]) for l in row(rows, "Terminal")["chain"]], [("karchy", "SUPER + RETURN", "replaced"), ("Settings", "SUPER + T", "wins")])
-    eq(row(rows, "Focus on next window")["keys"], "ALT + TAB", "the other action on Alt+Tab stays bound")
-    eq(("alt+tab", "Focus on next window") in live and ("alt+tab", "Reveal active window on top") not in live, True)
+    eq(row(rows, "Focus on left window")["keys"], "SUPER + LEFT", "the other action on Super+Left stays bound")
+    eq(("super+left", "Focus on left window") in live and ("super+left", "Snap window to the left half") not in live, True)
     eq([(l["source"], l["state"]) for l in row(rows, "File manager")["chain"]], [("karchy", "replaced"), ("your bindings.lua", "wins")])
     eq([(l["source"], l["keys"], l["state"]) for l in row(rows, "Keybindings")["chain"]], [("karchy", "SUPER + K", "replaced"), ("your bindings.lua", "SUPER + SHIFT + K", "wins")])
     eq((row(rows, "Raw bind")["layer"], row(rows, 'Say "hi"')["what"]), ("user", 'notify-send "hi\\there"'))

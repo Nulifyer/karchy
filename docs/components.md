@@ -38,7 +38,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Compositor | Hyprland, Lua config with Omarchy's default/user layering and `o.*` helpers | [O] |
 | Look | gaps 5/10, 2 px theme-accent border, square corners, no blur or shadow | [O] |
 | Animations | Omarchy fast set, instant workspace switch | [O] |
-| Layouts | Dwindle + per-workspace floating mode with titlebars (minimize, maximize, close): `karchy-hyprland-titlebars`, Omarchy's hyprbars fork built by karchy against Arch's Hyprland (D-60). Minimized windows come back from the bar's minimized indicator or Super+Shift+M. How windows stack and switch in each mode: [Window modes](#window-modes-d-159) | [O] + [New] |
+| Layouts | Dwindle + per-workspace floating mode with titlebars (minimize, maximize, close): `karchy-hyprland-titlebars`, Omarchy's hyprbars fork built by karchy against Arch's Hyprland (D-60). Minimized windows come back from the bar's minimized indicator, Super+Shift+M or Alt+Tab. How windows stack and switch in each mode: [Window modes](#window-modes-d-159) | [O] + [New] |
 | Workspaces | Per-monitor blocks of 10 | [O] |
 | Special workspace | Drop-down terminal (no AI agent auto-start) | [O] |
 | Opacity | Omarchy default (terminals 0.985/0.96) | [O] |
@@ -52,7 +52,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 
 ### Window modes (D-159)
 
-A workspace tiles or floats (Settings › Appearance › Workspace layout sets the default for new workspaces). The two modes share one rule for which window is in front and one Alt+Tab.
+A workspace tiles or floats (Settings › Appearance › Workspace layout sets the default for new workspaces). The two modes share one rule for which window is in front and one Alt+Tab (D-159, D-165).
 
 **Tiling**
 
@@ -78,7 +78,7 @@ A workspace tiles or floats (Settings › Appearance › Workspace layout sets t
 
 **Both**
 
-- Alt+Tab goes to the window used before this one, and further back while Alt is held ([keybindings.md](keybindings.md)).
+- Alt+Tab goes to the window used before this one, and further back while Alt is held ([keybindings.md](keybindings.md)); the next part says how.
 - Asking for one of karchy's windows while it is open (Super+K, the menu, `karchy settings`) brings it to the front, from another workspace too.
 - Picture-in-picture and the webcam overlay are pinned: in front of everything, on every workspace.
 
@@ -94,6 +94,14 @@ Which kind a window is:
 | Steam | app window that Omarchy floats | floats | floats at its own size, stacks by use |
 | Picture-in-picture, the webcam overlay | overlay | pinned | pinned |
 | The password prompt (polkit), the menu, notifications, the lock screen | not windows: shell layers above all windows | | |
+
+**Alt+Tab (D-165)**
+
+- Tab with Alt held picks a window, and letting go of Alt goes to it. Nothing changes before that: the windows passed on the way are never given the keyboard, so they keep their place in front of or behind the others and their place in the order. The window you left is then the one used before the new one, and one more Alt+Tab goes back to it.
+- The windows of a walk are the ones on the workspace, last used first, then the ones minimized from this workspace, which is where Windows puts a minimized window. Stopping on a minimized window brings it back to the workspace, with the keyboard and in front (`karchy-hyprland-window-restore`). A window minimized from another workspace is not in the walk; the bar's indicator and Super+Shift+M reach it.
+- Alt+Escape gives the walk up and stays on the window you were on. A click, a window that opens or asks for the keyboard, and a change of workspace end it the same way. A window that closes during the walk leaves it.
+- The walk is kept in one place, `default/hypr/window-switch.lua`, in Hyprland. It sends every change as one event on Hyprland's event socket (`custom>>karchy-window-switch show <place of the target> <address> <address>* …`, a star for minimized, and `… hide`), for a picture of the walk to draw from.
+- Run without a modifier held (`hyprctl dispatch`, or a key of your own without one), the action switches at once, since nothing would be let go to end a walk.
 
 A window rule keeps a window of your own in front of the others on its workspace: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. The code is `default/hypr/stacking.lua`, `default/hypr/window-switch.lua`, `default/hypr/snap.lua` and `default/hypr/workspace-modes.lua`; it runs on Hyprland's focus and open events and on the keys.
 

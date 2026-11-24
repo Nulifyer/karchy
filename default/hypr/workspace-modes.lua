@@ -560,7 +560,7 @@ local function titlebars()
   for _, button in ipairs({
     { icon = "×", action = "hyprctl dispatch 'hl.dsp.window.close({ " .. window .. " })'" },
     { icon = "□", action = "hyprctl dispatch 'hl.dsp.window.fullscreen({ mode = \"maximized\", action = \"toggle\", " .. window .. " })'" },
-    -- Minimized windows come back from the bar's minimized indicator or Super + Shift + M.
+    -- Minimized windows come back from the bar's minimized indicator, Super + Shift + M or Alt + Tab.
     { icon = "−", action = "karchy-hyprland-window-minimize %WINDOW%" },
   }) do
     hl.plugin.hyprbars.add_button({

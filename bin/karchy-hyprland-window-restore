@@ -4,9 +4,10 @@
 # karchy:args=[window-address | --all]
 
 # Minimized windows wait on the special workspace "special:minimized"
-# (karchy-hyprland-window-minimize). With an address, or picked from the menu
-# (the bar's minimized indicator), one comes back to the workspace in front of
-# you, focused and on top. --all (Super + Shift + M, as in Windows) brings every
+# (karchy-hyprland-window-minimize). With an address (Alt + Tab stopping on
+# one, default/hypr/window-switch.lua), or picked from the menu (the bar's
+# minimized indicator), one comes back to the workspace in front of you,
+# focused and on top. --all (Super + Shift + M, as in Windows) brings every
 # minimized window back to the workspace it was minimized from.
 
 set -euo pipefail
