@@ -25,7 +25,7 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 
 ```text
 shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they land
-tests/installer-network.sh         # the installer's Wi-Fi list from scan text, and that the network is asked for before the keyring
+tests/installer-network.sh         # the installer's Wi-Fi list from scan text, the network kept from a wpa_supplicant join, and that the network is asked for before the keyring
 tools/quick-install-search-check   # the Quick install window's search ranking, against the real list, and its sentence about the last install; `bun tools/quick-install-search-check` where node won't start
 python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, rules, the generated Lua; with lua installed, karchy's real Lua layer under a stand-in Hyprland
 bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
@@ -106,6 +106,7 @@ Framework 13 AMD (commands and pass criteria for most lines: `.agents/research/p
 - First boot: run the command block in `03-framework-readiness.md` §3.3 (failed units, kernel versions, command line, swap and resume offset, sleep states, power profiles); every line matches its comment. Then take a named snapshot.
 - Firmware: the Updates window's "Check for firmware updates…" lists devices; decline System Firmware 3.20 (bricked boards reported, see `03-framework-readiness.md`).
 - Back up the LUKS header to the NAS (`docs/recovery.md`).
+- Wi-Fi on the install media (D-153): on the Framework's MT7922 iwd's join fails after `associated`; the installer should show "Trying another way to join..." and get to the form. Not yet run on the laptop from a built ISO.
 - Wi-Fi: the network joined on the install media connects at the first boot without asking (the installer carries it over; a real connect was never tested in a VM). Then connect to another network from the network panel, reboot, and confirm it reconnects. `iw reg get` shows your country and the link is on 5 or 6 GHz.
 - Bluetooth: pair headphones and a mouse; check the headset microphone.
 - Speakers and internal microphone: `speaker-test -c 2 -t wav -l 1` plays left and right; `arecord -d 5 /tmp/mic.wav && aplay /tmp/mic.wav` plays your voice back.

@@ -22,7 +22,7 @@ scan=$(printf '%b' \
 
 got=$(net_wifi_networks - <<<"$scan")
 check "strongest first, a name once at its best signal, hidden and unprintable names left out" "$got" \
-  $'-48\tpsk\tHome Net\n-55\t8021x\teduroam\n-60\topen\tCafe Guest\n-66\tpsk\tWPA3 Only\n-80\twep\tOld Router'
+  $'-48\tpsk-sae\tHome Net\n-55\t8021x\teduroam\n-60\topen\tCafe Guest\n-66\tsae\tWPA3 Only\n-80\twep\tOld Router'
 check "no networks is no lines" "$(net_wifi_networks - <<<"")" ""
 check "a name with a space and one word stay whole" "$(net_wifi_networks - <<<"$scan" | cut -f3 | head -n1)" "Home Net"
 
@@ -32,6 +32,40 @@ check "fair" "$(net_signal_word -70)" fair
 check "weak" "$(net_signal_word -85)" weak
 check "a password network needs no note" "$(net_kind_note psk)" ""
 check "an open network says so" "$(net_kind_note open)" "   open, no password"
+
+# A network joined through wpa_supplicant (net_wpa_join) is kept as iwd keeps
+# its own, and install/base.sh makes the installed system's profile from it.
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+# shellcheck disable=SC2034
+KARCHY_WIFI_DIR=$work/wifi KARCHY_IWD_DIR=$work/iwd KARCHY_MNT=$work/mnt
+log() { :; }
+# shellcheck source=/dev/null
+source "$root/install/base.sh"
+check "a plain name is the file's name" "$(net_wifi_file_name "Home Net_5-G")" "Home Net_5-G"
+check "any other name is = and its bytes in hex" "$(net_wifi_file_name "Café")" "=436166c3a9"
+net_wifi_remember "Home Net" 'two words\"q' 0
+check "the kept file is iwd's form, readable by root only" \
+  "$(stat -c %a "$work/wifi/Home Net.psk") $(tr '\n' '|' <"$work/wifi/Home Net.psk")" \
+  '600 [Security]|Passphrase=two\swords\\"q|'
+net_wifi_remember "Café" "hidden-pass-1" 1
+mkdir -p "$work/iwd"
+printf '[Security]\nPassphrase=from-iwd-later\n' >"$work/iwd/Home Net.psk"
+base_wifi >/dev/null
+profiles=$work/mnt/etc/NetworkManager/system-connections
+check "each network becomes one profile; iwd's own file wins for the same network" "$(ls "$profiles" | wc -l)" 2
+check "with iwd's password" "$(grep '^psk=' "$profiles/Home Net.nmconnection")" "psk=from-iwd-later"
+check "a hidden network stays hidden" \
+  "$(grep -hE '^(hidden|psk)=' "$(grep -l '^hidden=true' "$profiles"/*)" | tr '\n' '|')" "hidden=true|psk=hidden-pass-1|"
+rm -rf "${work:?}/iwd" "${work:?}/mnt"
+base_wifi >/dev/null
+check "without iwd's file the kept one is carried, its password unescaped" \
+  "$(grep '^psk=' "$profiles/Home Net.nmconnection")" 'psk=two\swords\\"q'
+
+# The join asks wpa_supplicant only after the kernel logged that the network
+# let the computer in, and then takes the password as right only for WPA3.
+check "the fallback follows an association" \
+  "$(grep -c 'seen == \*": associated"\*' "$root/install/network.sh")" 1
 
 # The ISO's start script asks for the network before anything that needs it:
 # the keyring unit waits for a clock set from the network, so waiting for it

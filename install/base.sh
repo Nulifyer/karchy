@@ -455,14 +455,18 @@ base_services() {
 # WPA3 personal), <name>.open, <name>.8021x (enterprise). A live system only
 # knows the networks joined in this session, so each becomes a NetworkManager
 # profile, root-only like the ones NetworkManager writes. A machine on a
-# cable has no such files and nothing happens.
+# cable has no such files and nothing happens. A network the installer joined
+# through wpa_supplicant (install/network.sh, net_wpa_join) is kept in a file
+# of the same form in KARCHY_WIFI_DIR.
 KARCHY_IWD_DIR=${KARCHY_IWD_DIR:-/var/lib/iwd}
+KARCHY_WIFI_DIR=${KARCHY_WIFI_DIR:-/run/karchy-install/wifi}
 
 base_wifi() {
   local file
-  [[ -d $KARCHY_IWD_DIR ]] || return 0
-  for file in "$KARCHY_IWD_DIR"/*.*; do
+  for file in "$KARCHY_IWD_DIR"/*.* "$KARCHY_WIFI_DIR"/*.*; do
     [[ -f $file ]] || continue
+    # The same network from both: iwd's file is the later join.
+    [[ $file != "$KARCHY_WIFI_DIR"/* || ! -f $KARCHY_IWD_DIR/${file##*/} ]] || continue
     # A network that can't be carried over is not worth stopping the install.
     wifi_profile "$file" || log "Wi-Fi network in ${file##*/} was not carried over; connect again after the first boot"
   done
