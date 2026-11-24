@@ -309,6 +309,18 @@ Branch `t3/narrow-shell-window-tiles` (worktree, not merged), on `29ad7a5`. The 
 - **Seen in VM `win`** (rc.13 installed, snapshot `installed`; first in dev mode, then the `karchy` package built from the branch, dev mode off, after a restart): see the worktree's `out/narrow-windows` (`facts-*.txt` name each screenshot; `evidence*.sh` made them). VMs, Containers and Updates had stand-in data there too (`_bin`), since the guest has no VM, no container engine and nothing to update. The VM is restored to `installed` and shut off.
 - **Found on the way and fixed:** a window rule that depends on the workspace floats a window at the screen's size unless it names one, so the rule names each window's own size and the window corrects it where the text size changes it (`shell/Ui/OwnSize.qml`); an opened account on Settings › Users, and a long switch label, held a narrow page wider than its window.
 
+## Familiar words on Settings › Power, a navigation pane for narrow windows, the render tool (D-177), 2026-11-24
+
+Branch `t3/familiar-settings-navigation` (worktree, not merged), on `999f770`. The user's rule, now in `AGENTS.md`: common screens use what people already know.
+
+- **Built:** Settings › Power reworded and regrouped after Windows Settings (macOS, GNOME, KDE where Windows has no row), words and arrangement only. Under 720 wide, the sidebar of Settings, Quick install, Virtual machines and Containers is behind a menu button with the page's title beside it and opens as a pane over the page (`shell/Ui/SidebarSwitcher.qml`; it replaces the dropdown of D-175). `tools/shell-render` draws a shell window offscreen. Three commits, then the records.
+- **Checks:** `tests/settings-power.sh` (209, unchanged), `bun tests/idle-times.js "$PWD"`, `tests/display-dim.sh`, `tests/agent-skills.sh`, `tools/icon-check`, `bun tools/quick-install-search-check`, `lua tests/window-stacking.lua`, `python3 tests/keybindings.py`, `bun tests/keybindings-model.js "$PWD"`, `bun tests/storage-model.js "$PWD"`, `bun tests/menu-search.js "$PWD"`.
+- **Seen on the host, offscreen** (`tools/shell-render`): every window and Settings page at its own size from `999f770` and from the branch, the same picture except Power; Power as a laptop and a desktop, wide and narrow; the pane closed and open in the four windows at 480×700 and 304×363.
+- **Seen in VM `win`** (rc.13 installed, snapshot `installed`; the packages built from the branch, dev mode off, after a restart): the pane in the four windows as a half tile by real clicks and by real keys only, and the Power page; the worktree's `out/familiar-ui` (`README.md` names every file). VMs, Containers and Updates drew stand-in data, Power's laptop form a made-up laptop. The VM is restored to `installed` and shut off.
+- **Found on the way:** D-175's dropdown stopped following the open page after one choice (it assigned its own value over the window's binding); the Power page's summary said the lock turns the screen off where the screen-off time is Never, which it doesn't (D-162).
+- **Left as it is:** in a narrow window the page's title shows twice, in the bar and in the page's own heading. `caption` and `bodySmall` are 11 px at the default text size, in the pane as in the sidebars.
+- **Not tested:** a real battery, lid or power button; a screen reader; touch; a display scale above 1.
+
 ## Current batch
 
 None: everything is merged.
