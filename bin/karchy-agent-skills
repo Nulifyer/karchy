@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Keep every AI coding agent's skills in ~/.agents/skills, with karchy's skills in it
-# karchy:args=[status | --no-move | keep <folder> | share <folder>]
+# karchy:args=[status | --move | --no-move | keep <folder> | share <folder>]
 # karchy:examples=karchy agent skills | karchy agent skills status | karchy agent skills keep ~/.claude/skills | karchy agent skills share ~/.claude/skills
 
 # ~/.agents/skills is the one real skills folder for AI coding agents, and
@@ -101,17 +101,28 @@
 #   status          the agents' folders, then one line per karchy skill and
 #                   folder: linked, missing, yours (a skill of the user's
 #                   with that name), or not installed here.
+#   --move          bring such a folder in. For callers that show the output
+#                   to a person: karchy update, Quick install's terminal path.
 #   --no-move       everything but bringing a folder in: such a folder gets
-#                   karchy's skills one by one for now. For runs whose output
-#                   nobody sees.
+#                   karchy's skills one by one for now, and a line says it
+#                   waits for the next update. For runs whose output nobody
+#                   sees.
+#   (neither)       brings a folder in only when a terminal is attached
+#                   (standard input or output is one): a person running it by
+#                   hand, or an update typed in a terminal that predates
+#                   --move. With no terminal it is --no-move (D-180).
 #
-# Where it runs, and why moving happens only where its output is shown:
-# `karchy update` (which shows each line in its summary), Quick install after
-# it adds an AI app, and by hand. With --no-move: the session's
+# Moving happens only where a person sees it (D-168, D-180), and a caller
+# has to ask for it: a caller that knows no option and has no terminal (a
+# unit file from before --no-move, still loaded while an update replaces this
+# command, or a window whose output goes to a log) moves nothing. --move is
+# passed by `karchy update` (which shows each line and repeats what moved in
+# its summary) and Quick install after it adds an AI app in a terminal; by
+# hand, the terminal is enough. With --no-move: the session's
 # karchy-agent-skills.service at login and whenever karchy's skills folder
-# gains or loses a skill (karchy-agent-skills.path), karchy-feature-vms, and
-# the new account's setup. It changes nothing when everything is in place,
-# and prints only what it changed.
+# gains or loses a skill (karchy-agent-skills.path), karchy-feature-vms,
+# Quick install's window, and the new account's setup. It changes nothing
+# when everything is in place, and prints only what it changed.
 #
 # What it never does: replace a skill of the user's (a real folder, or a link
 # that points anywhere but karchy's skills), overwrite anything, delete
@@ -422,7 +433,7 @@ find_folders() {
           ln -sr "$MAIN" "$dir"
           say "linked $(short "$dir") -> $(short "$MAIN")"
         elif [[ $move != true ]]; then
-          say "$(short "$dir") holds files of its own; karchy update brings them into $(short "$MAIN") and makes it a link (or now: karchy agent skills)"
+          say "$(short "$dir") holds files of its own; it waits for the next karchy update, which brings them into $(short "$MAIN") and makes it a link (or now: karchy agent skills)"
           folders+=("$dir")
         else
           bring_in "$dir" || folders+=("$dir")
@@ -680,7 +691,11 @@ status() {
 }
 
 case ${1:-} in
-  "") run true ;;
+  "")
+    # No option: move only with a person at a terminal (see the header).
+    if [[ -t 0 || -t 1 ]]; then run true; else run false; fi
+    ;;
+  --move) run true ;;
   --no-move) run false ;;
   status) status ;;
   keep)
@@ -692,7 +707,7 @@ case ${1:-} in
     share "$dir"
     ;;
   *)
-    echo "Usage: karchy-agent-skills [status | --no-move | keep <folder> | share <folder>]" >&2
+    echo "Usage: karchy-agent-skills [status | --move | --no-move | keep <folder> | share <folder>]" >&2
     exit 2
     ;;
 esac

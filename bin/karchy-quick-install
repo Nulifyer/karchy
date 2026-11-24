@@ -417,7 +417,7 @@ install_app() {
   done < <(field "$app" '.setup.run[]? // empty')
   # A coding agent installed just now sees the skills on its first run
   # (karchy-agent-skills links them into the folder that agent reads).
-  if [[ $(field "$app" '.category // empty') == ai ]]; then karchy-agent-skills || true; fi
+  if [[ $(field "$app" '.category // empty') == ai ]]; then karchy-agent-skills --move || true; fi
   refresh_firewall "$app" || failed+=("opening its ports on trusted networks")
 
   local note

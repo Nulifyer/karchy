@@ -3,7 +3,9 @@
 # starts (default.target.wants) and when a package adds or removes a skill
 # (karchy-agent-skills.path). Changes nothing when the links are in place.
 # --no-move: nobody reads this output, so an agent's real skills folder is
-# brought into ~/.agents/skills only by karchy update, which shows it.
+# brought into ~/.agents/skills only by karchy update, which shows it. (Even
+# without it the command moves nothing here: with no option and no terminal
+# it never moves, so a unit from before --no-move can't trigger one; D-180.)
 [Unit]
 Description=Link karchy's agent skills
 ConditionPathExists=/usr/bin/karchy-agent-skills

@@ -36,7 +36,14 @@ new_home() {
   echo "fake-qemu" >"$src/karchy-vms/.requires"
   export HOME=$tmp/home
 }
-linker() { PATH="$tmp/bin:$PATH" "$root/bin/karchy-agent-skills" "$@" 2>&1; }
+# With no arguments the runs below ask to move, as karchy update does
+# (--move); `plain` runs it with no option and no terminal, as a unit file
+# from before --no-move does.
+linker() {
+  (($# > 0)) || set -- --move
+  PATH="$tmp/bin:$PATH" "$root/bin/karchy-agent-skills" "$@" 2>&1 </dev/null
+}
+plain() { PATH="$tmp/bin:$PATH" "$root/bin/karchy-agent-skills" 2>&1 </dev/null; }
 # Every file, folder and link under the home, with link targets: a run that
 # changes nothing leaves this the same.
 tree() {
@@ -223,7 +230,7 @@ mkdir -p "$HOME/.claude/skills/mine"
 echo mine >"$HOME/.claude/skills/mine/SKILL.md"
 out=$(linker --no-move)
 check "no-move: stays a folder" "$([[ -d $HOME/.claude/skills && ! -L $HOME/.claude/skills ]] && echo folder)" "folder"
-check "no-move: says it waits" "$(grep -c '^~/.claude/skills holds files of its own; karchy update brings them into ~/.agents/skills' <<<"$out")" "1"
+check "no-move: says it waits" "$(grep -c '^~/.claude/skills holds files of its own; it waits for the next karchy update, which brings them into ~/.agents/skills' <<<"$out")" "1"
 check "no-move: karchy's skills linked into it meanwhile" "$(readlink "$HOME/.claude/skills/karchy")" "$src/karchy"
 check "no-move: the user's skill untouched" "$(cat "$HOME/.claude/skills/mine/SKILL.md")" "mine"
 check "no-move: status" "$(linker status | head -n 1)" "folder   ~/.claude/skills (not brought in yet: karchy agent skills)"
@@ -231,6 +238,27 @@ out=$(linker)
 check "no-move, then a plain run: brought in" "$(readlink "$HOME/.claude/skills")" "../.agents/skills"
 check "no-move, then a plain run: the skill moved" "$(cat "$HOME/.agents/skills/mine/SKILL.md")" "mine"
 check "no-move, then a plain run: karchy's links dropped" "$(grep "^  karchy's old links removed" <<<"$out")" "  karchy's old links removed: karchy karchy-troubleshoot"
+
+# ---- no option and no terminal (a unit file from before --no-move, still
+# loaded while an update replaces the command): nothing moves, and it says
+# the folder waits for the next update (D-180)
+new_home
+mkdir -p "$HOME/.claude/skills/mine" "$HOME/.claude/skills/synced"
+echo mine >"$HOME/.claude/skills/mine/SKILL.md"
+out=$(plain)
+check "no option, no terminal: stays a folder" "$([[ -d $HOME/.claude/skills && ! -L $HOME/.claude/skills ]] && echo folder)" "folder"
+check "no option, no terminal: the skill stays" "$(cat "$HOME/.claude/skills/mine/SKILL.md")" "mine"
+check "no option, no terminal: synced/ stays" "$([[ -d $HOME/.claude/skills/synced ]] && echo there)" "there"
+check "no option, no terminal: nothing moved into ~/.agents/skills" "$([[ -e $HOME/.agents/skills/mine ]] && echo moved || echo absent)" "absent"
+check "no option, no terminal: nothing recorded" "$([[ -e $HOME/.local/state/karchy/agent-skills-moved ]] && echo recorded || echo none)" "none"
+check "no option, no terminal: says it waits for the next update" "$(grep -c '^~/.claude/skills holds files of its own; it waits for the next karchy update' <<<"$out")" "1"
+check "no option, no terminal: karchy's skills linked into it meanwhile" "$(readlink "$HOME/.claude/skills/karchy")" "$src/karchy"
+# A person at a terminal (standard input is one): the plain run moves.
+if command -v script >/dev/null; then
+  PATH="$tmp/bin:$PATH" script -qec "$root/bin/karchy-agent-skills" /dev/null >/dev/null 2>&1 </dev/null
+  check "no option, at a terminal: brought in" "$(readlink "$HOME/.claude/skills")" "../.agents/skills"
+  check "no option, at a terminal: the skill moved" "$(cat "$HOME/.agents/skills/mine/SKILL.md")" "mine"
+fi
 
 # ---- another filesystem: the folder, or one entry in it, is left as it is
 fake_device() { # stat reporting another device for paths matching $1

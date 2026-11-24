@@ -61,7 +61,7 @@ Read [references/privilege.md](references/privilege.md) before any change that n
 ## Agent skills live in ~/.agents/skills
 
 - Put a new skill, or a change to one, in `~/.agents/skills/<name>/`. Every agent reads that folder. Claude Code's `~/.claude/skills`, Antigravity's and Kiro's skills folders are links to it, so a skill written there lands in `~/.agents/skills` too.
-- `karchy agent skills status` shows the links. `karchy-agent-skills` manages them: read its header before you change one. Do not replace a link with a real folder; the next `karchy update` moves that folder's contents back into `~/.agents/skills`.
+- `karchy agent skills status` shows the links. `karchy-agent-skills` manages them: read its header before you change one. Do not replace a link with a real folder; the next `karchy update` moves that folder's contents back into `~/.agents/skills`. Run from a script without a terminal, `karchy-agent-skills` moves nothing unless given `--move`; pass `--no-move` to only link karchy's skills.
 - The `karchy*` entries there are links into `/usr/share/karchy/agents/skills`. Do not edit them: they are files under `/usr/share/karchy`.
 
 ## Read the reference for the task

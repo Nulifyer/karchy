@@ -179,7 +179,7 @@ if [[ -z $repo_updates && -z $aur_updates && ${#retire_remove[@]} -eq 0 ]]; then
   # and an agent's skills folder is brought into ~/.agents/skills.
   while read -r line; do
     note "agent skills: $line"
-  done < <(karchy-agent-skills 2>&1 || true)
+  done < <(karchy-agent-skills --move 2>&1 || true)
   karchy-update-check --quiet >/dev/null 2>&1 || true
   exit 0
 fi
@@ -511,7 +511,7 @@ agent_skills_moved=()
 while read -r line; do
   note "agent skills: $line"
   [[ $line == "brought "* ]] && agent_skills_moved+=("$line")
-done < <(karchy-agent-skills 2>&1 || true)
+done < <(karchy-agent-skills --move 2>&1 || true)
 if [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   karchy-reload-desktop
   good "Desktop reloaded"
