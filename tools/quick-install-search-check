@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Checks the Quick install window's search against the real list
+// Checks the Quick install window's search and its headings against the real list
 // (default/karchy/quick-install.json), and the sentence its bar says about
 // the last install. Run it from anywhere, with node or bun:
 // tools/quick-install-search-check
@@ -166,6 +166,51 @@ check("matched letters are the ones highlighted", () => {
 
 check("no match is no result", () => {
   assert.equal(Search.search(apps, "zzzzqqq").length, 0)
+})
+
+// The list under headings (D-158): the headings of a list, in its order,
+// and whether rows that share one are always next to each other.
+const headings = (rows) => rows.map((r) => r.section).filter((s, i, all) => i === 0 || all[i - 1] !== s)
+const together = (rows) => new Set(headings(rows)).size === headings(rows).length
+
+check("a category lists its apps by what they are for, by name under each heading", () => {
+  const ai = Model.rows(catalog, apps, "ai", {}, null)
+  assert.deepEqual(headings(ai), ["Coding agents", "Chat apps", "Run models on this computer"])
+  assert.equal(ai[0].app.name, "Amp")
+  assert.ok(ai.findIndex((r) => r.app.id === "pi-coding-agent") < ai.findIndex((r) => r.app.id === "claude-desktop"))
+  for (const category of catalog.categories) {
+    const rows = Model.rows(catalog, apps, category.id, {}, null)
+    const own = apps.filter((a) => a.category === category.id)
+    assert.equal(rows.length, own.length, category.id)
+    assert.deepEqual(rows.map((r) => r.app.id).sort(), own.map((a) => a.id).sort(), category.id)
+    assert.deepEqual(headings(rows), (category.groups || [{ name: "" }]).map((g) => g.name), category.id)
+    assert.ok(together(rows), category.id)
+    const counts = Model.sectionCounts(rows)
+    for (const group of category.groups || []) {
+      const names = rows.filter((r) => r.section === group.name).map((r) => r.app.name.toLowerCase())
+      assert.deepEqual(names, names.slice().sort(), category.id + " › " + group.name)
+      assert.equal(counts[group.name], names.length)
+    }
+  }
+})
+
+check("All, Installed and Picked keep the list's order, under the categories' names", () => {
+  const all = Model.rows(catalog, apps, "all", {}, null)
+  assert.deepEqual(all.map((r) => r.app.id), apps.map((a) => a.id))
+  assert.deepEqual(headings(all), catalog.categories.map((c) => c.name))
+  const installed = Model.rows(catalog, apps, "installed", { vlc: "vlc.desktop", "pi-coding-agent": "", mpv: "mpv.desktop" }, null)
+  assert.deepEqual(installed.map((r) => r.app.name + " under " + r.section),
+    ["mpv under Media & creative", "VLC under Media & creative", "Pi under AI"])
+  const picked = Model.rows(catalog, apps, "picked", {}, { zed: true, firefox: true })
+  assert.deepEqual(picked.map((r) => r.app.name + " under " + r.section), ["Firefox under Browsers", "Zed under Editors & IDEs"])
+  assert.deepEqual(Model.sectionCounts(installed), { "Media & creative": 2, AI: 1 })
+})
+
+check("an app outside its category's groups still shows, last", () => {
+  const made = { categories: [{ id: "x", name: "X", groups: [{ id: "a", name: "First" }, { id: "b", name: "Second" }] }] }
+  const list = [fake("Stray", { category: "x" }), fake("Two", { category: "x", group: "b" }), fake("One", { category: "x", group: "a" })]
+  assert.deepEqual(Model.rows(made, list, "x", {}, null).map((r) => r.app.name + " under " + r.section),
+    ["One under First", "Two under Second", "Stray under Other"])
 })
 
 let failed = 0

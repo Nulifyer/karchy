@@ -27,7 +27,14 @@ Errors:
   - `setup.modules` that aren't kernel module names
   - entries out of order: the list is grouped by category, in the order of
     `categories`, and sorted by name within each, which is the order the
-    window shows
+    window shows (a category's groups first, see below, then this order
+    within each)
+  - groups (D-158): a category may list `groups`, what its apps are for in
+    plain words ("Coding agents", "Run models on this computer"), in the
+    order the window shows them: two to seven, each with an id and a name of
+    its own. Every entry of such a category names one of them in `group`, and
+    every group has an entry; an entry of a category without groups has no
+    `group`
   - the apps karchy ships (karchy-desktop's optdepends) and the list's
     `default` entries differ (D-71); an entry of several packages is named
     there by its karchy-app-<id> package, which is what gets installed
@@ -157,6 +164,42 @@ def main():
             errors.append(f'{where}: feature script bin/{a["feature"]} is missing')
         if a.get('source') not in ('arch', 'cachyos', 'omarchy', 'aur', 'karchy'):
             errors.append(f'{where}: unknown source {a.get("source")!r}')
+
+    # What a category's apps are for (D-158): each entry of a category with
+    # groups is in exactly one of them.
+    groups = {}
+    for c in data['categories']:
+        if 'groups' not in c:
+            continue
+        own, where = c['groups'], f'category {c.get("id")}'
+        if not isinstance(own, list) or not 2 <= len(own) <= 7:
+            errors.append(f'{where}: groups are two to seven, or none at all')
+            own = own if isinstance(own, list) else []
+        seen_ids, seen_names = set(), set()
+        for g in own:
+            gid, name = (g.get('id', ''), g.get('name', '')) if isinstance(g, dict) else ('', '')
+            if not re.fullmatch(r'[a-z0-9][a-z0-9-]*', gid):
+                errors.append(f'{where}: a group id is lower-case letters, digits and "-", not {gid!r}')
+            if not name.strip():
+                errors.append(f'{where}: group {gid!r} has no name')
+            if gid in seen_ids or name.strip().lower() in seen_names:
+                errors.append(f'{where}: group {gid!r} ({name!r}) is there twice')
+            seen_ids.add(gid)
+            seen_names.add(name.strip().lower())
+        groups[c.get('id')] = seen_ids
+    used = set()
+    for a in data['apps']:
+        where, cat = a.get('id', '?'), a.get('category')
+        if cat in groups:
+            if a.get('group') not in groups[cat]:
+                errors.append(f'{where}: group {a.get("group")!r} is not one of category {cat}\'s groups ({", ".join(sorted(groups[cat]))})')
+            used.add((cat, a.get('group')))
+        elif 'group' in a:
+            errors.append(f'{where}: a group, but category {cat} has no groups')
+    for cat, own in groups.items():
+        for gid in sorted(own):
+            if (cat, gid) not in used:
+                errors.append(f'category {cat}: group {gid!r} has no entry')
 
     # The window lists a category in the file's order.
     order = [c['id'] for c in data['categories']]

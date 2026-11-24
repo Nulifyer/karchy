@@ -65,7 +65,8 @@ An update is a large change that already takes its own snapshots. If an update b
 
 Quick install is the catalog of apps and karchy features. The catalog is `/usr/share/karchy/default/karchy/quick-install.json`.
 
-- `karchy-quick-install` opens the window. `karchy-quick-install window <search>` opens it with a search.
+- `karchy-quick-install` opens the window. `karchy-quick-install window <search>` opens it with a search, `karchy-quick-install window @<category id>` at a category.
+- Each app names its `category`. Most categories also list `groups`, what their apps are for ("Coding agents", "Run models on this computer"), and an app of such a category names one in `group`; the window shows them as headings. List one group with `jq -r '.apps[] | select(.category == "ai" and .group == "agents") | .id' <catalog>`.
 - `karchy-quick-install status` prints which catalog apps are installed, as JSON.
 - `karchy-quick-install install <id>` and `remove <id>` work in a terminal for one catalog id. They also apply the entry's declared setup: multilib, the 32-bit graphics driver, services, groups, kernel modules to load and firewall ports.
 - An entry that lists several packages is installed as one package, `karchy-app-<id>` (for example `karchy-app-lutris`). It has no files and depends on the entry's packages, so `remove <id>` also removes what came with the app, unless something else needs it or the user installed it by name. `pacman -R` on one of those parts is refused while the app is installed; remove the app instead.

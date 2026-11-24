@@ -58,7 +58,7 @@ The bar has quick panels for the things you change often: sound, microphone, net
 
 ## Install and remove apps
 
-**Quick install** (menu › Packages › Quick Install) lists about 720 apps, fonts and optional features by category. Select what you want and press Install; installed apps show as installed, and you remove them the same way.
+**Quick install** (menu › Packages › Quick Install) lists about 720 apps, fonts and optional features by category. In a category the apps sit under headings that say what they are for, such as Coding agents or Read and write email. Select what you want and press Install; installed apps show as installed, and you remove them the same way.
 
 - Apps from the signed repositories install in the window, with progress for each.
 - Apps from the AUR are built on your computer from a community script. They install in a terminal, where you can read the build files first.

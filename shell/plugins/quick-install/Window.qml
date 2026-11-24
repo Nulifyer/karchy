@@ -24,12 +24,17 @@ import "Search.js" as Search
 // karchy.quick-install refresh`), and so does the terminal closing.
 //
 // Layout: a sidebar of categories with counts, All and Installed first;
-// then the search field, the list and the keys. The focused row opens in
-// place to say what it installs and from where, its size, what else it sets
-// up, and Remove for an installed app, confirmed with Cancel focused.
+// then the search field, the list and the keys. A category lists its apps
+// under headings that say what they are for (D-158: "Coding agents", "Chat
+// apps"), by name under each; All and Installed use the categories' names;
+// search results are ranked and have none. The heading of the rows in view
+// stays at the top of the list. The focused row opens in place to say what
+// it installs and from where, its size, what else it sets up, and Remove for
+// an installed app, confirmed with Cancel focused.
 //
 // Keyboard: typing goes to the search, which spans every category; Up/Down
-// (and j/k outside the search field) move through the list; Enter installs
+// (and j/k outside the search field) move through the list, from row to row
+// across the headings; Enter installs
 // or opens the focused app, or installs the picked apps when some are
 // picked (D-151); Space picks it, except in the middle of typing
 // a search, where it is a space and Ctrl+Space picks (`spacePicks`); Tab
@@ -93,10 +98,13 @@ Item {
   property bool searchFocused: true
   readonly property bool spacePicks: !searchFocused || !searching || browsing
   readonly property var categoryRows: Model.categories(catalog, installed)
+  // Each row is { app, positions, section }. A category lists its apps under
+  // headings that say what they are for (D-158); All, Installed and Picked
+  // under the categories' names; search results are ranked, so they have none.
   readonly property var results: searching
-    ? Search.search(apps, query)
-    : category === "picked" ? root.apps.filter(function(a) { return root.selected[a.id] === true }).map(function(a) { return { app: a, positions: [] } })
-    : Model.inCategory(apps, category, installed).map(function(a) { return { app: a, positions: [] } })
+    ? Search.search(apps, query).map(function(r) { return { app: r.app, positions: r.positions, section: "" } })
+    : Model.rows(catalog, apps, category, installed, category === "picked" ? root.selected : null)
+  readonly property var sectionCounts: Model.sectionCounts(results)
   readonly property int currentIndex: {
     for (var i = 0; i < results.length; i++) if (results[i].app.id === currentId) return i
     return -1
@@ -740,12 +748,55 @@ Item {
 
           delegate: AppRow {}
 
+          // The headings are the list's sections, not rows: Up and Down step
+          // over them, and the row numbers stay those of `results`. The
+          // heading of the rows in view stays at the top of the list.
+          section.property: "section"
+          section.criteria: ViewSection.FullString
+          section.labelPositioning: ViewSection.InlineLabels | ViewSection.CurrentLabelAtStart
+          section.delegate: GroupHeading {}
+
+          // The focused row in view, clear of the heading that stays at the
+          // top: a row moved to from below would otherwise stop under it.
+          function reveal(i) {
+            positionViewAtIndex(i, ListView.Contain)
+            var rows = root.results
+            if (i < 0 || i >= rows.length || rows[i].section === "") return
+            var item = itemAtIndex(i)
+            if (!item) return
+            var top = item.y - headingHeight(rows[i].section === rows[0].section)
+            if (contentY > top) contentY = top
+          }
+
+          // A heading's height: room above it (less at the top of the list),
+          // its line, and a little below.
+          readonly property real headingLine: headingMetrics.height
+          function headingHeight(first) {
+            return (first ? 0 : Style.spacing.lg) + headingLine + Style.spacing.md
+          }
+          FontMetrics {
+            id: headingMetrics
+            font.family: Style.font.family
+            font.pixelSize: Style.font.subtitle
+            font.bold: true
+          }
+
           Connections {
             target: root
             function onCurrentIndexChanged() {
               var i = root.currentIndex
-              if (i >= 0) Qt.callLater(function() { appList.positionViewAtIndex(i, ListView.Contain) })
+              if (i >= 0) Qt.callLater(function() { appList.reveal(i) })
             }
+          }
+
+          // The focused row opens in place and gets taller: at once for what
+          // it installs, again when its size has been read. While it is on
+          // screen, all of it stays there, up to the heading at the top.
+          function follow(item) {
+            if (item.y < contentY || item.y >= contentY + height) return
+            var over = item.y + item.height - (contentY + height)
+            var room = item.y - contentY - (root.results.length > 0 && root.results[0].section !== "" ? headingHeight(false) : 0)
+            if (over > 0 && room > 0) contentY += Math.min(over, room)
           }
 
           EmptyState {
@@ -998,6 +1049,7 @@ Item {
 
     HoverHandler { id: hover }
     TapHandler { onTapped: root.select(row.app.id) }
+    onHeightChanged: if (current && ListView.view) ListView.view.follow(row)
 
     ColumnLayout {
       id: body
@@ -1140,6 +1192,49 @@ Item {
           onRemove: root.askRemove(row.app)
           onTabOut: function(button, event) { row.tabFrom(button, event) }
         }
+      }
+    }
+  }
+
+  // What the rows under it are for ("Coding agents"), or their category in
+  // All and Installed, with how many there are.
+  component GroupHeading: Item {
+    id: heading
+    required property string section
+    readonly property bool first: root.results.length > 0 && root.results[0].section === section
+    width: ListView.view ? ListView.view.width - Style.spacing.md : 0
+    height: ListView.view ? ListView.view.headingHeight(first) : 0
+    Accessible.role: Accessible.Heading
+    Accessible.name: section
+
+    // Rows scroll under the heading that stays at the top of the list.
+    Rectangle {
+      anchors.fill: parent
+      color: Commons.Color.background
+    }
+
+    Row {
+      anchors.left: parent.left
+      anchors.bottom: parent.bottom
+      anchors.bottomMargin: Style.spacing.md
+      spacing: Style.spacing.md
+      Text {
+        id: headingName
+        textFormat: Text.PlainText
+        text: heading.section
+        color: Commons.Color.foreground
+        font.family: Style.font.family
+        font.pixelSize: Style.font.subtitle
+        font.bold: true
+      }
+      Text {
+        anchors.baseline: headingName.baseline
+        textFormat: Text.PlainText
+        text: String(root.sectionCounts[heading.section] || "")
+        color: Commons.Color.textSecondary
+        font.family: Style.font.family
+        font.pixelSize: Style.font.bodySmall
+        font.features: { "tnum": 1 }
       }
     }
   }

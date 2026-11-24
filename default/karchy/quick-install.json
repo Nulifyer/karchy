@@ -6,59 +6,375 @@
     },
     {
       "id": "browsers",
-      "name": "Browsers"
+      "name": "Browsers",
+      "groups": [
+        {
+          "id": "everyday",
+          "name": "Browse the web"
+        },
+        {
+          "id": "private",
+          "name": "Browse with more privacy"
+        },
+        {
+          "id": "keyboard",
+          "name": "Browse from the keyboard or terminal"
+        }
+      ]
     },
     {
       "id": "chat",
-      "name": "Chat & email"
+      "name": "Chat & email",
+      "groups": [
+        {
+          "id": "messaging",
+          "name": "Message people"
+        },
+        {
+          "id": "email",
+          "name": "Read and write email"
+        },
+        {
+          "id": "work",
+          "name": "Chat and meet at work"
+        },
+        {
+          "id": "communities",
+          "name": "Join communities and voice chat"
+        }
+      ]
     },
     {
       "id": "office",
-      "name": "Office & notes"
+      "name": "Office & notes",
+      "groups": [
+        {
+          "id": "documents",
+          "name": "Write documents and spreadsheets"
+        },
+        {
+          "id": "notes",
+          "name": "Take notes"
+        },
+        {
+          "id": "reading",
+          "name": "Read PDFs, e-books and news"
+        },
+        {
+          "id": "planning",
+          "name": "Plan tasks and time"
+        },
+        {
+          "id": "money",
+          "name": "Manage money"
+        },
+        {
+          "id": "maths",
+          "name": "Calculate and do maths"
+        },
+        {
+          "id": "study",
+          "name": "Study and research"
+        }
+      ]
     },
     {
       "id": "media",
-      "name": "Media & creative"
+      "name": "Media & creative",
+      "groups": [
+        {
+          "id": "video",
+          "name": "Watch video"
+        },
+        {
+          "id": "music",
+          "name": "Listen to music and podcasts"
+        },
+        {
+          "id": "photos",
+          "name": "View and edit photos"
+        },
+        {
+          "id": "design",
+          "name": "Draw, design and model in 3D"
+        },
+        {
+          "id": "video-editing",
+          "name": "Edit video and record the screen"
+        },
+        {
+          "id": "audio",
+          "name": "Make music and edit sound"
+        },
+        {
+          "id": "discs",
+          "name": "Burn and copy discs"
+        }
+      ]
     },
     {
       "id": "gaming",
-      "name": "Gaming"
+      "name": "Gaming",
+      "groups": [
+        {
+          "id": "launchers",
+          "name": "Get and launch games"
+        },
+        {
+          "id": "performance",
+          "name": "Make games run better"
+        },
+        {
+          "id": "games",
+          "name": "Play free games"
+        },
+        {
+          "id": "puzzles",
+          "name": "Play card, board and puzzle games"
+        },
+        {
+          "id": "emulators",
+          "name": "Play old console and DOS games"
+        },
+        {
+          "id": "controllers",
+          "name": "Use controllers and stream games"
+        }
+      ]
     },
     {
       "id": "languages",
-      "name": "Languages"
+      "name": "Languages",
+      "groups": [
+        {
+          "id": "web",
+          "name": "Web and scripting"
+        },
+        {
+          "id": "python",
+          "name": "Python and data"
+        },
+        {
+          "id": "jvm",
+          "name": "Java, Kotlin and .NET"
+        },
+        {
+          "id": "compiled",
+          "name": "Compiled languages"
+        },
+        {
+          "id": "functional",
+          "name": "Functional languages"
+        }
+      ]
     },
     {
       "id": "editors",
-      "name": "Editors & IDEs"
+      "name": "Editors & IDEs",
+      "groups": [
+        {
+          "id": "code",
+          "name": "Write code"
+        },
+        {
+          "id": "ides",
+          "name": "Build with a full IDE"
+        },
+        {
+          "id": "terminal",
+          "name": "Edit in the terminal"
+        },
+        {
+          "id": "text",
+          "name": "Edit plain text and Markdown"
+        }
+      ]
     },
     {
       "id": "devtools",
-      "name": "Developer tools"
+      "name": "Developer tools",
+      "groups": [
+        {
+          "id": "git",
+          "name": "Use Git and compare files"
+        },
+        {
+          "id": "terminal",
+          "name": "Work faster in the terminal"
+        },
+        {
+          "id": "checks",
+          "name": "Check, format and automate code"
+        },
+        {
+          "id": "debug",
+          "name": "Debug and profile programs"
+        },
+        {
+          "id": "web",
+          "name": "Test web and network traffic"
+        },
+        {
+          "id": "secrets",
+          "name": "Handle secrets and certificates"
+        },
+        {
+          "id": "docs",
+          "name": "Write docs, diagrams and websites"
+        }
+      ]
     },
     {
       "id": "databases",
-      "name": "Databases & APIs"
+      "name": "Databases & APIs",
+      "groups": [
+        {
+          "id": "servers",
+          "name": "Run a database"
+        },
+        {
+          "id": "clients",
+          "name": "Browse and query databases"
+        },
+        {
+          "id": "apis",
+          "name": "Test APIs"
+        }
+      ]
     },
     {
       "id": "cloud",
-      "name": "Cloud & containers"
+      "name": "Cloud & containers",
+      "groups": [
+        {
+          "id": "containers",
+          "name": "Work with containers"
+        },
+        {
+          "id": "kubernetes",
+          "name": "Run Kubernetes"
+        },
+        {
+          "id": "providers",
+          "name": "Manage cloud accounts"
+        },
+        {
+          "id": "infrastructure",
+          "name": "Automate servers and infrastructure"
+        },
+        {
+          "id": "hosting",
+          "name": "Host websites"
+        }
+      ]
     },
     {
       "id": "ai",
-      "name": "AI"
+      "name": "AI",
+      "groups": [
+        {
+          "id": "agents",
+          "name": "Coding agents"
+        },
+        {
+          "id": "chat",
+          "name": "Chat apps"
+        },
+        {
+          "id": "local",
+          "name": "Run models on this computer"
+        }
+      ]
     },
     {
       "id": "security",
-      "name": "Passwords & security"
+      "name": "Passwords & security",
+      "groups": [
+        {
+          "id": "passwords",
+          "name": "Store passwords"
+        },
+        {
+          "id": "codes",
+          "name": "Sign in with codes and keys"
+        },
+        {
+          "id": "encryption",
+          "name": "Encrypt files and drives"
+        },
+        {
+          "id": "protection",
+          "name": "Protect this computer"
+        },
+        {
+          "id": "privacy",
+          "name": "Stay private"
+        }
+      ]
     },
     {
       "id": "network",
-      "name": "Network & sync"
+      "name": "Network & sync",
+      "groups": [
+        {
+          "id": "sync",
+          "name": "Sync with the cloud"
+        },
+        {
+          "id": "sharing",
+          "name": "Send files between devices"
+        },
+        {
+          "id": "downloads",
+          "name": "Download files and torrents"
+        },
+        {
+          "id": "vpn",
+          "name": "Use a VPN"
+        },
+        {
+          "id": "remote",
+          "name": "Control another computer"
+        },
+        {
+          "id": "checks",
+          "name": "Check the network"
+        }
+      ]
     },
     {
       "id": "utilities",
-      "name": "Utilities"
+      "name": "Utilities",
+      "groups": [
+        {
+          "id": "terminal",
+          "name": "Use the terminal"
+        },
+        {
+          "id": "files",
+          "name": "Manage files and archives"
+        },
+        {
+          "id": "monitors",
+          "name": "See what the computer is doing"
+        },
+        {
+          "id": "cleanup",
+          "name": "Free up disk space"
+        },
+        {
+          "id": "everyday",
+          "name": "Everyday helpers"
+        },
+        {
+          "id": "desktop",
+          "name": "Add to the desktop"
+        },
+        {
+          "id": "makers",
+          "name": "Helpers for designers and developers"
+        }
+      ]
     },
     {
       "id": "fonts",
@@ -66,7 +382,33 @@
     },
     {
       "id": "system",
-      "name": "System features"
+      "name": "System features",
+      "groups": [
+        {
+          "id": "devices",
+          "name": "Set up printers and devices"
+        },
+        {
+          "id": "stores",
+          "name": "Get more apps"
+        },
+        {
+          "id": "backup",
+          "name": "Back up and recover files"
+        },
+        {
+          "id": "disks",
+          "name": "Manage disks and USB sticks"
+        },
+        {
+          "id": "virtual",
+          "name": "Run virtual machines and containers"
+        },
+        {
+          "id": "tuning",
+          "name": "Tune and troubleshoot"
+        }
+      ]
     }
   ],
   "apps": [
@@ -97,6 +439,7 @@
       "id": "brave",
       "name": "Brave",
       "category": "browsers",
+      "group": "everyday",
       "description": "Web browser that blocks ads and trackers by default (binary release)",
       "icon": "brave",
       "packages": [
@@ -114,6 +457,7 @@
       "id": "brave-origin",
       "name": "Brave Origin",
       "category": "browsers",
+      "group": "everyday",
       "description": "Brave without its rewards, wallet, VPN and AI extras; karchy's default web browser",
       "icon": "brave",
       "packages": [
@@ -130,6 +474,7 @@
       "id": "chromium",
       "name": "Chromium",
       "category": "browsers",
+      "group": "everyday",
       "description": "A web browser built for speed, simplicity, and security",
       "icon": "chromium",
       "packages": [
@@ -146,6 +491,7 @@
       "id": "falkon",
       "name": "Falkon",
       "category": "browsers",
+      "group": "everyday",
       "description": "Cross-platform QtWebEngine browser",
       "icon": "falkon",
       "packages": [
@@ -161,6 +507,7 @@
       "id": "firefox",
       "name": "Firefox",
       "category": "browsers",
+      "group": "everyday",
       "description": "Fast, Private & Safe Web Browser",
       "icon": "firefox",
       "packages": [
@@ -176,6 +523,7 @@
       "id": "firefox-developer-edition",
       "name": "Firefox Developer Edition",
       "category": "browsers",
+      "group": "everyday",
       "description": "Firefox's beta build, with extra tools for web developers",
       "icon": "firefox-developer-edition",
       "packages": [
@@ -194,6 +542,7 @@
       "id": "floorp",
       "name": "Floorp",
       "category": "browsers",
+      "group": "everyday",
       "description": "Firefox-based web browser focused on performance and customizability",
       "icon": "",
       "packages": [
@@ -210,6 +559,7 @@
       "id": "gnome-web",
       "name": "GNOME Web",
       "category": "browsers",
+      "group": "everyday",
       "description": "A GNOME web browser based on the WebKit rendering engine",
       "icon": "",
       "packages": [
@@ -226,6 +576,7 @@
       "id": "google-chrome",
       "name": "Google Chrome",
       "category": "browsers",
+      "group": "everyday",
       "description": "The popular web browser by Google (Stable Channel)",
       "icon": "google-chrome",
       "packages": [
@@ -241,6 +592,7 @@
       "id": "helium",
       "name": "Helium",
       "category": "browsers",
+      "group": "everyday",
       "description": "Private, fast, and honest web browser based on Chromium (Latest/Stable)",
       "icon": "helium",
       "packages": [
@@ -257,6 +609,7 @@
       "id": "konqueror",
       "name": "Konqueror",
       "category": "browsers",
+      "group": "everyday",
       "description": "KDE File Manager & Web Browser",
       "icon": "konqueror",
       "packages": [
@@ -272,6 +625,7 @@
       "id": "librewolf",
       "name": "LibreWolf",
       "category": "browsers",
+      "group": "private",
       "description": "Firefox set up for privacy: no telemetry, and tracker blocking from the first start",
       "icon": "librewolf",
       "packages": [
@@ -289,6 +643,7 @@
       "id": "lynx",
       "name": "Lynx",
       "category": "browsers",
+      "group": "keyboard",
       "description": "A text browser for the World Wide Web",
       "icon": "lynx",
       "packages": [
@@ -306,6 +661,7 @@
       "id": "microsoft-edge",
       "name": "Microsoft Edge",
       "category": "browsers",
+      "group": "everyday",
       "description": "A browser that combines a minimal design with sophisticated technology to make the web faster, safer, and easier",
       "icon": "microsoft-edge",
       "packages": [
@@ -322,6 +678,7 @@
       "id": "mullvad-browser",
       "name": "Mullvad Browser",
       "category": "browsers",
+      "group": "private",
       "description": "Privacy-focused web browser developed by Mullvad VPN and the Tor Project",
       "icon": "mullvad-browser",
       "packages": [
@@ -339,6 +696,7 @@
       "id": "qutebrowser",
       "name": "Qutebrowser",
       "category": "browsers",
+      "group": "keyboard",
       "description": "A keyboard-driven, vim-like browser based on Python and Qt",
       "icon": "qutebrowser",
       "packages": [
@@ -356,6 +714,7 @@
       "id": "tor-browser",
       "name": "Tor Browser",
       "category": "browsers",
+      "group": "private",
       "description": "Securely and easily download, verify, install, and launch Tor Browser in Linux",
       "icon": "torbrowser",
       "packages": [
@@ -374,6 +733,7 @@
       "id": "ungoogled-chromium",
       "name": "Ungoogled-chromium",
       "category": "browsers",
+      "group": "private",
       "description": "A lightweight approach to removing Google web service dependency",
       "icon": "",
       "packages": [
@@ -391,6 +751,7 @@
       "id": "vivaldi",
       "name": "Vivaldi",
       "category": "browsers",
+      "group": "everyday",
       "description": "An advanced browser made with the power user in mind",
       "icon": "vivaldi",
       "packages": [
@@ -407,6 +768,7 @@
       "id": "waterfox",
       "name": "Waterfox",
       "category": "browsers",
+      "group": "everyday",
       "description": "Current/modern generation of customizable privacy-conscious web browser",
       "icon": "waterfox",
       "packages": [
@@ -423,6 +785,7 @@
       "id": "zen",
       "name": "Zen",
       "category": "browsers",
+      "group": "everyday",
       "description": "Performance oriented Firefox-based web browser",
       "icon": "zen-browser",
       "packages": [
@@ -439,6 +802,7 @@
       "id": "claws-mail",
       "name": "Claws Mail",
       "category": "chat",
+      "group": "email",
       "description": "A GTK based e-mail client",
       "icon": "claws-mail",
       "packages": [
@@ -455,6 +819,7 @@
       "id": "discord",
       "name": "Discord",
       "category": "chat",
+      "group": "communities",
       "description": "All-in-one voice and text chat for gamers",
       "icon": "discord",
       "packages": [
@@ -473,6 +838,7 @@
       "id": "element",
       "name": "Element",
       "category": "chat",
+      "group": "messaging",
       "description": "Glossy Matrix collaboration client — desktop version",
       "icon": "element-desktop",
       "packages": [
@@ -488,6 +854,7 @@
       "id": "evolution",
       "name": "Evolution",
       "category": "chat",
+      "group": "email",
       "description": "Manage your email, contacts and schedule",
       "icon": "evolution",
       "packages": [
@@ -504,6 +871,7 @@
       "id": "fractal",
       "name": "Fractal",
       "category": "chat",
+      "group": "messaging",
       "description": "Matrix group messaging app",
       "icon": "",
       "packages": [
@@ -519,6 +887,7 @@
       "id": "gajim",
       "name": "Gajim",
       "category": "chat",
+      "group": "messaging",
       "description": "Chat on XMPP (Jabber), with group chats and end-to-end encryption",
       "icon": "org.gajim.Gajim",
       "packages": [
@@ -536,6 +905,7 @@
       "id": "geary",
       "name": "Geary",
       "category": "chat",
+      "group": "email",
       "description": "A lightweight email client for the GNOME desktop",
       "icon": "geary",
       "packages": [
@@ -552,6 +922,7 @@
       "id": "halloy",
       "name": "Halloy",
       "category": "chat",
+      "group": "communities",
       "description": "An open-source IRC client",
       "icon": "",
       "packages": [
@@ -566,6 +937,7 @@
       "id": "kmail",
       "name": "KMail",
       "category": "chat",
+      "group": "email",
       "description": "KDE mail client",
       "icon": "kmail",
       "packages": [
@@ -582,6 +954,7 @@
       "id": "konversation",
       "name": "Konversation",
       "category": "chat",
+      "group": "communities",
       "description": "A user-friendly and fully-featured IRC client",
       "icon": "konversation",
       "packages": [
@@ -596,6 +969,7 @@
       "id": "mailspring",
       "name": "Mailspring",
       "category": "chat",
+      "group": "email",
       "description": "A beautiful, fast and fully open source mail client",
       "icon": "mailspring",
       "packages": [
@@ -612,6 +986,7 @@
       "id": "mattermost",
       "name": "Mattermost",
       "category": "chat",
+      "group": "work",
       "description": "Mattermost Desktop application",
       "icon": "mattermost-desktop",
       "packages": [
@@ -628,6 +1003,7 @@
       "id": "mumble",
       "name": "Mumble",
       "category": "chat",
+      "group": "communities",
       "description": "An Open Source, low-latency, high quality voice chat software (client)",
       "icon": "mumble",
       "packages": [
@@ -643,6 +1019,7 @@
       "id": "neochat",
       "name": "NeoChat",
       "category": "chat",
+      "group": "messaging",
       "description": "A client for matrix, the decentralized communication protocol",
       "icon": "",
       "packages": [
@@ -658,6 +1035,7 @@
       "id": "neomutt",
       "name": "NeoMutt",
       "category": "chat",
+      "group": "email",
       "description": "Email client for the terminal",
       "icon": "",
       "packages": [
@@ -676,6 +1054,7 @@
       "id": "polari",
       "name": "Polari",
       "category": "chat",
+      "group": "communities",
       "description": "An IRC Client for GNOME",
       "icon": "polari",
       "packages": [
@@ -690,6 +1069,7 @@
       "id": "proton-mail",
       "name": "Proton Mail",
       "category": "chat",
+      "group": "email",
       "description": "Proton official desktop application for Proton Mail and Proton Calendar",
       "icon": "proton-mail",
       "packages": [
@@ -706,6 +1086,7 @@
       "id": "bridge",
       "name": "Proton Mail Bridge",
       "category": "chat",
+      "group": "email",
       "description": "Integrate ProtonMail paid account with any program that supports IMAP and SMTP (Qt desktop application)",
       "icon": "protonmail-bridge",
       "packages": [
@@ -722,6 +1103,7 @@
       "id": "qq",
       "name": "QQ",
       "category": "chat",
+      "group": "messaging",
       "description": "Official QQ messenger from Tencent",
       "icon": "",
       "packages": [
@@ -739,6 +1121,7 @@
       "id": "signal",
       "name": "Signal",
       "category": "chat",
+      "group": "messaging",
       "description": "Signal Private Messenger for Linux",
       "icon": "signal-desktop",
       "packages": [
@@ -755,6 +1138,7 @@
       "id": "slack",
       "name": "Slack",
       "category": "chat",
+      "group": "work",
       "description": "Slack Desktop for Linux",
       "icon": "slack",
       "packages": [
@@ -771,6 +1155,7 @@
       "id": "teams-for-linux",
       "name": "Teams for Linux",
       "category": "chat",
+      "group": "work",
       "description": "Unofficial Microsoft Teams client for Linux using Electron",
       "icon": "teams-for-linux",
       "packages": [
@@ -789,6 +1174,7 @@
       "id": "teamspeak",
       "name": "TeamSpeak 3",
       "category": "chat",
+      "group": "communities",
       "description": "Voice chat for gaming groups, on TeamSpeak servers",
       "icon": "teamspeak3",
       "packages": [
@@ -806,6 +1192,7 @@
       "id": "telegram",
       "name": "Telegram",
       "category": "chat",
+      "group": "messaging",
       "description": "Official Telegram Desktop client",
       "icon": "telegram-desktop",
       "packages": [
@@ -822,6 +1209,7 @@
       "id": "thunderbird",
       "name": "Thunderbird",
       "category": "chat",
+      "group": "email",
       "description": "Standalone mail and news reader from mozilla.org",
       "icon": "thunderbird",
       "packages": [
@@ -838,6 +1226,7 @@
       "id": "tuba",
       "name": "Tuba",
       "category": "chat",
+      "group": "communities",
       "description": "Read and post on Mastodon and the rest of the Fediverse",
       "icon": "",
       "packages": [
@@ -855,6 +1244,7 @@
       "id": "vesktop",
       "name": "Vesktop",
       "category": "chat",
+      "group": "communities",
       "description": "A cross platform electron-based desktop app aiming to give you a snappier Discord experience with Vencord pre-installed.(Prebuilt version.Use system-wide electron)",
       "icon": "vesktop",
       "packages": [
@@ -869,6 +1259,7 @@
       "id": "wechat",
       "name": "WeChat",
       "category": "chat",
+      "group": "messaging",
       "description": "Official WeChat (微信) messenger from Tencent",
       "icon": "wechat",
       "packages": [
@@ -887,6 +1278,7 @@
       "id": "weechat",
       "name": "WeeChat",
       "category": "chat",
+      "group": "communities",
       "description": "IRC chat client for the terminal, extended with scripts",
       "icon": "weechat",
       "packages": [
@@ -903,6 +1295,7 @@
       "id": "zoom",
       "name": "Zoom",
       "category": "chat",
+      "group": "work",
       "description": "Video Conferencing and Web Conferencing Service",
       "icon": "",
       "packages": [
@@ -920,6 +1313,7 @@
       "id": "abiword",
       "name": "AbiWord",
       "category": "office",
+      "group": "documents",
       "description": "Fully-featured word processor",
       "icon": "abiword",
       "packages": [
@@ -936,6 +1330,7 @@
       "id": "anki",
       "name": "Anki",
       "category": "office",
+      "group": "study",
       "description": "Flashcards that time each review so you remember what you learn",
       "icon": "anki",
       "packages": [
@@ -955,6 +1350,7 @@
       "id": "atril",
       "name": "Atril",
       "category": "office",
+      "group": "reading",
       "description": "A document viewer for MATE",
       "icon": "atril",
       "packages": [
@@ -971,6 +1367,7 @@
       "id": "bookworm",
       "name": "Bookworm",
       "category": "office",
+      "group": "reading",
       "description": "A simple user centric eBook reader which displays multiple eBooks formats uniformly",
       "icon": "bookworm",
       "packages": [
@@ -988,6 +1385,7 @@
       "id": "calibre",
       "name": "Calibre",
       "category": "office",
+      "group": "reading",
       "description": "Ebook management application",
       "icon": "calibre",
       "packages": [
@@ -1005,6 +1403,7 @@
       "id": "calligra",
       "name": "Calligra",
       "category": "office",
+      "group": "documents",
       "description": "A set of applications for productivity and creative usage",
       "icon": "",
       "packages": [
@@ -1022,6 +1421,7 @@
       "id": "citations",
       "name": "Citations",
       "category": "office",
+      "group": "study",
       "description": "Manage your bibliographies using the BibTeX format",
       "icon": "",
       "packages": [
@@ -1038,6 +1438,7 @@
       "id": "drawio",
       "name": "draw.io",
       "category": "office",
+      "group": "planning",
       "description": "Draw diagrams and flowcharts",
       "icon": "drawio",
       "packages": [
@@ -1057,6 +1458,7 @@
       "id": "endeavour",
       "name": "Endeavour",
       "category": "office",
+      "group": "planning",
       "description": "Personal task manager (Formerly GNOME Todo)",
       "icon": "",
       "packages": [
@@ -1074,6 +1476,7 @@
       "id": "errands",
       "name": "Errands",
       "category": "office",
+      "group": "planning",
       "description": "Todo application for those who prefer simplicity",
       "icon": "",
       "packages": [
@@ -1090,6 +1493,7 @@
       "id": "evince",
       "name": "Evince",
       "category": "office",
+      "group": "reading",
       "description": "Document viewer (PDF, PostScript, XPS, djvu, dvi, tiff, cbr, cbz, cb7, cbt)",
       "icon": "evince",
       "packages": [
@@ -1106,6 +1510,7 @@
       "id": "fbreader",
       "name": "FBReader",
       "category": "office",
+      "group": "reading",
       "description": "An e-book reader for Linux",
       "icon": "fbreader",
       "packages": [
@@ -1123,6 +1528,7 @@
       "id": "feathernotes",
       "name": "FeatherNotes",
       "category": "office",
+      "group": "notes",
       "description": "Lightweight Qt hierarchical notes-manager",
       "icon": "feathernotes",
       "packages": [
@@ -1138,6 +1544,7 @@
       "id": "foliate",
       "name": "Foliate",
       "category": "office",
+      "group": "reading",
       "description": "A simple and modern GTK eBook reader",
       "icon": "",
       "packages": [
@@ -1155,6 +1562,7 @@
       "id": "gcompris",
       "name": "GCompris",
       "category": "office",
+      "group": "study",
       "description": "Educational games and activities for children aged 2 to 10",
       "icon": "gcompris-qt",
       "packages": [
@@ -1173,6 +1581,7 @@
       "id": "geogebra",
       "name": "GeoGebra",
       "category": "office",
+      "group": "maths",
       "description": "Dynamic mathematics software with interactive graphics, algebra and spreadsheet",
       "icon": "geogebra",
       "packages": [
@@ -1188,6 +1597,7 @@
       "id": "gnome-calculator",
       "name": "GNOME Calculator",
       "category": "office",
+      "group": "maths",
       "description": "GNOME Scientific calculator",
       "icon": "gnome-calculator",
       "packages": [
@@ -1199,6 +1609,7 @@
       "id": "gnome-calendar",
       "name": "GNOME Calendar",
       "category": "office",
+      "group": "planning",
       "description": "Simple and beautiful calendar application designed to perfectly fit the GNOME desktop",
       "icon": "gnome-calendar",
       "packages": [
@@ -1210,6 +1621,7 @@
       "id": "gnome-contacts",
       "name": "GNOME Contacts",
       "category": "office",
+      "group": "planning",
       "description": "Contacts Manager for GNOME",
       "icon": "gnome-contacts",
       "packages": [
@@ -1221,6 +1633,7 @@
       "id": "gnome-dictionary",
       "name": "GNOME Dictionary",
       "category": "office",
+      "group": "study",
       "description": "Look up words in dictionary sources",
       "icon": "gnome-dictionary",
       "packages": [
@@ -1232,6 +1645,7 @@
       "id": "gnome-notes",
       "name": "GNOME Notes",
       "category": "office",
+      "group": "notes",
       "description": "Write out notes, every detail matters",
       "icon": "",
       "packages": [
@@ -1247,6 +1661,7 @@
       "id": "gnu-octave",
       "name": "GNU Octave",
       "category": "office",
+      "group": "maths",
       "description": "A high-level language, primarily intended for numerical computations",
       "icon": "octave",
       "packages": [
@@ -1262,6 +1677,7 @@
       "id": "gnucash",
       "name": "GnuCash",
       "category": "office",
+      "group": "money",
       "description": "Personal and small-business financial-accounting application",
       "icon": "gnucash",
       "packages": [
@@ -1279,6 +1695,7 @@
       "id": "gnumeric",
       "name": "Gnumeric",
       "category": "office",
+      "group": "documents",
       "description": "Spreadsheet application for GNOME",
       "icon": "gnumeric",
       "packages": [
@@ -1294,6 +1711,7 @@
       "id": "gnuplot",
       "name": "Gnuplot",
       "category": "office",
+      "group": "maths",
       "description": "Plot data and mathematical functions from the command line",
       "icon": "",
       "packages": [
@@ -1312,6 +1730,7 @@
       "id": "gramps",
       "name": "Gramps",
       "category": "office",
+      "group": "study",
       "description": "Research and record your family tree",
       "icon": "gramps",
       "packages": [
@@ -1329,6 +1748,7 @@
       "id": "graphs",
       "name": "Graphs",
       "category": "office",
+      "group": "maths",
       "description": "Tool to plot and manipulate data",
       "icon": "",
       "packages": [
@@ -1344,6 +1764,7 @@
       "id": "homebank",
       "name": "HomeBank",
       "category": "office",
+      "group": "money",
       "description": "Free, easy, personal accounting for everyone",
       "icon": "homebank",
       "packages": [
@@ -1361,6 +1782,7 @@
       "id": "joplin",
       "name": "Joplin",
       "category": "office",
+      "group": "notes",
       "description": "A note taking and to-do application with synchronization capabilities - Desktop",
       "icon": "joplin-desktop",
       "packages": [
@@ -1376,6 +1798,7 @@
       "id": "kalgebra",
       "name": "KAlgebra",
       "category": "office",
+      "group": "maths",
       "description": "Graph Calculator",
       "icon": "kalgebra",
       "packages": [
@@ -1391,6 +1814,7 @@
       "id": "kcalc",
       "name": "KCalc",
       "category": "office",
+      "group": "maths",
       "description": "Scientific Calculator",
       "icon": "kcalc",
       "packages": [
@@ -1402,6 +1826,7 @@
       "id": "kiwix",
       "name": "Kiwix",
       "category": "office",
+      "group": "reading",
       "description": "Read Wikipedia and other sites without an internet connection",
       "icon": "kiwix-desktop",
       "packages": [
@@ -1420,6 +1845,7 @@
       "id": "kmymoney",
       "name": "KMyMoney",
       "category": "office",
+      "group": "money",
       "description": "Personal finance manager for KDE which operates similarly to MS-Money or Quicken",
       "icon": "kmymoney",
       "packages": [
@@ -1437,6 +1863,7 @@
       "id": "libreoffice",
       "name": "LibreOffice",
       "category": "office",
+      "group": "documents",
       "description": "LibreOffice branch which contains new features and program enhancements",
       "icon": "libreoffice",
       "packages": [
@@ -1460,6 +1887,7 @@
       "id": "minder",
       "name": "Minder",
       "category": "office",
+      "group": "planning",
       "description": "Draw mind maps to sort out ideas",
       "icon": "com.github.phase1geo.minder",
       "packages": [
@@ -1478,6 +1906,7 @@
       "id": "newsflash",
       "name": "NewsFlash",
       "category": "office",
+      "group": "reading",
       "description": "Feed reader application designed to complement an already existing web-based RSS reader account",
       "icon": "",
       "packages": [
@@ -1494,6 +1923,7 @@
       "id": "obsidian",
       "name": "Obsidian",
       "category": "office",
+      "group": "notes",
       "description": "A powerful knowledge base that works on top of a local folder of plain text Markdown files",
       "icon": "obsidian",
       "packages": [
@@ -1512,6 +1942,7 @@
       "id": "okular",
       "name": "Okular",
       "category": "office",
+      "group": "reading",
       "description": "Document Viewer",
       "icon": "okular",
       "packages": [
@@ -1528,6 +1959,7 @@
       "id": "omawrite",
       "name": "Omawrite",
       "category": "office",
+      "group": "notes",
       "description": "A simple notepad for plain text and Markdown; karchy's notepad",
       "icon": "",
       "packages": [
@@ -1550,6 +1982,7 @@
       "id": "onlyoffice",
       "name": "OnlyOffice",
       "category": "office",
+      "group": "documents",
       "description": "An office suite that combines text, spreadsheet and presentation editors",
       "icon": "",
       "packages": [
@@ -1573,6 +2006,7 @@
       "id": "pandoc",
       "name": "Pandoc",
       "category": "office",
+      "group": "documents",
       "description": "Convert documents between Markdown, Word, HTML, PDF and many other formats",
       "icon": "",
       "packages": [
@@ -1592,6 +2026,7 @@
       "id": "papers",
       "name": "Papers",
       "category": "office",
+      "group": "reading",
       "description": "Document viewer for PDF and other document formats aimed at the GNOME desktop",
       "icon": "",
       "packages": [
@@ -1608,6 +2043,7 @@
       "id": "paperwork",
       "name": "Paperwork",
       "category": "office",
+      "group": "reading",
       "description": "Personal document manager to manage scanned documents and PDFs",
       "icon": "paperwork",
       "packages": [
@@ -1623,6 +2059,7 @@
       "id": "pdfarranger",
       "name": "PDF Arranger",
       "category": "office",
+      "group": "reading",
       "description": "Merge and split PDF files; rotate, crop and reorder their pages",
       "icon": "com.github.jeromerobert.pdfarranger",
       "packages": [
@@ -1641,6 +2078,7 @@
       "id": "planify",
       "name": "Planify",
       "category": "office",
+      "group": "planning",
       "description": "To-do lists and projects, also synced with Todoist, Nextcloud or CalDAV",
       "icon": "",
       "packages": [
@@ -1659,6 +2097,7 @@
       "id": "qalculate",
       "name": "Qalculate!",
       "category": "office",
+      "group": "maths",
       "description": "Calculator that knows units, currencies, fractions and equations",
       "icon": "qalculate",
       "packages": [
@@ -1677,6 +2116,7 @@
       "id": "rnote",
       "name": "Rnote",
       "category": "office",
+      "group": "notes",
       "description": "Handwritten notes and sketches with a pen or drawing tablet",
       "icon": "com.github.flxzt.rnote",
       "packages": [
@@ -1696,6 +2136,7 @@
       "id": "sagemath",
       "name": "SageMath",
       "category": "office",
+      "group": "maths",
       "description": "Open Source Mathematics Software, free alternative to Magma, Maple, Mathematica, and Matlab",
       "icon": "",
       "packages": [
@@ -1711,6 +2152,7 @@
       "id": "skrooge",
       "name": "Skrooge",
       "category": "office",
+      "group": "money",
       "description": "Personal finance manager that aims at being powerful and intuitive",
       "icon": "skrooge",
       "packages": [
@@ -1728,6 +2170,7 @@
       "id": "solanum",
       "name": "Solanum",
       "category": "office",
+      "group": "planning",
       "description": "Pomodoro timer for the GNOME desktop",
       "icon": "",
       "packages": [
@@ -1743,6 +2186,7 @@
       "id": "stellarium",
       "name": "Stellarium",
       "category": "office",
+      "group": "study",
       "description": "Planetarium: the night sky as seen from anywhere on Earth",
       "icon": "stellarium",
       "packages": [
@@ -1761,6 +2205,7 @@
       "id": "taskwarrior",
       "name": "Taskwarrior",
       "category": "office",
+      "group": "planning",
       "description": "To-do list manager for the terminal",
       "icon": "",
       "packages": [
@@ -1778,6 +2223,7 @@
       "id": "texstudio",
       "name": "TeXstudio",
       "category": "office",
+      "group": "documents",
       "description": "Write LaTeX documents with a preview beside the text; a basic TeX Live comes with it",
       "icon": "texstudio",
       "packages": [
@@ -1801,6 +2247,7 @@
       "id": "typst",
       "name": "Typst",
       "category": "office",
+      "group": "documents",
       "description": "Typeset documents from plain text: a faster, simpler alternative to LaTeX",
       "icon": "",
       "packages": [
@@ -1819,6 +2266,7 @@
       "id": "wps-office",
       "name": "WPS Office",
       "category": "office",
+      "group": "documents",
       "description": "Kingsoft Office (WPS Office) - an office productivity suite",
       "icon": "",
       "packages": [
@@ -1842,6 +2290,7 @@
       "id": "xournal",
       "name": "Xournal++",
       "category": "office",
+      "group": "notes",
       "description": "Handwriting notetaking software with PDF annotation support",
       "icon": "xournalpp",
       "packages": [
@@ -1859,6 +2308,7 @@
       "id": "xreader",
       "name": "Xreader",
       "category": "office",
+      "group": "reading",
       "description": "Document viewer for files like PDF and Postscript",
       "icon": "xreader",
       "packages": [
@@ -1875,6 +2325,7 @@
       "id": "zathura",
       "name": "Zathura",
       "category": "office",
+      "group": "reading",
       "description": "Minimal PDF and e-book viewer driven from the keyboard",
       "icon": "org.pwmt.zathura",
       "packages": [
@@ -1894,6 +2345,7 @@
       "id": "zotero",
       "name": "Zotero",
       "category": "office",
+      "group": "study",
       "description": "Collect, organize and cite research papers and other sources",
       "icon": "zotero",
       "packages": [
@@ -1912,6 +2364,7 @@
       "id": "aegisub",
       "name": "Aegisub",
       "category": "media",
+      "group": "video-editing",
       "description": "Write and time subtitles, with styling and karaoke effects",
       "icon": "aegisub",
       "packages": [
@@ -1931,6 +2384,7 @@
       "id": "amberol",
       "name": "Amberol",
       "category": "media",
+      "group": "music",
       "description": "Small and simple sound and music player that is well integrated with GNOME",
       "icon": "",
       "packages": [
@@ -1947,6 +2401,7 @@
       "id": "ardour",
       "name": "Ardour",
       "category": "media",
+      "group": "audio",
       "description": "Professional-grade digital audio workstation",
       "icon": "ardour",
       "packages": [
@@ -1963,6 +2418,7 @@
       "id": "audacious",
       "name": "Audacious",
       "category": "media",
+      "group": "music",
       "description": "Lightweight, advanced audio player focused on audio quality",
       "icon": "audacious",
       "packages": [
@@ -1979,6 +2435,7 @@
       "id": "audacity",
       "name": "Audacity",
       "category": "media",
+      "group": "audio",
       "description": "A program that lets you manipulate digital audio waveforms",
       "icon": "audacity",
       "packages": [
@@ -1995,6 +2452,7 @@
       "id": "audio-sharing",
       "name": "Audio Sharing",
       "category": "media",
+      "group": "audio",
       "description": "Share current computer audio playback in the form of an RTSP stream",
       "icon": "",
       "packages": [
@@ -2006,6 +2464,7 @@
       "id": "baka-mplayer",
       "name": "Baka MPlayer",
       "category": "media",
+      "group": "video",
       "description": "A free and open source, cross-platform, libmpv based multimedia player. Qt5 build",
       "icon": "baka-mplayer",
       "packages": [
@@ -2022,6 +2481,7 @@
       "id": "bambu-studio",
       "name": "Bambu Studio",
       "category": "media",
+      "group": "design",
       "description": "Prepare 3D prints and send them to Bambu Lab printers",
       "icon": "bambustudio",
       "packages": [
@@ -2041,6 +2501,7 @@
       "id": "birdfont",
       "name": "BirdFont",
       "category": "media",
+      "group": "design",
       "description": "Font editor which can generate fonts in TTF, EOT and SVG formats",
       "icon": "birdfont",
       "packages": [
@@ -2055,6 +2516,7 @@
       "id": "bitwig-studio",
       "name": "Bitwig Studio",
       "category": "media",
+      "group": "audio",
       "description": "Digital audio workstation for music production, remixing and live performance",
       "icon": "bitwig-studio",
       "packages": [
@@ -2071,6 +2533,7 @@
       "id": "blanket",
       "name": "Blanket",
       "category": "media",
+      "group": "music",
       "description": "Improve focus and increase your productivity by listening to different sounds",
       "icon": "",
       "packages": [
@@ -2087,6 +2550,7 @@
       "id": "blender",
       "name": "Blender",
       "category": "media",
+      "group": "design",
       "description": "A fully integrated 3D graphics creation suite",
       "icon": "blender",
       "packages": [
@@ -2104,6 +2568,7 @@
       "id": "brasero",
       "name": "Brasero",
       "category": "media",
+      "group": "discs",
       "description": "CD/DVD mastering tool",
       "icon": "brasero",
       "packages": [
@@ -2121,6 +2586,7 @@
       "id": "cava",
       "name": "Cava",
       "category": "media",
+      "group": "music",
       "description": "Audio visualizer for the terminal",
       "icon": "",
       "packages": [
@@ -2139,6 +2605,7 @@
       "id": "celluloid",
       "name": "Celluloid",
       "category": "media",
+      "group": "video",
       "description": "Simple media player, a GTK frontend for mpv",
       "icon": "",
       "packages": [
@@ -2155,6 +2622,7 @@
       "id": "cmus",
       "name": "cmus",
       "category": "media",
+      "group": "music",
       "description": "Small, fast music player for the terminal",
       "icon": "",
       "packages": [
@@ -2172,6 +2640,7 @@
       "id": "converseen",
       "name": "Converseen",
       "category": "media",
+      "group": "photos",
       "description": "Batch image converter and resizer",
       "icon": "converseen",
       "packages": [
@@ -2187,6 +2656,7 @@
       "id": "curtail",
       "name": "Curtail",
       "category": "media",
+      "group": "photos",
       "description": "Image compressor GUI, supporting PNG, JPEG, WebP and SVG file types, both lossless and lossy compression mode",
       "icon": "",
       "packages": [
@@ -2201,6 +2671,7 @@
       "id": "darktable",
       "name": "Darktable",
       "category": "media",
+      "group": "photos",
       "description": "Utility to organize and develop raw images",
       "icon": "darktable",
       "packages": [
@@ -2217,6 +2688,7 @@
       "id": "davinci-resolve",
       "name": "DaVinci Resolve",
       "category": "media",
+      "group": "video-editing",
       "description": "Professional video editing, color grading, effects and audio from Blackmagic Design (the free edition; about 9 GB)",
       "icon": "davinci-resolve",
       "packages": [
@@ -2236,6 +2708,7 @@
       "id": "decibels",
       "name": "Decibels",
       "category": "media",
+      "group": "music",
       "description": "Audio player for GNOME",
       "icon": "",
       "packages": [
@@ -2252,6 +2725,7 @@
       "id": "digikam",
       "name": "DigiKam",
       "category": "media",
+      "group": "photos",
       "description": "An advanced digital photo management application",
       "icon": "digikam",
       "packages": [
@@ -2267,6 +2741,7 @@
       "id": "dragon-player",
       "name": "Dragon Player",
       "category": "media",
+      "group": "video",
       "description": "A multimedia player where the focus is on simplicity, instead of features",
       "icon": "",
       "packages": [
@@ -2283,6 +2758,7 @@
       "id": "ear-tag",
       "name": "Ear Tag",
       "category": "media",
+      "group": "audio",
       "description": "Simple audio file tag editor",
       "icon": "",
       "packages": [
@@ -2299,6 +2775,7 @@
       "id": "easyeffects",
       "name": "EasyEffects",
       "category": "media",
+      "group": "audio",
       "description": "Audio Effects for Pipewire applications",
       "icon": "easyeffects",
       "packages": [
@@ -2315,6 +2792,7 @@
       "id": "easytag",
       "name": "EasyTAG",
       "category": "media",
+      "group": "audio",
       "description": "Simple application for viewing and editing tags in audio files",
       "icon": "easytag",
       "packages": [
@@ -2331,6 +2809,7 @@
       "id": "elisa",
       "name": "Elisa",
       "category": "media",
+      "group": "music",
       "description": "A simple music player aiming to provide a nice experience for its users",
       "icon": "elisa",
       "packages": [
@@ -2347,6 +2826,7 @@
       "id": "eye-of-gnome",
       "name": "Eye of GNOME",
       "category": "media",
+      "group": "photos",
       "description": "Eye of Gnome: An image viewing and cataloging program",
       "icon": "eog",
       "packages": [
@@ -2363,6 +2843,7 @@
       "id": "flowblade",
       "name": "Flowblade",
       "category": "media",
+      "group": "video-editing",
       "description": "Multitrack non-linear video editor",
       "icon": "flowblade",
       "packages": [
@@ -2379,6 +2860,7 @@
       "id": "fontforge",
       "name": "FontForge",
       "category": "media",
+      "group": "design",
       "description": "Outline and bitmap font editor",
       "icon": "fontforge",
       "packages": [
@@ -2393,6 +2875,7 @@
       "id": "freecad",
       "name": "FreeCAD",
       "category": "media",
+      "group": "design",
       "description": "Feature based parametric 3D CAD modeler",
       "icon": "freecad",
       "packages": [
@@ -2408,6 +2891,7 @@
       "id": "freetube",
       "name": "FreeTube",
       "category": "media",
+      "group": "video",
       "description": "An open source desktop YouTube player built with privacy in mind",
       "icon": "freetube-bin",
       "packages": [
@@ -2422,6 +2906,7 @@
       "id": "fretboard",
       "name": "Fretboard",
       "category": "media",
+      "group": "audio",
       "description": "Look up guitar chords",
       "icon": "",
       "packages": [
@@ -2437,6 +2922,7 @@
       "id": "geeqie",
       "name": "Geeqie",
       "category": "media",
+      "group": "photos",
       "description": "Lightweight image viewer",
       "icon": "geeqie",
       "packages": [
@@ -2453,6 +2939,7 @@
       "id": "gimp",
       "name": "GIMP",
       "category": "media",
+      "group": "photos",
       "description": "GNU Image Manipulation Program",
       "icon": "gimp",
       "packages": [
@@ -2469,6 +2956,7 @@
       "id": "gnome-photos",
       "name": "GNOME Photos",
       "category": "media",
+      "group": "photos",
       "description": "Access, organize, and share your photos on GNOME",
       "icon": "",
       "packages": [
@@ -2484,6 +2972,7 @@
       "id": "gnome-podcasts",
       "name": "GNOME Podcasts",
       "category": "media",
+      "group": "music",
       "description": "Podcast application for GNOME",
       "icon": "",
       "packages": [
@@ -2498,6 +2987,7 @@
       "id": "gnome-videos",
       "name": "GNOME Videos",
       "category": "media",
+      "group": "video",
       "description": "Movie player for the GNOME desktop based on GStreamer",
       "icon": "",
       "packages": [
@@ -2514,6 +3004,7 @@
       "id": "gpicview",
       "name": "GPicView",
       "category": "media",
+      "group": "photos",
       "description": "Lightweight image viewer",
       "icon": "gpicview",
       "packages": [
@@ -2530,6 +3021,7 @@
       "id": "gthumb",
       "name": "GThumb",
       "category": "media",
+      "group": "photos",
       "description": "Image browser and viewer for the GNOME Desktop",
       "icon": "gthumb",
       "packages": [
@@ -2546,6 +3038,7 @@
       "id": "gwenview",
       "name": "Gwenview",
       "category": "media",
+      "group": "photos",
       "description": "A fast and easy to use image viewer",
       "icon": "gwenview",
       "packages": [
@@ -2562,6 +3055,7 @@
       "id": "handbrake",
       "name": "Handbrake",
       "category": "media",
+      "group": "video-editing",
       "description": "Multithreaded video transcoder",
       "icon": "",
       "packages": [
@@ -2579,6 +3073,7 @@
       "id": "haruna",
       "name": "Haruna",
       "category": "media",
+      "group": "video",
       "description": "Video player built with Qt/QML on top of libmpv",
       "icon": "haruna",
       "packages": [
@@ -2595,6 +3090,7 @@
       "id": "hugin",
       "name": "Hugin",
       "category": "media",
+      "group": "photos",
       "description": "Stitch overlapping photos into a panorama",
       "icon": "hugin",
       "packages": [
@@ -2612,6 +3108,7 @@
       "id": "hydrogen",
       "name": "Hydrogen",
       "category": "media",
+      "group": "audio",
       "description": "Drum machine for programming beats and patterns",
       "icon": "org.hydrogenmusic.Hydrogen",
       "packages": [
@@ -2629,6 +3126,7 @@
       "id": "hypnotix",
       "name": "Hypnotix",
       "category": "media",
+      "group": "video",
       "description": "IPTV streaming application with support for live TV, movies and series",
       "icon": "hypnotix",
       "packages": [
@@ -2644,6 +3142,7 @@
       "id": "identity",
       "name": "Identity",
       "category": "media",
+      "group": "design",
       "description": "Compare multiple versions of an image or video",
       "icon": "",
       "packages": [
@@ -2658,6 +3157,7 @@
       "id": "imv",
       "name": "imv",
       "category": "media",
+      "group": "photos",
       "description": "A fast image viewer for photos and screenshots",
       "icon": "",
       "packages": [
@@ -2675,6 +3175,7 @@
       "id": "inkscape",
       "name": "Inkscape",
       "category": "media",
+      "group": "design",
       "description": "Professional vector graphics editor",
       "icon": "inkscape",
       "packages": [
@@ -2692,6 +3193,7 @@
       "id": "jellyfin-desktop",
       "name": "Jellyfin Desktop",
       "category": "media",
+      "group": "video",
       "description": "Jellyfin Desktop Client",
       "icon": "jellyfin-desktop",
       "packages": [
@@ -2707,6 +3209,7 @@
       "id": "k3b",
       "name": "K3b",
       "category": "media",
+      "group": "discs",
       "description": "Feature-rich and easy to handle CD burning application",
       "icon": "k3b",
       "packages": [
@@ -2724,6 +3227,7 @@
       "id": "kaffeine",
       "name": "Kaffeine",
       "category": "media",
+      "group": "video",
       "description": "KDE media player",
       "icon": "kaffeine",
       "packages": [
@@ -2740,6 +3244,7 @@
       "id": "kdenlive",
       "name": "Kdenlive",
       "category": "media",
+      "group": "video-editing",
       "description": "A non-linear video editor for Linux using the MLT video framework",
       "icon": "kdenlive",
       "packages": [
@@ -2756,6 +3261,7 @@
       "id": "kicad",
       "name": "KiCad",
       "category": "media",
+      "group": "design",
       "description": "Electronic schematic and printed circuit board (PCB) design tools",
       "icon": "kicad",
       "packages": [
@@ -2773,6 +3279,7 @@
       "id": "kid3",
       "name": "Kid3",
       "category": "media",
+      "group": "audio",
       "description": "An MP3, Ogg/Vorbis and FLAC tag editor, Qt version",
       "icon": "kid3-qt",
       "packages": [
@@ -2789,6 +3296,7 @@
       "id": "kodi",
       "name": "Kodi",
       "category": "media",
+      "group": "video",
       "description": "A software media player and entertainment hub for digital media (gl renderer)",
       "icon": "kodi",
       "packages": [
@@ -2804,6 +3312,7 @@
       "id": "kolourpaint",
       "name": "KolourPaint",
       "category": "media",
+      "group": "design",
       "description": "Paint Program",
       "icon": "kolourpaint",
       "packages": [
@@ -2819,6 +3328,7 @@
       "id": "komikku",
       "name": "Komikku",
       "category": "media",
+      "group": "photos",
       "description": "Manga and comics reader for GNOME",
       "icon": "",
       "packages": [
@@ -2834,6 +3344,7 @@
       "id": "krita",
       "name": "Krita",
       "category": "media",
+      "group": "design",
       "description": "Edit and paint images",
       "icon": "krita",
       "packages": [
@@ -2852,6 +3363,7 @@
       "id": "kwave",
       "name": "Kwave",
       "category": "media",
+      "group": "audio",
       "description": "A sound editor",
       "icon": "kwave",
       "packages": [
@@ -2868,6 +3380,7 @@
       "id": "letterpress",
       "name": "Letterpress",
       "category": "media",
+      "group": "design",
       "description": "Convert your images into a picture made up of ASCII characters, using Artem",
       "icon": "",
       "packages": [
@@ -2882,6 +3395,7 @@
       "id": "librecad",
       "name": "LibreCAD",
       "category": "media",
+      "group": "design",
       "description": "A 2D CAD drawing tool based on the community edition of QCad",
       "icon": "librecad",
       "packages": [
@@ -2897,6 +3411,7 @@
       "id": "libresprite",
       "name": "LibreSprite",
       "category": "media",
+      "group": "design",
       "description": "Draw and animate pixel art and sprites",
       "icon": "libresprite",
       "packages": [
@@ -2915,6 +3430,7 @@
       "id": "lmms",
       "name": "LMMS",
       "category": "media",
+      "group": "audio",
       "description": "The Linux MultiMedia Studio",
       "icon": "lmms",
       "packages": [
@@ -2931,6 +3447,7 @@
       "id": "lollypop",
       "name": "Lollypop",
       "category": "media",
+      "group": "music",
       "description": "Music player for GNOME",
       "icon": "lollypop",
       "packages": [
@@ -2947,6 +3464,7 @@
       "id": "loupe",
       "name": "Loupe",
       "category": "media",
+      "group": "photos",
       "description": "A simple image viewer for GNOME",
       "icon": "",
       "packages": [
@@ -2963,6 +3481,7 @@
       "id": "luminance-hdr",
       "name": "Luminance HDR",
       "category": "media",
+      "group": "photos",
       "description": "Open source graphical user interface application that aims to provide a workflow for HDR imaging",
       "icon": "luminance-hdr",
       "packages": [
@@ -2974,6 +3493,7 @@
       "id": "makemkv",
       "name": "MakeMKV",
       "category": "media",
+      "group": "discs",
       "description": "Copy DVDs and Blu-ray discs to MKV files (free while in beta, with the key from its forum)",
       "icon": "makemkv",
       "packages": [
@@ -2998,6 +3518,7 @@
       "id": "mediaelch",
       "name": "MediaElch",
       "category": "media",
+      "group": "video",
       "description": "Media Manager for handling Movies, TV Shows and Concerts/Music Videos for Kodi",
       "icon": "",
       "packages": [
@@ -3009,6 +3530,7 @@
       "id": "mediainfo",
       "name": "MediaInfo",
       "category": "media",
+      "group": "video-editing",
       "description": "Show the technical details of a video or audio file: codecs, bitrate, resolution, tracks",
       "icon": "mediainfo",
       "packages": [
@@ -3027,6 +3549,7 @@
       "id": "mixxx",
       "name": "Mixxx",
       "category": "media",
+      "group": "audio",
       "description": "Free, open source software for digital DJing",
       "icon": "mixxx",
       "packages": [
@@ -3041,6 +3564,7 @@
       "id": "mkvtoolnix",
       "name": "MKVToolNix",
       "category": "media",
+      "group": "video-editing",
       "description": "Edit Matroska (MKV) video files: add or remove audio tracks and subtitles without re-encoding",
       "icon": "mkvtoolnix-gui",
       "packages": [
@@ -3060,6 +3584,7 @@
       "id": "mousai",
       "name": "Mousai",
       "category": "media",
+      "group": "music",
       "description": "Simple application to identify songs",
       "icon": "",
       "packages": [
@@ -3075,6 +3600,7 @@
       "id": "mpv",
       "name": "mpv",
       "category": "media",
+      "group": "video",
       "description": "A video and audio player that plays almost any file",
       "icon": "mpv",
       "packages": [
@@ -3098,6 +3624,7 @@
       "id": "musescore",
       "name": "MuseScore",
       "category": "media",
+      "group": "audio",
       "description": "Create, play and print beautiful sheet music",
       "icon": "musescore",
       "packages": [
@@ -3114,6 +3641,7 @@
       "id": "picard",
       "name": "MusicBrainz Picard",
       "category": "media",
+      "group": "audio",
       "description": "Tag and rename music files from the MusicBrainz database",
       "icon": "org.musicbrainz.Picard",
       "packages": [
@@ -3132,6 +3660,7 @@
       "id": "mypaint",
       "name": "MyPaint",
       "category": "media",
+      "group": "design",
       "description": "Fast and easy painting application for digital painters, with brush dynamics",
       "icon": "mypaint",
       "packages": [
@@ -3147,6 +3676,7 @@
       "id": "ncspot",
       "name": "ncspot",
       "category": "media",
+      "group": "music",
       "description": "Spotify client for the terminal (needs Spotify Premium)",
       "icon": "",
       "packages": [
@@ -3164,6 +3694,7 @@
       "id": "obs-studio",
       "name": "OBS Studio",
       "category": "media",
+      "group": "video-editing",
       "description": "Free, open source software for live streaming and recording",
       "icon": "obs",
       "packages": [
@@ -3184,6 +3715,7 @@
       "id": "openscad",
       "name": "OpenSCAD",
       "category": "media",
+      "group": "design",
       "description": "Model 3D parts by writing code",
       "icon": "openscad",
       "packages": [
@@ -3203,6 +3735,7 @@
       "id": "opentoonz",
       "name": "OpenToonz",
       "category": "media",
+      "group": "design",
       "description": "A full-featured 2D animation creation software",
       "icon": "",
       "packages": [
@@ -3218,6 +3751,7 @@
       "id": "parole",
       "name": "Parole",
       "category": "media",
+      "group": "video",
       "description": "Modern media player based on the GStreamer framework",
       "icon": "parole",
       "packages": [
@@ -3234,6 +3768,7 @@
       "id": "peek",
       "name": "Peek",
       "category": "media",
+      "group": "video-editing",
       "description": "Simple screen recorder with an easy to use interface",
       "icon": "peek",
       "packages": [
@@ -3252,6 +3787,7 @@
       "id": "pencil2d",
       "name": "Pencil2D",
       "category": "media",
+      "group": "design",
       "description": "Easy, intuitive tool to make 2D hand-drawn animations",
       "icon": "pencil2d",
       "packages": [
@@ -3267,6 +3803,7 @@
       "id": "photoflare",
       "name": "Photoflare",
       "category": "media",
+      "group": "photos",
       "description": "Quick, simple but powerful Qt-based image editor inspired by PhotoFiltre",
       "icon": "photoflare",
       "packages": [
@@ -3283,6 +3820,7 @@
       "id": "pinta",
       "name": "Pinta",
       "category": "media",
+      "group": "design",
       "description": "Drawing/editing program modeled after Paint.NET. It's goal is to provide a simplified alternative to GIMP for casual users",
       "icon": "pinta",
       "packages": [
@@ -3301,6 +3839,7 @@
       "id": "pitivi",
       "name": "Pitivi",
       "category": "media",
+      "group": "video-editing",
       "description": "Editor for audio/video projects using the GStreamer framework",
       "icon": "pitivi",
       "packages": [
@@ -3317,6 +3856,7 @@
       "id": "prusa-slicer",
       "name": "PrusaSlicer",
       "category": "media",
+      "group": "design",
       "description": "Prepare 3D models for printing, on Prusa and many other 3D printers",
       "icon": "PrusaSlicer",
       "packages": [
@@ -3336,6 +3876,7 @@
       "id": "qmmp",
       "name": "Qmmp",
       "category": "media",
+      "group": "music",
       "description": "Qt based audio-player",
       "icon": "qmmp",
       "packages": [
@@ -3352,6 +3893,7 @@
       "id": "qpwgraph",
       "name": "qpwgraph",
       "category": "media",
+      "group": "audio",
       "description": "Patchbay for PipeWire: connect the sound of apps and devices by drawing wires",
       "icon": "",
       "packages": [
@@ -3370,6 +3912,7 @@
       "id": "rapid-photo-downloader",
       "name": "Rapid Photo Downloader",
       "category": "media",
+      "group": "photos",
       "description": "Photo and video downloader",
       "icon": "rapid-photo-downloader",
       "packages": [
@@ -3385,6 +3928,7 @@
       "id": "rawtherapee",
       "name": "RawTherapee",
       "category": "media",
+      "group": "photos",
       "description": "A powerful cross-platform raw image processing program",
       "icon": "rawtherapee",
       "packages": [
@@ -3401,6 +3945,7 @@
       "id": "reaper",
       "name": "REAPER",
       "category": "media",
+      "group": "audio",
       "description": "Record, edit and mix music (60-day evaluation, then a paid licence)",
       "icon": "cockos-reaper",
       "packages": [
@@ -3419,6 +3964,7 @@
       "id": "rhythmbox",
       "name": "Rhythmbox",
       "category": "media",
+      "group": "music",
       "description": "Music playback and management application",
       "icon": "rhythmbox",
       "packages": [
@@ -3435,6 +3981,7 @@
       "id": "ristretto",
       "name": "Ristretto",
       "category": "media",
+      "group": "photos",
       "description": "A fast and lightweight picture viewer for Xfce",
       "icon": "ristretto",
       "packages": [
@@ -3451,6 +3998,7 @@
       "id": "rosegarden",
       "name": "Rosegarden",
       "category": "media",
+      "group": "audio",
       "description": "MIDI/audio sequencer and notation editor",
       "icon": "rosegarden",
       "packages": [
@@ -3467,6 +4015,7 @@
       "id": "scribus",
       "name": "Scribus",
       "category": "media",
+      "group": "design",
       "description": "Desktop publishing software",
       "icon": "scribus",
       "packages": [
@@ -3483,6 +4032,7 @@
       "id": "shortwave",
       "name": "Shortwave",
       "category": "media",
+      "group": "music",
       "description": "Internet radio player",
       "icon": "",
       "packages": [
@@ -3498,6 +4048,7 @@
       "id": "shotcut",
       "name": "Shotcut",
       "category": "media",
+      "group": "video-editing",
       "description": "Cross-platform Qt based Video Editor",
       "icon": "shotcut",
       "packages": [
@@ -3514,6 +4065,7 @@
       "id": "shotwell",
       "name": "Shotwell",
       "category": "media",
+      "group": "photos",
       "description": "A digital photo organizer designed for the GNOME desktop environment",
       "icon": "shotwell",
       "packages": [
@@ -3529,6 +4081,7 @@
       "id": "showtime",
       "name": "Showtime",
       "category": "media",
+      "group": "video",
       "description": "Video player for GNOME",
       "icon": "showtime",
       "packages": [
@@ -3545,6 +4098,7 @@
       "id": "smplayer",
       "name": "SMPlayer",
       "category": "media",
+      "group": "video",
       "description": "Media player with built-in codecs that can play virtually all video and audio formats",
       "icon": "smplayer",
       "packages": [
@@ -3561,6 +4115,7 @@
       "id": "snapshot",
       "name": "Snapshot",
       "category": "media",
+      "group": "photos",
       "description": "Take photos and videos with the webcam",
       "icon": "org.gnome.Snapshot",
       "packages": [
@@ -3579,6 +4134,7 @@
       "id": "sound-juicer",
       "name": "Sound Juicer",
       "category": "media",
+      "group": "discs",
       "description": "Copy the music from audio CDs to files",
       "icon": "org.gnome.SoundJuicer",
       "packages": [
@@ -3598,6 +4154,7 @@
       "id": "gnome-sound-recorder",
       "name": "Sound Recorder",
       "category": "media",
+      "group": "audio",
       "description": "Record from the microphone with one click",
       "icon": "org.gnome.SoundRecorder",
       "packages": [
@@ -3616,6 +4173,7 @@
       "id": "soundconverter",
       "name": "SoundConverter",
       "category": "media",
+      "group": "audio",
       "description": "A simple sound converter application for GNOME",
       "icon": "soundconverter",
       "packages": [
@@ -3631,6 +4189,7 @@
       "id": "spotify",
       "name": "Spotify",
       "category": "media",
+      "group": "music",
       "description": "A proprietary music streaming service",
       "icon": "spotify",
       "packages": [
@@ -3646,6 +4205,7 @@
       "id": "strawberry",
       "name": "Strawberry",
       "category": "media",
+      "group": "music",
       "description": "A music player aimed at audio enthusiasts and music collectors",
       "icon": "strawberry",
       "packages": [
@@ -3662,6 +4222,7 @@
       "id": "subtitle-composer",
       "name": "Subtitle Composer",
       "category": "media",
+      "group": "video-editing",
       "description": "Video subtitle editor",
       "icon": "subtitlecomposer",
       "packages": [
@@ -3676,6 +4237,7 @@
       "id": "sweet-home-3d",
       "name": "Sweet Home 3D",
       "category": "media",
+      "group": "design",
       "description": "An interior design application to draw the plan of your house in a 3D environment",
       "icon": "sweethome3d",
       "packages": [
@@ -3691,6 +4253,7 @@
       "id": "switcheroo",
       "name": "Switcheroo",
       "category": "media",
+      "group": "photos",
       "description": "Convert between different image filetypes and resize them easily",
       "icon": "",
       "packages": [
@@ -3705,6 +4268,7 @@
       "id": "synfig-studio",
       "name": "Synfig Studio",
       "category": "media",
+      "group": "design",
       "description": "Professional vector animation program (GUI)",
       "icon": "",
       "packages": [
@@ -3720,6 +4284,7 @@
       "id": "tauon",
       "name": "Tauon",
       "category": "media",
+      "group": "music",
       "description": "Music player for large collections, with gapless playback",
       "icon": "tauonmb",
       "packages": [
@@ -3738,6 +4303,7 @@
       "id": "tenacity",
       "name": "Tenacity",
       "category": "media",
+      "group": "audio",
       "description": "An easy-to-use multi-track audio editor and recorder, forked from Audacity",
       "icon": "tenacity",
       "packages": [
@@ -3754,6 +4320,7 @@
       "id": "transmageddon",
       "name": "Transmageddon",
       "category": "media",
+      "group": "video-editing",
       "description": "Simple python application for transcoding video into formats supported by GStreamer",
       "icon": "transmageddon",
       "packages": [
@@ -3769,6 +4336,7 @@
       "id": "video-downloader",
       "name": "Video Downloader",
       "category": "media",
+      "group": "video",
       "description": "Download videos from YouTube and other sites in a simple window",
       "icon": "com.github.unrud.VideoDownloader",
       "packages": [
@@ -3786,6 +4354,7 @@
       "id": "video-trimmer",
       "name": "Video Trimmer",
       "category": "media",
+      "group": "video-editing",
       "description": "Cut out a fragment of a video quickly",
       "icon": "",
       "packages": [
@@ -3801,6 +4370,7 @@
       "id": "vlc",
       "name": "VLC",
       "category": "media",
+      "group": "video",
       "description": "Free and open source cross-platform multimedia player and framework",
       "icon": "vlc",
       "packages": [
@@ -3817,6 +4387,7 @@
       "id": "vokoscreenng",
       "name": "VokoscreenNG",
       "category": "media",
+      "group": "video-editing",
       "description": "Easy to use screencast creator",
       "icon": "vokoscreen",
       "packages": [
@@ -3834,6 +4405,7 @@
       "id": "xfburn",
       "name": "Xfburn",
       "category": "media",
+      "group": "discs",
       "description": "A simple CD/DVD burning tool based on libburnia libraries",
       "icon": "xfburn",
       "packages": [
@@ -3851,6 +4423,7 @@
       "id": "yt-dlp",
       "name": "yt-dlp",
       "category": "media",
+      "group": "video",
       "description": "Download video and audio from YouTube and thousands of other sites, from the terminal",
       "icon": "youtube-dl",
       "packages": [
@@ -3869,6 +4442,7 @@
       "id": "0-a-d",
       "name": "0 A.D.",
       "category": "gaming",
+      "group": "games",
       "description": "Cross-platform, 3D and historically-based real-time strategy game",
       "icon": "0ad",
       "packages": [
@@ -3880,6 +4454,7 @@
       "id": "aisleriot",
       "name": "AisleRiot",
       "category": "gaming",
+      "group": "puzzles",
       "description": "A collection of patience games written in guile scheme",
       "icon": "",
       "packages": [
@@ -3895,6 +4470,7 @@
       "id": "antimicrox",
       "name": "AntiMicroX",
       "category": "gaming",
+      "group": "controllers",
       "description": "Map a controller's buttons and sticks to keyboard keys and the mouse",
       "icon": "io.github.antimicrox.antimicrox",
       "packages": [
@@ -3913,6 +4489,7 @@
       "id": "wesnoth",
       "name": "Battle for Wesnoth",
       "category": "gaming",
+      "group": "games",
       "description": "Turn-based fantasy strategy game with campaigns and multiplayer",
       "icon": "wesnoth",
       "packages": [
@@ -3929,6 +4506,7 @@
       "id": "bottles",
       "name": "Bottles",
       "category": "gaming",
+      "group": "launchers",
       "description": "Easily manage wine and proton prefix",
       "icon": "",
       "packages": [
@@ -3945,6 +4523,7 @@
       "id": "cartridges",
       "name": "Cartridges",
       "category": "gaming",
+      "group": "launchers",
       "description": "Simple game launcher written in Python using GTK4 and Libadwaita",
       "icon": "",
       "packages": [
@@ -3960,6 +4539,7 @@
       "id": "cataclysm-dda",
       "name": "Cataclysm: Dark Days Ahead",
       "category": "gaming",
+      "group": "games",
       "description": "Survival roguelike set after the end of the world",
       "icon": "cataclysm-dda",
       "packages": [
@@ -3977,6 +4557,7 @@
       "id": "chess-clock",
       "name": "Chess Clock",
       "category": "gaming",
+      "group": "puzzles",
       "description": "Simple application to provide time control for over-the-board chess games",
       "icon": "chess",
       "packages": [
@@ -3991,6 +4572,7 @@
       "id": "controller-udev-rules",
       "name": "Controller udev rules",
       "category": "gaming",
+      "group": "controllers",
       "description": "List of devices Steam and SteamVR will want read/write permissions on",
       "icon": "",
       "packages": [
@@ -4009,6 +4591,7 @@
       "id": "dolphin-emulator",
       "name": "Dolphin Emulator",
       "category": "gaming",
+      "group": "emulators",
       "description": "A Gamecube and Wii emulator",
       "icon": "dolphin-emu",
       "packages": [
@@ -4025,6 +4608,7 @@
       "id": "dosbox",
       "name": "DOSBox",
       "category": "gaming",
+      "group": "emulators",
       "description": "Run old DOS games and programs",
       "icon": "dosbox",
       "packages": [
@@ -4043,6 +4627,7 @@
       "id": "dwarf-fortress",
       "name": "Dwarf Fortress",
       "category": "gaming",
+      "group": "games",
       "description": "Build and run a dwarven fortress in a deeply simulated world (the free classic version)",
       "icon": "",
       "packages": [
@@ -4060,6 +4645,7 @@
       "id": "epic-games-launcher",
       "name": "Epic Games Launcher",
       "category": "gaming",
+      "group": "launchers",
       "description": "Official Epic Games Store launcher (Preview)",
       "icon": "epic-games",
       "packages": [
@@ -4075,6 +4661,7 @@
       "id": "faugus-launcher",
       "name": "Faugus Launcher",
       "category": "gaming",
+      "group": "launchers",
       "description": "A simple and lightweight app for running Windows games using UMU-Launcher",
       "icon": "",
       "packages": [
@@ -4094,6 +4681,7 @@
       "id": "flips",
       "name": "Flips",
       "category": "gaming",
+      "group": "emulators",
       "description": "A patcher for IPS and BPS files",
       "icon": "",
       "packages": [
@@ -4108,6 +4696,7 @@
       "id": "gamemode",
       "name": "GameMode",
       "category": "gaming",
+      "group": "performance",
       "description": "A daemon/lib combo that allows games to request a set of optimisations be temporarily applied to the host OS",
       "icon": "",
       "packages": [
@@ -4129,6 +4718,7 @@
       "id": "gamescope",
       "name": "Gamescope",
       "category": "gaming",
+      "group": "performance",
       "description": "SteamOS session compositing window manager",
       "icon": "",
       "packages": [
@@ -4140,6 +4730,7 @@
       "id": "gnome-chess",
       "name": "GNOME Chess",
       "category": "gaming",
+      "group": "puzzles",
       "description": "Play chess against the computer or a friend",
       "icon": "org.gnome.Chess",
       "packages": [
@@ -4155,6 +4746,7 @@
       "id": "gnome-mahjongg",
       "name": "GNOME Mahjongg",
       "category": "gaming",
+      "group": "puzzles",
       "description": "Disassemble a pile of tiles by removing matching pairs",
       "icon": "gnome-mahjongg",
       "packages": [
@@ -4166,6 +4758,7 @@
       "id": "gnome-mines",
       "name": "GNOME Mines",
       "category": "gaming",
+      "group": "puzzles",
       "description": "Clear hidden mines from a minefield",
       "icon": "gnome-mines",
       "packages": [
@@ -4177,6 +4770,7 @@
       "id": "gnome-sudoku",
       "name": "GNOME Sudoku",
       "category": "gaming",
+      "group": "puzzles",
       "description": "Test your logic skills in this number grid puzzle",
       "icon": "gnome-sudoku",
       "packages": [
@@ -4188,6 +4782,7 @@
       "id": "hedgewars",
       "name": "Hedgewars",
       "category": "gaming",
+      "group": "games",
       "description": "Turn-based strategy artillery game similiar to Worms",
       "icon": "hedgewars",
       "packages": [
@@ -4199,6 +4794,7 @@
       "id": "heroic-games-launcher",
       "name": "Heroic Games Launcher",
       "category": "gaming",
+      "group": "launchers",
       "description": "An Open source Launcher for Epic, Amazon and GOG Games",
       "icon": "heroic",
       "packages": [
@@ -4220,6 +4816,7 @@
       "id": "itch",
       "name": "Itch",
       "category": "gaming",
+      "group": "launchers",
       "description": "Installer for the itch.io desktop app",
       "icon": "itch",
       "packages": [
@@ -4235,6 +4832,7 @@
       "id": "kapman",
       "name": "Kapman",
       "category": "gaming",
+      "group": "puzzles",
       "description": "A clone of the well known game Pac-Man",
       "icon": "kapman",
       "packages": [
@@ -4246,6 +4844,7 @@
       "id": "kmahjongg",
       "name": "KMahjongg",
       "category": "gaming",
+      "group": "puzzles",
       "description": "A tile matching game for one or two players",
       "icon": "kmahjongg",
       "packages": [
@@ -4257,6 +4856,7 @@
       "id": "knights",
       "name": "Knights",
       "category": "gaming",
+      "group": "puzzles",
       "description": "Chess board by KDE with XBoard protocol support",
       "icon": "knights",
       "packages": [
@@ -4271,6 +4871,7 @@
       "id": "lsfg-vk",
       "name": "Lsfg-vk",
       "category": "gaming",
+      "group": "performance",
       "description": "Lossless Scaling Frame Generation on Linux",
       "icon": "",
       "packages": [
@@ -4285,6 +4886,7 @@
       "id": "luanti",
       "name": "Luanti",
       "category": "gaming",
+      "group": "games",
       "description": "Multiplayer infinite-world block sandbox game",
       "icon": "",
       "packages": [
@@ -4300,6 +4902,7 @@
       "id": "lutris",
       "name": "Lutris",
       "category": "gaming",
+      "group": "launchers",
       "description": "Open Gaming Platform",
       "icon": "lutris",
       "packages": [
@@ -4322,6 +4925,7 @@
       "id": "mame",
       "name": "MAME",
       "category": "gaming",
+      "group": "emulators",
       "description": "Port of the popular Multiple Arcade Machine Emulator using SDL with OpenGL support",
       "icon": "mame",
       "packages": [
@@ -4337,6 +4941,7 @@
       "id": "mangohud-goverlay",
       "name": "MangoHud, GOverlay",
       "category": "gaming",
+      "group": "performance",
       "description": "A Vulkan overlay layer for monitoring FPS, temperatures, CPU/GPU load and more",
       "icon": "",
       "packages": [
@@ -4356,6 +4961,7 @@
       "id": "mangojuice",
       "name": "MangoJuice",
       "category": "gaming",
+      "group": "performance",
       "description": "A convenient alternative to GOverlay for configuring MangoHud",
       "icon": "",
       "packages": [
@@ -4372,6 +4978,7 @@
       "id": "mari0",
       "name": "Mari0",
       "category": "gaming",
+      "group": "games",
       "description": "The Mario game with Portal gun mechanics",
       "icon": "",
       "packages": [
@@ -4383,6 +4990,7 @@
       "id": "mgba",
       "name": "mGBA",
       "category": "gaming",
+      "group": "emulators",
       "description": "Game Boy Advance emulator, also for Game Boy and Game Boy Color",
       "icon": "io.mgba.mGBA",
       "packages": [
@@ -4401,6 +5009,7 @@
       "id": "minecraft-launcher",
       "name": "Minecraft Launcher",
       "category": "gaming",
+      "group": "launchers",
       "description": "Official Minecraft Launcher",
       "icon": "minecraft-launcher",
       "packages": [
@@ -4415,6 +5024,7 @@
       "id": "modrinth-app",
       "name": "Modrinth App",
       "category": "gaming",
+      "group": "launchers",
       "description": "Minecraft launcher that installs mods and modpacks from Modrinth",
       "icon": "",
       "packages": [
@@ -4432,6 +5042,7 @@
       "id": "moonlight",
       "name": "Moonlight",
       "category": "gaming",
+      "group": "controllers",
       "description": "GameStream client for PCs",
       "icon": "moonlight",
       "packages": [
@@ -4447,6 +5058,7 @@
       "id": "mupen-64-plus",
       "name": "Mupen 64 Plus",
       "category": "gaming",
+      "group": "emulators",
       "description": "Nintendo64 Emulator",
       "icon": "mupen64plus",
       "packages": [
@@ -4463,6 +5075,7 @@
       "id": "nethack",
       "name": "NetHack",
       "category": "gaming",
+      "group": "games",
       "description": "The classic dungeon-crawling roguelike, in the terminal",
       "icon": "nethack",
       "packages": [
@@ -4480,6 +5093,7 @@
       "id": "ntsync-autoload",
       "name": "NTSync autoload",
       "category": "gaming",
+      "group": "performance",
       "description": "NTSync kernel module autoload",
       "icon": "",
       "packages": [
@@ -4491,6 +5105,7 @@
       "id": "openmw",
       "name": "OpenMW",
       "category": "gaming",
+      "group": "games",
       "description": "Open-source engine reimplementation for the role-playing game Morrowind",
       "icon": "openmw",
       "packages": [
@@ -4502,6 +5117,7 @@
       "id": "openrct2",
       "name": "OpenRCT2",
       "category": "gaming",
+      "group": "games",
       "description": "RollerCoaster Tycoon 2 rebuilt, with fixes and multiplayer (needs the original game's files)",
       "icon": "openrct2",
       "packages": [
@@ -4519,6 +5135,7 @@
       "id": "openttd",
       "name": "OpenTTD",
       "category": "gaming",
+      "group": "games",
       "description": "Build a transport empire of trains, buses, ships and planes (Transport Tycoon Deluxe rebuilt)",
       "icon": "openttd",
       "packages": [
@@ -4538,6 +5155,7 @@
       "id": "osu",
       "name": "Osu!",
       "category": "gaming",
+      "group": "games",
       "description": "The future of osu! and the beginning of an open era! Commonly known by the codename osu!lazer. Pew pew",
       "icon": "osu-lazer",
       "packages": [
@@ -4552,6 +5170,7 @@
       "id": "ppsspp",
       "name": "PPSSPP",
       "category": "gaming",
+      "group": "emulators",
       "description": "A PSP emulator written in C++",
       "icon": "ppsspp",
       "packages": [
@@ -4567,6 +5186,7 @@
       "id": "prism-launcher-minecraft",
       "name": "Prism Launcher (Minecraft)",
       "category": "gaming",
+      "group": "launchers",
       "description": "Minecraft launcher with ability to manage multiple instances",
       "icon": "",
       "packages": [
@@ -4581,6 +5201,7 @@
       "id": "proton-cachyos",
       "name": "Proton-CachyOS",
       "category": "gaming",
+      "group": "performance",
       "description": "A compatibility tool for Steam Play based on Wine and additional components, experimental branch with extra CachyOS flavour (Steam Linux Runtime build)",
       "icon": "",
       "packages": [
@@ -4596,6 +5217,7 @@
       "id": "protonplus",
       "name": "ProtonPlus",
       "category": "gaming",
+      "group": "performance",
       "description": "A modern compatibility tools manager",
       "icon": "protonplus",
       "packages": [
@@ -4611,6 +5233,7 @@
       "id": "protonup-qt",
       "name": "ProtonUp-Qt",
       "category": "gaming",
+      "group": "performance",
       "description": "Install and manage GE-Proton, Luxtorpeda & more for Steam, Lutris and Heroic",
       "icon": "protonup-qt",
       "packages": [
@@ -4626,6 +5249,7 @@
       "id": "retroarch",
       "name": "RetroArch",
       "category": "gaming",
+      "group": "emulators",
       "description": "Reference frontend for the libretro API",
       "icon": "retroarch",
       "packages": [
@@ -4641,6 +5265,7 @@
       "id": "retroarch-cores",
       "name": "RetroArch Cores",
       "category": "gaming",
+      "group": "emulators",
       "description": "Common emulator cores for RetroArch: PlayStation, PSP, NES and Game Boy Advance",
       "icon": "retroarch",
       "packages": [
@@ -4661,6 +5286,7 @@
       "id": "ryujinx",
       "name": "Ryujinx",
       "category": "gaming",
+      "group": "emulators",
       "description": "Experimental Nintendo Switch Emulator written in C#",
       "icon": "ryujinx",
       "packages": [
@@ -4677,6 +5303,7 @@
       "id": "scummvm",
       "name": "ScummVM",
       "category": "gaming",
+      "group": "emulators",
       "description": "A 'virtual machine' for several classic graphical point-and-click adventure games",
       "icon": "scummvm",
       "packages": [
@@ -4692,6 +5319,7 @@
       "id": "snes9x",
       "name": "Snes9x",
       "category": "gaming",
+      "group": "emulators",
       "description": "Portable Super Nintendo Entertainment System (TM) emulator",
       "icon": "snes9x",
       "packages": [
@@ -4708,6 +5336,7 @@
       "id": "steam",
       "name": "Steam",
       "category": "gaming",
+      "group": "launchers",
       "description": "Valve's digital software delivery system",
       "icon": "steam",
       "packages": [
@@ -4727,6 +5356,7 @@
       "id": "steamcmd",
       "name": "SteamCMD",
       "category": "gaming",
+      "group": "launchers",
       "description": "Steam Command Line Tools",
       "icon": "",
       "packages": [
@@ -4738,6 +5368,7 @@
       "id": "stella",
       "name": "Stella",
       "category": "gaming",
+      "group": "emulators",
       "description": "Atari 2600 VCS emulator",
       "icon": "stella",
       "packages": [
@@ -4753,6 +5384,7 @@
       "id": "sunshine",
       "name": "Sunshine",
       "category": "gaming",
+      "group": "controllers",
       "description": "Self-hosted game stream host for Moonlight",
       "icon": "",
       "packages": [
@@ -4771,6 +5403,7 @@
       "id": "supertux",
       "name": "SuperTux",
       "category": "gaming",
+      "group": "games",
       "description": "A classic 2D jump'n'run sidescroller game in a style similar to the original SuperMario games",
       "icon": "supertux",
       "packages": [
@@ -4782,6 +5415,7 @@
       "id": "supertuxkart",
       "name": "SuperTuxKart",
       "category": "gaming",
+      "group": "games",
       "description": "Kart racing game featuring Tux and his friends",
       "icon": "supertuxkart",
       "packages": [
@@ -4793,6 +5427,7 @@
       "id": "teeworlds",
       "name": "Teeworlds",
       "category": "gaming",
+      "group": "games",
       "description": "Fast-paced multiplayer 2D shooter game",
       "icon": "teeworlds",
       "packages": [
@@ -4804,6 +5439,7 @@
       "id": "warzone-2100",
       "name": "Warzone 2100",
       "category": "gaming",
+      "group": "games",
       "description": "Real-time strategy game with units you design yourself",
       "icon": "warzone2100",
       "packages": [
@@ -4820,6 +5456,7 @@
       "id": "wine-helpers",
       "name": "Wine helpers",
       "category": "gaming",
+      "group": "performance",
       "description": "Run Winetricks commands for Steam Play/Proton games among other common Wine features",
       "icon": "wine",
       "packages": [
@@ -4840,6 +5477,7 @@
       "id": "xonotic",
       "name": "Xonotic",
       "category": "gaming",
+      "group": "games",
       "description": "A free, fast-paced cross-platform first person shooter",
       "icon": "xonotic",
       "packages": [
@@ -4851,6 +5489,7 @@
       "id": "net-sdk",
       "name": ".NET SDK",
       "category": "languages",
+      "group": "jvm",
       "description": "The .NET Core SDK",
       "icon": "",
       "packages": [
@@ -4867,6 +5506,7 @@
       "id": "bun",
       "name": "Bun",
       "category": "languages",
+      "group": "web",
       "description": "Incredibly fast JavaScript runtime, bundler, test runner, and package manager – all in one",
       "icon": "",
       "packages": [
@@ -4884,6 +5524,7 @@
       "id": "c-cpp",
       "name": "C and C++",
       "category": "languages",
+      "group": "compiled",
       "description": "Clang, CMake and Ninja for building C and C++ projects, beside the GCC and make that come with karchy",
       "icon": "",
       "packages": [
@@ -4908,6 +5549,7 @@
       "id": "clojure",
       "name": "Clojure",
       "category": "languages",
+      "group": "functional",
       "description": "Lisp dialect for the JVM",
       "icon": "",
       "packages": [
@@ -4921,6 +5563,7 @@
       "id": "common-lisp",
       "name": "Common Lisp (SBCL)",
       "category": "languages",
+      "group": "functional",
       "description": "Steel Bank Common Lisp: compiler and interactive prompt",
       "icon": "",
       "packages": [
@@ -4937,6 +5580,7 @@
       "id": "laravel",
       "name": "Composer",
       "category": "languages",
+      "group": "web",
       "description": "Dependency manager for PHP, as Laravel and Symfony projects use",
       "icon": "",
       "packages": [
@@ -4953,6 +5597,7 @@
       "id": "crystal",
       "name": "Crystal",
       "category": "languages",
+      "group": "compiled",
       "description": "The Crystal Programming Language",
       "icon": "",
       "packages": [
@@ -4964,6 +5609,7 @@
       "id": "dart",
       "name": "Dart",
       "category": "languages",
+      "group": "compiled",
       "description": "The dart programming language SDK",
       "icon": "",
       "packages": [
@@ -4975,6 +5621,7 @@
       "id": "deno",
       "name": "Deno",
       "category": "languages",
+      "group": "web",
       "description": "A secure runtime for JavaScript and TypeScript",
       "icon": "",
       "packages": [
@@ -4992,6 +5639,7 @@
       "id": "elixir",
       "name": "Elixir",
       "category": "languages",
+      "group": "functional",
       "description": "A dynamic, functional language for building scalable and maintainable applications",
       "icon": "elixir",
       "packages": [
@@ -5007,6 +5655,7 @@
       "id": "gleam",
       "name": "Gleam",
       "category": "languages",
+      "group": "functional",
       "description": "Friendly programming language for building type-safe and scalable systems",
       "icon": "",
       "packages": [
@@ -5018,6 +5667,7 @@
       "id": "go",
       "name": "Go",
       "category": "languages",
+      "group": "compiled",
       "description": "Core compiler tools for the Go programming language",
       "icon": "go",
       "packages": [
@@ -5033,6 +5683,7 @@
       "id": "gradle",
       "name": "Gradle",
       "category": "languages",
+      "group": "jvm",
       "description": "Build tool for Java, Kotlin and Android projects",
       "icon": "",
       "packages": [
@@ -5050,6 +5701,7 @@
       "id": "haskell",
       "name": "Haskell",
       "category": "languages",
+      "group": "functional",
       "description": "The Glasgow Haskell Compiler",
       "icon": "",
       "packages": [
@@ -5068,6 +5720,7 @@
       "id": "java",
       "name": "Java",
       "category": "languages",
+      "group": "jvm",
       "description": "OpenJDK development kits: Java 25, 21, 17, 11 and 8",
       "icon": "java",
       "packages": [
@@ -5088,6 +5741,7 @@
       "id": "java-kotlin",
       "name": "Java (latest)",
       "category": "languages",
+      "group": "jvm",
       "description": "The newest OpenJDK development kit",
       "icon": "",
       "packages": [
@@ -5104,6 +5758,7 @@
       "id": "julia",
       "name": "Julia",
       "category": "languages",
+      "group": "python",
       "description": "High-level, high-performance, dynamic programming language",
       "icon": "julia",
       "packages": [
@@ -5115,6 +5770,7 @@
       "id": "jupyter",
       "name": "Jupyter",
       "category": "languages",
+      "group": "python",
       "description": "JupyterLab computational environment",
       "icon": "jupyter",
       "packages": [
@@ -5130,6 +5786,7 @@
       "id": "kotlin",
       "name": "Kotlin",
       "category": "languages",
+      "group": "jvm",
       "description": "Statically typed programming language with multiplatform support",
       "icon": "",
       "packages": [
@@ -5141,6 +5798,7 @@
       "id": "lua",
       "name": "Lua (LuaRocks)",
       "category": "languages",
+      "group": "web",
       "description": "Lua's package manager, with the Lua language",
       "icon": "",
       "packages": [
@@ -5152,6 +5810,7 @@
       "id": "maven",
       "name": "Maven",
       "category": "languages",
+      "group": "jvm",
       "description": "Build and dependency tool for Java projects",
       "icon": "",
       "packages": [
@@ -5169,6 +5828,7 @@
       "id": "nim",
       "name": "Nim",
       "category": "languages",
+      "group": "compiled",
       "description": "Imperative, multi-paradigm, compiled programming language",
       "icon": "",
       "packages": [
@@ -5180,6 +5840,7 @@
       "id": "node-js",
       "name": "Node.js",
       "category": "languages",
+      "group": "web",
       "description": "Evented I/O for V8 javascript (\"Current\" release)",
       "icon": "",
       "packages": [
@@ -5200,6 +5861,7 @@
       "id": "node-js-lts",
       "name": "Node.js LTS",
       "category": "languages",
+      "group": "web",
       "description": "Evented I/O for V8 javascript (\"Active LTS\" release: Krypton)",
       "icon": "",
       "packages": [
@@ -5218,6 +5880,7 @@
       "id": "ocaml",
       "name": "OCaml",
       "category": "languages",
+      "group": "functional",
       "description": "The OCaml language and opam, its package manager",
       "icon": "ocaml",
       "packages": [
@@ -5230,6 +5893,7 @@
       "id": "odin",
       "name": "Odin",
       "category": "languages",
+      "group": "compiled",
       "description": "Data-oriented programming language",
       "icon": "",
       "packages": [
@@ -5241,6 +5905,7 @@
       "id": "older-pythons",
       "name": "Older Pythons",
       "category": "languages",
+      "group": "python",
       "description": "Python 3.11 and 3.13, beside the system's Python",
       "icon": "",
       "packages": [
@@ -5256,6 +5921,7 @@
       "id": "php",
       "name": "PHP",
       "category": "languages",
+      "group": "web",
       "description": "A general-purpose scripting language that is especially suited to web development",
       "icon": "",
       "packages": [
@@ -5267,6 +5933,7 @@
       "id": "pnpm",
       "name": "Pnpm",
       "category": "languages",
+      "group": "web",
       "description": "Fast, disk space efficient package manager",
       "icon": "",
       "packages": [
@@ -5282,6 +5949,7 @@
       "id": "poetry",
       "name": "Poetry",
       "category": "languages",
+      "group": "python",
       "description": "Manage a Python project's dependencies and packaging",
       "icon": "",
       "packages": [
@@ -5300,6 +5968,7 @@
       "id": "pypy",
       "name": "PyPy",
       "category": "languages",
+      "group": "python",
       "description": "A Python3 implementation written in Python, JIT enabled",
       "icon": "",
       "packages": [
@@ -5314,6 +5983,7 @@
       "id": "r",
       "name": "R",
       "category": "languages",
+      "group": "python",
       "description": "Language and environment for statistical computing and graphics",
       "icon": "",
       "packages": [
@@ -5328,6 +5998,7 @@
       "id": "racket",
       "name": "Racket",
       "category": "languages",
+      "group": "functional",
       "description": "The Racket language with its DrRacket editor, used for teaching and for making languages",
       "icon": "drracket",
       "packages": [
@@ -5345,6 +6016,7 @@
       "id": "ruby",
       "name": "Ruby",
       "category": "languages",
+      "group": "web",
       "description": "An object-oriented language for quick and easy programming",
       "icon": "",
       "packages": [
@@ -5356,6 +6028,7 @@
       "id": "rust",
       "name": "Rust",
       "category": "languages",
+      "group": "compiled",
       "description": "The Rust toolchain installer",
       "icon": "rust",
       "packages": [
@@ -5376,6 +6049,7 @@
       "id": "rust-extras",
       "name": "Rust extras",
       "category": "languages",
+      "group": "compiled",
       "description": "sccache (shared compilation cache), cargo-nextest, bacon and cargo-watch",
       "icon": "rust",
       "packages": [
@@ -5394,6 +6068,7 @@
       "id": "symfony",
       "name": "Symfony",
       "category": "languages",
+      "group": "web",
       "description": "The Symfony client helps developers create and manage Symfony applications",
       "icon": "",
       "packages": [
@@ -5405,6 +6080,7 @@
       "id": "typescript",
       "name": "TypeScript",
       "category": "languages",
+      "group": "web",
       "description": "JavaScript with types: the tsc compiler",
       "icon": "",
       "packages": [
@@ -5422,6 +6098,7 @@
       "id": "uv",
       "name": "Uv",
       "category": "languages",
+      "group": "python",
       "description": "An extremely fast Python package installer and resolver written in Rust",
       "icon": "",
       "packages": [
@@ -5438,6 +6115,7 @@
       "id": "yarn",
       "name": "Yarn",
       "category": "languages",
+      "group": "web",
       "description": "Fast, reliable, and secure dependency management",
       "icon": "",
       "packages": [
@@ -5453,6 +6131,7 @@
       "id": "zig",
       "name": "Zig",
       "category": "languages",
+      "group": "compiled",
       "description": "A general-purpose programming language and toolchain for maintaining robust, optimal, and reusable software",
       "icon": "",
       "packages": [
@@ -5465,6 +6144,7 @@
       "id": "android-studio",
       "name": "Android Studio",
       "category": "editors",
+      "group": "ides",
       "description": "The official Android IDE (Stable branch)",
       "icon": "android-studio",
       "packages": [
@@ -5480,6 +6160,7 @@
       "id": "antigravity",
       "name": "Antigravity",
       "category": "editors",
+      "group": "code",
       "description": "Google's agent-first development app: AI agents plan, write and test code beside you",
       "icon": "antigravity",
       "packages": [
@@ -5499,6 +6180,7 @@
       "id": "apostrophe",
       "name": "Apostrophe",
       "category": "editors",
+      "group": "text",
       "description": "Distraction free Markdown editor",
       "icon": "",
       "packages": [
@@ -5515,6 +6197,7 @@
       "id": "clion",
       "name": "CLion",
       "category": "editors",
+      "group": "ides",
       "description": "Cross-platform IDE for C and C++ from JetBrains",
       "icon": "clion",
       "packages": [
@@ -5530,6 +6213,7 @@
       "id": "codeblocks",
       "name": "Code::Blocks",
       "category": "editors",
+      "group": "ides",
       "description": "IDE for C, C++ and Fortran",
       "icon": "codeblocks",
       "packages": [
@@ -5547,6 +6231,7 @@
       "id": "cursor",
       "name": "Cursor",
       "category": "editors",
+      "group": "code",
       "description": "AI-first coding environment",
       "icon": "cursor",
       "packages": [
@@ -5563,6 +6248,7 @@
       "id": "emacs",
       "name": "Emacs",
       "category": "editors",
+      "group": "terminal",
       "description": "The extensible, customizable, self-documenting real-time display editor",
       "icon": "emacs",
       "packages": [
@@ -5578,6 +6264,7 @@
       "id": "featherpad",
       "name": "FeatherPad",
       "category": "editors",
+      "group": "text",
       "description": "Lightweight Qt plain text editor",
       "icon": "featherpad",
       "packages": [
@@ -5593,6 +6280,7 @@
       "id": "geany",
       "name": "Geany",
       "category": "editors",
+      "group": "code",
       "description": "Fast and lightweight IDE",
       "icon": "geany",
       "packages": [
@@ -5608,6 +6296,7 @@
       "id": "gedit",
       "name": "Gedit",
       "category": "editors",
+      "group": "text",
       "description": "Easy-to-use general-purpose text editor",
       "icon": "gedit",
       "packages": [
@@ -5623,6 +6312,7 @@
       "id": "gnome-builder",
       "name": "GNOME Builder",
       "category": "editors",
+      "group": "ides",
       "description": "An IDE for writing GNOME-based software",
       "icon": "",
       "packages": [
@@ -5638,6 +6328,7 @@
       "id": "gnome-text-editor",
       "name": "GNOME Text Editor",
       "category": "editors",
+      "group": "text",
       "description": "Simple text editor that keeps unsaved changes between sessions",
       "icon": "org.gnome.TextEditor",
       "packages": [
@@ -5655,6 +6346,7 @@
       "id": "godot",
       "name": "Godot",
       "category": "editors",
+      "group": "ides",
       "description": "Game engine and editor for 2D and 3D games",
       "icon": "godot",
       "packages": [
@@ -5673,6 +6365,7 @@
       "id": "helix",
       "name": "Helix",
       "category": "editors",
+      "group": "terminal",
       "description": "A post-modern modal text editor",
       "icon": "helix",
       "packages": [
@@ -5689,6 +6382,7 @@
       "id": "intellij-idea",
       "name": "IntelliJ IDEA",
       "category": "editors",
+      "group": "ides",
       "description": "IDE for Java, Groovy and other programming languages with advanced refactoring features",
       "icon": "intellij-idea",
       "packages": [
@@ -5704,6 +6398,7 @@
       "id": "jetbrains-toolbox",
       "name": "JetBrains Toolbox",
       "category": "editors",
+      "group": "ides",
       "description": "Manage all your JetBrains Projects and Tools",
       "icon": "jetbrains-toolbox",
       "packages": [
@@ -5719,6 +6414,7 @@
       "id": "kakoune",
       "name": "Kakoune",
       "category": "editors",
+      "group": "terminal",
       "description": "Multiple-selection, UNIX-flavored modal editor",
       "icon": "kakoune",
       "packages": [
@@ -5734,6 +6430,7 @@
       "id": "kate",
       "name": "Kate",
       "category": "editors",
+      "group": "code",
       "description": "Advanced text editor",
       "icon": "kate",
       "packages": [
@@ -5749,6 +6446,7 @@
       "id": "kdevelop",
       "name": "KDevelop",
       "category": "editors",
+      "group": "ides",
       "description": "C++ IDE using KDE technologies",
       "icon": "kdevelop",
       "packages": [
@@ -5764,6 +6462,7 @@
       "id": "l3afpad",
       "name": "L3afpad",
       "category": "editors",
+      "group": "text",
       "description": "Simple GTK plain text editor",
       "icon": "l3afpad",
       "packages": [
@@ -5779,6 +6478,7 @@
       "id": "mousepad",
       "name": "Mousepad",
       "category": "editors",
+      "group": "text",
       "description": "Simple text editor for Xfce",
       "icon": "mousepad",
       "packages": [
@@ -5794,6 +6494,7 @@
       "id": "neovide",
       "name": "Neovide",
       "category": "editors",
+      "group": "terminal",
       "description": "A window for Neovim, with smooth scrolling and an animated cursor",
       "icon": "",
       "packages": [
@@ -5811,6 +6512,7 @@
       "id": "neovim",
       "name": "Neovim",
       "category": "editors",
+      "group": "terminal",
       "description": "Fork of Vim aiming to improve user experience, plugins, and GUIs",
       "icon": "",
       "packages": [
@@ -5828,6 +6530,7 @@
       "id": "phpstorm",
       "name": "PhpStorm",
       "category": "editors",
+      "group": "ides",
       "description": "Lightweight and Smart PHP IDE",
       "icon": "phpstorm",
       "packages": [
@@ -5843,6 +6546,7 @@
       "id": "pluma",
       "name": "Pluma",
       "category": "editors",
+      "group": "text",
       "description": "A powerful text editor for MATE",
       "icon": "",
       "packages": [
@@ -5858,6 +6562,7 @@
       "id": "pycharm",
       "name": "PyCharm",
       "category": "editors",
+      "group": "ides",
       "description": "Python IDE for Professional Developers",
       "icon": "pycharm-community",
       "packages": [
@@ -5873,6 +6578,7 @@
       "id": "qt-creator",
       "name": "Qt Creator",
       "category": "editors",
+      "group": "ides",
       "description": "Lightweight, cross-platform integrated development environment",
       "icon": "qtcreator",
       "packages": [
@@ -5888,6 +6594,7 @@
       "id": "rider",
       "name": "Rider",
       "category": "editors",
+      "group": "ides",
       "description": "A cross-platform .NET IDE by JetBrains",
       "icon": "rider",
       "packages": [
@@ -5903,6 +6610,7 @@
       "id": "rstudio",
       "name": "RStudio",
       "category": "editors",
+      "group": "ides",
       "description": "IDE for R: data analysis, statistics and plots",
       "icon": "rstudio",
       "packages": [
@@ -5921,6 +6629,7 @@
       "id": "rubymine",
       "name": "RubyMine",
       "category": "editors",
+      "group": "ides",
       "description": "JetBrains IDE for Ruby and Rails",
       "icon": "rubymine",
       "packages": [
@@ -5938,6 +6647,7 @@
       "id": "spyder",
       "name": "Spyder",
       "category": "editors",
+      "group": "ides",
       "description": "Python IDE for science and data analysis, with a variable explorer and plots",
       "icon": "spyder",
       "packages": [
@@ -5956,6 +6666,7 @@
       "id": "sublime-text-4",
       "name": "Sublime Text 4",
       "category": "editors",
+      "group": "code",
       "description": "Sophisticated text editor for code, html and prose - stable build",
       "icon": "",
       "packages": [
@@ -5973,6 +6684,7 @@
       "id": "typora",
       "name": "Typora",
       "category": "editors",
+      "group": "text",
       "description": "Markdown editor that shows the formatted text as you type (paid, with a trial)",
       "icon": "typora",
       "packages": [
@@ -5990,6 +6702,7 @@
       "id": "vim",
       "name": "Vim",
       "category": "editors",
+      "group": "terminal",
       "description": "Vi Improved, a highly configurable, improved version of the vi text editor",
       "icon": "vim",
       "packages": [
@@ -6006,6 +6719,7 @@
       "id": "vs-code",
       "name": "Visual Studio Code",
       "category": "editors",
+      "group": "code",
       "description": "Microsoft's code editor, with its extension marketplace",
       "icon": "visual-studio-code",
       "packages": [
@@ -6023,6 +6737,7 @@
       "id": "vscodium",
       "name": "VSCodium",
       "category": "editors",
+      "group": "code",
       "description": "Binary releases of VS Code without MS branding/telemetry/licensing",
       "icon": "vscodium",
       "packages": [
@@ -6041,6 +6756,7 @@
       "id": "webstorm",
       "name": "WebStorm",
       "category": "editors",
+      "group": "ides",
       "description": "JavaScript IDE and HTML editor",
       "icon": "webstorm",
       "packages": [
@@ -6056,6 +6772,7 @@
       "id": "xed",
       "name": "Xed",
       "category": "editors",
+      "group": "text",
       "description": "A small and lightweight text editor",
       "icon": "xed",
       "packages": [
@@ -6071,6 +6788,7 @@
       "id": "zed",
       "name": "Zed",
       "category": "editors",
+      "group": "code",
       "description": "A high-performance, multiplayer code editor from the creators of Atom and Tree-sitter",
       "icon": "zed",
       "packages": [
@@ -6086,6 +6804,7 @@
       "id": "act",
       "name": "act",
       "category": "devtools",
+      "group": "checks",
       "description": "Run GitHub Actions workflows on this computer (needs Docker or Podman)",
       "icon": "",
       "packages": [
@@ -6103,6 +6822,7 @@
       "id": "actionlint",
       "name": "Actionlint",
       "category": "devtools",
+      "group": "checks",
       "description": "Static checker for GitHub Actions workflow files",
       "icon": "",
       "packages": [
@@ -6117,6 +6837,7 @@
       "id": "age",
       "name": "Age",
       "category": "devtools",
+      "group": "secrets",
       "description": "A simple, modern and secure file encryption tool",
       "icon": "",
       "packages": [
@@ -6132,6 +6853,7 @@
       "id": "android-sdk",
       "name": "Android platform tools",
       "category": "devtools",
+      "group": "debug",
       "description": "adb and fastboot for a phone on a USB cable, and scrcpy to show and control its screen",
       "icon": "android-sdk",
       "packages": [
@@ -6150,6 +6872,7 @@
       "id": "asciinema",
       "name": "asciinema",
       "category": "devtools",
+      "group": "terminal",
       "description": "Record terminal sessions and share them as text-based videos",
       "icon": "",
       "packages": [
@@ -6167,6 +6890,7 @@
       "id": "ast-grep",
       "name": "Ast-grep",
       "category": "devtools",
+      "group": "checks",
       "description": "CLI tool for code structural search, lint and rewriting",
       "icon": "",
       "packages": [
@@ -6183,6 +6907,7 @@
       "id": "atuin",
       "name": "Atuin",
       "category": "devtools",
+      "group": "terminal",
       "description": "Magical shell history",
       "icon": "",
       "packages": [
@@ -6197,6 +6922,7 @@
       "id": "bat",
       "name": "Bat",
       "category": "devtools",
+      "group": "terminal",
       "description": "Cat clone with syntax highlighting and git integration",
       "icon": "",
       "packages": [
@@ -6211,6 +6937,7 @@
       "id": "beyond-compare",
       "name": "Beyond Compare",
       "category": "devtools",
+      "group": "git",
       "description": "Beyond Compare 5: Compare, sync, and merge files and folders",
       "icon": "bcompare",
       "packages": [
@@ -6226,6 +6953,7 @@
       "id": "chezmoi",
       "name": "chezmoi",
       "category": "devtools",
+      "group": "terminal",
       "description": "Keep your dotfiles in Git and the same on every computer",
       "icon": "",
       "packages": [
@@ -6243,6 +6971,7 @@
       "id": "commit",
       "name": "Commit",
       "category": "devtools",
+      "group": "git",
       "description": "Editor that helps you write better Git and Mercurial commit messages",
       "icon": "",
       "packages": [
@@ -6259,6 +6988,7 @@
       "id": "delta",
       "name": "Delta",
       "category": "devtools",
+      "group": "git",
       "description": "Syntax-highlighting pager for git and diff output",
       "icon": "",
       "packages": [
@@ -6274,6 +7004,7 @@
       "id": "difftastic",
       "name": "Difftastic",
       "category": "devtools",
+      "group": "git",
       "description": "An experimental diff tool that compares files based on their syntax",
       "icon": "",
       "packages": [
@@ -6289,6 +7020,7 @@
       "id": "direnv",
       "name": "Direnv",
       "category": "devtools",
+      "group": "terminal",
       "description": "A shell extension that manages your environment",
       "icon": "",
       "packages": [
@@ -6304,6 +7036,7 @@
       "id": "dust",
       "name": "Dust",
       "category": "devtools",
+      "group": "terminal",
       "description": "A more intuitive version of du in rust",
       "icon": "",
       "packages": [
@@ -6319,6 +7052,7 @@
       "id": "entr",
       "name": "Entr",
       "category": "devtools",
+      "group": "terminal",
       "description": "Run arbitrary commands when files change",
       "icon": "",
       "packages": [
@@ -6333,6 +7067,7 @@
       "id": "fd",
       "name": "Fd",
       "category": "devtools",
+      "group": "terminal",
       "description": "Simple, fast and user-friendly alternative to find",
       "icon": "",
       "packages": [
@@ -6347,6 +7082,7 @@
       "id": "forge-sparks",
       "name": "Forge Sparks",
       "category": "devtools",
+      "group": "git",
       "description": "Simple notifier app with support for Github, GitLab, Gitea and Forgejo",
       "icon": "",
       "packages": [
@@ -6363,6 +7099,7 @@
       "id": "gaphor",
       "name": "Gaphor",
       "category": "devtools",
+      "group": "docs",
       "description": "Simple UML and SysML modeling tool",
       "icon": "gaphor",
       "packages": [
@@ -6378,6 +7115,7 @@
       "id": "gdb",
       "name": "GDB",
       "category": "devtools",
+      "group": "debug",
       "description": "The GNU debugger for C, C++, Rust and other compiled programs",
       "icon": "",
       "packages": [
@@ -6396,6 +7134,7 @@
       "id": "ghex",
       "name": "GHex",
       "category": "devtools",
+      "group": "debug",
       "description": "Hex editor for the GNOME desktop",
       "icon": "ghex",
       "packages": [
@@ -6410,6 +7149,7 @@
       "id": "ghidra",
       "name": "Ghidra",
       "category": "devtools",
+      "group": "debug",
       "description": "Software reverse engineering framework",
       "icon": "ghidra",
       "packages": [
@@ -6426,6 +7166,7 @@
       "id": "git-lfs",
       "name": "Git LFS",
       "category": "devtools",
+      "group": "git",
       "description": "Git extension for versioning large files",
       "icon": "git",
       "packages": [
@@ -6442,6 +7183,7 @@
       "id": "gitg",
       "name": "Gitg",
       "category": "devtools",
+      "group": "git",
       "description": "GNOME GUI client to view git repositories",
       "icon": "gitg",
       "packages": [
@@ -6457,6 +7199,7 @@
       "id": "github-cli",
       "name": "GitHub CLI",
       "category": "devtools",
+      "group": "git",
       "description": "The GitHub CLI",
       "icon": "github",
       "packages": [
@@ -6472,6 +7215,7 @@
       "id": "github-desktop",
       "name": "GitHub Desktop",
       "category": "devtools",
+      "group": "git",
       "description": "GitHub's Git app: commit, branch and open pull requests without the command line",
       "icon": "github-desktop",
       "packages": [
@@ -6489,6 +7233,7 @@
       "id": "gitkraken",
       "name": "GitKraken",
       "category": "devtools",
+      "group": "git",
       "description": "The intuitive, fast, and beautiful cross-platform Git client",
       "icon": "gitkraken",
       "packages": [
@@ -6504,6 +7249,7 @@
       "id": "gitlab-cli",
       "name": "GitLab CLI",
       "category": "devtools",
+      "group": "git",
       "description": "Cli tool to help work seamlessly with GitLab from the command line",
       "icon": "gitlab",
       "packages": [
@@ -6519,6 +7265,7 @@
       "id": "gitleaks",
       "name": "Gitleaks",
       "category": "devtools",
+      "group": "secrets",
       "description": "Find passwords, keys and tokens committed to a Git repository",
       "icon": "",
       "packages": [
@@ -6537,6 +7284,7 @@
       "id": "gitui",
       "name": "Gitui",
       "category": "devtools",
+      "group": "git",
       "description": "Blazing fast terminal-ui for git written in Rust",
       "icon": "",
       "packages": [
@@ -6552,6 +7300,7 @@
       "id": "glow",
       "name": "Glow",
       "category": "devtools",
+      "group": "docs",
       "description": "Command-line markdown renderer",
       "icon": "",
       "packages": [
@@ -6566,6 +7315,7 @@
       "id": "stow",
       "name": "GNU Stow",
       "category": "devtools",
+      "group": "terminal",
       "description": "Manage dotfiles by symlinking them from one folder",
       "icon": "",
       "packages": [
@@ -6582,6 +7332,7 @@
       "id": "graphviz",
       "name": "Graphviz",
       "category": "devtools",
+      "group": "docs",
       "description": "Draw graphs and diagrams from text (the dot language)",
       "icon": "",
       "packages": [
@@ -6599,6 +7350,7 @@
       "id": "guget",
       "name": "Guget",
       "category": "devtools",
+      "group": "checks",
       "description": "A TUI for managing NuGet packages across .NET projects: search, add, update and remove package references",
       "icon": "",
       "packages": [
@@ -6617,6 +7369,7 @@
       "id": "hexyl",
       "name": "Hexyl",
       "category": "devtools",
+      "group": "debug",
       "description": "Colored command-line hex viewer",
       "icon": "",
       "packages": [
@@ -6631,6 +7384,7 @@
       "id": "httpie",
       "name": "HTTPie",
       "category": "devtools",
+      "group": "web",
       "description": "Human-friendly CLI HTTP client for the API era",
       "icon": "",
       "packages": [
@@ -6647,6 +7401,7 @@
       "id": "hugo",
       "name": "Hugo",
       "category": "devtools",
+      "group": "docs",
       "description": "Build websites from Markdown files, very fast",
       "icon": "",
       "packages": [
@@ -6665,6 +7420,7 @@
       "id": "hurl",
       "name": "Hurl",
       "category": "devtools",
+      "group": "web",
       "description": "Run and test HTTP requests with plain text",
       "icon": "",
       "packages": [
@@ -6681,6 +7437,7 @@
       "id": "hyperfine",
       "name": "Hyperfine",
       "category": "devtools",
+      "group": "checks",
       "description": "A command-line benchmarking tool",
       "icon": "",
       "packages": [
@@ -6692,6 +7449,7 @@
       "id": "jujutsu",
       "name": "Jujutsu",
       "category": "devtools",
+      "group": "git",
       "description": "Version control (jj) that works on Git repositories and makes rewriting history easy",
       "icon": "",
       "packages": [
@@ -6709,6 +7467,7 @@
       "id": "just",
       "name": "Just",
       "category": "devtools",
+      "group": "terminal",
       "description": "A handy way to save and run project-specific commands",
       "icon": "",
       "packages": [
@@ -6724,6 +7483,7 @@
       "id": "kdiff3",
       "name": "KDiff3",
       "category": "devtools",
+      "group": "git",
       "description": "Compare and merge two or three files or folders",
       "icon": "kdiff3",
       "packages": [
@@ -6741,6 +7501,7 @@
       "id": "lazygit",
       "name": "Lazygit",
       "category": "devtools",
+      "group": "git",
       "description": "Simple terminal UI for git commands",
       "icon": "",
       "packages": [
@@ -6756,6 +7517,7 @@
       "id": "lnav",
       "name": "Lnav",
       "category": "devtools",
+      "group": "debug",
       "description": "A curses-based tool for viewing and analyzing log files",
       "icon": "",
       "packages": [
@@ -6771,6 +7533,7 @@
       "id": "ltrace",
       "name": "Ltrace",
       "category": "devtools",
+      "group": "debug",
       "description": "Tracks runtime library calls in dynamically linked programs",
       "icon": "",
       "packages": [
@@ -6787,6 +7550,7 @@
       "id": "meld",
       "name": "Meld",
       "category": "devtools",
+      "group": "git",
       "description": "Compare files, directories and working copies",
       "icon": "meld",
       "packages": [
@@ -6802,6 +7566,7 @@
       "id": "mitmproxy",
       "name": "Mitmproxy",
       "category": "devtools",
+      "group": "web",
       "description": "SSL-capable man-in-the-middle HTTP proxy",
       "icon": "",
       "packages": [
@@ -6818,6 +7583,7 @@
       "id": "mkcert",
       "name": "mkcert",
       "category": "devtools",
+      "group": "secrets",
       "description": "Make HTTPS certificates that browsers trust, for local development",
       "icon": "",
       "packages": [
@@ -6836,6 +7602,7 @@
       "id": "perf",
       "name": "perf",
       "category": "devtools",
+      "group": "debug",
       "description": "Linux's profiler: where a program, or the whole system, spends its time",
       "icon": "",
       "packages": [
@@ -6854,6 +7621,7 @@
       "id": "pre-commit",
       "name": "Pre-commit",
       "category": "devtools",
+      "group": "checks",
       "description": "A framework for managing and maintaining multi-language pre-commit hooks",
       "icon": "",
       "packages": [
@@ -6868,6 +7636,7 @@
       "id": "ripgrep",
       "name": "Ripgrep",
       "category": "devtools",
+      "group": "terminal",
       "description": "A search tool that combines the usability of ag with the raw speed of grep",
       "icon": "",
       "packages": [
@@ -6884,6 +7653,7 @@
       "id": "ruff",
       "name": "Ruff",
       "category": "devtools",
+      "group": "checks",
       "description": "Very fast Python linter and code formatter",
       "icon": "",
       "packages": [
@@ -6904,6 +7674,7 @@
       "id": "share-preview",
       "name": "Share Preview",
       "category": "devtools",
+      "group": "docs",
       "description": "Preview and debug websites metadata tags for social media share",
       "icon": "",
       "packages": [
@@ -6915,6 +7686,7 @@
       "id": "shellcheck",
       "name": "ShellCheck",
       "category": "devtools",
+      "group": "checks",
       "description": "Shell script analysis tool",
       "icon": "",
       "packages": [
@@ -6929,6 +7701,7 @@
       "id": "shfmt",
       "name": "Shfmt",
       "category": "devtools",
+      "group": "checks",
       "description": "Format shell programs",
       "icon": "",
       "packages": [
@@ -6944,6 +7717,7 @@
       "id": "sops",
       "name": "Sops",
       "category": "devtools",
+      "group": "secrets",
       "description": "Editor of encrypted files that supports YAML, JSON, ENV, INI and BINARY formats",
       "icon": "",
       "packages": [
@@ -6959,6 +7733,7 @@
       "id": "strace",
       "name": "Strace",
       "category": "devtools",
+      "group": "debug",
       "description": "A diagnostic, debugging and instructional userspace tracer",
       "icon": "",
       "packages": [
@@ -6975,6 +7750,7 @@
       "id": "go-task",
       "name": "Task",
       "category": "devtools",
+      "group": "checks",
       "description": "Task runner with a simple YAML file, an alternative to make (its command is go-task)",
       "icon": "",
       "packages": [
@@ -6993,6 +7769,7 @@
       "id": "tig",
       "name": "Tig",
       "category": "devtools",
+      "group": "git",
       "description": "Text-mode interface for Git",
       "icon": "",
       "packages": [
@@ -7008,6 +7785,7 @@
       "id": "tldr-pages",
       "name": "tldr (tealdeer)",
       "category": "devtools",
+      "group": "terminal",
       "description": "A fast tldr client in Rust",
       "icon": "",
       "packages": [
@@ -7028,6 +7806,7 @@
       "id": "tmux",
       "name": "Tmux",
       "category": "devtools",
+      "group": "terminal",
       "description": "Terminal multiplexer",
       "icon": "",
       "packages": [
@@ -7042,6 +7821,7 @@
       "id": "tokei",
       "name": "Tokei",
       "category": "devtools",
+      "group": "checks",
       "description": "A blazingly fast CLOC (Count Lines Of Code) program",
       "icon": "",
       "packages": [
@@ -7057,6 +7837,7 @@
       "id": "valgrind",
       "name": "Valgrind",
       "category": "devtools",
+      "group": "debug",
       "description": "Find memory leaks and memory errors in compiled programs",
       "icon": "",
       "packages": [
@@ -7076,6 +7857,7 @@
       "id": "visidata",
       "name": "VisiData",
       "category": "devtools",
+      "group": "terminal",
       "description": "Explore and edit CSV, JSON, Excel and database tables in the terminal",
       "icon": "",
       "packages": [
@@ -7095,6 +7877,7 @@
       "id": "watchexec",
       "name": "Watchexec",
       "category": "devtools",
+      "group": "terminal",
       "description": "Executes commands in response to file modifications",
       "icon": "",
       "packages": [
@@ -7109,6 +7892,7 @@
       "id": "wireshark",
       "name": "Wireshark",
       "category": "devtools",
+      "group": "web",
       "description": "Network traffic and protocol analyzer/sniffer - Qt GUI",
       "icon": "wireshark",
       "packages": [
@@ -7130,6 +7914,7 @@
       "id": "xh",
       "name": "Xh",
       "category": "devtools",
+      "group": "web",
       "description": "Friendly and fast tool for sending HTTP requests",
       "icon": "",
       "packages": [
@@ -7146,6 +7931,7 @@
       "id": "yq",
       "name": "Yq",
       "category": "devtools",
+      "group": "terminal",
       "description": "Portable command-line YAML processor",
       "icon": "",
       "packages": [
@@ -7162,6 +7948,7 @@
       "id": "zeal",
       "name": "Zeal",
       "category": "devtools",
+      "group": "docs",
       "description": "Browse programming documentation offline",
       "icon": "org.zealdocs.Zeal",
       "packages": [
@@ -7180,6 +7967,7 @@
       "id": "zellij",
       "name": "Zellij",
       "category": "devtools",
+      "group": "terminal",
       "description": "A terminal multiplexer",
       "icon": "",
       "packages": [
@@ -7194,6 +7982,7 @@
       "id": "zoxide",
       "name": "Zoxide",
       "category": "devtools",
+      "group": "terminal",
       "description": "A smarter cd command for your terminal",
       "icon": "",
       "packages": [
@@ -7209,6 +7998,7 @@
       "id": "db-browser-for-sqlite",
       "name": "DB Browser for SQLite",
       "category": "databases",
+      "group": "clients",
       "description": "A light GUI editor for SQLite databases, built on top of Qt",
       "icon": "sqlitebrowser",
       "packages": [
@@ -7225,6 +8015,7 @@
       "id": "dbeaver",
       "name": "DBeaver",
       "category": "databases",
+      "group": "clients",
       "description": "Free universal SQL Client for developers and database administrators (community edition)",
       "icon": "dbeaver",
       "packages": [
@@ -7241,6 +8032,7 @@
       "id": "duckdb",
       "name": "DuckDB",
       "category": "databases",
+      "group": "servers",
       "description": "Fast analytics database in one file; queries CSV, Parquet and JSON files directly",
       "icon": "",
       "packages": [
@@ -7260,6 +8052,7 @@
       "id": "insomnia",
       "name": "Insomnia",
       "category": "databases",
+      "group": "apis",
       "description": "API Client and Design Platform for GraphQL and REST",
       "icon": "insomnia",
       "packages": [
@@ -7277,6 +8070,7 @@
       "id": "mariadb",
       "name": "MariaDB",
       "category": "databases",
+      "group": "servers",
       "description": "Fast SQL database server, derived from MySQL",
       "icon": "",
       "packages": [
@@ -7296,6 +8090,7 @@
       "id": "mongodb-compass",
       "name": "MongoDB Compass",
       "category": "databases",
+      "group": "clients",
       "description": "The official GUI for MongoDB",
       "icon": "mongodb-compass",
       "packages": [
@@ -7312,6 +8107,7 @@
       "id": "mysql-workbench",
       "name": "MySQL Workbench",
       "category": "databases",
+      "group": "clients",
       "description": "A cross-platform, visual database design tool developed by MySQL",
       "icon": "mysql-workbench",
       "packages": [
@@ -7328,6 +8124,7 @@
       "id": "pgcli",
       "name": "Pgcli",
       "category": "databases",
+      "group": "clients",
       "description": "A command line interface for PostgreSQL with auto-completion and syntax highlighting",
       "icon": "",
       "packages": [
@@ -7343,6 +8140,7 @@
       "id": "postgresql",
       "name": "PostgreSQL",
       "category": "databases",
+      "group": "servers",
       "description": "Sophisticated object-relational DBMS",
       "icon": "",
       "packages": [
@@ -7362,6 +8160,7 @@
       "id": "postman",
       "name": "Postman",
       "category": "databases",
+      "group": "apis",
       "description": "Build, test, and document your APIs faster",
       "icon": "postman",
       "packages": [
@@ -7379,6 +8178,7 @@
       "id": "sqlgo",
       "name": "sqlgo",
       "category": "databases",
+      "group": "clients",
       "description": "A fast, keyboard-driven TUI SQL client for PostgreSQL, MySQL, SQL Server and SQLite",
       "icon": "",
       "packages": [
@@ -7399,6 +8199,7 @@
       "id": "valkey",
       "name": "Valkey",
       "category": "databases",
+      "group": "servers",
       "description": "An in-memory database that persists on disk",
       "icon": "",
       "packages": [
@@ -7420,6 +8221,7 @@
       "id": "yaak",
       "name": "Yaak",
       "category": "databases",
+      "group": "apis",
       "description": "A fast, secure, and offline API client",
       "icon": "",
       "packages": [
@@ -7438,6 +8240,7 @@
       "id": "ansible",
       "name": "Ansible",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "Official assortment of Ansible collections",
       "icon": "",
       "packages": [
@@ -7453,6 +8256,7 @@
       "id": "aws-cli",
       "name": "AWS CLI",
       "category": "cloud",
+      "group": "providers",
       "description": "Universal Command Line Interface for Amazon Web Services (version 2)",
       "icon": "",
       "packages": [
@@ -7467,6 +8271,7 @@
       "id": "azure-cli",
       "name": "Azure CLI",
       "category": "cloud",
+      "group": "providers",
       "description": "Command-line tools for Microsoft Azure",
       "icon": "",
       "packages": [
@@ -7481,6 +8286,7 @@
       "id": "buildah",
       "name": "Buildah",
       "category": "cloud",
+      "group": "containers",
       "description": "A tool which facilitates building OCI images",
       "icon": "",
       "packages": [
@@ -7497,6 +8303,7 @@
       "id": "caddy",
       "name": "Caddy",
       "category": "cloud",
+      "group": "hosting",
       "description": "Web server with automatic HTTPS",
       "icon": "",
       "packages": [
@@ -7514,6 +8321,7 @@
       "id": "certbot",
       "name": "Certbot",
       "category": "cloud",
+      "group": "hosting",
       "description": "Get and renew free HTTPS certificates from Let's Encrypt",
       "icon": "",
       "packages": [
@@ -7532,6 +8340,7 @@
       "id": "cloudflare",
       "name": "Cloudflare",
       "category": "cloud",
+      "group": "providers",
       "description": "The CLI for Cloudflare Workers",
       "icon": "",
       "packages": [
@@ -7548,6 +8357,7 @@
       "id": "ctop",
       "name": "ctop",
       "category": "cloud",
+      "group": "containers",
       "description": "Live view of running containers, like top",
       "icon": "",
       "packages": [
@@ -7565,6 +8375,7 @@
       "id": "digitalocean-cli",
       "name": "DigitalOcean CLI",
       "category": "cloud",
+      "group": "providers",
       "description": "The official command line interface for the DigitalOcean API",
       "icon": "",
       "packages": [
@@ -7579,6 +8390,7 @@
       "id": "dive",
       "name": "Dive",
       "category": "cloud",
+      "group": "containers",
       "description": "A tool for exploring layers in a docker image",
       "icon": "",
       "packages": [
@@ -7595,6 +8407,7 @@
       "id": "eksctl",
       "name": "eksctl",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "Create and manage Kubernetes clusters on Amazon EKS",
       "icon": "",
       "packages": [
@@ -7612,6 +8425,7 @@
       "id": "google-cloud-cli",
       "name": "Google Cloud CLI",
       "category": "cloud",
+      "group": "providers",
       "description": "A core set of command-line tools for the Google Cloud Platform. Includes only gcloud core (with beta and alpha commands), gcloud-crc32c and man pages",
       "icon": "google",
       "packages": [
@@ -7627,6 +8441,7 @@
       "id": "helm",
       "name": "Helm",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "The Kubernetes Package Manager",
       "icon": "helm",
       "packages": [
@@ -7642,6 +8457,7 @@
       "id": "hetzner-cloud-cli",
       "name": "Hetzner Cloud CLI",
       "category": "cloud",
+      "group": "providers",
       "description": "Manage Hetzner Cloud servers, networks and volumes from the terminal",
       "icon": "",
       "packages": [
@@ -7659,6 +8475,7 @@
       "id": "k9s",
       "name": "K9s",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "TUI for managing Kubernetes clusters and pods",
       "icon": "",
       "packages": [
@@ -7674,6 +8491,7 @@
       "id": "kubectl",
       "name": "Kubectl",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "A command line tool for communicating with a Kubernetes API server",
       "icon": "",
       "packages": [
@@ -7689,6 +8507,7 @@
       "id": "kubectx",
       "name": "Kubectx",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "Utility to manage and switch between kubectl contexts and Kubernetes namespaces",
       "icon": "",
       "packages": [
@@ -7704,6 +8523,7 @@
       "id": "kustomize",
       "name": "Kustomize",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "Template-free customization of Kubernetes YAML manifests",
       "icon": "",
       "packages": [
@@ -7719,6 +8539,7 @@
       "id": "lazydocker",
       "name": "Lazydocker",
       "category": "cloud",
+      "group": "containers",
       "description": "A simple terminal UI for docker and docker-compose, written in Go with the gocui library",
       "icon": "",
       "packages": [
@@ -7735,6 +8556,7 @@
       "id": "local-clusters",
       "name": "Local clusters",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "Kubernetes IN Docker - local clusters for testing Kubernetes",
       "icon": "",
       "packages": [
@@ -7751,6 +8573,7 @@
       "id": "nginx",
       "name": "nginx",
       "category": "cloud",
+      "group": "hosting",
       "description": "Web server and reverse proxy",
       "icon": "",
       "packages": [
@@ -7768,6 +8591,7 @@
       "id": "ngrok",
       "name": "Ngrok",
       "category": "cloud",
+      "group": "hosting",
       "description": "A tunneling, reverse proxy for developing and understanding networked, HTTP services",
       "icon": "",
       "packages": [
@@ -7782,6 +8606,7 @@
       "id": "opentofu",
       "name": "OpenTofu",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "Lets you declaratively manage your cloud infrastructure",
       "icon": "",
       "packages": [
@@ -7797,6 +8622,7 @@
       "id": "packer",
       "name": "Packer",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "Tool for creating machine images for platforms from a single source configuration",
       "icon": "",
       "packages": [
@@ -7812,6 +8638,7 @@
       "id": "podman-desktop",
       "name": "Podman Desktop",
       "category": "cloud",
+      "group": "containers",
       "description": "Manage containers, images and pods in a window, with Podman or Docker",
       "icon": "podman-desktop",
       "packages": [
@@ -7830,6 +8657,7 @@
       "id": "podman-compose",
       "name": "Podman-compose",
       "category": "cloud",
+      "group": "containers",
       "description": "A script to run docker-compose.yml using podman",
       "icon": "",
       "packages": [
@@ -7845,6 +8673,7 @@
       "id": "pulumi",
       "name": "Pulumi",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "Modern Infrastructure as Code",
       "icon": "",
       "packages": [
@@ -7860,6 +8689,7 @@
       "id": "skopeo",
       "name": "Skopeo",
       "category": "cloud",
+      "group": "containers",
       "description": "A command line utility for various operations on container images and image repositories",
       "icon": "",
       "packages": [
@@ -7876,6 +8706,7 @@
       "id": "stern",
       "name": "Stern",
       "category": "cloud",
+      "group": "kubernetes",
       "description": "Multi pod and container log tailing for Kubernetes",
       "icon": "",
       "packages": [
@@ -7891,6 +8722,7 @@
       "id": "terraform",
       "name": "Terraform",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "HashiCorp tool for building and updating infrastructure as code idempotently",
       "icon": "",
       "packages": [
@@ -7906,6 +8738,7 @@
       "id": "terragrunt",
       "name": "Terragrunt",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "Keep Terraform and OpenTofu setups for many environments short and consistent",
       "icon": "",
       "packages": [
@@ -7923,6 +8756,7 @@
       "id": "trivy",
       "name": "Trivy",
       "category": "cloud",
+      "group": "containers",
       "description": "Scan container images, code and infrastructure files for known vulnerabilities and secrets",
       "icon": "",
       "packages": [
@@ -7941,6 +8775,7 @@
       "id": "vault",
       "name": "Vault",
       "category": "cloud",
+      "group": "infrastructure",
       "description": "HashiCorp's server and command line for storing and handing out secrets",
       "icon": "",
       "packages": [
@@ -7958,6 +8793,7 @@
       "id": "amp",
       "name": "Amp",
       "category": "ai",
+      "group": "agents",
       "description": "Amp's coding agent for your terminal",
       "icon": "",
       "packages": [
@@ -7976,6 +8812,7 @@
       "id": "claude-code",
       "name": "Claude Code",
       "category": "ai",
+      "group": "agents",
       "description": "An agentic coding tool that lives in your terminal",
       "icon": "",
       "packages": [
@@ -7993,6 +8830,7 @@
       "id": "claude-desktop",
       "name": "Claude Desktop",
       "category": "ai",
+      "group": "chat",
       "description": "Official Claude AI desktop app from Anthropic",
       "icon": "",
       "packages": [
@@ -8010,6 +8848,7 @@
       "id": "codex-cli",
       "name": "Codex CLI",
       "category": "ai",
+      "group": "agents",
       "description": "OpenAIs lightweight coding agent that runs in your terminal",
       "icon": "",
       "packages": [
@@ -8028,6 +8867,7 @@
       "id": "codex-desktop",
       "name": "Codex Desktop",
       "category": "ai",
+      "group": "chat",
       "description": "Official ChatGPT desktop app with Codex",
       "icon": "",
       "packages": [
@@ -8046,6 +8886,7 @@
       "id": "crush",
       "name": "Crush",
       "category": "ai",
+      "group": "agents",
       "description": "A powerful terminal-based AI assistant for developers, providing intelligent coding assistance directly in your terminal",
       "icon": "",
       "packages": [
@@ -8062,6 +8903,7 @@
       "id": "cursor-cli",
       "name": "Cursor CLI",
       "category": "ai",
+      "group": "agents",
       "description": "CLI tool for Cursor, the AI-first coding agent",
       "icon": "cursor",
       "packages": [
@@ -8078,6 +8920,7 @@
       "id": "gemini-cli",
       "name": "Gemini CLI",
       "category": "ai",
+      "group": "agents",
       "description": "Open-source AI agent that brings the power of Gemini directly into your terminal",
       "icon": "gemini",
       "packages": [
@@ -8095,6 +8938,7 @@
       "id": "github-copilot-cli",
       "name": "GitHub Copilot CLI",
       "category": "ai",
+      "group": "agents",
       "description": "GitHub Copilot CLI brings the power of Copilot coding agent directly to your terminal",
       "icon": "github",
       "packages": [
@@ -8111,6 +8955,7 @@
       "id": "grok-build",
       "name": "Grok Build",
       "category": "ai",
+      "group": "agents",
       "description": "xAI's coding agent for your terminal",
       "icon": "",
       "packages": [
@@ -8129,6 +8974,7 @@
       "id": "kilo-code",
       "name": "Kilo Code",
       "category": "ai",
+      "group": "agents",
       "description": "Open-source coding agent for your terminal",
       "icon": "",
       "packages": [
@@ -8147,6 +8993,7 @@
       "id": "llama-cpp",
       "name": "Llama.cpp",
       "category": "ai",
+      "group": "local",
       "description": "Run large language models locally, on any graphics card through Vulkan",
       "icon": "",
       "packages": [
@@ -8166,6 +9013,7 @@
       "id": "llmfit",
       "name": "LLMfit",
       "category": "ai",
+      "group": "local",
       "description": "Tells you which local AI models will run well on this computer's hardware",
       "icon": "",
       "packages": [
@@ -8185,6 +9033,7 @@
       "id": "lm-studio",
       "name": "LM Studio",
       "category": "ai",
+      "group": "local",
       "description": "LM Studio - A desktop app for exploring and running large language models locally",
       "icon": "",
       "packages": [
@@ -8203,6 +9052,7 @@
       "id": "ollama",
       "name": "Ollama",
       "category": "ai",
+      "group": "local",
       "description": "Run large language models locally, on any graphics card through Vulkan",
       "icon": "",
       "packages": [
@@ -8226,6 +9076,7 @@
       "id": "opencode",
       "name": "OpenCode",
       "category": "ai",
+      "group": "agents",
       "description": "The open source coding agent",
       "icon": "",
       "packages": [
@@ -8242,6 +9093,7 @@
       "id": "opencode-desktop",
       "name": "OpenCode Desktop",
       "category": "ai",
+      "group": "agents",
       "description": "The open source coding agent, as a desktop app",
       "icon": "",
       "packages": [
@@ -8258,6 +9110,7 @@
       "id": "perplexity",
       "name": "Perplexity",
       "category": "ai",
+      "group": "chat",
       "description": "Official Perplexity desktop app: AI search that answers with its sources",
       "icon": "",
       "packages": [
@@ -8276,6 +9129,7 @@
       "id": "pi-coding-agent",
       "name": "Pi",
       "category": "ai",
+      "group": "agents",
       "description": "A small terminal coding agent that works with any model provider and that you extend yourself",
       "icon": "",
       "packages": [
@@ -8296,6 +9150,7 @@
       "id": "qwen-code",
       "name": "Qwen Code",
       "category": "ai",
+      "group": "agents",
       "description": "Open-source coding agent for your terminal, made for Alibaba's Qwen models",
       "icon": "",
       "packages": [
@@ -8314,6 +9169,7 @@
       "id": "ramalama",
       "name": "Ramalama",
       "category": "ai",
+      "group": "local",
       "description": "Simple local AI using OCI containers",
       "icon": "",
       "packages": [
@@ -8332,6 +9188,7 @@
       "id": "t3-code",
       "name": "T3 Code",
       "category": "ai",
+      "group": "agents",
       "description": "Open-source control plane for coding agents",
       "icon": "",
       "packages": [
@@ -8348,6 +9205,7 @@
       "id": "whisper-cpp",
       "name": "Whisper.cpp",
       "category": "ai",
+      "group": "local",
       "description": "Turn speech in audio files into text on this computer, with OpenAI's Whisper models (whisper-cli)",
       "icon": "",
       "packages": [
@@ -8368,6 +9226,7 @@
       "id": "1password",
       "name": "1Password",
       "category": "security",
+      "group": "passwords",
       "description": "Password manager and secure wallet",
       "icon": "1password",
       "packages": [
@@ -8384,6 +9243,7 @@
       "id": "authenticator",
       "name": "Authenticator",
       "category": "security",
+      "group": "codes",
       "description": "Simple application for generating two-factor authentication (2FA) codes",
       "icon": "",
       "packages": [
@@ -8401,6 +9261,7 @@
       "id": "bitwarden",
       "name": "Bitwarden",
       "category": "security",
+      "group": "passwords",
       "description": "A secure and free password manager for all of your devices",
       "icon": "bitwarden",
       "packages": [
@@ -8416,6 +9277,7 @@
       "id": "bitwarden-cli",
       "name": "Bitwarden CLI",
       "category": "security",
+      "group": "passwords",
       "description": "Use your Bitwarden vault from the terminal and in scripts",
       "icon": "bitwarden",
       "packages": [
@@ -8434,6 +9296,7 @@
       "id": "clamui",
       "name": "ClamUI",
       "category": "security",
+      "group": "protection",
       "description": "Modern GUI for ClamAV antivirus",
       "icon": "",
       "packages": [
@@ -8450,6 +9313,7 @@
       "id": "cryptomator",
       "name": "Cryptomator",
       "category": "security",
+      "group": "encryption",
       "description": "Encrypt files before they sync to Dropbox, Google Drive or any other cloud",
       "icon": "org.cryptomator.Cryptomator",
       "packages": [
@@ -8468,6 +9332,7 @@
       "id": "firewalld",
       "name": "Firewalld",
       "category": "security",
+      "group": "protection",
       "description": "Firewall daemon with D-Bus interface",
       "icon": "",
       "packages": [
@@ -8483,6 +9348,7 @@
       "id": "gufw",
       "name": "Gufw",
       "category": "security",
+      "group": "protection",
       "description": "Uncomplicated way to manage your Linux firewall",
       "icon": "gufw",
       "packages": [
@@ -8498,6 +9364,7 @@
       "id": "keepassxc",
       "name": "KeePassXC",
       "category": "security",
+      "group": "passwords",
       "description": "Cross-platform community-driven port of Keepass password manager",
       "icon": "keepassxc",
       "packages": [
@@ -8513,6 +9380,7 @@
       "id": "kleopatra",
       "name": "Kleopatra",
       "category": "security",
+      "group": "encryption",
       "description": "Manage GPG keys and certificates; encrypt and sign files",
       "icon": "kleopatra",
       "packages": [
@@ -8532,6 +9400,7 @@
       "id": "kwalletmanager",
       "name": "KWalletManager",
       "category": "security",
+      "group": "passwords",
       "description": "Wallet management tool",
       "icon": "kwalletmanager",
       "packages": [
@@ -8547,6 +9416,7 @@
       "id": "lynis",
       "name": "Lynis",
       "category": "security",
+      "group": "protection",
       "description": "Audit this computer's security settings and get suggestions",
       "icon": "",
       "packages": [
@@ -8564,6 +9434,7 @@
       "id": "metadata-cleaner",
       "name": "Metadata Cleaner",
       "category": "security",
+      "group": "privacy",
       "description": "Python GTK application to view and clean metadata in files, using mat2",
       "icon": "",
       "packages": [
@@ -8579,6 +9450,7 @@
       "id": "obfuscate",
       "name": "Obfuscate",
       "category": "security",
+      "group": "privacy",
       "description": "Censor private information from any image",
       "icon": "",
       "packages": [
@@ -8594,6 +9466,7 @@
       "id": "onionshare",
       "name": "OnionShare",
       "category": "security",
+      "group": "privacy",
       "description": "Share files, host a site or chat anonymously over Tor",
       "icon": "org.onionshare.OnionShare",
       "packages": [
@@ -8612,6 +9485,7 @@
       "id": "pass",
       "name": "pass",
       "category": "security",
+      "group": "passwords",
       "description": "Password manager for the terminal: each password a GPG-encrypted file, synced with Git",
       "icon": "",
       "packages": [
@@ -8629,6 +9503,7 @@
       "id": "proton-pass",
       "name": "Proton Pass",
       "category": "security",
+      "group": "passwords",
       "description": "Open-source and secure identity manager",
       "icon": "proton-pass",
       "packages": [
@@ -8644,6 +9519,7 @@
       "id": "raider",
       "name": "Raider",
       "category": "security",
+      "group": "privacy",
       "description": "File deletion program designed to permanently remove sensitive files from your computer, enhancing data privacy",
       "icon": "",
       "packages": [
@@ -8658,6 +9534,7 @@
       "id": "seahorse",
       "name": "Seahorse",
       "category": "security",
+      "group": "passwords",
       "description": "GNOME application for managing PGP keys",
       "icon": "seahorse",
       "packages": [
@@ -8676,6 +9553,7 @@
       "id": "secrets",
       "name": "Secrets",
       "category": "security",
+      "group": "passwords",
       "description": "Password manager for GNOME which makes use of the KeePass v.4 format",
       "icon": "",
       "packages": [
@@ -8692,6 +9570,7 @@
       "id": "veracrypt",
       "name": "VeraCrypt",
       "category": "security",
+      "group": "encryption",
       "description": "Encrypt drives, USB sticks and file containers",
       "icon": "veracrypt",
       "packages": [
@@ -8710,6 +9589,7 @@
       "id": "yubikey-manager",
       "name": "YubiKey Manager",
       "category": "security",
+      "group": "codes",
       "description": "Set up a YubiKey from the terminal (ykman): PIN, FIDO2, one-time codes",
       "icon": "",
       "packages": [
@@ -8734,6 +9614,7 @@
       "id": "anydesk",
       "name": "AnyDesk",
       "category": "network",
+      "group": "remote",
       "description": "Remote desktop: control another computer, or get help on this one",
       "icon": "anydesk",
       "packages": [
@@ -8750,6 +9631,7 @@
       "id": "aria2",
       "name": "aria2",
       "category": "network",
+      "group": "downloads",
       "description": "Download manager for the terminal: HTTP, FTP and BitTorrent, over several connections at once",
       "icon": "",
       "packages": [
@@ -8768,6 +9650,7 @@
       "id": "cloudflare-warp",
       "name": "Cloudflare WARP",
       "category": "network",
+      "group": "vpn",
       "description": "Cloudflare's 1.1.1.1 VPN and Zero Trust client",
       "icon": "",
       "packages": [
@@ -8792,6 +9675,7 @@
       "id": "croc",
       "name": "croc",
       "category": "network",
+      "group": "sharing",
       "description": "Send files between two computers with a short code phrase, from the terminal",
       "icon": "",
       "packages": [
@@ -8809,6 +9693,7 @@
       "id": "deluge",
       "name": "Deluge",
       "category": "network",
+      "group": "downloads",
       "description": "GTK UI for Deluge",
       "icon": "deluge",
       "packages": [
@@ -8824,6 +9709,7 @@
       "id": "deskflow",
       "name": "Deskflow",
       "category": "network",
+      "group": "remote",
       "description": "Share one mouse and keyboard between multiple computers",
       "icon": "",
       "packages": [
@@ -8841,6 +9727,7 @@
       "id": "dropbox",
       "name": "Dropbox",
       "category": "network",
+      "group": "sync",
       "description": "A free service that lets you bring your photos, docs, and videos anywhere and share them easily",
       "icon": "dropbox",
       "packages": [
@@ -8857,6 +9744,7 @@
       "id": "filezilla",
       "name": "FileZilla",
       "category": "network",
+      "group": "sharing",
       "description": "Fast and reliable FTP, FTPS and SFTP client",
       "icon": "filezilla",
       "packages": [
@@ -8872,6 +9760,7 @@
       "id": "fragments",
       "name": "Fragments",
       "category": "network",
+      "group": "downloads",
       "description": "BitTorrent client for GNOME",
       "icon": "",
       "packages": [
@@ -8887,6 +9776,7 @@
       "id": "free-download-manager",
       "name": "Free Download Manager",
       "category": "network",
+      "group": "downloads",
       "description": "FDM is a powerful modern download accelerator and organizer",
       "icon": "freedownloadmanager",
       "packages": [
@@ -8902,6 +9792,7 @@
       "id": "freefilesync",
       "name": "FreeFileSync",
       "category": "network",
+      "group": "sync",
       "description": "Compare two folders and sync them, for backups to drives and network shares",
       "icon": "freefilesync",
       "packages": [
@@ -8920,6 +9811,7 @@
       "id": "omarchy-windows-vm",
       "name": "FreeRDP",
       "category": "network",
+      "group": "remote",
       "description": "Remote Desktop (RDP) client for the command line, as Windows VMs and servers use",
       "icon": "",
       "packages": [
@@ -8937,6 +9829,7 @@
       "id": "insync",
       "name": "Insync",
       "category": "network",
+      "group": "sync",
       "description": "Sync folders with Google Drive, OneDrive and Dropbox (paid, with a trial)",
       "icon": "insync",
       "packages": [
@@ -8954,6 +9847,7 @@
       "id": "jdownloader",
       "name": "JDownloader 2",
       "category": "network",
+      "group": "downloads",
       "description": "Download manager for file hosts and video sites: grabs links, resumes and unpacks",
       "icon": "jdownloader",
       "packages": [
@@ -8971,6 +9865,7 @@
       "id": "kde-connect",
       "name": "KDE Connect",
       "category": "network",
+      "group": "sharing",
       "description": "Link a phone to this computer: shared clipboard, phone notifications, file transfer, media and remote control over the local network",
       "icon": "kdeconnect",
       "packages": [
@@ -8993,6 +9888,7 @@
       "id": "ktorrent",
       "name": "KTorrent",
       "category": "network",
+      "group": "downloads",
       "description": "A powerful BitTorrent client for KDE",
       "icon": "ktorrent",
       "packages": [
@@ -9008,6 +9904,7 @@
       "id": "localsend",
       "name": "LocalSend",
       "category": "network",
+      "group": "sharing",
       "description": "Send files to nearby phones and computers over the local network, no account needed",
       "icon": "localsend",
       "packages": [
@@ -9026,6 +9923,7 @@
       "id": "mosh",
       "name": "Mosh",
       "category": "network",
+      "group": "remote",
       "description": "Remote terminal like SSH that survives sleep, roaming and bad connections",
       "icon": "",
       "packages": [
@@ -9043,6 +9941,7 @@
       "id": "mullvad-vpn",
       "name": "Mullvad VPN",
       "category": "network",
+      "group": "vpn",
       "description": "Mullvad VPN client (desktop application)",
       "icon": "mullvad-vpn",
       "packages": [
@@ -9062,6 +9961,7 @@
       "id": "nextcloud-client",
       "name": "Nextcloud client",
       "category": "network",
+      "group": "sync",
       "description": "Nextcloud desktop client",
       "icon": "nextcloud",
       "packages": [
@@ -9077,6 +9977,7 @@
       "id": "nicotine",
       "name": "Nicotine+",
       "category": "network",
+      "group": "downloads",
       "description": "Share and download music on the Soulseek network",
       "icon": "org.nicotine_plus.Nicotine",
       "packages": [
@@ -9094,6 +9995,7 @@
       "id": "nmap",
       "name": "Nmap",
       "category": "network",
+      "group": "checks",
       "description": "Scan a network for devices, open ports and services, from the terminal",
       "icon": "nmap",
       "packages": [
@@ -9111,6 +10013,7 @@
       "id": "nordvpn",
       "name": "NordVPN",
       "category": "network",
+      "group": "vpn",
       "description": "NordVPN CLI tool for Linux",
       "icon": "",
       "packages": [
@@ -9133,6 +10036,7 @@
       "id": "onedrive",
       "name": "OneDrive",
       "category": "network",
+      "group": "sync",
       "description": "Sync a folder with Microsoft OneDrive (a command-line client)",
       "icon": "",
       "packages": [
@@ -9154,6 +10058,7 @@
       "id": "openconnect",
       "name": "OpenConnect",
       "category": "network",
+      "group": "vpn",
       "description": "Connect to company VPNs: Cisco AnyConnect, GlobalProtect, Pulse Secure and Fortinet",
       "icon": "",
       "packages": [
@@ -9174,6 +10079,7 @@
       "id": "openvpn",
       "name": "OpenVPN",
       "category": "network",
+      "group": "vpn",
       "description": "Connect to OpenVPN servers, such as a provider's or your company's",
       "icon": "openvpn",
       "packages": [
@@ -9194,6 +10100,7 @@
       "id": "parsec",
       "name": "Parsec",
       "category": "network",
+      "group": "remote",
       "description": "Remotely connect to a gaming pc for a low latency remote computing experience",
       "icon": "parsec",
       "packages": [
@@ -9209,6 +10116,7 @@
       "id": "proton-vpn",
       "name": "Proton VPN",
       "category": "network",
+      "group": "vpn",
       "description": "ProtonVPN GTK app, Maintained by Community",
       "icon": "",
       "packages": [
@@ -9223,6 +10131,7 @@
       "id": "putty",
       "name": "PuTTY",
       "category": "network",
+      "group": "remote",
       "description": "A terminal integrated SSH/Telnet client",
       "icon": "putty",
       "packages": [
@@ -9239,6 +10148,7 @@
       "id": "qbittorrent",
       "name": "QBittorrent",
       "category": "network",
+      "group": "downloads",
       "description": "An advanced BitTorrent client programmed in C++, based on Qt toolkit and libtorrent-rasterbar",
       "icon": "qbittorrent",
       "packages": [
@@ -9254,6 +10164,7 @@
       "id": "rclone",
       "name": "rclone",
       "category": "network",
+      "group": "sync",
       "description": "Sync files to and from cloud storage, like rsync for the cloud",
       "icon": "",
       "packages": [
@@ -9272,6 +10183,7 @@
       "id": "remmina",
       "name": "Remmina",
       "category": "network",
+      "group": "remote",
       "description": "Remote desktop client written in GTK+",
       "icon": "remmina",
       "packages": [
@@ -9289,6 +10201,7 @@
       "id": "resilio-sync",
       "name": "Resilio Sync",
       "category": "network",
+      "group": "sync",
       "description": "Resilio Sync (ex:BitTorrent Sync) - automatically sync files via secure, distributed technology",
       "icon": "",
       "packages": [
@@ -9304,6 +10217,7 @@
       "id": "rustdesk",
       "name": "RustDesk",
       "category": "network",
+      "group": "remote",
       "description": "Yet another remote desktop software, written in Rust. Works out of the box, no configuration required. Great alternative to TeamViewer and AnyDesk!",
       "icon": "rustdesk",
       "packages": [
@@ -9320,6 +10234,7 @@
       "id": "speedtest-cli",
       "name": "Speedtest CLI",
       "category": "network",
+      "group": "checks",
       "description": "Measure the internet connection's download and upload speed, from the terminal",
       "icon": "",
       "packages": [
@@ -9337,6 +10252,7 @@
       "id": "sshfs",
       "name": "SSHFS",
       "category": "network",
+      "group": "sharing",
       "description": "Mount a folder from another computer over SSH",
       "icon": "",
       "packages": [
@@ -9355,6 +10271,7 @@
       "id": "syncthing",
       "name": "Syncthing",
       "category": "network",
+      "group": "sync",
       "description": "Open Source Continuous Replication / Cluster Synchronization Thing",
       "icon": "syncthing",
       "packages": [
@@ -9376,6 +10293,7 @@
       "id": "tailscale",
       "name": "Tailscale",
       "category": "network",
+      "group": "vpn",
       "description": "A mesh VPN that makes it easy to connect your devices, wherever they are",
       "icon": "",
       "packages": [
@@ -9395,6 +10313,7 @@
       "id": "tigervnc",
       "name": "TigerVNC",
       "category": "network",
+      "group": "remote",
       "description": "See and control another computer's screen over VNC",
       "icon": "tigervnc",
       "packages": [
@@ -9411,6 +10330,7 @@
       "id": "transmission",
       "name": "Transmission",
       "category": "network",
+      "group": "downloads",
       "description": "Fast, easy, and free BitTorrent client (GTK+ GUI)",
       "icon": "transmission-gtk",
       "packages": [
@@ -9426,6 +10346,7 @@
       "id": "warp",
       "name": "Warp",
       "category": "network",
+      "group": "sharing",
       "description": "Securely send files to each other via the internet or local network by exchanging a word-based code",
       "icon": "",
       "packages": [
@@ -9441,6 +10362,7 @@
       "id": "warpinator",
       "name": "Warpinator",
       "category": "network",
+      "group": "sharing",
       "description": "LAN file sender, send and receive files across the network",
       "icon": "warpinator",
       "packages": [
@@ -9456,6 +10378,7 @@
       "id": "zerotier",
       "name": "ZeroTier",
       "category": "network",
+      "group": "vpn",
       "description": "Join your devices into one private network across the internet",
       "icon": "",
       "packages": [
@@ -9479,6 +10402,7 @@
       "id": "alacritty",
       "name": "Alacritty",
       "category": "utilities",
+      "group": "terminal",
       "description": "A cross-platform, GPU-accelerated terminal emulator",
       "icon": "",
       "packages": [
@@ -9495,6 +10419,7 @@
       "id": "audio-mixer",
       "name": "Audio mixer",
       "category": "utilities",
+      "group": "desktop",
       "description": "PulseAudio Volume Control",
       "icon": "pavucontrol",
       "packages": [
@@ -9511,6 +10436,7 @@
       "id": "bleachbit",
       "name": "BleachBit",
       "category": "utilities",
+      "group": "cleanup",
       "description": "Free disk space by clearing caches, logs and browser data",
       "icon": "bleachbit",
       "packages": [
@@ -9530,6 +10456,7 @@
       "id": "catfish",
       "name": "Catfish",
       "category": "utilities",
+      "group": "files",
       "description": "Versatile file searching tool",
       "icon": "catfish",
       "packages": [
@@ -9545,6 +10472,7 @@
       "id": "clairvoyant",
       "name": "Clairvoyant",
       "category": "utilities",
+      "group": "everyday",
       "description": "Get psychic answers from this fortune teller",
       "icon": "",
       "packages": [
@@ -9556,6 +10484,7 @@
       "id": "clapgrep",
       "name": "Clapgrep",
       "category": "utilities",
+      "group": "files",
       "description": "One app to search through all your files",
       "icon": "",
       "packages": [
@@ -9571,6 +10500,7 @@
       "id": "collision",
       "name": "Collision",
       "category": "utilities",
+      "group": "files",
       "description": "GUI tool to generate, compare and verify MD5, SHA-1, SHA-256, SHA-512, Blake3, CRC32 and Adler32 hashes",
       "icon": "",
       "packages": [
@@ -9588,6 +10518,7 @@
       "id": "conky",
       "name": "Conky",
       "category": "utilities",
+      "group": "desktop",
       "description": "Light-weight system monitor for X, Wayland, and other things, too",
       "icon": "conky",
       "packages": [
@@ -9603,6 +10534,7 @@
       "id": "cpu-x",
       "name": "CPU-X",
       "category": "utilities",
+      "group": "monitors",
       "description": "A Free software that gathers information on CPU, motherboard and more",
       "icon": "cpu-x",
       "packages": [
@@ -9619,6 +10551,7 @@
       "id": "czkawka",
       "name": "Czkawka",
       "category": "utilities",
+      "group": "cleanup",
       "description": "Find duplicate files, similar photos, empty folders and other clutter",
       "icon": "com.github.qarmin.czkawka",
       "packages": [
@@ -9636,6 +10569,7 @@
       "id": "decoder",
       "name": "Decoder",
       "category": "utilities",
+      "group": "everyday",
       "description": "QR code scanner and generator",
       "icon": "",
       "packages": [
@@ -9651,6 +10585,7 @@
       "id": "dialect",
       "name": "Dialect",
       "category": "utilities",
+      "group": "everyday",
       "description": "Translation app for GNOME based on Google Translate and other online services",
       "icon": "",
       "packages": [
@@ -9666,6 +10601,7 @@
       "id": "disk-usage",
       "name": "Disk usage",
       "category": "utilities",
+      "group": "cleanup",
       "description": "A graphical directory tree analyzer",
       "icon": "baobab",
       "packages": [
@@ -9681,6 +10617,7 @@
       "id": "disktree",
       "name": "Disktree",
       "category": "utilities",
+      "group": "cleanup",
       "description": "See what fills a disk as a treemap, mark what should go and move it to the trash; karchy's disk usage tool",
       "icon": "",
       "packages": [
@@ -9703,6 +10640,7 @@
       "id": "dolphin",
       "name": "Dolphin",
       "category": "utilities",
+      "group": "files",
       "description": "KDE's file manager, with split view, tabs and a terminal panel",
       "icon": "org.kde.dolphin",
       "packages": [
@@ -9720,6 +10658,7 @@
       "id": "droidcam",
       "name": "DroidCam",
       "category": "utilities",
+      "group": "desktop",
       "description": "A tool to turn your phone/tablet into a wireless/usb webcam",
       "icon": "droidcam",
       "packages": [
@@ -9752,6 +10691,7 @@
       "id": "duf",
       "name": "duf",
       "category": "utilities",
+      "group": "cleanup",
       "description": "Free space on every disk at a glance, in the terminal",
       "icon": "",
       "packages": [
@@ -9769,6 +10709,7 @@
       "id": "elastic",
       "name": "Elastic",
       "category": "utilities",
+      "group": "makers",
       "description": "Design and export spring physics-based animations to use with libadwaita",
       "icon": "",
       "packages": [
@@ -9780,6 +10721,7 @@
       "id": "emblem",
       "name": "Emblem",
       "category": "utilities",
+      "group": "makers",
       "description": "Generate projects avatars for your Matrix rooms and git forges from a symbolic icon",
       "icon": "",
       "packages": [
@@ -9791,6 +10733,7 @@
       "id": "extension-manager",
       "name": "Extension Manager",
       "category": "utilities",
+      "group": "desktop",
       "description": "A native tool for browsing, installing, and managing GNOME Shell Extensions",
       "icon": "",
       "packages": [
@@ -9805,6 +10748,7 @@
       "id": "eyedropper",
       "name": "Eyedropper",
       "category": "utilities",
+      "group": "makers",
       "description": "Color picker and formatter",
       "icon": "",
       "packages": [
@@ -9819,6 +10763,7 @@
       "id": "file-roller",
       "name": "File Roller",
       "category": "utilities",
+      "group": "files",
       "description": "Open and create archives: zip, tar, 7z and more",
       "icon": "org.gnome.FileRoller",
       "packages": [
@@ -9838,6 +10783,7 @@
       "id": "filelight",
       "name": "Filelight",
       "category": "utilities",
+      "group": "cleanup",
       "description": "View disk usage information",
       "icon": "filelight",
       "packages": [
@@ -9853,6 +10799,7 @@
       "id": "fish",
       "name": "Fish",
       "category": "utilities",
+      "group": "terminal",
       "description": "A shell that suggests commands as you type and colors mistakes, with no setup",
       "icon": "fish",
       "packages": [
@@ -9871,6 +10818,7 @@
       "id": "flameshot",
       "name": "Flameshot",
       "category": "utilities",
+      "group": "desktop",
       "description": "Powerful yet simple to use screenshot software",
       "icon": "flameshot",
       "packages": [
@@ -9886,6 +10834,7 @@
       "id": "foot",
       "name": "foot",
       "category": "utilities",
+      "group": "terminal",
       "description": "A fast, lightweight terminal; karchy's terminal",
       "icon": "foot",
       "packages": [
@@ -9902,6 +10851,7 @@
       "id": "ghostty",
       "name": "Ghostty",
       "category": "utilities",
+      "group": "terminal",
       "description": "Fast, native, feature-rich terminal emulator pushing modern features",
       "icon": "",
       "packages": [
@@ -9918,6 +10868,7 @@
       "id": "gnome-clocks",
       "name": "GNOME Clocks",
       "category": "utilities",
+      "group": "everyday",
       "description": "Clocks applications for GNOME",
       "icon": "gnome-clocks",
       "packages": [
@@ -9935,6 +10886,7 @@
       "id": "gnome-maps",
       "name": "GNOME Maps",
       "category": "utilities",
+      "group": "everyday",
       "description": "Find places around the world",
       "icon": "gnome-maps",
       "packages": [
@@ -9950,6 +10902,7 @@
       "id": "gnome-weather",
       "name": "GNOME Weather",
       "category": "utilities",
+      "group": "everyday",
       "description": "Access current weather conditions and forecasts",
       "icon": "gnome-weather",
       "packages": [
@@ -9961,6 +10914,7 @@
       "id": "google-earth-pro",
       "name": "Google Earth Pro",
       "category": "utilities",
+      "group": "everyday",
       "description": "3D interface to explore the globe, terrain, streets, buildings and other planets (Pro version)",
       "icon": "google-earth-pro",
       "packages": [
@@ -9972,6 +10926,7 @@
       "id": "gpu-viewer",
       "name": "GPU-Viewer",
       "category": "utilities",
+      "group": "monitors",
       "description": "A frontend to glxinfo and vulkaninfo",
       "icon": "",
       "packages": [
@@ -9988,6 +10943,7 @@
       "id": "hardinfo2",
       "name": "Hardinfo2",
       "category": "utilities",
+      "group": "monitors",
       "description": "System information and benchmarks: hardware, sensors, drivers",
       "icon": "hardinfo2",
       "packages": [
@@ -10005,6 +10961,7 @@
       "id": "health",
       "name": "Health",
       "category": "utilities",
+      "group": "everyday",
       "description": "Health tracking app for the GNOME desktop",
       "icon": "",
       "packages": [
@@ -10021,6 +10978,7 @@
       "id": "htop",
       "name": "htop",
       "category": "utilities",
+      "group": "monitors",
       "description": "Interactive process viewer for the terminal",
       "icon": "htop",
       "packages": [
@@ -10039,6 +10997,7 @@
       "id": "junction",
       "name": "Junction",
       "category": "utilities",
+      "group": "desktop",
       "description": "Application chooser to open files and links",
       "icon": "",
       "packages": [
@@ -10054,6 +11013,7 @@
       "id": "kitty",
       "name": "Kitty",
       "category": "utilities",
+      "group": "terminal",
       "description": "A modern, hackable, featureful, OpenGL-based terminal emulator",
       "icon": "kitty",
       "packages": [
@@ -10070,6 +11030,7 @@
       "id": "konsole",
       "name": "Konsole",
       "category": "utilities",
+      "group": "terminal",
       "description": "KDE's terminal, with tabs, splits and profiles",
       "icon": "org.kde.konsole",
       "packages": [
@@ -10086,6 +11047,7 @@
       "id": "krename",
       "name": "KRename",
       "category": "utilities",
+      "group": "files",
       "description": "A very powerful batch file renamer",
       "icon": "krename",
       "packages": [
@@ -10101,6 +11063,7 @@
       "id": "liberation-ms-core-fonts",
       "name": "Liberation / MS core fonts",
       "category": "utilities",
+      "group": "desktop",
       "description": "Font family which aims at metric compatibility with Arial, Times New Roman, and Courier New",
       "icon": "",
       "packages": [
@@ -10118,6 +11081,7 @@
       "id": "lorem",
       "name": "Lorem",
       "category": "utilities",
+      "group": "makers",
       "description": "Simple app to generate the Lorem Ipsum placeholder text",
       "icon": "",
       "packages": [
@@ -10133,6 +11097,7 @@
       "id": "midnight-commander",
       "name": "Midnight Commander",
       "category": "utilities",
+      "group": "files",
       "description": "Two-pane file manager for the terminal",
       "icon": "MidnightCommander",
       "packages": [
@@ -10151,6 +11116,7 @@
       "id": "mission-center",
       "name": "Mission Center",
       "category": "utilities",
+      "group": "monitors",
       "description": "Task manager: processor, memory, disk, network and GPU use, apps and services",
       "icon": "io.missioncenter.MissionCenter",
       "packages": [
@@ -10175,6 +11141,7 @@
       "id": "nautilus",
       "name": "Nautilus",
       "category": "utilities",
+      "group": "files",
       "description": "Default file manager for GNOME",
       "icon": "nautilus",
       "packages": [
@@ -10190,6 +11157,7 @@
       "id": "ncdu",
       "name": "ncdu",
       "category": "utilities",
+      "group": "cleanup",
       "description": "Find what fills a disk, in the terminal",
       "icon": "",
       "packages": [
@@ -10208,6 +11176,7 @@
       "id": "nemo",
       "name": "Nemo",
       "category": "utilities",
+      "group": "files",
       "description": "Cinnamon's file manager, with two panes and many options",
       "icon": "nemo",
       "packages": [
@@ -10224,6 +11193,7 @@
       "id": "nushell",
       "name": "Nushell",
       "category": "utilities",
+      "group": "terminal",
       "description": "A shell that treats command output as tables you can filter and sort",
       "icon": "",
       "packages": [
@@ -10241,6 +11211,7 @@
       "id": "nvtop",
       "name": "Nvtop",
       "category": "utilities",
+      "group": "monitors",
       "description": "GPUs process monitoring for AMD, Intel and NVIDIA",
       "icon": "nvtop",
       "packages": [
@@ -10257,6 +11228,7 @@
       "id": "omacalc",
       "name": "Omacalc",
       "category": "utilities",
+      "group": "everyday",
       "description": "A keyboard-first calculator",
       "icon": "",
       "packages": [
@@ -10272,6 +11244,7 @@
       "id": "peazip",
       "name": "PeaZip",
       "category": "utilities",
+      "group": "files",
       "description": "Archive manager for over 200 formats, with encryption and splitting",
       "icon": "peazip",
       "packages": [
@@ -10291,6 +11264,7 @@
       "id": "powertop",
       "name": "PowerTOP",
       "category": "utilities",
+      "group": "monitors",
       "description": "See what drains the battery and how much power each part uses",
       "icon": "",
       "packages": [
@@ -10308,6 +11282,7 @@
       "id": "ptyxis",
       "name": "Ptyxis",
       "category": "utilities",
+      "group": "terminal",
       "description": "GNOME's terminal, with tabs and one-click shells inside containers",
       "icon": "org.gnome.Ptyxis",
       "packages": [
@@ -10325,6 +11300,7 @@
       "id": "railway",
       "name": "Railway",
       "category": "utilities",
+      "group": "everyday",
       "description": "Look up travel information for many different railways",
       "icon": "",
       "packages": [
@@ -10341,6 +11317,7 @@
       "id": "resources",
       "name": "Resources",
       "category": "utilities",
+      "group": "monitors",
       "description": "See CPU, memory, GPU, disk and network use, and stop apps and processes",
       "icon": "",
       "packages": [
@@ -10360,6 +11337,7 @@
       "id": "rofi",
       "name": "Rofi",
       "category": "utilities",
+      "group": "desktop",
       "description": "A window switcher, application launcher and dmenu replacement",
       "icon": "",
       "packages": [
@@ -10375,6 +11353,7 @@
       "id": "starship",
       "name": "Starship",
       "category": "utilities",
+      "group": "terminal",
       "description": "Prompt for any shell that shows the Git branch, language versions and more",
       "icon": "",
       "packages": [
@@ -10393,6 +11372,7 @@
       "id": "tangram",
       "name": "Tangram",
       "category": "utilities",
+      "group": "desktop",
       "description": "Browser for your pinned tabs",
       "icon": "",
       "packages": [
@@ -10407,6 +11387,7 @@
       "id": "text-pieces",
       "name": "Text Pieces",
       "category": "utilities",
+      "group": "makers",
       "description": "Powerful scratchpad with ability to perform a lot of text transformations",
       "icon": "",
       "packages": [
@@ -10422,6 +11403,7 @@
       "id": "thunar",
       "name": "Thunar",
       "category": "utilities",
+      "group": "files",
       "description": "The file manager",
       "icon": "thunar",
       "packages": [
@@ -10439,6 +11421,7 @@
       "id": "variety",
       "name": "Variety",
       "category": "utilities",
+      "group": "desktop",
       "description": "Changes the wallpaper on a regular interval using user-specified or automatically downloaded images",
       "icon": "variety",
       "packages": [
@@ -10453,6 +11436,7 @@
       "id": "webfont-kit-generator",
       "name": "Webfont Kit Generator",
       "category": "utilities",
+      "group": "makers",
       "description": "Utility to generate WOFF, WOFF2 and the necessary CSS boilerplate from non-web font formats (OTF & TTF)",
       "icon": "",
       "packages": [
@@ -10464,6 +11448,7 @@
       "id": "wezterm",
       "name": "WezTerm",
       "category": "utilities",
+      "group": "terminal",
       "description": "A GPU-accelerated cross-platform terminal emulator and multiplexer",
       "icon": "",
       "packages": [
@@ -10480,6 +11465,7 @@
       "id": "wike",
       "name": "Wike",
       "category": "utilities",
+      "group": "everyday",
       "description": "Wikipedia reader for the GNOME desktop",
       "icon": "",
       "packages": [
@@ -10494,6 +11480,7 @@
       "id": "xarchiver",
       "name": "Xarchiver",
       "category": "utilities",
+      "group": "files",
       "description": "Open and make zip, 7z, tar and other archives",
       "icon": "xarchiver",
       "packages": [
@@ -10512,6 +11499,7 @@
       "id": "yakuake",
       "name": "Yakuake",
       "category": "utilities",
+      "group": "terminal",
       "description": "A drop-down terminal emulator based on KDE konsole technology",
       "icon": "yakuake",
       "packages": [
@@ -10528,6 +11516,7 @@
       "id": "yazi",
       "name": "Yazi",
       "category": "utilities",
+      "group": "files",
       "description": "Fast file manager for the terminal, with previews",
       "icon": "",
       "packages": [
@@ -10546,6 +11535,7 @@
       "id": "zsh-prompt",
       "name": "Zsh",
       "category": "utilities",
+      "group": "terminal",
       "description": "A very advanced and programmable command interpreter (shell) for UNIX",
       "icon": "",
       "packages": [
@@ -10902,6 +11892,7 @@
       "id": "asusctl",
       "name": "Asusctl",
       "category": "system",
+      "group": "devices",
       "description": "An utility for Linux to control many aspects of various ASUS laptops",
       "icon": "",
       "packages": [
@@ -10918,6 +11909,7 @@
       "id": "back-in-time",
       "name": "Back In Time",
       "category": "system",
+      "group": "backup",
       "description": "Simple backup system inspired from the Flyback Project and TimeVault. Qt6 GUI version",
       "icon": "",
       "packages": [
@@ -10934,6 +11926,7 @@
       "id": "bazaar",
       "name": "Bazaar",
       "category": "system",
+      "group": "stores",
       "description": "A fast and modern store for GNOME with focus on Flatpaks, particularly from Flathub",
       "icon": "",
       "packages": [
@@ -10950,6 +11943,7 @@
       "id": "borgbackup",
       "name": "BorgBackup",
       "category": "system",
+      "group": "backup",
       "description": "Deduplicating backup program with compression and authenticated encryption",
       "icon": "",
       "packages": [
@@ -10965,6 +11959,7 @@
       "id": "boxbuddy",
       "name": "BoxBuddy",
       "category": "system",
+      "group": "virtual",
       "description": "Manage Distrobox containers in a window",
       "icon": "io.github.dvlv.boxbuddyrs",
       "packages": [
@@ -10982,6 +11977,7 @@
       "id": "btrfs-assistant",
       "name": "Btrfs Assistant",
       "category": "system",
+      "group": "backup",
       "description": "Browse, compare and restore the system's snapshots (snapper), and see what uses space on a Btrfs disk",
       "icon": "btrfs-assistant",
       "packages": [
@@ -10999,6 +11995,7 @@
       "id": "ckb-next",
       "name": "Ckb-next",
       "category": "system",
+      "group": "devices",
       "description": "Corsair Keyboard and Mouse RGB Driver",
       "icon": "ckb-next",
       "packages": [
@@ -11021,6 +12018,7 @@
       "id": "containers",
       "name": "Containers",
       "category": "system",
+      "group": "virtual",
       "icon": "podman-desktop",
       "description": "Run containers with Podman, without root. The docker command and docker compose work too, and the bar shows what's running.",
       "packages": [
@@ -11040,6 +12038,7 @@
       "id": "coolercontrol",
       "name": "CoolerControl",
       "category": "system",
+      "group": "devices",
       "description": "A program to monitor and control your cooling devices",
       "icon": "",
       "packages": [
@@ -11063,6 +12062,7 @@
       "id": "deja-dup",
       "name": "Deja Dup",
       "category": "system",
+      "group": "backup",
       "description": "Easy to use backup tool based on Restic",
       "icon": "deja-dup",
       "packages": [
@@ -11079,6 +12079,7 @@
       "id": "distrobox",
       "name": "Distrobox",
       "category": "system",
+      "group": "virtual",
       "description": "Use any linux distribution inside your terminal",
       "icon": "",
       "packages": [
@@ -11095,6 +12096,7 @@
       "id": "docker",
       "name": "Docker",
       "category": "system",
+      "group": "virtual",
       "description": "Pack, ship and run any application as a lightweight container",
       "icon": "",
       "packages": [
@@ -11119,6 +12121,7 @@
       "id": "epson-printer-drivers",
       "name": "Epson printer drivers",
       "category": "system",
+      "group": "devices",
       "description": "Epson Inkjet Printer Driver (ESC/P-R) for Linux",
       "icon": "",
       "packages": [
@@ -11134,6 +12137,7 @@
       "id": "fcitx5",
       "name": "Fcitx5",
       "category": "system",
+      "group": "devices",
       "description": "Next generation of fcitx, cross-platform input method framework",
       "icon": "",
       "packages": [
@@ -11153,6 +12157,7 @@
       "id": "fedora-media-writer",
       "name": "Fedora Media Writer",
       "category": "system",
+      "group": "disks",
       "description": "Fedora Media Writer - write Fedora images to portable media",
       "icon": "mediawriter",
       "packages": [
@@ -11172,6 +12177,7 @@
       "id": "flatpak-flathub",
       "name": "Flatpak + Flathub",
       "category": "system",
+      "group": "stores",
       "description": "Linux application sandboxing and distribution framework (formerly xdg-app)",
       "icon": "",
       "packages": [
@@ -11190,6 +12196,7 @@
       "id": "flatseal",
       "name": "Flatseal",
       "category": "system",
+      "group": "stores",
       "description": "A permissions manager for Flatpak",
       "icon": "",
       "packages": [
@@ -11204,6 +12211,7 @@
       "id": "framework-tool",
       "name": "Framework laptop tool",
       "category": "system",
+      "group": "devices",
       "description": "Check a Framework laptop's firmware versions, battery charge limit, fans and expansion cards from the terminal (framework_tool)",
       "icon": "",
       "packages": [
@@ -11223,6 +12231,7 @@
       "id": "genymotion",
       "name": "Genymotion",
       "category": "system",
+      "group": "virtual",
       "description": "Complete set of tools that provides a virtual environment for Android",
       "icon": "genymotion",
       "packages": [
@@ -11238,6 +12247,7 @@
       "id": "gnome-boxes",
       "name": "GNOME Boxes",
       "category": "system",
+      "group": "virtual",
       "description": "Simple GNOME application to access virtual systems",
       "icon": "gnome-boxes",
       "packages": [
@@ -11255,6 +12265,7 @@
       "id": "gnome-disks",
       "name": "GNOME Disks",
       "category": "system",
+      "group": "disks",
       "description": "Format, partition and check disks, and make or restore disk images",
       "icon": "gnome-disks",
       "packages": [
@@ -11272,6 +12283,7 @@
       "id": "gnome-firmware",
       "name": "GNOME Firmware",
       "category": "system",
+      "group": "devices",
       "description": "Manage firmware on devices supported by fwupd",
       "icon": "gnome-firmware",
       "packages": [
@@ -11288,6 +12300,7 @@
       "id": "gnome-software",
       "name": "GNOME Software",
       "category": "system",
+      "group": "stores",
       "description": "Allows you to find and install new apps",
       "icon": "gnome-software",
       "packages": [
@@ -11303,6 +12316,7 @@
       "id": "gparted",
       "name": "GParted",
       "category": "system",
+      "group": "disks",
       "description": "A Partition Magic clone, frontend to GNU Parted",
       "icon": "gparted",
       "packages": [
@@ -11319,6 +12333,7 @@
       "id": "gpu-in-containers",
       "name": "GPU in containers",
       "category": "system",
+      "group": "virtual",
       "description": "NVIDIA container toolkit",
       "icon": "",
       "packages": [
@@ -11334,6 +12349,7 @@
       "id": "grsync",
       "name": "Grsync",
       "category": "system",
+      "group": "backup",
       "description": "GTK GUI for rsync to synchronize folders, files and make backups",
       "icon": "grsync",
       "packages": [
@@ -11350,6 +12366,7 @@
       "id": "gsmartcontrol",
       "name": "GSmartControl",
       "category": "system",
+      "group": "disks",
       "description": "Check a disk's health and run its self-tests (SMART)",
       "icon": "gsmartcontrol",
       "packages": [
@@ -11369,6 +12386,7 @@
       "id": "gutenprint-printer-drivers",
       "name": "Gutenprint printer drivers",
       "category": "system",
+      "group": "devices",
       "description": "Drivers for many Canon, Epson and other inkjet and photo printers",
       "icon": "printer",
       "packages": [
@@ -11389,6 +12407,7 @@
       "id": "hp-printer-drivers",
       "name": "HP printer drivers",
       "category": "system",
+      "group": "devices",
       "description": "Drivers for HP DeskJet, OfficeJet, Photosmart, Business Inkjet and some LaserJet",
       "icon": "hplip",
       "packages": [
@@ -11405,6 +12424,7 @@
       "id": "impression",
       "name": "Impression",
       "category": "system",
+      "group": "disks",
       "description": "Application to create bootable drives from disk images",
       "icon": "",
       "packages": [
@@ -11424,6 +12444,7 @@
       "id": "kde-discover",
       "name": "KDE Discover",
       "category": "system",
+      "group": "stores",
       "description": "KDE and Plasma resources management GUI",
       "icon": "kde",
       "packages": [
@@ -11439,6 +12460,7 @@
       "id": "kde-partition-manager",
       "name": "KDE Partition Manager",
       "category": "system",
+      "group": "disks",
       "description": "A KDE utility that allows you to manage disks, partitions, and file systems",
       "icon": "partitionmanager",
       "packages": [
@@ -11455,6 +12477,7 @@
       "id": "kdiskmark",
       "name": "KDiskMark",
       "category": "system",
+      "group": "disks",
       "description": "Measure how fast a disk reads and writes",
       "icon": "kdiskmark",
       "packages": [
@@ -11473,6 +12496,7 @@
       "id": "kopia",
       "name": "Kopia",
       "category": "system",
+      "group": "backup",
       "description": "Encrypted, deduplicated backups to disks and cloud storage",
       "icon": "",
       "packages": [
@@ -11488,6 +12512,7 @@
       "id": "lact",
       "name": "LACT",
       "category": "system",
+      "group": "devices",
       "description": "Linux GPU Configuration Tool",
       "icon": "",
       "packages": [
@@ -11512,6 +12537,7 @@
       "id": "liquidctl",
       "name": "Liquidctl",
       "category": "system",
+      "group": "devices",
       "description": "Cross-platform CLI and Python drivers for AIO liquid coolers and other devices",
       "icon": "",
       "packages": [
@@ -11530,6 +12556,7 @@
       "id": "gnome-logs",
       "name": "Logs",
       "category": "system",
+      "group": "tuning",
       "description": "Read the system's logs in a window, by boot and by importance",
       "icon": "org.gnome.Logs",
       "packages": [
@@ -11548,6 +12575,7 @@
       "id": "openrazer",
       "name": "OpenRazer",
       "category": "system",
+      "group": "devices",
       "description": "Userspace daemon that abstracts access to the kernel driver. Provides a DBus service for applications to use",
       "icon": "",
       "packages": [
@@ -11570,6 +12598,7 @@
       "id": "openrgb",
       "name": "OpenRGB",
       "category": "system",
+      "group": "devices",
       "description": "Open source RGB lighting control that doesn't depend on manufacturer software",
       "icon": "openrgb",
       "packages": [
@@ -11586,6 +12615,7 @@
       "id": "opentabletdriver",
       "name": "OpenTabletDriver",
       "category": "system",
+      "group": "devices",
       "description": "A cross-platform open source tablet driver",
       "icon": "",
       "packages": [
@@ -11602,6 +12632,7 @@
       "id": "pika-backup",
       "name": "Pika Backup",
       "category": "system",
+      "group": "backup",
       "description": "Easy to use backup tool to keep your data safe",
       "icon": "",
       "packages": [
@@ -11619,6 +12650,7 @@
       "id": "piper",
       "name": "Piper",
       "category": "system",
+      "group": "devices",
       "description": "GTK application to configure gaming mice",
       "icon": "",
       "packages": [
@@ -11635,6 +12667,7 @@
       "id": "popsicle",
       "name": "Popsicle",
       "category": "system",
+      "group": "disks",
       "description": "Linux utility for flashing multiple USB devices in parallel, written in Rust",
       "icon": "",
       "packages": [
@@ -11655,6 +12688,7 @@
       "id": "printing",
       "name": "Printers & scanners",
       "category": "system",
+      "group": "devices",
       "icon": "printer",
       "description": "Print to network and USB printers, and scan with Document Scanner. Printers that need no driver are found on their own.",
       "packages": [
@@ -11676,6 +12710,7 @@
       "id": "profile-sync-daemon",
       "name": "Profile-sync-daemon",
       "category": "system",
+      "group": "tuning",
       "description": "Symlinks and syncs browser profile dirs to RAM",
       "icon": "",
       "packages": [
@@ -11696,6 +12731,7 @@
       "id": "raspberry-pi-imager",
       "name": "Raspberry Pi Imager",
       "category": "system",
+      "group": "disks",
       "description": "Raspberry Pi Imaging Utility",
       "icon": "rpi-imager",
       "packages": [
@@ -11715,6 +12751,7 @@
       "id": "restic",
       "name": "restic",
       "category": "system",
+      "group": "backup",
       "description": "Fast, encrypted, deduplicating backups from the command line",
       "icon": "restic",
       "packages": [
@@ -11730,6 +12767,7 @@
       "id": "sched-ext-schedulers",
       "name": "Sched-ext schedulers",
       "category": "system",
+      "group": "tuning",
       "description": "Sched_ext schedulers and tools",
       "icon": "",
       "packages": [
@@ -11753,6 +12791,7 @@
       "id": "solaar",
       "name": "Solaar",
       "category": "system",
+      "group": "devices",
       "description": "Linux device manager for a wide range of Logitech devices",
       "icon": "solaar",
       "packages": [
@@ -11771,6 +12810,7 @@
       "id": "testdisk",
       "name": "TestDisk and PhotoRec",
       "category": "system",
+      "group": "backup",
       "description": "Recover lost partitions and deleted files, from the terminal",
       "icon": "",
       "packages": [
@@ -11790,6 +12830,7 @@
       "id": "ventoy",
       "name": "Ventoy",
       "category": "system",
+      "group": "disks",
       "description": "A new bootable USB solution",
       "icon": "ventoy",
       "packages": [
@@ -11806,6 +12847,7 @@
       "id": "virtual-machine-manager",
       "name": "Virtual Machine Manager",
       "category": "system",
+      "group": "virtual",
       "description": "Desktop user interface for managing virtual machines",
       "icon": "virt-manager",
       "packages": [
@@ -11835,6 +12877,7 @@
       "id": "vms",
       "name": "Virtual machines",
       "category": "system",
+      "group": "virtual",
       "icon": "virt-manager",
       "description": "Run Linux and Windows VMs with QEMU/KVM, each in a window of its own. The bar shows which VMs are running.",
       "packages": [
@@ -11859,6 +12902,7 @@
       "id": "vorta",
       "name": "Vorta",
       "category": "system",
+      "group": "backup",
       "description": "A desktop app for Borg backups",
       "icon": "vorta",
       "packages": [
@@ -11875,6 +12919,7 @@
       "id": "waydroid",
       "name": "Waydroid",
       "category": "system",
+      "group": "virtual",
       "description": "A container-based approach to boot a full Android system on a regular Linux system",
       "icon": "waydroid",
       "packages": [
@@ -11890,6 +12935,7 @@
       "id": "winboat",
       "name": "WinBoat",
       "category": "system",
+      "group": "virtual",
       "description": "Run Windows apps on Linux with seamless integration",
       "icon": "",
       "packages": [

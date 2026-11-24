@@ -65,6 +65,52 @@ function inCategory(apps, category, installed) {
   })
 }
 
+// A category's groups (D-158): what its apps are for, in plain words and in
+// the order the window shows them. None for a category that has none, nor
+// for All, Installed and Picked.
+function groups(catalog, id) {
+  var cats = (catalog && catalog.categories) || []
+  for (var i = 0; i < cats.length; i++) if (cats[i].id === id) return cats[i].groups || []
+  return []
+}
+
+// The list a category shows, as { app, positions, section }: `section` is
+// the heading a row sits under. A category with groups lists its groups in
+// their order and, in each, its apps by name (the catalog's order). All,
+// Installed and Picked (`picked`: the picked ids) keep the catalog's order
+// under the categories' names. Rows that share a heading are always next to
+// each other, which is what the list's headings need.
+function rows(catalog, apps, category, installed, picked) {
+  var list = category === "picked"
+    ? apps.filter(function(a) { return !!picked && picked[a.id] === true })
+    : inCategory(apps, category, installed)
+  var row = function(app, section) { return { app: app, positions: [], section: section } }
+  var own = groups(catalog, category)
+  if (own.length > 0) {
+    var out = [], known = {}
+    for (var g = 0; g < own.length; g++) {
+      known[own[g].id] = true
+      for (var i = 0; i < list.length; i++) if (list[i].group === own[g].id) out.push(row(list[i], own[g].name))
+    }
+    // tools/catalog-check keeps every app of such a category in a group; one
+    // that isn't still shows, last and under no heading of its own.
+    for (var j = 0; j < list.length; j++) if (!known[list[j].group]) out.push(row(list[j], "Other"))
+    return out
+  }
+  var byCategory = category === "all" || category === "installed" || category === "picked"
+  return list.map(function(a) { return row(a, byCategory ? categoryName(catalog, a.category) : "") })
+}
+
+// How many rows each heading has: { "Coding agents": 14 }.
+function sectionCounts(rows) {
+  var counts = {}
+  for (var i = 0; i < rows.length; i++) {
+    var s = rows[i].section || ""
+    if (s !== "") counts[s] = (counts[s] || 0) + 1
+  }
+  return counts
+}
+
 function categoryName(catalog, id) {
   if (id === "all") return "All"
   if (id === "installed") return "Installed"
@@ -189,7 +235,10 @@ function tileKeys(name) {
 if (typeof module !== "undefined") {
   module.exports = {
     categories: categories,
+    groups: groups,
     inCategory: inCategory,
+    rows: rows,
+    sectionCounts: sectionCounts,
     installsText: installsText,
     runText: runText,
     selectionText: selectionText,

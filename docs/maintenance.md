@@ -50,7 +50,7 @@ The release channel (stable, rc, nightly) covers only karchy's packages. Arch an
 | Check | What it proves | Covers |
 | --- | --- | --- |
 | `tools/repos-check` | In a stock Arch container, the installer's own repository setup works (pinned keys, bootstrap mirror list, the projects' keyring and mirror list packages), and pacman can resolve everything a karchy machine installs, for an empty system: the base, every `[karchy]` package with its dependencies, the apps karchy ships, and the legacy NVIDIA driver. Once with CachyOS's generic repository and once with each set of its CPU-tuned ones (v3, v4, znver4), for each channel with a release | Items 3, 7, 8 and 10 |
-| `tools/catalog-check` | Every Quick install entry's packages exist where the entry says | Item 9 |
+| `tools/catalog-check` | Every Quick install entry's packages exist where the entry says, and every entry of a category with groups is in one of them | Item 9 |
 | `tools/keyring-check` | In a stock Arch container with today's `oo7`: a keyring made with a key takes a login password and the key back through `/usr/lib/karchy/keyring-rekey`, keeps its secrets, and a daemon given a secret that doesn't fit stays up and says locked. Also runs on every push (`checks.yml`) | Item 16 |
 
 The daily scheduled run of `release.yml` rebuilds the titlebars; when that fails, GitHub emails the failed run (item 2).
