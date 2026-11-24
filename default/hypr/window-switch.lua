@@ -15,9 +15,10 @@
 -- which is where Windows puts a minimized window. Stopping on a minimized
 -- window brings it back.
 --
--- The walk lives here and nowhere else. Every change is sent as one event,
--- `custom>>karchy-window-switch ...` on Hyprland's event socket, for a
--- picture of the walk to draw from; the keys need nobody to listen.
+-- The walk lives here and nowhere else. The shell's switcher
+-- (shell/plugins/window-switcher) draws it and decides nothing: every change
+-- is sent to it as one event, `custom>>karchy-window-switch ...` on
+-- Hyprland's event socket, and the keys work the same with no shell running.
 --
 -- Everything runs on Hyprland's events, and the ones that only matter during
 -- a walk are watched only while one is on, so typing runs nothing here.

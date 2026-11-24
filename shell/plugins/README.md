@@ -38,6 +38,7 @@ startup; other panels, overlays, and menus are loaded on demand.
 | Settings | `karchy.settings` | `panel` | `settings/Settings.qml` |
 | Updates | `karchy.updates` | `panel` | `updates/Window.qml` |
 | Virtual machines | `karchy.vms` | `bar-widget`, `panel` | `vms/Panel.qml`, `vms/Window.qml` |
+| Window switcher | `karchy.window-switcher` | `panel` | `window-switcher/Switcher.qml` |
 
 First-party bar-only widgets also carry manifests next to their QML files,
 e.g. `bar/widgets/Workspaces.manifest.json`. Rich popup widgets live in their
@@ -50,6 +51,28 @@ top-level `bar:` subtree of `~/.config/karchy/shell.json` (with the shell
 providing [`config/karchy/shell.json`](../../config/karchy/shell.json) when
 the user has no file). See [`bar/README.md`](bar/README.md) for the widget catalogue
 and customization schema.
+
+## Window switcher
+
+The windows of an Alt+Tab walk, shown while Alt is held (D-165,
+`docs/components.md` › Window modes). It is a view and nothing else: the
+walk (which windows, in which order, which one is the target) is kept by
+`default/hypr/window-switch.lua` in Hyprland, which sends every change as a
+`custom` event on Hyprland's event socket:
+
+```text
+custom>>karchy-window-switch show 2 0x55d0a 0x55d0b* 0x55d0c
+custom>>karchy-window-switch hide
+```
+
+`show` carries the place of the target, counted from 1, and the windows in
+the walk's order, a minimized one with a star. `SwitcherModel.js` reads the
+event (`tests/window-switcher.js`); `Switcher.qml` looks each address up in
+Quickshell's window list for the title and the app, and draws the app's own
+icon. It appears 150 ms after the first event of a walk, or at the second,
+so a quick Alt+Tab draws nothing, and takes neither the keyboard nor the
+pointer. `karchy-shell window-switcher state` answers `closed`, `walking`
+or `open`.
 
 ## Image picker
 

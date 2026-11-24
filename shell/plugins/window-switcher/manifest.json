@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.window-switcher",
+  "name": "Window switcher",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "The windows of an Alt+Tab walk, shown while Alt is held.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "Switcher.qml"
+  }
+}

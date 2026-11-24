@@ -8,7 +8,7 @@ require("default.hypr.glass")()
 o.window("org\\.gnome\\.Nautilus", { opacity = "0.75 0.75" })
 
 hl.layer_rule({
-  match = { namespace = "^(karchy-bar|karchy-menu|karchy-notifications|karchy-osd|karchy-polkit|karchy-reminders|karchy-clipboard|karchy-emojis|karchy-image-selector|karchy-keyboard-panel|karchy-network-qr)$" },
+  match = { namespace = "^(karchy-bar|karchy-menu|karchy-notifications|karchy-osd|karchy-polkit|karchy-reminders|karchy-clipboard|karchy-emojis|karchy-image-selector|karchy-keyboard-panel|karchy-network-qr|karchy-window-switcher)$" },
   blur = true,
   ignore_alpha = 0.3,
 })

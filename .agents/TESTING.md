@@ -30,6 +30,7 @@ tools/quick-install-search-check   # the Quick install window's search ranking a
 python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, rules, the generated Lua; with lua installed, karchy's real Lua layer under a stand-in Hyprland
 bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
 lua tests/window-stacking.lua      # which window is in front, where Alt+Tab goes and what it tells the switcher, and the halves of a floating workspace (D-159, D-165): the real stacking.lua, window-switch.lua, snap.lua and workspace-modes.lua under a stand-in Hyprland that keeps the stacking order, the focus history and each window's place and size
+bun tests/window-switcher.js "$PWD"   # the Alt+Tab switcher's reading of those events: the target, minimized windows, somebody else's event, the rows of tiles
 bun tests/menu-search.js "$PWD"    # the menu: the root rows, every search alias finds its Settings page, what loose typing no longer finds (D-136), en/menu.json agrees
 bun tests/notifications-panel.js "$PWD"   # the notifications panel: sections, groups, the names apps are listed under
 bun tests/storage-model.js "$PWD"  # Settings › Storage: sizes, the live figures, the overview's tiles, the stack and subvolume rows
