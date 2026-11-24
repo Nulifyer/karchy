@@ -41,6 +41,13 @@ import "Search.js" as Search
 // walks the search, the category list (one stop, j/k or the arrows to
 // choose), the focused row's buttons and the bar under the list (Install N
 // apps for what was picked); Escape clears the search, then closes.
+//
+// Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
+// categories are a SidebarSwitcher across the top, with their counts, at the
+// same place in the Tab order; a row says an app with an Open button is
+// installed with the check alone, and the focused row shows its whole name;
+// the bar's buttons go under its sentence; the footer keeps the keys that
+// act (Enter, Space, Esc) and goes where the window is also short.
 Item {
   id: root
 
@@ -111,6 +118,26 @@ Item {
   }
   readonly property var current: currentIndex >= 0 ? results[currentIndex].app : null
   readonly property int installedCount: Object.keys(installed).length
+
+  // The window is too narrow for the categories beside the list, or too low
+  // for the footer under it.
+  readonly property bool narrow: window.width < Style.spacing.windowNarrow
+  readonly property bool low: window.height < Style.space(480)
+  // The categories change form with the keyboard in them (the window was
+  // tiled, or floated again): the keyboard goes to the form that is there.
+  onNarrowChanged: {
+    if (!root.opened) return
+    var focused = frame.Window.activeFocusItem
+    for (var p = focused; p; p = p.parent)
+      if (p === categoryList || p === switcher) { Qt.callLater(function() { root.focusCategories(Qt.OtherFocusReason) }); return }
+  }
+
+  // The keyboard on the categories: the sidebar's list, or the switcher that
+  // stands for it in a narrow window.
+  function focusCategories(reason) {
+    if (root.narrow) switcher.takeFocus()
+    else categoryList.forceActiveFocus(reason)
+  }
 
   function open(payloadJson) {
     var payload = Model.parse(payloadJson || "{}", {})
@@ -490,10 +517,13 @@ Item {
       onActivated: root.refresh()
     }
 
-    RowLayout {
+    GridLayout {
       id: frame
       anchors.fill: parent
-      spacing: 0
+      // The categories beside the list, or over it in a narrow window.
+      columns: root.narrow ? 1 : 2
+      columnSpacing: 0
+      rowSpacing: 0
 
       // A focused button that goes away (Remove after a removal, a row that
       // leaves the list) would leave the keyboard nowhere: back to the search.
@@ -527,6 +557,7 @@ Item {
 
       // ---------- Sidebar ----------
       Rectangle {
+        visible: !root.narrow
         Layout.fillHeight: true
         Layout.preferredWidth: Style.space(250)
         color: Util.alpha(Commons.Color.foreground, 0.04)
@@ -670,12 +701,37 @@ Item {
         }
       }
 
+      // The same categories for a narrow window. Tab goes on to the focused
+      // row's buttons and Shift+Tab back to the search, as from the list.
+      SidebarSwitcher {
+        id: switcher
+        visible: root.narrow
+        Layout.fillWidth: true
+        value: root.category
+        // The sidebar says this under the window's name.
+        note: root.statusFailed ? "What is installed couldn't be read." : ""
+        options: root.categoryRows.map(function(row) {
+          return {
+            value: row.id,
+            label: row.name,
+            icon: Icons.glyph(row.iconName),
+            detail: row.id === "installed" && !root.statusLoaded ? "…" : String(row.count)
+          }
+        })
+        onChanged: function(value) { root.setCategory(value) }
+        onTabbed: function(event) {
+          if (event.key === Qt.Key_Tab) root.focusActions(true)
+          else searchField.forceActiveFocus(Qt.BacktabFocusReason)
+          event.accepted = true
+        }
+      }
+
       // ---------- Page ----------
       ColumnLayout {
         Layout.fillWidth: true
         Layout.fillHeight: true
         Layout.margins: Style.spacing.panelPadding
-        Layout.leftMargin: Style.spacing.panelPadding * 1.5
+        Layout.leftMargin: root.narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 1.5
         spacing: Style.spacing.lg
 
         RowLayout {
@@ -704,7 +760,7 @@ Item {
             Keys.onPressed: function(event) {
               if (event.key === Qt.Key_PageDown) { browse(8); event.accepted = true }
               else if (event.key === Qt.Key_PageUp) { browse(-8); event.accepted = true }
-              else if (event.key === Qt.Key_Tab) { categoryList.forceActiveFocus(Qt.TabFocusReason); event.accepted = true }
+              else if (event.key === Qt.Key_Tab) { root.focusCategories(Qt.TabFocusReason); event.accepted = true }
               else if (event.key === Qt.Key_Backtab) { if (!root.focusBar(false)) root.focusActions(false); event.accepted = true }
               else if (event.key === Qt.Key_Space && root.spacePicks
                        && !(event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier))) {
@@ -833,12 +889,18 @@ Item {
           color: Style.selectedFill
           borderSpec: Border.flat(Style.normalBorderColor, Style.border.control)
 
-          RowLayout {
+          // The sentence, then its buttons: beside it, or under it in a
+          // narrow window, on as many lines as they need.
+          GridLayout {
             id: selectionRow
-            anchors.fill: parent
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
             anchors.margins: Style.spacing.md
             anchors.leftMargin: Style.spacing.rowPaddingX
-            spacing: Style.spacing.lg
+            columns: root.narrow ? 1 : 2
+            columnSpacing: Style.spacing.lg
+            rowSpacing: Style.spacing.md
 
             Text {
               Layout.fillWidth: true
@@ -851,74 +913,80 @@ Item {
             }
             // Tab stops after the focused row's buttons, so what was picked
             // with Space can be installed without the mouse.
-            Button {
-              id: logButton
-              visible: root.logPath !== ""
-              focusable: true
-              bordered: true
-              text: "Show log"
-              Keys.onTabPressed: function(event) { root.tabFromBar(logButton, event) }
-              Keys.onBacktabPressed: function(event) { root.tabFromBar(logButton, event) }
-              onClicked: root.showLog()
-            }
-            Button {
-              id: reviewButton
-              visible: root.selectedApps.length > 0 && root.category !== "picked"
-              focusable: true
-              bordered: true
-              text: "Review"
-              Keys.onTabPressed: function(event) { root.tabFromBar(reviewButton, event) }
-              Keys.onBacktabPressed: function(event) { root.tabFromBar(reviewButton, event) }
-              onClicked: root.setCategory("picked")
-            }
-            Button {
-              id: clearButton
-              visible: root.selectedApps.length > 0
-              enabled: !root.applying
-              focusable: true
-              bordered: true
-              text: "Clear"
-              Keys.onTabPressed: function(event) { root.tabFromBar(clearButton, event) }
-              Keys.onBacktabPressed: function(event) { root.tabFromBar(clearButton, event) }
-              onClicked: root.clearSelected()
-            }
-            Button {
-              id: removePickedButton
-              visible: root.selectedToRemove.length > 0
-              enabled: !root.applying
-              focusable: true
-              bordered: true
-              variant: "destructive"
-              text: "Remove " + root.selectedToRemove.length
-              Keys.onTabPressed: function(event) { root.tabFromBar(removePickedButton, event) }
-              Keys.onBacktabPressed: function(event) { root.tabFromBar(removePickedButton, event) }
-              onClicked: root.askRemoveSelected()
-            }
-            Button {
-              id: installPickedButton
-              // Kept while its run goes on, though the apps leave the
-              // selection as they finish; busy, it takes no clicks itself,
-              // so it stays enabled and draws its spinner in full color.
-              visible: root.selectedToInstall.length > 0 || busy
-              enabled: !root.applying || busy
-              focusable: true
-              busy: root.applyingPicked
-              bordered: true
-              variant: "primary"
-              text: busy ? "Installing…" : "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
-              Keys.onTabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
-              Keys.onBacktabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
-              onClicked: root.installSelected()
+            Flow {
+              Layout.fillWidth: root.narrow
+              spacing: Style.spacing.lg
+              Button {
+                id: logButton
+                visible: root.logPath !== ""
+                focusable: true
+                bordered: true
+                text: "Show log"
+                Keys.onTabPressed: function(event) { root.tabFromBar(logButton, event) }
+                Keys.onBacktabPressed: function(event) { root.tabFromBar(logButton, event) }
+                onClicked: root.showLog()
+              }
+              Button {
+                id: reviewButton
+                visible: root.selectedApps.length > 0 && root.category !== "picked"
+                focusable: true
+                bordered: true
+                text: "Review"
+                Keys.onTabPressed: function(event) { root.tabFromBar(reviewButton, event) }
+                Keys.onBacktabPressed: function(event) { root.tabFromBar(reviewButton, event) }
+                onClicked: root.setCategory("picked")
+              }
+              Button {
+                id: clearButton
+                visible: root.selectedApps.length > 0
+                enabled: !root.applying
+                focusable: true
+                bordered: true
+                text: "Clear"
+                Keys.onTabPressed: function(event) { root.tabFromBar(clearButton, event) }
+                Keys.onBacktabPressed: function(event) { root.tabFromBar(clearButton, event) }
+                onClicked: root.clearSelected()
+              }
+              Button {
+                id: removePickedButton
+                visible: root.selectedToRemove.length > 0
+                enabled: !root.applying
+                focusable: true
+                bordered: true
+                variant: "destructive"
+                text: "Remove " + root.selectedToRemove.length
+                Keys.onTabPressed: function(event) { root.tabFromBar(removePickedButton, event) }
+                Keys.onBacktabPressed: function(event) { root.tabFromBar(removePickedButton, event) }
+                onClicked: root.askRemoveSelected()
+              }
+              Button {
+                id: installPickedButton
+                // Kept while its run goes on, though the apps leave the
+                // selection as they finish; busy, it takes no clicks itself,
+                // so it stays enabled and draws its spinner in full color.
+                visible: root.selectedToInstall.length > 0 || busy
+                enabled: !root.applying || busy
+                focusable: true
+                busy: root.applyingPicked
+                bordered: true
+                variant: "primary"
+                text: busy ? "Installing…" : "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
+                Keys.onTabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
+                Keys.onBacktabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
+                onClicked: root.installSelected()
+              }
             }
           }
         }
 
-        // The keys, as in the menu's footer.
+        // The keys, as in the menu's footer. A narrow window keeps the ones
+        // that act, and a window that is also low gives the room to the list.
         Flow {
           Layout.fillWidth: true
+          visible: !(root.narrow && root.low)
           spacing: Style.spacing.xxl
-          KeyHint { keys: "type"; label: "search" }
-          KeyHint { icons: [Icons.glyph("ui.arrow.up"), Icons.glyph("ui.arrow.down")]; label: "move" }
+          KeyHint { visible: !root.narrow; keys: "type"; label: "search" }
+          KeyHint { visible: !root.narrow; icons: [Icons.glyph("ui.arrow.up"), Icons.glyph("ui.arrow.down")]; label: "move" }
           KeyHint {
             keys: "Enter"
             label: root.applyingPicked ? "installing picked…"
@@ -931,7 +999,7 @@ Item {
               : "install"
           }
           KeyHint { keys: root.spacePicks ? "Space" : "Ctrl+Space"; label: "pick" }
-          KeyHint { keys: "Tab"; label: "categories, buttons" }
+          KeyHint { visible: !root.narrow; keys: "Tab"; label: "categories, buttons" }
           KeyHint { keys: "Esc"; label: root.searching ? "clear search" : "close" }
         }
       }
@@ -969,7 +1037,7 @@ Item {
     var row = appList.itemAtIndex(root.currentIndex)
     var buttons = row ? row.actionButtons() : []
     if (buttons.length === 0) {
-      if (!first) categoryList.forceActiveFocus(Qt.BacktabFocusReason)
+      if (!first) root.focusCategories(Qt.BacktabFocusReason)
       else if (!root.focusBar(true)) searchField.forceActiveFocus(Qt.TabFocusReason)
       return
     }
@@ -1036,7 +1104,7 @@ Item {
         else if (!root.focusBar(true)) searchField.forceActiveFocus(Qt.TabFocusReason)
       } else {
         if (i > 0) buttons[i - 1].forceActiveFocus(Qt.BacktabFocusReason)
-        else categoryList.forceActiveFocus(Qt.BacktabFocusReason)
+        else root.focusCategories(Qt.BacktabFocusReason)
       }
       event.accepted = true
     }
@@ -1062,7 +1130,7 @@ Item {
 
       RowLayout {
         Layout.fillWidth: true
-        spacing: Style.spacing.xxl
+        spacing: root.narrow ? Style.spacing.lg : Style.spacing.xxl
 
         // Pick it for "Install N apps" (or Remove); Space does the same.
         PickBox {
@@ -1095,6 +1163,9 @@ Item {
               font.pixelSize: Style.font.subtitle
               font.bold: true
               elide: Text.ElideRight
+              // In a narrow window the focused row shows all of a long name.
+              wrapMode: root.narrow && row.current ? Text.Wrap : Text.NoWrap
+              maximumLineCount: root.narrow && row.current ? 2 : 1
             }
             Tag {
               id: aurTag
@@ -1148,6 +1219,8 @@ Item {
             font.pixelSize: Style.font.icon
           }
           Text {
+            // Beside an Open button in a narrow window, the check says it.
+            visible: !(root.narrow && row.hasWindow)
             text: "Installed"
             color: Commons.Color.status.success
             font.family: Style.font.family
@@ -1180,8 +1253,8 @@ Item {
       Loader {
         id: details
         Layout.fillWidth: true
-        // Line up with the name, past the icon.
-        Layout.leftMargin: Style.space(34) + Style.spacing.xxl
+        // Line up with the name, past the icon; a narrow row has no room to.
+        Layout.leftMargin: root.narrow ? 0 : Style.space(34) + Style.spacing.xxl
         active: row.current
         visible: active
         sourceComponent: AppDetails {
