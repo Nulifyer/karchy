@@ -4,7 +4,9 @@
 Usage:
   tools/icon-check            Check the working tree; exit 1 on any problem
 
-default/karchy/icons.json is the only place a glyph codepoint may appear.
+default/karchy/icons.json is the only place a glyph codepoint may appear, and
+an icon is drawn in the icon font (Icons.family), never in the text font, so
+it looks the same whichever font is chosen in Settings › Fonts.
 This fails on:
   - a private-use character (a Nerd Font glyph), or an escape for one, in the
     shell's QML and JS, JSON and JSONC, Lua and the bash commands, outside the
@@ -16,8 +18,21 @@ This fails on:
     are Nerd Font glyphs of U+E000-F8FF
   - an icon name used in code that the map doesn't have: Icons.glyph("x"),
     "iconName": "x", karchy-icon x and karchy-notification-send -g x
+  - a symbol written as a character in the shell's QML and JS (shell/,
+    addons/), outside comments: an arrow, a geometric shape, a technical or
+    miscellaneous symbol, a dingbat, a braille pattern, a box or block
+    character (SYMBOL_RANGES), or an escape for one. It would be drawn in the
+    text font and change with it; use an icon from the map, or words.
+    Punctuation (… · › ‹ — – “ ” × ° •) is not in those ranges and stays
+    text; a chevron that stands for "opens" or "back" is ui.chevron.*
+  - Icons.glyph(...) or Icons.resolve(...) joined to other text with + in
+    that QML and JS: the whole string is drawn in one font, so the glyph
+    would be drawn in the text font. Give the glyph its own Text in
+    Icons.family. The files in JOIN_EXEMPT may, each for the reason given
 Names built at run time ("net.wifi." + level) aren't checked here; the shell
-warns about unknown names when it draws them.
+warns about unknown names when it draws them. The join check reads one
+expression at a time: a glyph joined through a variable or a conditional
+passes it.
 """
 
 import json
@@ -34,6 +49,23 @@ MD_RANGE = (0xF0001, 0xF1AF0)
 # password field shows for each character (TextInput.passwordCharacter).
 SINGLE_UNIT = {"ui.password-dot", "ui.password-dot.large"}
 SINGLE_UNIT_RANGE = (0xE000, 0xF8FF)
+
+# Symbols a text font draws its own way, so they change with the font:
+# Arrows; Miscellaneous Technical; Box Drawing, Block Elements and Geometric
+# Shapes; Miscellaneous Symbols and Dingbats; Braille Patterns; Miscellaneous
+# Symbols and Arrows.
+SYMBOL_RANGES = (
+    (0x2190, 0x21FF), (0x2300, 0x23FF), (0x2500, 0x25FF), (0x2600, 0x27BF),
+    (0x2800, 0x28FF), (0x2B00, 0x2BFF),
+)
+# Where the shell's QML and JS live.
+SHELL_DIRS = ("shell/", "addons/")
+# Files that may join a glyph to text, and why.
+JOIN_EXEMPT = {
+    "shell/plugins/settings/FontPicker.qml":
+        "the font sample: a line of text with icons in it, to show how the chosen font sets them",
+}
+GLYPH_CALL = re.compile(r"\bIcons\.(?:glyph|resolve)\(")
 
 # Text files that can carry a glyph: the shell, data and Lua by extension,
 # commands by their place.
@@ -57,6 +89,105 @@ USES = [
 
 def private_use(cp):
     return 0xE000 <= cp <= 0xF8FF or 0xF0000 <= cp <= 0xFFFFD or 0x100000 <= cp <= 0x10FFFD
+
+
+def symbol(cp):
+    return any(low <= cp <= high for low, high in SYMBOL_RANGES)
+
+
+def shell_code(rel):
+    return rel.startswith(SHELL_DIRS) and rel.endswith((".qml", ".js"))
+
+
+def without_comments(text):
+    """QML or JS with its comments blanked, line for line; strings stay.
+
+    Not a parser: a regular expression literal that holds a quote or two
+    slashes is read as a string or a comment to the end of its line.
+    """
+    out = []
+    i, n = 0, len(text)
+    quote = ""
+    while i < n:
+        ch = text[i]
+        two = text[i:i + 2]
+        if quote:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if ch == quote or (ch == "\n" and quote != "`"):
+                quote = ""
+        elif two == "//":
+            end = text.find("\n", i)
+            end = n if end == -1 else end
+            out.append(" " * (end - i))
+            i = end
+            continue
+        elif two == "/*":
+            end = text.find("*/", i + 2)
+            end = n if end == -1 else end + 2
+            out.append("".join("\n" if c == "\n" else " " for c in text[i:end]))
+            i = end
+            continue
+        else:
+            out.append(ch)
+            if ch in "\"'`":
+                quote = ch
+        i += 1
+    return "".join(out)
+
+
+def closing_paren(text, start):
+    """The index of the ")" that closes the "(" at start - 1, or -1."""
+    depth = 1
+    quote = ""
+    i = start
+    while i < len(text):
+        ch = text[i]
+        if quote:
+            if ch == "\\":
+                i += 1
+            elif ch == quote:
+                quote = ""
+        elif ch in "\"'`":
+            quote = ch
+        elif ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    return -1
+
+
+def check_shell_code(rel, text, problems):
+    code = without_comments(text)
+    for number, line in enumerate(code.split("\n"), 1):
+        found = [ord(ch) for ch in line if symbol(ord(ch))]
+        for m in ESCAPES.finditer(line):
+            cp = int(next(g for g in m.groups() if g), 16)
+            if symbol(cp):
+                found.append(cp)
+        for cp in found:
+            problems.append(
+                f"{rel}:{number}: U+{cp:04X} ({chr(cp)}) is drawn in the text font and changes with it;"
+                f" use an icon from {MAP} in Icons.family, or words")
+    if rel in JOIN_EXEMPT:
+        return
+    for m in GLYPH_CALL.finditer(code):
+        end = closing_paren(code, m.end())
+        before = code[:m.start()].rstrip()
+        after = code[end + 1:].lstrip() if end != -1 else ""
+        joined = (before.endswith("+") and not before.endswith("++")) or \
+            (after.startswith("+") and not after.startswith(("++", "+=")))
+        if joined:
+            number = code.count("\n", 0, m.start()) + 1
+            problems.append(
+                f"{rel}:{number}: an icon joined to text with +: the text font would draw it;"
+                " give the glyph its own Text in Icons.family")
 
 
 def tracked_files():
@@ -114,9 +245,12 @@ def check_map(problems):
 def check_file(rel, names, problems):
     try:
         with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
-            lines = f.read().split("\n")
+            text = f.read()
     except (OSError, UnicodeDecodeError):
         return
+    if shell_code(rel):
+        check_shell_code(rel, text, problems)
+    lines = text.split("\n")
     for number, line in enumerate(lines, 1):
         found = [ord(ch) for ch in line if private_use(ord(ch))]
         for m in ESCAPES.finditer(line):
