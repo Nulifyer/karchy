@@ -43,8 +43,9 @@ import "Search.js" as Search
 // apps for what was picked); Escape clears the search, then closes.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// categories go behind the menu button of a SidebarSwitcher, with the open
-// category's name and count beside it, at the same place in the Tab order;
+// categories go behind the menu button of a SidebarSwitcher, with the
+// window's name beside it (the list's heading names the category and its
+// count), at the same place in the Tab order;
 // the button opens them as a pane over the list, and while that is open the
 // window's own keys (typing to search, Space, Ctrl+F) wait. Enter there
 // chooses a category and goes on to the focused row's buttons, as Enter in

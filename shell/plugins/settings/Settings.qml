@@ -25,8 +25,8 @@ import qs.Ui
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
 // section list goes behind the menu button of a SidebarSwitcher, with the
-// open page's name beside it; the button is one Tab stop and opens the list
-// as a pane over the page, which takes the whole width. Each page puts its
+// window's name beside it; the button is one Tab stop and opens the list as
+// a pane over the page, which takes the whole width and keeps its heading. Each page puts its
 // labels above their controls where it is under Style.spacing.formWide.
 Item {
   id: root

@@ -2,7 +2,7 @@
 
 `karchy settings [section] [item]` opens the Settings window. `karchy-settings --sections` prints the section names in the window's order: network, bluetooth, displays, sound, input, keybindings, appearance, fonts, notifications, apps, power, storage, datetime, users, security, ssh, about. `karchy settings` with no section opens the first.
 
-The window lists its pages in a sidebar. In a narrow window (a tile beside other windows, under 720 wide) the sidebar is behind the menu button at the top left, with the open page's name beside it: the button opens the list over the page. Quick install, Virtual machines and Containers fold the same way. When you tell the user where to click, name the page, not where the list is.
+The window lists its pages in a sidebar. In a narrow window (a tile beside other windows, under 720 wide) the sidebar is behind the menu button at the top left, beside the window's name: the button opens the list over the page, and the page's own heading says which one is open. Quick install, Virtual machines and Containers fold the same way. When you tell the user where to click, name the page, not where the list is.
 
 Settings is where everything that is set and left lives. The menu (Super+Space) holds actions and launches only (Apps, Packages, Recording, Keybinds, Update, Settings, Reload, Power): there is no Setup or Appearance submenu, and Update opens the Updates window. Searching the menu for a word such as `fingerprint`, `timezone` or `git` offers the Settings page ("Settings › Security"). To send the user to a setting, name the page.
 

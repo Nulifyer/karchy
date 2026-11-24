@@ -6,8 +6,12 @@ import qs.Commons as Commons
 // A window's sidebar when the window is narrow (a tile beside other windows,
 // under Style.spacing.windowNarrow), in the form people know from Windows
 // Settings and every app built on its navigation view (D-177): the sidebar
-// goes behind a menu button at the top left, with the title of the open page
-// beside it, and the button opens the same list as a pane over the page.
+// goes behind a menu button at the top left, and the button opens the same
+// list as a pane over the page. Beside the button is the window's name, as at
+// the top of the sidebar. The open page is named once, by its own heading
+// right under the bar, which also has what the sidebar showed beside the
+// name (a count, a state), the (i) and the page's buttons: the bar doesn't
+// repeat it (D-178).
 // Settings, Quick install, Virtual machines and Containers all turn their
 // sidebar into this; none keeps a sidebar of its own design at that width.
 //
@@ -26,11 +30,11 @@ import qs.Commons as Commons
 //   icon       a glyph from Icons.glyph, before the name
 //   detail     what stood beside the name: a count, a state ("Running")
 //   separator  true for a rule above the row, where the sidebar has one
-// `title` is the window's name and `status` the line the sidebar has under
-// it ("12 apps · 3 installed"); both head the pane. `note` is a line under
-// the bar for what the sidebar said under the window's name and has to stay
-// in view (which engine the containers are from, that the installed apps
-// couldn't be read).
+// `title` is the window's name, in the bar and at the top of the pane;
+// `status` is the line the sidebar has under it ("12 apps · 3 installed"),
+// in the pane. `note` is a line under the bar for what the sidebar said under
+// the window's name and has to stay in view (which engine the containers are
+// from, that the installed apps couldn't be read).
 //
 // The open page is `value`, which the window binds: a choice is only
 // reported (`changed`), and the window changes what it shows.
@@ -88,11 +92,6 @@ Rectangle {
       if (optionValue(options[i]) === value) return i
     return -1
   }
-  readonly property var current: {
-    var i = indexOfValue(value)
-    return i >= 0 ? options[i] : null
-  }
-
   // A choice closes the pane and hands the keyboard to the page.
   property bool _chosen: false
   property int _reason: Qt.TabFocusReason
@@ -147,39 +146,20 @@ Rectangle {
     Keys.onBacktabPressed: function(event) { event.accepted = false; root.tabbed(event) }
   }
 
-  // The open page: its name and what the sidebar showed beside it.
+  // The window's name, quiet as at the top of the sidebar: the page's own
+  // heading under the bar is the title.
   Text {
-    id: pageTitle
     anchors.left: menuButton.right
     anchors.leftMargin: Style.spacing.lg
-    anchors.right: pageDetail.visible ? pageDetail.left : parent.right
-    anchors.rightMargin: pageDetail.visible ? Style.spacing.lg : Style.spacing.panelPadding
-    anchors.verticalCenter: menuButton.verticalCenter
-    textFormat: Text.PlainText
-    text: root.current ? root.optionLabel(root.current) : root.title
-    color: Commons.Color.foreground
-    font.family: Style.font.family
-    font.pixelSize: Style.font.title
-    font.bold: true
-    elide: Text.ElideRight
-    Accessible.role: Accessible.Heading
-    Accessible.name: text
-  }
-
-  Text {
-    id: pageDetail
-    visible: text !== ""
     anchors.right: parent.right
     anchors.rightMargin: Style.spacing.panelPadding
     anchors.verticalCenter: menuButton.verticalCenter
-    // The name keeps at least half the bar.
-    width: Math.min(implicitWidth, (root.width - menuButton.width) * 0.45)
     textFormat: Text.PlainText
-    text: root.optionDetail(root.current)
+    text: root.title
     color: Commons.Color.textSecondary
     font.family: Style.font.family
-    font.pixelSize: Style.font.bodySmall
-    font.features: { "tnum": 1 }
+    font.pixelSize: Style.font.title
+    font.bold: true
     elide: Text.ElideRight
   }
 

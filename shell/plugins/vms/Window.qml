@@ -26,8 +26,9 @@ import "Model.js" as Model
 // j/k or Up/Down move through the list; Ctrl+F filters; Escape closes.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// list goes behind the menu button of a SidebarSwitcher, with the open VM's
-// name and state beside it; the button opens the list as a pane over the
+// list goes behind the menu button of a SidebarSwitcher, with the window's
+// name beside it (the page's heading names the VM and its state); the
+// button opens the list as a pane over the
 // page, each VM with its state and "New VM" last. The keyboard starts on the
 // button and Ctrl+F opens the pane. The page puts
 // its labels above their controls, a snapshot's date under its name, and a

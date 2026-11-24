@@ -35,8 +35,8 @@ import "Model.js" as Model
 // Ctrl+F filters; Escape closes.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// sidebar goes behind the menu button of a SidebarSwitcher, with the open
-// page's name beside it; the button opens the list as a pane over the page,
+// sidebar goes behind the menu button of a SidebarSwitcher, with the
+// window's name beside it; the button opens the list as a pane over the page,
 // each container with its status, then Compose projects and Images with
 // their counts. The keyboard starts on the button and Ctrl+F opens the
 // pane. The page stacks what it had side by
