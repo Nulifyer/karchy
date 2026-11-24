@@ -305,6 +305,7 @@ end
 -- leave their floating to them: the class and title patterns of rules that
 -- float them, the tags rules float, and the patterns of rules that tag them.
 o.floating_apps = { class = {}, title = {}, tags = {}, tagged = {} }
+o.FLOAT_RULE_TAG = "karchy-float-rule"
 -- Helpers reload before workspace modes, so discard the previous config's hook.
 o.floating_apps_changed = nil
 
@@ -344,6 +345,12 @@ function o.window(match, rules)
         floating_changed = true
       end
     end
+  end
+
+  -- What a float rule floats carries this tag. A window found floating without
+  -- it as it opens is one Hyprland floated itself: a dialog (stacking.lua).
+  if rules.float == true and rules.tag == nil then
+    rules.tag = "+" .. o.FLOAT_RULE_TAG
   end
 
   hl.window_rule(rules)

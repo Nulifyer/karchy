@@ -24,6 +24,9 @@ require("default.hypr.games")
 -- A window that asks for focus gets it.
 require("default.hypr.activation")
 
+-- A focused floating window is in front, and dialogs stay in front of their app.
+require("default.hypr.stacking")
+
 -- Terminals (including TUIs) and these desktop apps opt in to transparency.
 o.transparent_window({ tag = "terminal" })
 o.transparent_window("(omawrite|1[pP]assword|com\\.onepassword\\.OnePassword|org\\.gnome\\.Nautilus)")

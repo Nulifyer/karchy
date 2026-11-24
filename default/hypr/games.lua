@@ -51,6 +51,7 @@ end
 local OVER_RULE = "karchy-over-game-"
 -- On a window through the rule, so it goes when the rule is turned off.
 local OVER_TAG = "karchy-over-game"
+o.OVER_GAME_TAG = OVER_TAG
 -- On a window this floated, until it tiles again.
 local FLOATED_TAG = "karchy-game-floated"
 

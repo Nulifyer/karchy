@@ -38,7 +38,7 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Compositor | Hyprland, Lua config with Omarchy's default/user layering and `o.*` helpers | [O] |
 | Look | gaps 5/10, 2 px theme-accent border, square corners, no blur or shadow | [O] |
 | Animations | Omarchy fast set, instant workspace switch | [O] |
-| Layouts | Dwindle + per-workspace floating mode with titlebars (minimize, maximize, close): `karchy-hyprland-titlebars`, Omarchy's hyprbars fork built by karchy against Arch's Hyprland (D-60). Minimized windows come back from the bar's minimized indicator or Super+Shift+M | [O] + [New] |
+| Layouts | Dwindle + per-workspace floating mode with titlebars (minimize, maximize, close): `karchy-hyprland-titlebars`, Omarchy's hyprbars fork built by karchy against Arch's Hyprland (D-60). Minimized windows come back from the bar's minimized indicator or Super+Shift+M. How windows stack and switch in each mode: [Window modes](#window-modes-d-159) | [O] + [New] |
 | Workspaces | Per-monitor blocks of 10 | [O] |
 | Special workspace | Drop-down terminal (no AI agent auto-start) | [O] |
 | Opacity | Omarchy default (terminals 0.985/0.96) | [O] |
@@ -49,6 +49,45 @@ What a karchy install contains. Tags: [O] Omarchy does it, [C] CachyOS does it, 
 | Power settings | Settings › Power [New]: on a laptop everything that can differ by power source is one table with "On battery" beside "Plugged in" (D-160): the power mode and the screen brightness (set when the charger goes in or out; "Leave as it is" by default), the screen-off, lock and sleep times, when sleep becomes hibernation (plugged in: not at all, the time counting from when the charger is pulled, or the same time), and what closing the lid does. Under it: the lid with an external display, the power button, and the battery warning levels with "Switch to Power saver" at the first warning (off by default; it lasts until the charger goes in or a mode is picked by hand). A desktop gets one column and none of the battery, lid or brightness rows; the power mode shows where power-profiles-daemon runs. Idle times, brightness and warnings are keys in `shell.json` (`idle`, `power.brightness`, `battery`); the power mode is the profile `karchy-powerprofiles-set` remembers for each source, the same one the bar's power panel sets; the lid and hibernation go through a root helper that takes five fixed settings (`/usr/lib/karchy/power-settings`, no password for the person at the computer) and writes `60-karchy-settings.conf` drop-ins for logind and sleep; karchy's packaged files are numbered 10 to 40, so a drop-in of yours numbered higher than 60 wins (D-98, D-99) | [New] |
 | Games | A fullscreen game (Steam and Proton windows, gamescope, Wine programs, content type game) holds idle off and never loses focus to another window's request (D-91, D-94). A window that opens on its workspace floats above it, as over a borderless game on Windows: the game keeps its fullscreen and size, a click on the game puts it in front again, and the window tiles when the game leaves fullscreen (D-143). Tag another game's window with `tag = "+game"` | [New] |
 | Gestures | 3-finger swipe left/right = workspace | [O] |
+
+### Window modes (D-159)
+
+A workspace tiles or floats (Settings › Appearance › Workspace layout sets the default for new workspaces). The two modes share one rule for which window is in front and one Alt+Tab.
+
+**Tiling**
+
+- App windows share the workspace and never overlap.
+- A floating window is drawn in front of every tiled one, and nothing can put a tiled window in front of it. So only a window you deal with and close floats here: a dialog, a file chooser, karchy's floating terminal, About, the calculator. karchy's own windows (Settings, Quick install, Updates, Virtual machines, Containers) float too (D-114).
+- Among the floating windows, the one with the keyboard is in front, whether a click, Alt+Tab or a command gave it the keyboard. Focus follows the pointer here, and focus that only followed the pointer raises nothing.
+- Super+T floats one window, or tiles it again.
+
+**Floating (as on Windows)**
+
+- Every app window floats, with a titlebar: drag it to move, double-click it or □ to maximize, − to minimize, × to close, drag an edge to resize. Windows open at a comfortable size, each stepped from the last.
+- A click gives a window the keyboard and brings it to the front; the pointer alone does neither. A window given the keyboard any other way comes to the front too: Alt+Tab, a launcher that finds it open, an app that asks for focus, the window in front closing.
+- A maximized window is in front when it has the keyboard, and the other windows wait behind it; one of them given the keyboard comes in front of it again.
+- A dialog keeps the size its app gave it and stays in front of its app's windows. The portal's file chooser stays in front of every window on its workspace until it is answered.
+- Nothing else stays on top. karchy's own windows and its floating terminal go behind the window you click, like any other.
+
+**Both**
+
+- Alt+Tab goes to the window used before this one, and further back while Alt is held ([keybindings.md](keybindings.md)).
+- Picture-in-picture and the webcam overlay are pinned: in front of everything, on every workspace.
+
+Which kind a window is:
+
+| Window | Kind | Tiling | Floating |
+|---|---|---|---|
+| An app's own window, a terminal, a browser | app window | tiles | floats, stacks by use |
+| A dialog (it has a parent window, or cannot be resized): confirmations, Preferences, a toolkit's own file chooser | dialog | floats | own size, in front of its app |
+| The portal's file chooser and permission prompts (`xdg-desktop-portal-gtk`) | dialog of another app | floats | in front of every window, tag `stay-in-front` |
+| karchy's floating terminal (`org.karchy.terminal`), About, `TUI.float`, btop, the calculator, the captive portal sign-in, LocalSend | short-lived | floats | floats, stacks by use |
+| Settings, Quick install, Updates, Virtual machines, Containers | karchy's own | float (D-114) | float at their own size, stack by use |
+| imv, mpv, Evince, Steam | app windows that Omarchy floats | float | float at 875×600 (Steam at its own size), stack by use |
+| Picture-in-picture, the webcam overlay | overlay | pinned | pinned |
+| The password prompt (polkit), the menu, notifications, the lock screen | not windows: shell layers above all windows | | |
+
+A window rule keeps a window of your own in front of the others on its workspace: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. The code is `default/hypr/stacking.lua`, `default/hypr/window-switch.lua` and `default/hypr/workspace-modes.lua`; it runs on Hyprland's focus and open events.
 
 ## Shell (Omarchy Quickshell)
 
