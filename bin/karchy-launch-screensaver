@@ -59,10 +59,18 @@ wait_for_screensaver_window() {
   done
 }
 
+hypr_show_special() {
+  hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$1\")" >/dev/null 2>&1 || hyprctl dispatch togglespecialworkspace "$1" >/dev/null
+}
+
+# A special workspace that is showing, like the drop-down terminal, gives way
+# to the screensaver's own and opens again once it is gone. Windows that open
+# meanwhile are kept off the screensaver's workspace by its name (apps/system.lua).
+monitors=$(hyprctl monitors -j | jq -r '.[] | "\(.name) \(.specialWorkspace.name)"')
+
 while read -r m special; do
   hypr_focus_monitor "$m"
-  # Share a special workspace that is already showing, like the scratchpad, so it is still open afterwards.
-  workspace=${special:-special:screensaver-$m}
+  workspace=special:screensaver-$m
 
   case $terminal in
   *Alacritty*)
@@ -80,16 +88,22 @@ while read -r m special; do
   esac
 
   wait_for_screensaver_window
-done < <(hyprctl monitors -j | jq -r '.[] | "\(.name) \(.specialWorkspace.name)"')
+done <<<"$monitors"
 
 hypr_focus_monitor "$focused"
 
 # Emptying a special workspace focuses its monitor, so the last screensaver to close would take focus
-# with it. Hand focus back to the monitor that had it once they are all gone.
+# with it. Once they are all gone, open again the special workspaces that were showing and hand focus
+# back to the monitor that had it.
 # The class goes through the environment, since in argv the screensaver's pgrep and pkill would match it.
 (
   while hyprctl clients -j | SCREENSAVER=org.karchy.screensaver jq -e 'any(.[]; .mapped and .class == env.SCREENSAVER)' >/dev/null; do
     IFS= read -r -u "$events" line || exit
   done
+  while read -r m special; do
+    [[ -n $special ]] || continue
+    hypr_focus_monitor "$m"
+    hypr_show_special "${special#special:}"
+  done <<<"$monitors"
   hypr_focus_monitor "$focused"
 ) >/dev/null 2>&1 &
