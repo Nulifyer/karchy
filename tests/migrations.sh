@@ -72,5 +72,22 @@ check "PKGBUILD writes skel marks" "$?" "0"
 grep -q 'karchy-migrate baseline' "$root/system/users/user-setup" && grep -q 'user-setup' "$root/install/setup.sh"
 check "installer baselines the first user" "$?" "0"
 
+# A line written to fd 3 is shown as it runs, on karchy-migrate's stderr,
+# indented as karchy update's notes, while stdout keeps only done and failed
+# lines (an update from an older karchy reads those); it is also in no way
+# fatal where fd 3 isn't open.
+rm -rf "$m" "$done_dir"
+mkdir -p "$m"
+printf 'echo to-the-log\necho "Building the boot images" 2>/dev/null >&3 || true\nfalse\n' >"$m/1900000000-slow.sh"
+out=$(migrate run 2>"$tmp/err")
+check "fd 3: stdout has only the result" "$out" "failed 1900000000-slow.sh"
+check "fd 3: the line is shown on stderr, indented" "$(cat "$tmp/err")" "      Building the boot images"
+check "fd 3: the log has the rest" "$(cat "$done_dir/1900000000-slow.sh.log")" "to-the-log"
+check "fd 3: without it the line is harmless" "$(bash -euo pipefail <(head -n 2 "$m/1900000000-slow.sh") 2>&1; echo $?)" $'to-the-log\n0'
+for file in "$root"/migrations/1795547760-plymouth-scale-one.sh "$root"/migrations/1795095843-plymouth-splash.sh; do
+  check "${file##*/} says so before the slow rebuild" \
+    "$(grep -B1 -m1 '^sudo limine-mkinitcpio' "$file" | head -n 1)" 'echo "$say" 2>/dev/null >&3 || true'
+done
+
 echo "migrations: $pass passed, $failures failed"
 ((failures == 0))

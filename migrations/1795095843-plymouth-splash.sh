@@ -38,6 +38,10 @@ grep -q '^HOOKS=.* plymouth ' /etc/mkinitcpio.conf.d/karchy.conf ||
   echo "/etc/mkinitcpio.conf.d/karchy.conf has no plymouth hook (see karchy.conf.pacnew): the text prompt stays"
 
 ((changed)) || exit 0
+say="Building the boot images again with karchy's boot splash; this takes about a minute."
+echo "$say"
+# Shown in the update as it runs (karchy-migrate's fd 3), so it doesn't look stuck.
+echo "$say" 2>/dev/null >&3 || true
 sudo limine-mkinitcpio
 
 # limine-mkinitcpio carries on past a kernel it could not build and still

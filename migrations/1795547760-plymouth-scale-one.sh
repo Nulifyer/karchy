@@ -32,6 +32,10 @@ images=${esp:-/boot}/$(</etc/machine-id)
 older() { sudo find "$images" -mindepth 2 -maxdepth 2 -type f -name initramfs ! -newer "$plymouthd"; }
 
 [[ -n $(older) ]] || exit 0
+say="Building the boot images again so the splash is drawn at scale 1; this takes about a minute."
+echo "$say"
+# Shown in the update as it runs (karchy-migrate's fd 3), so it doesn't look stuck.
+echo "$say" 2>/dev/null >&3 || true
 sudo limine-mkinitcpio
 
 # limine-mkinitcpio carries on past a kernel it could not build and still

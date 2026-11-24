@@ -18,6 +18,14 @@
 #             marked done, so the next update tries it again; the others still run. Each one's output goes to
 #             migrations/<name>.log. Prints one line per migration
 #             ("done <name>" or "failed <name>") and exits 1 if any failed.
+#             A line a migration writes to file descriptor 3 is shown as it
+#             runs, indented as karchy update's own notes, on this command's
+#             standard error, which karchy update leaves on the terminal: for
+#             a slow step, so the update doesn't look stuck. (Standard output
+#             can't carry it: an update that started on an older karchy reads
+#             only done and failed lines there.) Written as
+#             `echo "..." 2>/dev/null >&3 || true`, it does nothing where fd 3
+#             isn't open.
 #   baseline  marks every migration shipped now as done without running it:
 #             for a user whose files were made by this karchy, so older
 #             fixes don't apply. The installer runs it for the first user;
@@ -47,7 +55,11 @@ case ${1:-} in
       # Run in a bash of its own with errexit, so any failing command fails
       # the migration; a failure must not stop the rest, and must not mark it
       # done.
-      if bash -euo pipefail "$migrations_dir/$name" >"$done_dir/$name.log" 2>&1; then
+      status=0
+      bash -euo pipefail "$migrations_dir/$name" 3> >(sed -u 's/^/      /' >&2) >"$done_dir/$name.log" 2>&1 || status=$?
+      # The fd 3 lines are all out before the result line.
+      wait "$!" 2>/dev/null || true
+      if ((status == 0)); then
         touch "$done_dir/$name"
         rm -f "$done_dir/$name.log"
         echo "done $name"
