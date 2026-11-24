@@ -270,6 +270,16 @@ Branch `t3/unify-password-dot-sizing`, three commits, not merged. The user asked
 - **For the user to look at:** the lock and login screens' dots are much smaller than they were, because they now follow the text beside them. The boot splash's disk-password box is not the shell and still has 8 px dots 14 px apart; the rule would give 9 and 12, which means new bullet images and a new step in `system/plymouth/karchy/karchy.script`.
 - Not checked: the real login screen at boot, a display scale above 1, a real right-to-left language, real hardware.
 
+## The clipboard works as on Windows (D-167), 2026-11-24
+
+Branch `t3/windows-style-clipboard-history` (worktree, not merged). User: "copy and hold that copy and paste from history like windows", Ctrl+C/V in apps, Ctrl+Shift+C/V in terminals, a panel in the bar.
+
+- **Before:** the history (Super+Ctrl+V) wrote every copy to `~/.local/state/karchy` and kept 500 of them for good, 0644; a file copied in Thunar was recorded as its path, so pasting it gave text; nothing could be pinned; pasting relied on the terminals' starter configs rebinding Shift+Insert; no bar panel. Holding a copy after its app closes was already in (`karchy-clipboard-persist.service`).
+- **Built:** entries in memory with pins on disk, files as entries, paste through Hyprland with the window's own keys, pin, delete, Clear all, the "Keep a history" switch, the bar panel in the tray's drawer, Ctrl+Shift+C/V written out in the four terminal starter configs, a migration that removes the old history files. Specified in `docs/components.md` › Clipboard and `docs/keybindings.md`.
+- **Checks:** `bun tests/clipboard-history.js`, `tests/clipboard-capture.sh`, `python3 tests/keybindings.py`, `tests/agent-skills.sh`, `tools/icon-check`.
+- **Seen in VM `clip`** (installed from the rc.13 ISO, then this branch's packages with `pacman -U`; screenshots and transcripts in the worktree's `out/clipboard`): a copy made in Mousepad pasted into Thunar after Mousepad was closed; text, an image (into a Brave page) and a file (into Thunar) pasted from the history; the bar panel pasting, pinning and deleting; Ctrl+Shift+C/V and Ctrl+C in foot, Ghostty, Alacritty and kitty, and kitty without a config; KeePassXC's password copy staying out; only the pinned entry left after a restart; nothing reachable from the lock screen; the migration through `karchy-migrate run`. The VM is shut off, with snapshot `installed` (rc.13 as installed).
+- **Not seen:** Nautilus, Dolphin or a chat app taking a file entry (only Thunar); a second monitor; a touch screen; a password manager other than KeePassXC; the update path through `karchy update` itself (the packages were installed with `pacman -U` and the migrations run by hand).
+
 ## Current batch
 
 None: everything is merged.
@@ -395,6 +405,9 @@ Owner: coordinating agent. Phase 2 work left that needs no decision: none of sub
 ## Needs the user
 
 - Power (D-162): the four points D-160 left open are answered and built (below). Your review's answers (a) Never plugged in, (b) "Critical battery", (c) the level comes back after a reboot are built in D-172. Left for you: whether the dim level should be a choice on the page (today `idle.dimBrightness` in shell.json), and (d) still not built from D-160's list: a keyboard-backlight level per power source.
+- The clipboard (D-167), for your decision, nothing of it built: (a) Super+V opens the history, as Win+V does; today it is Universal paste (Ctrl+V does the same in apps), and the history is on Super+Ctrl+V. Recommended: yes, keeping Super+Ctrl+V as a second key. (b) Middle-click paste of the mouse selection, which Windows doesn't have: it is left on. One Hyprland line (`misc.middle_click_paste = false`) turns it off everywhere. Recommended: leave it on unless stray pastes from a three-finger tap or the wheel bother you. (c) An entry pasted from the history is plain text, an image or files; Windows also keeps formatted text (HTML). Recommended: leave it until it is missed. (d) The history is emptied by a restart, as on Windows, and holds 100 entries; say if it should survive restarts or hold more.
+
+- Power (D-160), for your decision: (a) "Switch to Power saver" at the first battery warning is off by default; GNOME and Windows have it on. Recommended: turn it on by default once it has been seen working on the Framework. (b) Dim the screen some time before it turns off (KDE, GNOME and macOS do): not built, it needs the idle service to lower and restore the backlight. Recommended: build it, per power source, after (a). (c) The last resort (hibernate at 3%) has no setting; a choice of level and action would need the root helper to write a UPower drop-in and restart UPower. Recommended: leave it fixed. (d) The screensaver (150 s idle) runs on battery too; a per-source time, or none on battery, is one more row. Recommended: off on battery by default, if you want it.
 
 - The desktop in a VM doesn't follow its viewer's window size (checked 2026-11-22, see above). Say whether karchy-vm should get the watcher that makes it follow.
 
