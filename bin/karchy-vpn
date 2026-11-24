@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# karchy:summary=Show or control the WireGuard VPN: its state, its mode, a sign-in pause and its setup
+# karchy:args=[status [--json] | mode [off|auto|on] | on | off | auto | portal-pause | reconnect | setup [config-file]]
+# karchy:examples=karchy vpn status | karchy vpn mode auto
+
 # karchy-vpn: the WireGuard VPN's command.
 #
 #   karchy-vpn status [--json]       the published state (anyone)
