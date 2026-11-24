@@ -59,6 +59,13 @@ jobs:
       - name: Font rules, commands and the listed fonts' pictures (D-120)
         run: tests/fonts.sh
 
+  theme-git:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: A theme from a git repo ships colours only, and karchy makes the rest (D-161, D-166)
+        run: tests/theme-git-denied.sh
+
   quick-install:
     runs-on: ubuntu-latest
     steps:
