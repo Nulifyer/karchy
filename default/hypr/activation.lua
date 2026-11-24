@@ -63,6 +63,25 @@ hl.on("window.urgent", function(window)
   end, { timeout = 1, type = "oneshot" })
 end)
 
+-- A window something asks to bring forward without a click: the shell's
+-- summon of a window that is already open (`karchy settings` with Settings
+-- open). Hyprland goes to its workspace and gives it the keyboard, and
+-- stacking.lua raises it; while the screensaver shows, that waits until it is
+-- gone. For `hyprctl dispatch 'o.focus_window("address:0x...")'`.
+function o.focus_window(selector)
+  return function()
+    local window = hl.get_window(selector)
+    if not (window and window.mapped) then return end
+
+    if screensaver.showing() then
+      screensaver.keyboard_after(window)
+      return
+    end
+
+    hl.dispatch(hl.dsp.focus({ window = selector }))
+  end
+end
+
 -- Telegram asks for activation on every message it receives (upstream
 -- ec305459f); it wants attention, not the keyboard.
 o.window("org.telegram.desktop", { tag = "+attention-only" })

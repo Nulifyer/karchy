@@ -474,9 +474,10 @@ ShellRoot {
   }
 
   // Hyprland goes to the window's workspace and gives it the keyboard, and a
-  // floating window that gets the keyboard is raised (default/hypr/stacking.lua).
-  // The window is found by the shell's class and its title together: a
-  // title alone ("Settings") can be another app's window.
+  // floating window that gets the keyboard is raised (default/hypr/stacking.lua);
+  // while the screensaver shows, once it is gone (o.focus_window,
+  // default/hypr/activation.lua). The window is found by the shell's class and
+  // its title together: a title alone ("Settings") can be another app's window.
   function focusPluginWindow(pluginId) {
     var loader = panelLoaders[pluginId]
     var title = loader && loader.item ? loader.item.windowTitle : ""
@@ -485,7 +486,7 @@ ShellRoot {
     for (var i = 0; i < toplevels.length; i++) {
       var toplevel = toplevels[i]
       if (toplevel.title !== title || !toplevel.wayland || toplevel.wayland.appId !== Quickshell.appId) continue
-      Hyprland.dispatch('hl.dsp.focus({ window = "address:0x' + toplevel.address + '" })')
+      Hyprland.dispatch('o.focus_window("address:0x' + toplevel.address + '")')
       return
     }
   }

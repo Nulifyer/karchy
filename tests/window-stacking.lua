@@ -190,8 +190,11 @@ hl = setmetatable({
       __index = function() return action("none") end,
     }),
   }, { __index = function() return action("none") end }),
+  -- A dispatcher, or a Lua function (`hyprctl dispatch 'o.focus_window(...)'`).
   dispatch = function(dispatcher)
-    if actions[dispatcher.kind] then
+    if type(dispatcher) == "function" then
+      dispatcher()
+    elseif actions[dispatcher.kind] then
       actions[dispatcher.kind](dispatcher.args)
     end
   end,
@@ -673,6 +676,15 @@ eq(history[1], "later", "once both are gone the newest window gets the keyboard"
 saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
 close(saver)
 eq(history[1], "later", "a screensaver that ends with nothing new leaves the keyboard to Hyprland")
+
+-- The shell's summon of a window that is already open waits the same way.
+saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
+hl.dispatch(o.focus_window("address:other"))
+eq(history[1], "saver", "a window summoned while the screensaver shows leaves it the keyboard")
+close(saver)
+eq(history[1], "other", "and gets it once the screensaver is gone")
+hl.dispatch(o.focus_window("address:left"))
+eq(history[1], "left", "with no screensaver a summoned window gets the keyboard at once")
 
 close(later)
 fire("window.urgent", other)
