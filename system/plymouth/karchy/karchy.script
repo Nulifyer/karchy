@@ -20,6 +20,9 @@
 # Plymouth gives a script theme no scale for high-resolution screens, so
 # there are two sets of pictures and the screen's height picks one, at the
 # height where the console font doubles too (install/lib.sh's console_font).
+# This needs Plymouth's own scale at 1 (DeviceScale=1 in plymouthd.conf,
+# D-173): at 2 the window reports half the height, the small pictures are
+# picked, and Plymouth enlarges them, blurred.
 #
 # Plymouth and systemd never say that a password was wrong: systemd asks
 # again with the same words. So the theme remembers the question it last

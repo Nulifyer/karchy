@@ -77,7 +77,8 @@ package() {
     "$pkgdir/usr/lib/systemd/system/karchy-prompt-fallback.service"
   # The disk-password screen (D-122): karchy's Plymouth theme. The pictures
   # are drawn by tools/plymouth-theme and committed. The installer and a
-  # migration make it the default theme (/etc/plymouth/plymouthd.conf).
+  # migration make it the default theme and set Plymouth's scale to 1
+  # (/etc/plymouth/plymouthd.conf; D-173).
   install -Dm644 -t "$pkgdir/usr/share/plymouth/themes/karchy" plymouth/karchy/*
   # ...and Plymouth only with "splash" on the kernel line, so a boot without
   # it is karchy's text screen.

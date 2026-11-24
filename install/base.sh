@@ -410,6 +410,11 @@ EOF
   # karchy's Plymouth theme, before limine-update builds the first images
   # (the plymouth hook copies the default theme into them).
   in_target plymouth-set-default-theme karchy
+  # Scale 1 on every screen (D-173): the theme sizes itself, and at the
+  # scale 2 Plymouth picks for some high-resolution panels it would draw its
+  # small pictures enlarged and blurred. plymouth-set-default-theme wrote the
+  # [Daemon] line above and touches only Theme= from now on.
+  sed -i '0,/^\[Daemon\]/s//[Daemon]\nDeviceScale=1/' "$KARCHY_MNT/etc/plymouth/plymouthd.conf"
   in_target limine-install --fallback
   in_target limine-update
   # karchy's name, colours and font for the menu, above the entries that
