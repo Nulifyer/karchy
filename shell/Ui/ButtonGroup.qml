@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 import qs.Commons
 import qs.Commons as Commons
 
@@ -16,12 +17,15 @@ import qs.Commons as Commons
 // the current one. The selected chip is the default landing point so
 // users see their existing choice on arrival.
 //
+// The chips wrap onto another line where the group is given less width than
+// they need (a form in a narrow window); with room they are one row.
+//
 // Panel-cursor consumers (the bar widget panels) drive `cursorIndex`
 // directly and listen on `hovered` to sync the mouse — Tab focus and
 // `cursorIndex` are independent; either one paints the chip's hot
 // state, and the bar widget panels never give Tab focus to a
 // ButtonGroup so they only see the cursorIndex path.
-Row {
+Flow {
   id: root
 
   property var options: []
@@ -47,6 +51,19 @@ Row {
   signal hovered(int index, bool isHovered)
 
   spacing: Style.spacing.md
+
+  // In a layout the group is as wide as its chips in one row and no wider,
+  // and gives way where the layout has less: the chips wrap.
+  readonly property real rowWidth: {
+    var total = 0
+    for (var i = 0; i < chips.count; i++) {
+      var chip = chips.itemAt(i)
+      if (chip) total += chip.implicitWidth + (i > 0 ? spacing : 0)
+    }
+    return Math.ceil(total)
+  }
+  Layout.fillWidth: true
+  Layout.maximumWidth: rowWidth
 
   activeFocusOnTab: focusable
 
@@ -109,6 +126,7 @@ Row {
   }
 
   Repeater {
+    id: chips
     model: root.options
 
     delegate: Button {

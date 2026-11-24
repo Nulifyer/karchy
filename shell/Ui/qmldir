@@ -45,6 +45,7 @@ ScreenMoveRemap 1.0 ScreenMoveRemap.qml
 SearchableDropdown 1.0 SearchableDropdown.qml
 Section 1.0 Section.qml
 SettingRow 1.0 SettingRow.qml
+SidebarSwitcher 1.0 SidebarSwitcher.qml
 SizedImage 1.0 SizedImage.qml
 SpeedTestOverlay 1.0 SpeedTestOverlay.qml
 TextField 1.0 TextField.qml

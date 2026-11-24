@@ -19,6 +19,10 @@ import qs.Commons as Commons
 //
 // Its children stack in a column. With no title it is a rule and its
 // content: a group that needs no name (a page's closing actions).
+//
+// Where the page is too narrow for the title and the trailing controls on
+// one line, the controls go on a line of their own under the title, as a
+// PageHeader's do.
 ColumnLayout {
   id: root
 
@@ -40,47 +44,64 @@ ColumnLayout {
 
   PanelSeparator { Layout.fillWidth: true }
 
-  RowLayout {
+  // The whole title, with its arrow and what it becomes, and the (i).
+  readonly property real titleWidth: header.implicitWidth
+    + (root.titleTo !== "" ? headerArrow.implicitWidth + headerTo.implicitWidth + 2 * Style.spacing.md : 0)
+    + (root.info !== "" ? infoTip.implicitWidth + Style.spacing.md : 0)
+  readonly property bool stacked: trailingRow.implicitWidth > 0 && width > 0
+    && titleWidth + trailingRow.implicitWidth + Style.space(40) > width
+
+  GridLayout {
     visible: root.title !== "" || trailingRow.implicitWidth > 0
     Layout.fillWidth: true
-    spacing: Style.spacing.md
+    columns: root.stacked ? 1 : 2
+    columnSpacing: Style.spacing.md
+    rowSpacing: Style.spacing.md
 
-    PanelSectionHeader {
-      id: header
-      Layout.alignment: Qt.AlignVCenter
-      Layout.maximumWidth: Math.max(0, root.width - trailingRow.implicitWidth - Style.space(40)
-        - (root.titleTo !== "" ? headerArrow.implicitWidth + headerTo.implicitWidth + 2 * parent.spacing : 0))
-      text: root.title
-      font.capitalization: Font.AllUppercase
-      elide: Text.ElideRight
-      Accessible.role: Accessible.Heading
-      Accessible.name: root.titleTo !== "" ? root.title + " to " + root.titleTo : root.title
+    RowLayout {
+      Layout.fillWidth: true
+      spacing: Style.spacing.md
+
+      PanelSectionHeader {
+        id: header
+        Layout.alignment: Qt.AlignVCenter
+        // Its own width where there is room, cut short where there isn't: it
+        // gives way to what follows it and to the trailing controls.
+        Layout.fillWidth: true
+        Layout.maximumWidth: Math.ceil(implicitWidth)
+        text: root.title
+        font.capitalization: Font.AllUppercase
+        elide: Text.ElideRight
+        Accessible.role: Accessible.Heading
+        Accessible.name: root.titleTo !== "" ? root.title + " to " + root.titleTo : root.title
+      }
+      Text {
+        id: headerArrow
+        visible: root.titleTo !== ""
+        Layout.alignment: Qt.AlignVCenter
+        topPadding: header.topPadding
+        textFormat: Text.PlainText
+        text: Icons.glyph("ui.arrow.right")
+        color: header.color
+        font.family: Icons.family
+        font.pixelSize: Style.font.iconSmall
+      }
+      PanelSectionHeader {
+        id: headerTo
+        visible: root.titleTo !== ""
+        Layout.alignment: Qt.AlignVCenter
+        text: root.titleTo
+        Accessible.ignored: true
+      }
+      InfoTip {
+        id: infoTip
+        visible: root.info !== ""
+        Layout.alignment: Qt.AlignVCenter
+        subject: root.title
+        text: root.info
+      }
+      Item { Layout.fillWidth: true; implicitHeight: 1 }
     }
-    Text {
-      id: headerArrow
-      visible: root.titleTo !== ""
-      Layout.alignment: Qt.AlignVCenter
-      topPadding: header.topPadding
-      textFormat: Text.PlainText
-      text: Icons.glyph("ui.arrow.right")
-      color: header.color
-      font.family: Icons.family
-      font.pixelSize: Style.font.iconSmall
-    }
-    PanelSectionHeader {
-      id: headerTo
-      visible: root.titleTo !== ""
-      Layout.alignment: Qt.AlignVCenter
-      text: root.titleTo
-      Accessible.ignored: true
-    }
-    InfoTip {
-      visible: root.info !== ""
-      Layout.alignment: Qt.AlignVCenter
-      subject: root.title
-      text: root.info
-    }
-    Item { Layout.fillWidth: true; implicitHeight: 1 }
     RowLayout {
       id: trailingRow
       spacing: Style.spacing.controlGap

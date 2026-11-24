@@ -271,6 +271,17 @@ QtObject {
     readonly property int panelWidth: root.spacingToken("panel-width", 380)
     readonly property int panelWidthWide: root.spacingToken("panel-width-wide", 560)
     readonly property int sidebarWidth: root.spacingToken("sidebar-width", 200)
+    // A window narrower than this (a tile beside other windows) has no room
+    // for a sidebar beside its page: the sidebar becomes a SidebarSwitcher at
+    // the top, and the page takes the whole width.
+    readonly property int windowNarrow: root.spacingToken("window-narrow", 720)
+    // A page at least this wide has its labels beside their controls; a
+    // narrower one puts each label above its control.
+    readonly property int formWide: root.spacingToken("form-wide", 560)
+    // A page grows no wider than this in a window that does (a lone tile is
+    // the whole screen): its controls end here, not a screen away from
+    // their labels.
+    readonly property int pageMaxWidth: root.spacingToken("page-max-width", 720)
     readonly property int formLabelWidth: root.spacingToken("form-label-width", 170)
     // Where a form's controls start, from the page's left edge: after the
     // label column and its gap. Values in a page's lists start there too.

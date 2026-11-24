@@ -47,14 +47,21 @@ ColumnLayout {
     spacing: Style.spacing.xxl
 
     Text {
+      // The label column, or the label's own width when that is longer; where
+      // the row is narrower than both, the label gives way and wraps.
+      Layout.fillWidth: true
       Layout.preferredWidth: Math.max(root.labelWidth, Math.ceil(implicitWidth))
-      Layout.maximumWidth: Math.max(root.labelWidth, root.width - toggle.width - Style.space(60))
+      Layout.maximumWidth: Math.max(root.labelWidth, Math.ceil(implicitWidth))
+      Layout.minimumWidth: Style.space(60)
       Layout.alignment: Qt.AlignVCenter
       textFormat: Text.PlainText
       text: root.label
       color: root.enabled ? Commons.Color.foreground : Commons.Color.disabledText(Commons.Color.foreground)
       font.family: Style.font.family
       font.pixelSize: Style.font.body
+      // A label longer than a narrow page takes a second line before it is cut.
+      wrapMode: Text.Wrap
+      maximumLineCount: 2
       elide: Text.ElideRight
 
       // The label is part of the switch's target.

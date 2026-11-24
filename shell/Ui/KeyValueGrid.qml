@@ -21,6 +21,8 @@ import qs.Commons as Commons
 // each value to the end of its pair; otherwise labels share one width and the
 // values start in a column after them (a window page's form). A row whose
 // value is "" still holds its line, so the grid doesn't jump when data lands.
+// Where a page's grid gets too narrow for the two columns (a window that is
+// a tile), each label goes on a line of its own above its value (`stacked`).
 GridLayout {
   id: root
 
@@ -39,6 +41,10 @@ GridLayout {
   // after the longest label (a bar panel); a form page gives its control
   // column, so the values stand under its dropdowns and buttons.
   property real valueColumn: 0
+  // Each label above its value: where the grid is too narrow for a column of
+  // labels beside the values (a page in a narrow window). The panels' form
+  // (`justify`) keeps its pairs on one line.
+  property bool stacked: !justify && width > 0 && width < Style.space(400)
   // A value too long for its line wraps instead of losing its middle: for a
   // list of addresses, where every one counts.
   property bool wrapValues: false
@@ -62,16 +68,21 @@ GridLayout {
   Repeater {
     model: root.rows
 
-    RowLayout {
+    GridLayout {
       id: pair
       required property var modelData
       readonly property string value: modelData.value === undefined || modelData.value === null || modelData.value === ""
         ? root.placeholder : String(modelData.value)
       Layout.fillWidth: true
-      spacing: Style.spacing.lg
+      columns: root.stacked ? 1 : 2
+      columnSpacing: Style.spacing.lg
+      rowSpacing: 0
+      // Stacked, a pair is told from the next by the room under it.
+      Layout.bottomMargin: root.stacked ? Style.spacing.sm : 0
 
       Text {
-        Layout.preferredWidth: root.justify ? -1 : root.labelWidth
+        Layout.fillWidth: root.stacked
+        Layout.preferredWidth: root.justify || root.stacked ? -1 : root.labelWidth
         Layout.alignment: Qt.AlignTop
         textFormat: Text.PlainText
         text: String(pair.modelData.label || "")

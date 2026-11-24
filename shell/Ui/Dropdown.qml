@@ -12,7 +12,10 @@ import qs.Commons as Commons
 //
 // `options` accepts either a plain string[] or an array of
 // { value, label } objects (label is what we render; value is what we
-// emit). Mixing is fine — each row is interpreted independently.
+// emit). Mixing is fine — each row is interpreted independently. An option
+// may carry `icon` (a glyph from Icons.glyph, drawn before the label) and
+// `detail` (a count or a state, quieter, at the end of the row); the trigger
+// shows the chosen option's too. SidebarSwitcher lists a window's pages so.
 //
 // Keyboard: Tab to focus the trigger, Enter/Space opens, Esc closes,
 // j/k or Up/Down walks options inside the open popup, Enter selects.
@@ -34,6 +37,8 @@ Item {
   property int rowHeight: Style.spacing.controlHeight
   property int popupRowHeight: Style.spacing.popupRowHeight
   property bool showLabel: true
+  // How many options show before the list scrolls.
+  property int maxRows: 8
 
   // Panel-cursor flag. When true, the trigger renders the shared
   // hover-cursor state. Active Qt focus defaults to the same visuals.
@@ -54,6 +59,9 @@ Item {
 
   signal changed(string value)
   signal hovered(bool isHovered)
+  // Tab or Shift+Tab on the trigger, before the keyboard moves on: a window
+  // that keeps its own Tab order accepts the event and moves it itself.
+  signal tabbed(var event)
 
   function optionValue(o) {
     return (o && typeof o === "object") ? String(o.value) : String(o)
@@ -61,11 +69,21 @@ Item {
   function optionLabel(o) {
     return (o && typeof o === "object") ? String(o.label) : String(o)
   }
-  function currentLabel() {
+  function optionIcon(o) {
+    return (o && typeof o === "object" && o.icon) ? String(o.icon) : ""
+  }
+  function optionDetail(o) {
+    return (o && typeof o === "object" && o.detail !== undefined && o.detail !== null) ? String(o.detail) : ""
+  }
+  function currentOption() {
     for (var i = 0; i < options.length; i++) {
-      if (optionValue(options[i]) === value) return optionLabel(options[i])
+      if (optionValue(options[i]) === value) return options[i]
     }
-    return value
+    return null
+  }
+  function currentLabel() {
+    var o = currentOption()
+    return o !== null ? optionLabel(o) : value
   }
 
   implicitWidth: Style.spacing.dropdownWidth
@@ -114,20 +132,52 @@ Item {
           event.accepted = true
         } else if (event.key === Qt.Key_Escape && popup.opened) {
           popup.close(); event.accepted = true
+        } else if (event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+          root.tabbed(event)
         }
       }
 
       Text {
+        id: triggerIcon
+        visible: text !== ""
         textFormat: Text.PlainText
         anchors.left: parent.left
-        anchors.right: chevron.left
         anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
-        anchors.rightMargin: trigger.borderRight + Style.spacing.md
+        text: root.optionIcon(root.currentOption())
+        color: root.enabled ? root.foreground : Commons.Color.disabledText(root.foreground, root.background)
+        font.family: Icons.family
+        font.pixelSize: Style.font.icon
+      }
+
+      Text {
+        textFormat: Text.PlainText
+        anchors.left: triggerIcon.visible ? triggerIcon.right : parent.left
+        anchors.right: triggerDetail.visible ? triggerDetail.left : chevron.left
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.leftMargin: triggerIcon.visible ? Style.spacing.md : trigger.borderLeft + Style.spacing.controlPaddingX
+        anchors.rightMargin: triggerDetail.visible ? Style.spacing.lg : trigger.borderRight + Style.spacing.md
         text: root.currentLabel()
         color: root.enabled ? root.foreground : Commons.Color.disabledText(root.foreground, root.background)
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
+        elide: Text.ElideRight
+      }
+
+      Text {
+        id: triggerDetail
+        visible: text !== ""
+        textFormat: Text.PlainText
+        anchors.right: chevron.left
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.rightMargin: trigger.borderRight + Style.spacing.md
+        // The label keeps at least half the trigger.
+        width: Math.min(implicitWidth, trigger.width * 0.45)
+        text: root.optionDetail(root.currentOption())
+        color: Commons.Color.secondaryText(root.foreground, root.background)
+        font.family: root.fontFamily
+        font.pixelSize: Style.font.bodySmall
+        font.features: { "tnum": 1 }
         elide: Text.ElideRight
       }
 
@@ -166,7 +216,7 @@ Item {
         readonly property real gap: Style.spacing.xxs
         readonly property real fullHeight:
           Math.min(root.options.length * root.popupRowHeight + Math.max(0, root.options.length - 1) * Style.spacing.labelGap,
-                   root.popupRowHeight * 8 + 7 * Style.spacing.labelGap)
+                   root.popupRowHeight * root.maxRows + (root.maxRows - 1) * Style.spacing.labelGap)
           + topPadding + bottomPadding
 
         function place() {
@@ -260,16 +310,45 @@ Item {
             FocusRing { shown: index === optionList.currentIndex; keyboardOnly: false }
 
             Text {
+              id: optionIconText
+              visible: text !== ""
               textFormat: Text.PlainText
               anchors.left: parent.left
-              anchors.right: parent.right
               anchors.verticalCenter: parent.verticalCenter
               anchors.leftMargin: Style.spacing.controlPaddingX
-              anchors.rightMargin: Style.spacing.controlPaddingX
+              text: root.optionIcon(modelData)
+              color: index === optionList.currentIndex ? Style.hoverStateColor(root.foreground, root.accent) : root.foreground
+              font.family: Icons.family
+              font.pixelSize: Style.font.icon
+            }
+
+            Text {
+              textFormat: Text.PlainText
+              anchors.left: optionIconText.visible ? optionIconText.right : parent.left
+              anchors.right: optionDetailText.visible ? optionDetailText.left : parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              anchors.leftMargin: optionIconText.visible ? Style.spacing.md : Style.spacing.controlPaddingX
+              anchors.rightMargin: optionDetailText.visible ? Style.spacing.lg : Style.spacing.controlPaddingX
               text: root.optionLabel(modelData)
               color: index === optionList.currentIndex ? Style.hoverStateColor(root.foreground, root.accent) : root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
+              elide: Text.ElideRight
+            }
+
+            Text {
+              id: optionDetailText
+              visible: text !== ""
+              textFormat: Text.PlainText
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              anchors.rightMargin: Style.spacing.controlPaddingX
+              width: Math.min(implicitWidth, parent.width * 0.45)
+              text: root.optionDetail(modelData)
+              color: Commons.Color.secondaryText(root.foreground, root.background)
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.bodySmall
+              font.features: { "tnum": 1 }
               elide: Text.ElideRight
             }
 
