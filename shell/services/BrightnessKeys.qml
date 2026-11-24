@@ -30,6 +30,11 @@ Item {
     if (!/^(eDP|LVDS|DSI)-/.test(name) || !device) return false
     if (action !== "raise" && action !== "lower") return false
 
+    // A screen the idle service has dimmed is the script's: it puts the
+    // level back first, so the key steps from where the screen was.
+    var idle = host && host.serviceFor ? host.serviceFor("karchy.idle") : null
+    if (idle && idle.dimPending) return false
+
     // The script drops a press that overlaps one still being applied, so key
     // repeat cannot race the writes.
     if (setProc.running) return true

@@ -9,6 +9,8 @@ function secondsFromConfig(value, fallback) {
 // set one source apart, "ac" being plugged in or a machine with no battery.
 // Sleep differs: the shared idle.suspend counts on battery only, unless
 // idle.suspendOnAC is true, so a plugged-in machine sleeps only when asked.
+// `dim` is how long before the screen turns off it is dimmed (see dimAfter),
+// per source like the others, and `dimBrightness` the percent it is dimmed to.
 // bin/karchy-settings-power reads the same keys the same way (Settings ›
 // Power); keep the two in step.
 function timeouts(config, onBattery, defaults) {
@@ -31,8 +33,89 @@ function timeouts(config, onBattery, defaults) {
     screensaver: secondsFromConfig(idle.screensaver, defaults.screensaver),
     screenOff: pick("screenOff"),
     lock: pick("lock"),
-    suspend: suspend
+    suspend: suspend,
+    dim: pick("dim"),
+    dimBrightness: dimBrightness(idle.dimBrightness, defaults.dimBrightness)
   }
+}
+
+// The percent a screen is dimmed to: 1 to 99, or the fallback.
+function dimBrightness(value, fallback) {
+  var n = Number(value)
+  if (value === undefined || value === null || value === "" || !isFinite(n) || n < 1 || n > 99) return fallback
+  return Math.floor(n)
+}
+
+// How long idle until the screen goes dark by itself on these times, 0 for
+// never. The screen-off time and the lock both do it (the lock screen turns
+// the screen off 5 seconds after it appears), but only where a screen-off
+// time is set: with "Never" the lock stays lit. Sleep always does.
+function screenDarkAfter(times) {
+  var off = times.screenOff > 0 ? firstIdleTimeout(times.screenOff, times.lock) : 0
+  return firstIdleTimeout(off, times.suspend)
+}
+
+// How long idle until the screen is dimmed, 0 for never: `dim` seconds before
+// it goes dark, and no earlier than half way there, so a short screen-off
+// time still leaves the screen at its level for most of it. Nothing dims a
+// screen that never goes dark, or a machine without a built-in screen.
+function dimAfter(times, hasBacklight) {
+  if (!hasBacklight || !(times.dim > 0)) return 0
+  var dark = screenDarkAfter(times)
+  if (!(dark > 0)) return 0
+  return Math.max(dark - times.dim, Math.ceil(dark / 2))
+}
+
+// The idle service's side of a dimming: when karchy-brightness-display is
+// asked to dim and to undim. `state` is { dimmed, undimWanted, dimRunning,
+// undimRunning }; `event` is "dim" (the dim timer, with `allowed` false when
+// the screen is already off), "undim" (activity, the charger, stay-awake, an
+// inhibitor), "dimExited" or "undimExited" (the commands ending). The result
+// carries the new state and the command to start now: "dim", "undim" or "".
+//
+// The rules: one undim follows every dim, and never overtakes it. An undim
+// asked for while the dim command still runs waits for it to end: started at
+// once it could finish first, find nothing to undo, and leave the screen dim
+// with nobody left to ask. A dim asked for while an undim is still owed or
+// running is dropped, for the same reason turned round; that stretch is not
+// dimmed.
+function dimStep(state, event, allowed) {
+  var next = {
+    dimmed: !!(state && state.dimmed),
+    undimWanted: !!(state && state.undimWanted),
+    dimRunning: !!(state && state.dimRunning),
+    undimRunning: !!(state && state.undimRunning)
+  }
+  var run = ""
+
+  if (event === "dim") {
+    if (allowed !== false && !next.dimmed && !next.undimWanted && !next.dimRunning && !next.undimRunning) {
+      next.dimmed = true
+      next.dimRunning = true
+      run = "dim"
+    }
+  } else if (event === "undim") {
+    if (next.dimmed) {
+      next.dimmed = false
+      next.undimWanted = true
+    }
+  } else if (event === "dimExited") {
+    next.dimRunning = false
+  } else if (event === "undimExited") {
+    next.undimRunning = false
+  }
+
+  if (run === "" && next.undimWanted && !next.dimRunning && !next.undimRunning) {
+    next.undimWanted = false
+    next.undimRunning = true
+    run = "undim"
+  }
+  return { state: next, run: run }
+}
+
+// A dimming is in place or being undone.
+function dimPending(state) {
+  return !!(state && (state.dimmed || state.undimWanted || state.dimRunning || state.undimRunning))
 }
 
 // The soonest of the given idle times. 0 means the action is disabled, not
@@ -141,6 +224,11 @@ if (typeof module !== "undefined") {
     describeInhibitors: describeInhibitors,
     secondsFromConfig: secondsFromConfig,
     timeouts: timeouts,
+    dimBrightness: dimBrightness,
+    screenDarkAfter: screenDarkAfter,
+    dimAfter: dimAfter,
+    dimStep: dimStep,
+    dimPending: dimPending,
     firstIdleTimeout: firstIdleTimeout,
     delayAfterFirstIdle: delayAfterFirstIdle,
     eventParts: eventParts,

@@ -10,7 +10,9 @@
 # `power.brightness.ac` or `power.brightness.battery` from shell.json when
 # that is set (percent; 0 leaves the screen as it is). That happens once, at
 # the change: the brightness keys work as before afterwards, and the session's
-# start does not touch the brightness.
+# start does not touch the brightness. A screen the idle service has dimmed is
+# first put back to its level, so the charger never leaves it dim and the
+# source's brightness is not mistaken for the dimming later.
 
 supply="${1:-}"
 
@@ -21,6 +23,8 @@ fi
 
 # A machine without power-profiles-daemon still has a screen to set.
 karchy-powerprofiles-set "$supply" || true
+
+karchy-brightness-display undim || true
 
 # shellcheck source=bin/karchy-shell-config
 percent=$(source karchy-shell-config 2>/dev/null && effective_config 2>/dev/null | jq -r --arg supply "$supply" '

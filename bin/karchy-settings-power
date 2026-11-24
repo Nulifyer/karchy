@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Read and save power settings: power mode, screen brightness and idle times on battery and plugged in, lid, power button, hibernation and battery warnings (Settings › Power)
+# karchy:summary=Read and save power settings: power mode, screen brightness, dimming and idle times on battery and plugged in, lid, power button, hibernation and battery warnings (Settings › Power)
 # karchy:args=[status | set <setting> <value> | reset]
 # karchy:examples=karchy settings power | karchy-settings-power status | karchy-settings-power set lock.ac 600 | karchy-settings-power set profile.battery power-saver
 # karchy:hidden=true
@@ -13,7 +13,7 @@
 #       source, ~/.local/state/karchy/powerprofiles/{ac,battery}, through
 #       karchy-powerprofiles-set: the same two files the bar's power panel
 #       writes, so both show one setting. Not recorded in power.json.
-#   idle times, screen brightness and battery warnings
+#   idle times, dimming, screen brightness and battery warnings
 #                                     the `idle`, `power` and `battery` keys of
 #       ~/.config/karchy/shell.json, through karchy-shell-config, one key per
 #       change. That file is also the user's to edit, and the shell reads
@@ -50,6 +50,9 @@
 #       screenOff.battery, screenOff.ac, lock.battery, lock.ac, sleep.battery,
 #       sleep.ac           never, or seconds idle (10 to 86400). "ac" is
 #                          plugged in, and the only one a desktop uses
+#       dim.battery, dim.ac
+#                          never, or seconds (5 to 600): the built-in screen
+#                          is dimmed that long before it turns off
 #       battery.low, battery.critical
 #                          percent (low 5 to 50, critical 4 to 30, under low)
 #       battery.saver      on (karchy's default), off: Power saver from
@@ -169,7 +172,8 @@ profile_in_use() {
 }
 
 # The idle times in effect on both power sources, from a shell config on
-# stdin: {battery: {screenOff, lock, sleep}, ac: {…}} in seconds, 0 for never.
+# stdin: {battery: {screenOff, lock, sleep, dim}, ac: {…}} in seconds, 0 for
+# never (`dim` counts back from when the screen turns off).
 # shell/plugins/services/idle/IdleModel.js `timeouts` is the shell's side of
 # this; keep the two in step.
 # shellcheck disable=SC2016 # jq variables, not shell ones
@@ -187,6 +191,7 @@ IDLE_TIMES='
           {
             screenOff: pick("screenOff"; 300),
             lock: pick("lock"; 300),
+            dim: pick("dim"; 30),
             sleep: (if ($own.suspend | is_set) then ($own.suspend | number_of | floor)
                     elif $name == "battery" or $idle.suspendOnAC == true then ($idle.suspend | seconds(900))
                     else 0 end)
@@ -335,6 +340,7 @@ shell_values_of() {
         "screenOff.battery": $idle.battery.screenOff, "screenOff.ac": $idle.ac.screenOff,
         "lock.battery": $idle.battery.lock, "lock.ac": $idle.ac.lock,
         "sleep.battery": $idle.battery.sleep, "sleep.ac": $idle.ac.sleep,
+        "dim.battery": $idle.battery.dim, "dim.ac": $idle.ac.dim,
         "brightness.battery": brightness("battery"), "brightness.ac": brightness("ac"),
         "battery.low": (.battery.low // 15), "battery.critical": (.battery.critical // 5),
         "battery.saver": (if (.battery.saver)? == true then "on" else "off" end)
@@ -445,6 +451,9 @@ apply_brightness() {
           | .power.brightness = (.power.brightness | if type == "object" then . else {} end)
           | .power.brightness[$supply] = $percent' --arg supply "$supply" --argjson percent "$percent"
   if (( percent > 0 )) && [[ $supply == "$(source_in_use)" ]] && device=$(karchy-hw-display 2>/dev/null); then
+    # Not over a screen the idle service has dimmed, whose level would come
+    # back at the next key press.
+    karchy-brightness-display undim >/dev/null 2>&1 || true
     brightnessctl -d "$device" set "$percent%" >/dev/null 2>&1 || true
   fi
   (( percent == 0 )) && echo default || echo set
@@ -520,7 +529,7 @@ apply_system() {
 reconciled() {
   local settings="$1"
   jq -c --argjson values "$(shell_values)" '
-    with_entries(select((.key | test("^(screenOff|lock|sleep|brightness|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
+    with_entries(select((.key | test("^(screenOff|lock|sleep|dim|brightness|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
 }
 
 set_value() {
@@ -567,6 +576,17 @@ set_value() {
       else
         [[ $value =~ ^[1-9][0-9]{1,4}$ ]] || usage
         (( value >= 10 && value <= 86400 )) || usage
+        number=$value
+      fi
+      outcome=$(apply_idle "$setting" "$number")
+      json=$number
+      ;;
+    dim.battery | dim.ac)
+      if [[ $value == never ]]; then
+        number=0
+      else
+        [[ $value =~ ^[1-9][0-9]{0,2}$ ]] || usage
+        (( value >= 5 && value <= 600 )) || usage
         number=$value
       fi
       outcome=$(apply_idle "$setting" "$number")
@@ -648,7 +668,7 @@ reset_all() {
   settings=$(reconciled "$(saved)")
   while IFS= read -r key; do
     case $key in
-      screenOff.* | lock.* | sleep.*)
+      screenOff.* | lock.* | sleep.* | dim.*)
         # shellcheck disable=SC2016 # jq variables, not shell ones
         commit 'if (.idle | type) == "object" and (.idle[$source] | type) == "object"
                 then del(.idle[$source][$key]) | (if .idle[$source] == {} then del(.idle[$source]) else . end)

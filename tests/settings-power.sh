@@ -165,6 +165,7 @@ inside='
   done
   checkout=$1; shift
   export HOME=$sandbox/home KARCHY_PATH=$checkout LAPTOP=$sandbox/laptop PATH=$sandbox/bin.up:$checkout/bin:/usr/bin
+  export XDG_RUNTIME_DIR=/run/t
   unset XDG_CONFIG_HOME XDG_STATE_HOME KARCHY_POWERPROFILES_STATE_DIR
   exec "$@"'
 if ! unshare -rm bash -c "$inside" _ "$sandbox" "$root" true 2>/dev/null; then
@@ -276,6 +277,21 @@ is "no backlight: only the profile" "$(log)" "profile power-saver;"
 touch $t/backlight
 is "karchy-power-source wants a source" "$(karchy-power-source 2>&1; echo $?)" "Usage: karchy-power-source <ac|battery>
 1"
+
+# Dimming before the screen turns off, for each source.
+is "dim: 30 seconds before, on both sources" "$(value dim.battery)/$(value dim.ac)" 30/30
+power set dim.battery 60 >/dev/null
+is "dim.battery 60: written for the battery only" "$(shell_json '[.idle.battery.dim, .idle.ac.dim]') $(value dim.battery)/$(value dim.ac)" "[60,null] 60/30"
+power set dim.ac never >/dev/null
+is "dim.ac never: 0 for plugged in, and recorded" "$(shell_json .idle.ac.dim) $(field '[.saved["dim.battery"], .saved["dim.ac"]]')" "0 [60,0]"
+for wrong in 4 601 0 x 30s ""; do refused "dim '$wrong' is refused" "Usage" set dim.ac "$wrong"; done
+power set dim.battery 30 >/dev/null
+is "dim.battery back at karchy's: out of shell.json and the record" "$(shell_json '.idle | has("battery")')$(field '.saved | has("dim.battery")')" falsefalse
+jq '.idle.dim = 10 | del(.idle.ac)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
+is "idle.dim edited by hand is shared by both sources" "$(value dim.battery)/$(value dim.ac)" "10/10"
+power set dim.ac 120 >/dev/null
+is "one source set apart from a shared time by hand" "$(value dim.battery)/$(value dim.ac)" 10/120
+jq 'del(.idle.dim)' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
 
 # Power saver at the first battery warning: karchy's default, off a choice.
 power set profile.battery performance >/dev/null
@@ -391,16 +407,16 @@ is "lid.ac back to sleep: no drop-in left" "$(ls /etc/systemd/logind.conf.d 2>/d
 power set hibernate.ac same >/dev/null
 power set battery.saver off >/dev/null
 power set lock.battery 120 >/dev/null
-is "before the reset: six choices" "$(power status | jq -r '.saved | keys | join(" ")')" \
-  "battery.saver brightness.battery hibernate.ac lock.battery profile.ac profile.battery"
+is "before the reset: seven choices" "$(power status | jq -r '.saved | keys | join(" ")')" \
+  "battery.saver brightness.battery dim.ac hibernate.ac lock.battery profile.ac profile.battery"
 clear_log
 power reset >/dev/null
 is "reset: nothing saved" "$(field .saved)" '{}'
 is "reset: the profiles are forgotten and Balanced runs" "$(ls "$profiles_dir" | wc -l)$(log)" "0profile balanced;"
 is "reset: shell.json holds none of it" "$(shell_json '[has("power"), has("battery"), has("idle")]')" '[false,false,false]'
 is "reset: no drop-in, no record" "$([[ -e $sleep_file ]] && echo drop-in)$([[ -e $HOME/.config/karchy/power.json ]] && echo record)" ""
-is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery)" \
-  "balanced 0 on never 300"
+is "reset: the defaults again" "$(value profile.ac) $(value brightness.battery) $(value battery.saver) $(value hibernate.ac) $(value lock.battery) $(value dim.ac)" \
+  "balanced 0 on never 300 30"
 
 exit "$fails"
 CASES

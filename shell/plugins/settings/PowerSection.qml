@@ -13,9 +13,9 @@ import qs.Ui
 //
 // Everything that can differ by power source is one table: a row a setting,
 // "On battery" beside "Plugged in". The page shows what this machine has: a
-// desktop gets one column and no lid, brightness or battery rows, the power
-// mode appears where power-profiles-daemon runs, and hibernation only where
-// it works. Every control shows the value in effect, read back after each
+// desktop gets one column and no lid, brightness, dimming or battery rows,
+// the power mode appears where power-profiles-daemon runs, and hibernation
+// only where it works. Every control shows the value in effect, read back after each
 // change, and a group says in a sentence what its choices add up to when
 // that isn't plain from them.
 ColumnLayout {
@@ -102,7 +102,7 @@ ColumnLayout {
   // command calls those by name.
   function set(setting, value) {
     var timed = setting.indexOf("screenOff.") === 0 || setting.indexOf("lock.") === 0
-      || setting.indexOf("sleep.") === 0 || setting === "hibernateAfter"
+      || setting.indexOf("sleep.") === 0 || setting.indexOf("dim.") === 0 || setting === "hibernateAfter"
     var zero = timed ? "never" : setting.indexOf("brightness.") === 0 ? "keep" : "0"
     root.run(["set", setting, String(value) === "0" ? zero : String(value)])
   }
@@ -110,7 +110,7 @@ ColumnLayout {
   function groupOf(setting) {
     var name = String(setting).split(".")[0]
     if (name === "profile" || name === "brightness") return "use"
-    if (name === "screenOff" || name === "lock" || name === "sleep" || name === "hibernateAfter" || name === "hibernate") return "idle"
+    if (name === "screenOff" || name === "dim" || name === "lock" || name === "sleep" || name === "hibernateAfter" || name === "hibernate") return "idle"
     return name
   }
 
@@ -163,6 +163,24 @@ ColumnLayout {
     for (var percent = 10; percent <= 100; percent += 10) out.push({ value: String(percent), label: percent + "%" })
     out.push({ value: "0", label: root.brightnessName(0) })
     return out
+  }
+
+  // How long before the screen turns off the built-in screen is dimmed.
+  function dimName(seconds) { return Number(seconds) === 0 ? "Never" : root.duration(seconds) + " before" }
+
+  readonly property var dimChoices: {
+    var out = []
+    var seconds = [10, 30, 60, 120]
+    for (var i = 0; i < seconds.length; i++) out.push({ value: String(seconds[i]), label: root.dimName(seconds[i]) })
+    out.push({ value: "0", label: "Never" })
+    return out
+  }
+
+  // Whether the screen ever turns off by itself on a power source: at the
+  // screen-off time, or the lock's where that comes first, or when the
+  // computer sleeps. With the screen-off time at Never the lock stays lit.
+  function screenTurnsOff(source) {
+    return Number(root.values["screenOff." + source] || 0) > 0 || Number(root.values["sleep." + source] || 0) > 0
   }
 
   readonly property var screenChoices: timeChoices([1, 2, 5, 10, 15, 30, 60])
@@ -417,6 +435,19 @@ ColumnLayout {
     SettingsLabel { text: "Turn off the screen" }
     PowerChoice { visible: root.battery; page: root; setting: "screenOff.battery"; choices: root.screenChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "screenOff.ac"; choices: root.screenChoices; nameFor: root.timeName }
+
+    // The built-in screen only, and only where it ever turns off by itself.
+    SettingsLabel { visible: root.backlight; text: "Dim it first" }
+    PowerChoice {
+      visible: root.backlight && root.battery
+      enabled: current !== "" && root.screenTurnsOff("battery")
+      page: root; setting: "dim.battery"; choices: root.dimChoices; nameFor: root.dimName
+    }
+    PowerChoice {
+      visible: root.backlight
+      enabled: current !== "" && root.screenTurnsOff("ac")
+      page: root; setting: "dim.ac"; choices: root.dimChoices; nameFor: root.dimName
+    }
 
     SettingsLabel { text: "Lock" }
     PowerChoice { visible: root.battery; page: root; setting: "lock.battery"; choices: root.screenChoices; nameFor: root.timeName }

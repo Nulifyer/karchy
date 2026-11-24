@@ -1,8 +1,26 @@
 #!/bin/bash
 
 # karchy:summary=Show or adjust brightness on the focused display.
-# karchy:args=[--no-osd] [--monitor name] [+N%|N%-|N%|off|on]
+# karchy:args=[--no-osd] [--monitor name] [+N%|N%-|N%|off|on|dim N|undim]
 # karchy:examples=karchy brightness display | karchy brightness display +5% | karchy brightness display --monitor DP-1 50% | karchy brightness display off | karchy brightness display on
+
+# `dim N` and `undim` are the idle service's (Settings › Power, "Dim the
+# screen"): `dim` lowers the built-in screen to N percent and notes the level
+# it had, `undim` puts that level back. They are made so that nothing can
+# leave the screen dim or undo somebody else's change:
+# - `dim` does nothing to a screen already at or under N percent, and nothing
+#   when a dimming is already noted, so the level noted is the one from
+#   before the first.
+# - `undim` writes the noted level back only while the screen is still at the
+#   level `dim` set. A level set since by anything else (the monitor panel,
+#   the per-source brightness of karchy-power-source, brightnessctl by hand)
+#   is left as it is, and the note is dropped either way.
+# - Whatever sets the backlight here undims first: a brightness key steps
+#   from the level the screen had, and `off` and `on` put it back, `off`
+#   after the screen is dark, so the screen never comes back dim.
+# The note is kept under $XDG_RUNTIME_DIR, so a restarted shell still undoes
+# a dimming it no longer knows of. The levels are the kernel's raw values, so
+# what comes back is exactly what was there.
 
 no_osd=0
 monitor=""
@@ -23,6 +41,70 @@ while (( $# > 0 )); do
     ;;
   esac
 done
+
+dim_note="${XDG_RUNTIME_DIR:-/tmp}/karchy-brightness-display-dim"
+
+# dim, undim and whatever else undims can overlap (the idle service, the lock
+# screen, a brightness key): one at a time.
+dim_locked() {
+  local fd
+  exec {fd}>"$dim_note.lock" || return 1
+  flock "$fd" || return 1
+  "$@"
+  local code=$?
+  exec {fd}>&-
+  return "$code"
+}
+
+dim_now() {
+  local percent="$1" device before max target dimmed
+  [[ ! -s $dim_note ]] || return 0
+  device="$(karchy-hw-display)" || return 0
+  before="$(brightnessctl -d "$device" get 2>/dev/null)" || return 0
+  max="$(brightnessctl -d "$device" max 2>/dev/null)" || return 0
+  [[ $before =~ ^[0-9]+$ && $max =~ ^[0-9]+$ ]] && (( max > 0 )) || return 0
+
+  # Never to 0: on some panels that turns the backlight off altogether.
+  target=$(( max * percent / 100 ))
+  (( target >= 1 )) || target=1
+  (( before > target )) || return 0
+
+  # Noted before the write, so a dimming is never left without its note. The
+  # level read back is the one to compare with later: a driver may round.
+  printf '%s %s %s\n' "$device" "$before" "$target" >"$dim_note" || { rm -f "$dim_note"; return 0; }
+  if ! brightnessctl -q -d "$device" set "$target"; then
+    rm -f "$dim_note"
+    return 0
+  fi
+  dimmed="$(brightnessctl -d "$device" get 2>/dev/null)"
+  [[ $dimmed =~ ^[0-9]+$ ]] || dimmed=$target
+  printf '%s %s %s\n' "$device" "$before" "$dimmed" >"$dim_note" || true
+}
+
+undim_now() {
+  local device before dimmed current
+  [[ -s $dim_note ]] || return 0
+  read -r device before dimmed <"$dim_note" || true
+  if [[ -n $device && $device != */* && $before =~ ^[0-9]+$ && $dimmed =~ ^[0-9]+$ ]]; then
+    current="$(brightnessctl -d "$device" get 2>/dev/null)"
+    # Kept when the write fails, so the next wake tries again.
+    if [[ $current == "$dimmed" ]] && ! brightnessctl -q -d "$device" set "$before"; then
+      return 1
+    fi
+  fi
+  rm -f "$dim_note"
+}
+
+# Neither needs to know the focused display, which costs a call to Hyprland
+# that can stall while the lid closes; undim runs before every sleep.
+if [[ ${1:-} == "dim" ]]; then
+  [[ $# == 2 && $2 =~ ^[1-9][0-9]?$ ]] || { echo "Usage: karchy-brightness-display dim <percent, 1 to 99>" >&2; exit 1; }
+  dim_locked dim_now "$2"
+  exit 0
+elif [[ ${1:-} == "undim" ]]; then
+  dim_locked undim_now
+  exit
+fi
 
 # Get the brightness of the passed display
 backlight_brightness() {
@@ -79,8 +161,11 @@ step="$1"
 
 if [[ $step == "off" ]]; then
   hyprctl dispatch 'hl.dsp.dpms({ action = "disable" })' >/dev/null 2>&1
+  # Back to its level while it is dark, so it does not light up dim.
+  dim_locked undim_now
   exit 0
 elif [[ $step == "on" ]]; then
+  dim_locked undim_now
   # Skip the dispatch when every active display is already lit: a redundant
   # DPMS enable right after system resume forces another modeset, which blanks
   # the panel for a beat (visible flash at the unlock screen).
@@ -102,6 +187,9 @@ elif ! use_backlight_display; then
 else
   # Current device highlighted
   device="$(karchy-hw-display)" || exit 1
+
+  # A step counts from the level the screen had before it was dimmed.
+  dim_locked undim_now
 
   # Current brightness percentage
   current=$(backlight_brightness "$device") || exit 1

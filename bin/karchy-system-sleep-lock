@@ -110,6 +110,11 @@ report_unsecured() {
 request_lock
 sync_clamshell
 
+# A screen the idle service had dimmed goes back to its level before the
+# machine sleeps, so it never wakes up dim. Without a dimming this is one
+# file test; with one it is one write to the backlight.
+timeout --kill-after=0.1s 0.4s karchy-brightness-display undim >/dev/null 2>&1 || true
+
 # The trailing sleep can overshoot the deadline by one interval, which is well
 # inside the reserve derive_budget_ms already held back for logind.
 while (( $(remaining_ms) > 0 )); do

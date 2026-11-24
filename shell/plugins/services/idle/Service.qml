@@ -23,6 +23,10 @@ Item {
   // Sleep after this long idle, on battery only unless idle.suspendOnAC is
   // true or idle.ac.suspend gives plugged-in its own time. 0 turns it off.
   readonly property int defaultSuspendSeconds: 900
+  // The built-in screen is dimmed this long before it turns off (0 = not),
+  // to this percent. See "Dimming" below.
+  readonly property int defaultDimSeconds: 30
+  readonly property int defaultDimBrightness: 10
   readonly property var idleConfig: shell && shell.shellConfig && shell.shellConfig.idle
     ? shell.shellConfig.idle : ({})
   // A desktop's UPower reports no laptop battery and never "on battery", so
@@ -34,7 +38,9 @@ Item {
     screensaver: defaultScreensaverSeconds,
     screenOff: defaultScreenOffSeconds,
     lock: defaultLockSeconds,
-    suspend: defaultSuspendSeconds
+    suspend: defaultSuspendSeconds,
+    dim: defaultDimSeconds,
+    dimBrightness: defaultDimBrightness
   })
   readonly property int screensaverTimeoutSeconds: timeouts.screensaver
   readonly property int screenOffTimeoutSeconds: timeouts.screenOff
@@ -45,8 +51,14 @@ Item {
   readonly property bool screenOffEnabled: screenOffTimeoutSeconds > 0
   readonly property bool lockEnabled: lockTimeoutSeconds > 0
   readonly property bool idleTimersEnabled: screensaverEnabled || screenOffEnabled || lockEnabled || suspendNow
+  // The kernel backlight karchy-hw-display picks, which the brightness keys
+  // already look up: only a built-in screen is dimmed.
+  readonly property bool hasBacklight: !!(shell && shell.brightnessKeys && shell.brightnessKeys.device)
+  // Seconds idle until the screen is dimmed on this power source, 0 for never.
+  readonly property int dimAfterSeconds: IdleModel.dimAfter(timeouts, hasBacklight)
   readonly property int firstIdleTimeoutSeconds: IdleModel.firstIdleTimeout(
-    screensaverTimeoutSeconds, screenOffTimeoutSeconds, lockTimeoutSeconds, suspendTimeoutSeconds)
+    screensaverTimeoutSeconds, screenOffTimeoutSeconds, lockTimeoutSeconds, suspendTimeoutSeconds, dimAfterSeconds)
+  readonly property int dimDelaySeconds: IdleModel.delayAfterFirstIdle(dimAfterSeconds, firstIdleTimeoutSeconds)
   readonly property int screensaverDelaySeconds: IdleModel.delayAfterFirstIdle(screensaverTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int screenOffDelaySeconds: IdleModel.delayAfterFirstIdle(screenOffTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int lockDelaySeconds: IdleModel.delayAfterFirstIdle(lockTimeoutSeconds, firstIdleTimeoutSeconds)
@@ -126,6 +138,48 @@ Item {
   property bool screenOffThisCycle: false
   // When the current idle stretch began (ms), 0 while in use.
   property double idleSince: 0
+
+  // Dimming. The built-in screen's backlight is lowered some time before the
+  // screen turns off (Settings › Power, "Dim it first") and put back at the
+  // first sign of activity. What was there, and whether it is still this
+  // service's to put back, is karchy-brightness-display's note: it dims
+  // nothing that is already darker and undoes nothing somebody else has set
+  // since. This service only says when:
+  // - dim: the dim timer, in an unlocked session with the screen still on.
+  // - undim: activity (the end of the idle stretch), stay-awake, an inhibitor,
+  //   the charger going in or out (karchy-power-source then sets that
+  //   source's brightness, if it has one). The screen turning off and waking
+  //   undim by themselves (karchy-brightness-display off and on), and so does
+  //   the lock before every sleep (karchy-system-sleep-lock).
+  // One undim follows every dim and never overtakes it: IdleModel.dimStep
+  // holds that order, and this only starts the commands it names.
+  property var dimState: ({})
+  // A dimming is in place or being undone. The brightness keys then go
+  // through karchy-brightness-display, which steps from the level the screen
+  // had (shell/services/BrightnessKeys.qml).
+  readonly property bool dimPending: IdleModel.dimPending(dimState)
+
+  function dimEvent(event, allowed) {
+    var step = IdleModel.dimStep(root.dimState, event, allowed)
+    root.dimState = step.state
+    if (step.run === "dim") {
+      logEvent("dim", "to " + root.timeouts.dimBrightness + "%")
+      dimProcess.command = ["bash", "-lc",
+        "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || karchy-brightness-display dim " + root.timeouts.dimBrightness]
+      dimProcess.running = true
+    } else if (step.run === "undim") {
+      logEvent("undim")
+      undimProcess.running = true
+    }
+  }
+
+  // Nothing to dim on a screen that is already off.
+  function dimScreen() { dimEvent("dim", !root.screenOffThisCycle) }
+  function undimScreen() { dimEvent("undim") }
+
+  // The charger pulled or plugged in: somebody is there, and the brightness
+  // of the new source may follow.
+  onOnBatteryChanged: undimScreen()
   property string lastEvent: "starting"
   property string lastEventAt: ""
   property var screensaverWindows: ({})
@@ -175,6 +229,9 @@ Item {
     screensaverTimer.stop()
     screenOffTimer.stop()
     lockTimer.stop()
+    // A locked session is not dimmed. A screen dimmed before the lock stays
+    // so for the lock screen's 5 seconds and is put back as it goes dark.
+    dimTimer.stop()
     screensaverLaunchGraceTimer.stop()
     root.idledThisCycle = false
     root.screensaverStartedThisCycle = false
@@ -200,8 +257,8 @@ Item {
       return
     }
 
-    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " screenOff=" + root.screenOffTimeoutSeconds
-      + " lock=" + root.lockTimeoutSeconds + " suspend=" + root.suspendTimeoutSeconds)
+    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " dim=" + root.dimAfterSeconds
+      + " screenOff=" + root.screenOffTimeoutSeconds + " lock=" + root.lockTimeoutSeconds + " suspend=" + root.suspendTimeoutSeconds)
     root.idledThisCycle = true
     root.screensaverStartedThisCycle = false
     root.screenOffThisCycle = false
@@ -215,6 +272,14 @@ Item {
       else {
         screensaverTimer.interval = root.screensaverDelaySeconds * 1000
         screensaverTimer.restart()
+      }
+    }
+
+    if (root.dimAfterSeconds > 0) {
+      if (root.dimDelaySeconds === 0) dimScreen()
+      else {
+        dimTimer.interval = root.dimDelaySeconds * 1000
+        dimTimer.restart()
       }
     }
 
@@ -248,6 +313,8 @@ Item {
     root.idleSince = 0
     screenOffTimer.stop()
     root.screenOffThisCycle = false
+    dimTimer.stop()
+    undimScreen()
   }
 
   function cancelIdleCycle(reason) {
@@ -355,6 +422,10 @@ Item {
       screensaver: root.screensaverTimeoutSeconds,
       screenOff: root.screenOffTimeoutSeconds,
       screenOffDone: root.screenOffThisCycle,
+      dim: root.timeouts.dim,
+      dimAfter: root.dimAfterSeconds,
+      dimBrightness: root.timeouts.dimBrightness,
+      dimmed: root.dimPending,
       lock: root.lockTimeoutSeconds,
       suspend: root.suspendTimeoutSeconds,
       suspendNow: root.suspendNow,
@@ -369,6 +440,7 @@ Item {
         idleMonitorRearm: idleMonitorRearmTimer.running,
         screensaver: screensaverTimer.running,
         screenOff: screenOffTimer.running,
+        dim: dimTimer.running,
         lock: lockTimer.running,
         suspend: suspendTimer.running,
         screensaverLaunchGrace: screensaverLaunchGraceTimer.running
@@ -459,6 +531,12 @@ Item {
   }
 
   Timer {
+    id: dimTimer
+    repeat: false
+    onTriggered: if (root.idleEnabled && root.idledThisCycle && root.dimAfterSeconds > 0) root.dimScreen()
+  }
+
+  Timer {
     id: lockTimer
     repeat: false
     onTriggered: if (root.idleEnabled && root.idledThisCycle && root.lockEnabled) root.lockSystem("lock-timeout")
@@ -503,6 +581,21 @@ Item {
   Process {
     id: screenOffProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screen-off exitCode=" + exitCode + " status=" + exitStatus) }
+  }
+  Process {
+    id: dimProcess
+    onExited: function(exitCode, exitStatus) {
+      root.logEvent("process-exit", "dim exitCode=" + exitCode + " status=" + exitStatus)
+      root.dimEvent("dimExited")
+    }
+  }
+  Process {
+    id: undimProcess
+    command: ["karchy-brightness-display", "undim"]
+    onExited: function(exitCode, exitStatus) {
+      root.logEvent("process-exit", "undim exitCode=" + exitCode + " status=" + exitStatus)
+      root.dimEvent("undimExited")
+    }
   }
   Process {
     id: lockProcess

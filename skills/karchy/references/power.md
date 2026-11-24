@@ -1,6 +1,6 @@
 # Power, idle, sleep and notifications
 
-Read this before you change idle times, the lid or power button, hibernation, the power profile, screen brightness on battery or plugged in, battery warnings, or notification settings.
+Read this before you change idle times, screen dimming, the lid or power button, hibernation, the power profile, screen brightness on battery or plugged in, battery warnings, or notification settings.
 
 ## Power settings
 
@@ -14,6 +14,7 @@ Read this before you change idle times, the lid or power button, hibernation, th
 | `profile.battery`, `profile.ac` | `power-saver`, `balanced`, `performance` (those in `profiles`) |
 | `brightness.battery`, `brightness.ac` | `keep`, or percent (1 to 100) |
 | `screenOff.battery`, `screenOff.ac`, `lock.battery`, `lock.ac`, `sleep.battery`, `sleep.ac` | `never`, or seconds idle (10 to 86400) |
+| `dim.battery`, `dim.ac` | `never`, or seconds (5 to 600) before the screen turns off |
 | `battery.low`, `battery.critical` | percent (low 5 to 50, critical 4 to 30 and under low) |
 | `battery.saver` | `on` (the default), `off` |
 | `powerKey` | `menu`, `sleep`, `hibernate`, `shutdown`, `nothing` |
@@ -26,6 +27,7 @@ A desktop uses only the `.ac` settings. Example: `karchy-settings-power set lock
 What the `.battery` and `.ac` settings do when the power source changes:
 
 - The idle times follow the source at once, also during an idle stretch.
+- `dim.*` dims the built-in screen that long before it turns off: before the screen-off time, before the lock where that comes first, or before sleep. The default is 30 seconds on both sources. The screen goes to 10% (`idle.dimBrightness` in `shell.json`) and gets its level back at the first key or pointer movement. A screen already darker is not touched. A machine without a built-in screen has no such setting in effect.
 - `profile.*` is the power profile the source switches to. Setting the one for the source in use switches now. Setting the other one waits for that source.
 - `brightness.*` sets the built-in screen once, when the charger goes in or out. `keep` (the default) leaves the screen as it is. The brightness keys work as before afterwards. Setting the one for the source in use changes the screen now.
 - `battery.saver on`, the default, switches to `power-saver` at the first battery warning of a discharge. It ends when the charger goes in or when a profile is picked by hand. The battery's own profile stays remembered. `battery.saver off` keeps the battery's profile at any charge.
@@ -34,7 +36,7 @@ What the `.battery` and `.ac` settings do when the power source changes:
 
 Use `set` so that each value lands where the system reads it. The files matter when a value does not take effect.
 
-- Idle times, screen brightness and battery warnings are the `idle`, `power.brightness` and `battery` keys of `~/.config/karchy/shell.json`. The user can edit that file. A value there is what runs.
+- Idle times, dimming, screen brightness and battery warnings are the `idle`, `power.brightness` and `battery` keys of `~/.config/karchy/shell.json`. The user can edit that file. A value there is what runs.
 - The power profile of each source is in `~/.local/state/karchy/powerprofiles/ac` and `battery`. `karchy-powerprofiles-set` writes them, for Settings and for the bar's power panel alike. `power.json` does not record them.
 - The power button is a binding in `~/.local/state/karchy/hypr/power.lua`. A binding for the key in `~/.config/hypr` wins.
 - The lid, the hibernate delay and hibernation while plugged in are in `/etc/systemd/logind.conf.d/60-karchy-settings.conf` and `/etc/systemd/sleep.conf.d/60-karchy-settings.conf`. The root helper `/usr/lib/karchy/power-settings` writes them through pkexec, with no password for the person at the computer. Do not write those two files by hand.
@@ -53,6 +55,7 @@ Use `set` so that each value lands where the system reads it. The files matter w
 ## Session commands
 
 - `karchy system lock` locks and turns off the display. `karchy system wake` wakes the displays.
+- `karchy-brightness-display dim <percent>` and `karchy-brightness-display undim` are the idle service's. Do not call `dim` yourself. If the built-in screen stays dark after an idle stretch, `karchy-brightness-display undim` puts back the level noted in `$XDG_RUNTIME_DIR/karchy-brightness-display-dim`, and `karchy-shell idle status` shows `dimAfter` (seconds idle before dimming, 0 for never) and `dimmed`.
 - `karchy system logout`, `karchy system reboot` and `karchy system shutdown` close applications first. Never run reboot, shutdown or logout without the user's request in the same turn. They end the session that runs the agent.
 
 ## Power profiles
