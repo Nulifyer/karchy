@@ -8,8 +8,8 @@ This is the complete default set. Anything not listed is unbound. New default bi
 |---|---|---|
 | Alt+F4 | Close window | [New] (Omarchy: Super+W) |
 | Super+Up | Maximize | [New] |
-| Super+Down | Restore a maximized window, otherwise minimize it (as in Windows) | [New] |
-| Super+Left / Super+Right | Focus window left/right | [O] |
+| Super+Down | Restore a maximized window; give a window on a half its earlier place and size back; otherwise minimize it (as in Windows) | [New] |
+| Super+Left / Super+Right | On a tiling workspace: focus window left/right. On a floating workspace: put the window on the left/right half of its monitor (as in Windows, D-165). The arrow the other way brings it back; the same arrow again sends it on to the next monitor that way. Each key carries the two actions, "Focus on left window" and "Snap window to the left half" | [O] + [New] |
 | Super+Shift+Arrows | Swap window | [O] |
 | Super+T | Toggle floating for one window | [O] |
 | Super+F | Fullscreen | [O] |

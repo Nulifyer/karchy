@@ -11,9 +11,17 @@
 o.bind_group("Windows")
 o.bind("ALT + F4", "Close window", hl.dsp.window.close())
 o.bind("SUPER + UP", "Maximize window", hl.dsp.window.fullscreen({ mode = "maximized", action = "set" }))
-o.bind("SUPER + DOWN", "Restore window, or minimize it", "karchy-hyprland-window-minimize --down")
-o.bind("SUPER + LEFT", "Focus on left window", hl.dsp.focus({ direction = "l" }))
-o.bind("SUPER + RIGHT", "Focus on right window", hl.dsp.focus({ direction = "r" }))
+-- Super+Left and Super+Right move the focus on a tiling workspace and put
+-- the window on a half of the screen on a floating one, as on Windows
+-- (snap.lua, D-165): two actions on each key, each for its kind of workspace.
+-- Super+Down gives a window on a half its earlier size back before it
+-- minimizes anything.
+require("default.hypr.snap")
+o.bind("SUPER + DOWN", "Restore window, or minimize it", o.window_down)
+o.bind("SUPER + LEFT", "Focus on left window", o.on_tiling_workspace(hl.dsp.focus({ direction = "l" }), 'hl.dsp.focus({ direction = "l" })'))
+o.bind("SUPER + LEFT", "Snap window to the left half", o.snap_window("l"))
+o.bind("SUPER + RIGHT", "Focus on right window", o.on_tiling_workspace(hl.dsp.focus({ direction = "r" }), 'hl.dsp.focus({ direction = "r" })'))
+o.bind("SUPER + RIGHT", "Snap window to the right half", o.snap_window("r"))
 o.bind("SUPER + SHIFT + LEFT", "Swap window to the left", hl.dsp.window.swap({ direction = "l" }))
 o.bind("SUPER + SHIFT + RIGHT", "Swap window to the right", hl.dsp.window.swap({ direction = "r" }))
 o.bind("SUPER + SHIFT + UP", "Swap window up", hl.dsp.window.swap({ direction = "u" }))

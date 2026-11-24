@@ -53,6 +53,7 @@ The bar has quick panels for the things you change often: sound, microphone, net
 - New windows tile: they share the workspace without overlapping. `Super` + `T` makes one window float.
 - **Settings › Appearance › Workspace layout** chooses whether new workspaces tile or float. On a floating workspace windows overlap as on Windows: each has a title bar with minimize, maximize and close, a click brings a window to the front, and a dialog stays in front of its app.
 - `Super` + `Left` / `Right` moves the focus. With `Shift`, the arrows swap windows.
+- On a floating workspace `Super` + `Left` / `Right` put the window on the left or right half of the screen instead. The arrow the other way, or `Super` + `Down`, brings it back to the size it had.
 - `Alt` + `Tab` goes back to the window you used last; keep `Alt` down and press `Tab` again to go further back. `Super` + `Tab` goes to the next workspace.
 - `Super` + `M` minimizes every window on the workspace. `Super` + `Shift` + `M` brings them back.
 

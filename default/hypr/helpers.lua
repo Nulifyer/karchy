@@ -306,6 +306,9 @@ end
 -- float them, the tags rules float, and the patterns of rules that tag them.
 o.floating_apps = { class = {}, title = {}, tags = {}, tagged = {} }
 o.FLOAT_RULE_TAG = "karchy-float-rule"
+-- On a window Hyprland floated itself as it opened: it has a parent or cannot
+-- be resized, which is what a dialog is (stacking.lua sets it).
+o.DIALOG_TAG = "karchy-dialog"
 -- Helpers reload before workspace modes, so discard the previous config's hook.
 o.floating_apps_changed = nil
 

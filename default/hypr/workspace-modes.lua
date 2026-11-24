@@ -90,13 +90,11 @@ local function anything_floats()
   return false
 end
 
--- A window the mode floats opens at a comfortable size in the middle of its
--- monitor, each one stepped from the last so a workspace floated all at once does
--- not leave every window stacked exactly on the one beneath it.
-local function place(window)
-  local monitor = window.monitor
+-- The part of a monitor windows may use, in layout coordinates: the monitor
+-- without what the bar and other panels reserve.
+local function work_area(monitor)
   if not monitor or not monitor.width then
-    return
+    return nil
   end
 
   local width = math.floor(monitor.width / monitor.scale)
@@ -107,12 +105,28 @@ local function place(window)
   end
 
   local reserved = monitor.reserved or {}
-  width = width - (reserved.left or 0) - (reserved.right or 0)
-  height = height - (reserved.top or 0) - (reserved.bottom or 0)
+  local left, top = math.floor(reserved.left or 0), math.floor(reserved.top or 0)
+
+  return {
+    x = (monitor.x or 0) + left,
+    y = (monitor.y or 0) + top,
+    w = width - left - math.floor(reserved.right or 0),
+    h = height - top - math.floor(reserved.bottom or 0),
+  }
+end
+
+-- A window the mode floats opens at a comfortable size in the middle of its
+-- monitor, each one stepped from the last so a workspace floated all at once does
+-- not leave every window stacked exactly on the one beneath it.
+local function place(window)
+  local area = work_area(window.monitor)
+  if not area then
+    return
+  end
 
   hl.dispatch(hl.dsp.window.resize({
-    x = math.min(1100, math.floor(width * 0.64)),
-    y = math.min(760, math.floor(height * 0.68)),
+    x = math.min(1100, math.floor(area.w * 0.64)),
+    y = math.min(760, math.floor(area.h * 0.68)),
     relative = false,
     window = window,
   }))
@@ -272,6 +286,7 @@ o.floating_apps_changed = sync_open_rules
 
 M.not_floating_on_their_own = not_floating_on_their_own
 M.floating_workspace = floating_workspace
+M.work_area = work_area
 M.OPEN_WIDTH = OPEN_WIDTH
 M.OPEN_HEIGHT = OPEN_HEIGHT
 M.FLOATED_TAG = FLOATED_TAG
@@ -556,6 +571,16 @@ local function titlebars()
       action = button.action,
     })
   end
+end
+
+-- How much room a titlebar takes above its window: nothing while the plugin
+-- is not loaded or not drawing. For snap.lua, which places windows itself.
+function M.titlebar_height()
+  if not hl.plugin.hyprbars or hl.get_config("plugin.hyprbars.enabled") ~= true then
+    return 0
+  end
+
+  return tonumber(hl.get_config("plugin.hyprbars.bar_height")) or 0
 end
 
 -- Hyprland unloads a plugin the config stops asking for, and bringing this one

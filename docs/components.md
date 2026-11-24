@@ -66,6 +66,13 @@ A workspace tiles or floats (Settings › Appearance › Workspace layout sets t
 - Every app window floats, with a titlebar: drag it to move, double-click it or □ to maximize, − to minimize, × to close, drag an edge to resize. Windows open at a comfortable size, each stepped from the last.
 - A click gives a window the keyboard and brings it to the front; the pointer alone does neither. A window given the keyboard any other way comes to the front too: Alt+Tab, a launcher that finds it open, an app that asks for focus, the window in front closing.
 - A maximized window is in front when it has the keyboard, and the other windows wait behind it; one of them given the keyboard comes in front of it again. It stays maximized when another window opens: an app window, a dialog or one of karchy's own opens in front of it, at its own size (D-165). One window on a workspace is maximized at a time, which is Hyprland's rule: maximizing a second brings the first back to its own size.
+- Super+Left and Super+Right put a window on the left or right half of its monitor (D-165). A half is the tile two windows would share on a tiling workspace: the same gaps to the screen edge, the bar and the other half, with the titlebar on top.
+  - The arrow the other way brings the window back to the place and size it had before; one more press puts it on that half.
+  - The same arrow again sends it on to the next monitor that way, onto the half it enters by, and does nothing where there is no monitor. On a monitor whose workspace tiles, the window tiles.
+  - Super+Up maximizes a window on a half, and Super+Down brings it back to the half. Super+Down on a half gives the earlier place and size back; only a window on no half is minimized.
+  - A window dragged off its half keeps the half's size: Hyprland tells karchy nothing about a drag, so the size cannot come back as the drag starts, as it does on Windows. Super+Down, or snapping it again and back, gives the earlier size back where the window now is. A window resized by hand keeps the size it was given.
+  - A maximized window goes straight to the half the arrow points at, also one that was maximized from the other half. A dialog, a pinned window and a fullscreen window are left alone.
+  - The bar docks while a window on its monitor is maximized and floats again afterwards, which moves the top of a half by the bar's margin. A window on a half follows it, a moment after a window enters or leaves maximized.
 - A dialog keeps the size its app gave it and stays in front of its app's windows. The portal's file chooser stays in front of every window on its workspace until it is answered.
 - Nothing else stays on top. karchy's own windows and its floating terminal go behind the window you click, like any other.
 
@@ -88,7 +95,7 @@ Which kind a window is:
 | Picture-in-picture, the webcam overlay | overlay | pinned | pinned |
 | The password prompt (polkit), the menu, notifications, the lock screen | not windows: shell layers above all windows | | |
 
-A window rule keeps a window of your own in front of the others on its workspace: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. The code is `default/hypr/stacking.lua`, `default/hypr/window-switch.lua` and `default/hypr/workspace-modes.lua`; it runs on Hyprland's focus and open events.
+A window rule keeps a window of your own in front of the others on its workspace: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. The code is `default/hypr/stacking.lua`, `default/hypr/window-switch.lua`, `default/hypr/snap.lua` and `default/hypr/workspace-modes.lua`; it runs on Hyprland's focus and open events and on the keys.
 
 ## Shell (Omarchy Quickshell)
 

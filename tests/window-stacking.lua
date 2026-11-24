@@ -1,7 +1,8 @@
--- Which window is in front, and where Alt+Tab goes (D-159): karchy's real
--- default/hypr/stacking.lua, window-switch.lua and workspace-modes.lua under a
--- stand-in for Hyprland's `hl` that keeps the windows' stacking order and
--- focus history the way Hyprland does.
+-- Which window is in front, where Alt+Tab goes (D-159) and the halves of a
+-- floating workspace (D-165): karchy's real default/hypr/stacking.lua,
+-- window-switch.lua, snap.lua and workspace-modes.lua under a stand-in for
+-- Hyprland's `hl` that keeps the windows' stacking order, focus history,
+-- place and size the way Hyprland does.
 --
 --   lua tests/window-stacking.lua        (from the checkout)
 
@@ -15,6 +16,21 @@ local history = {} -- addresses, the one with the keyboard first
 local handlers = {} -- event name -> functions
 local rules = {} -- every hl.window_rule call
 local workspace = { id = 1 }
+local executed = {} -- every hl.exec_cmd
+-- Two monitors side by side, the bar's 31 pixels reserved on each.
+local monitors = {
+  { name = "LEFT", x = 0, y = 0, width = 1280, height = 800, scale = 1, transform = 0, reserved = { top = 31 } },
+  { name = "RIGHT", x = 1280, y = 0, width = 1920, height = 1080, scale = 1, transform = 0, reserved = { top = 31 } },
+}
+local monitor_workspace = { LEFT = workspace, RIGHT = { id = 11 } }
+local second_monitor = false
+local config = {
+  ["general.gaps_out"] = { left = 10, right = 10, top = 10, bottom = 10 },
+  ["general.gaps_in"] = { left = 5, right = 5, top = 5, bottom = 5 },
+  ["general.border_size"] = 2,
+  ["plugin.hyprbars.enabled"] = true,
+  ["plugin.hyprbars.bar_height"] = 30,
+}
 
 local function fire(name, ...)
   for _, handler in ipairs(handlers[name] or {}) do
@@ -91,6 +107,13 @@ local actions = {
     local window = selected(args.window)
     if args.tag:sub(1, 1) == "+" then
       table.insert(window.tags, args.tag:sub(2))
+    else
+      for index, name in ipairs(window.tags) do
+        if name == args.tag:sub(2) then
+          table.remove(window.tags, index)
+          break
+        end
+      end
     end
   end,
   focus = function(args)
@@ -105,6 +128,24 @@ local actions = {
       window.fullscreen = args.action == "unset" and 0 or (args.mode == "maximized" and 1 or 2)
     end
   end,
+  -- Hyprland resizes a floating window around its middle.
+  resize = function(args)
+    local window = selected(args.window)
+    window.at = { x = window.at.x + (window.size.x - args.x) // 2, y = window.at.y + (window.size.y - args.y) // 2 }
+    window.size = { x = args.x, y = args.y }
+  end,
+  move = function(args)
+    local window = selected(args.window)
+    if args.monitor then
+      for _, monitor in ipairs(monitors) do
+        if monitor.name == args.monitor then
+          window.monitor, window.workspace = monitor, monitor_workspace[monitor.name]
+        end
+      end
+    elseif args.relative == false then
+      window.at = { x = args.x, y = args.y }
+    end
+  end,
 }
 
 local function action(kind)
@@ -114,7 +155,14 @@ end
 hl = setmetatable({
   dsp = setmetatable({
     focus = action("focus"),
-    window = setmetatable({ alter_zorder = action("zorder"), tag = action("tag"), bring_to_top = action("none"), fullscreen = action("fullscreen") }, {
+    window = setmetatable({
+      alter_zorder = action("zorder"),
+      tag = action("tag"),
+      bring_to_top = action("none"),
+      fullscreen = action("fullscreen"),
+      resize = action("resize"),
+      move = action("move"),
+    }, {
       __index = function() return action("none") end,
     }),
   }, { __index = function() return action("none") end }),
@@ -144,6 +192,11 @@ hl = setmetatable({
   get_workspace_windows = function() return { table.unpack(stack) } end,
   get_active_window = function() return (find(history[1])) end,
   get_active_workspace = function() return workspace end,
+  get_config = function(key) return config[key] end,
+  -- The monitor in a direction from the first one.
+  get_monitor = function(direction) return second_monitor and direction == "r" and monitors[2] or nil end,
+  exec_cmd = function(command) table.insert(executed, command) end,
+  plugin = { hyprbars = {} },
 }, { __index = function() return function() end end })
 
 -- ---- checks
@@ -179,6 +232,7 @@ end
 
 require("default.hypr.helpers")
 require("default.hypr.window-switch")
+require("default.hypr.snap")
 local workspace_modes = require("default.hypr.workspace-modes")
 o.OVER_GAME_TAG = "karchy-over-game"
 require("default.hypr.stacking")
@@ -263,5 +317,123 @@ eq(small.allowed_over_fullscreen, true, "a window given the keyboard comes in fr
 focus(big, 48)
 eq(small.allowed_over_fullscreen, false, "the maximized window, clicked, has the others behind it")
 eq(prompt.allowed_over_fullscreen, true, "and keeps its own dialog in front")
+
+-- Halves (D-165). Still on the floating workspace: Super+Left and Super+Right
+-- put a window on a half, the tile two windows would share on a tiling one.
+reset()
+local function box(window)
+  return string.format("%d,%d %dx%d", window.at.x, window.at.y, window.size.x, window.size.y)
+end
+local function app(address, fields)
+  local window = { floating = true, monitor = monitors[1], at = { x = 200, y = 100 }, size = { x = 800, y = 500 }, tags = { workspace_modes.OPENED_TAG .. "*" } }
+  for key, value in pairs(fields or {}) do
+    window[key] = value
+  end
+  return open(address, window)
+end
+local snap_left, snap_right = o.snap_window("l"), o.snap_window("r")
+local focus_left = o.on_tiling_workspace({ kind = "focus-left" }, "focus left")
+local moved = 0
+actions["focus-left"] = function() moved = moved + 1 end
+
+local win = app("win")
+focus_left()
+eq(moved, 0, "on a floating workspace Super+Left does not move the focus")
+snap_left()
+eq(box(win), "12,73 621x715", "Super+Left puts the window on the left half, under its titlebar")
+snap_left()
+eq(box(win), "12,73 621x715", "and leaves it there with no monitor on that side")
+snap_right()
+eq(box(win), "200,100 800x500", "Super+Right brings it back to the place and size it had")
+eq(table.concat(win.tags, " "):find("before-snap", 1, true), nil, "and nothing is remembered any more")
+snap_right()
+eq(box(win), "647,73 621x715", "one more press puts it on the right half")
+
+-- Super+Up maximizes it, Super+Down brings it back to its half, then to its
+-- earlier place, then minimizes it.
+hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "set" }))
+o.window_down()
+eq(win.fullscreen .. " " .. box(win), "0 647,73 621x715", "Super+Down on the maximized window: back on its half")
+o.window_down()
+eq(box(win), "200,100 800x500", "Super+Down on a half: the earlier place and size")
+eq(#executed, 0, "nothing was minimized on the way")
+o.window_down()
+eq(executed[1], "karchy-hyprland-window-minimize win", "Super+Down on a window that is on no half minimizes it")
+
+-- A maximized window goes straight to the half the arrow points at, also one
+-- maximized from the other half, and comes back to the size it had before
+-- either.
+win.fullscreen = 1
+snap_left()
+eq(win.fullscreen .. " " .. box(win), "0 12,73 621x715", "a maximized window snaps")
+win.fullscreen = 1
+snap_right()
+eq(win.fullscreen .. " " .. box(win), "0 647,73 621x715", "maximized from the left half, Super+Right goes to the right half")
+snap_left()
+eq(box(win), "200,100 800x500", "and it comes back to its own size from there")
+
+-- Dragged off its half the window keeps the half's size, and Super+Down gives
+-- the earlier size back where the window now is.
+snap_left()
+win.at = { x = 300, y = 200 }
+o.window_down()
+eq(box(win), "300,200 800x500", "a window dragged off its half gets its size back where it is")
+win.at = { x = 200, y = 100 }
+snap_left()
+win.at = { x = 300, y = 200 }
+snap_right()
+snap_left()
+eq(box(win), "200,100 800x500", "snapped again after a drag, it still comes back to what it had before the first snap")
+
+-- A window given a size by hand is its own size: nothing to give back.
+snap_left()
+win.at, win.size = { x = 300, y = 200 }, { x = 700, y = 400 }
+executed = {}
+o.window_down()
+eq(box(win) .. " " .. #executed, "300,200 700x400 1", "a window resized by hand since is minimized, not resized")
+
+-- The bar docks while a window is maximized, which moves the top of the
+-- area by its margin. A window snapped then is still on its half, and takes
+-- the half as it is once the bar floats again.
+win.at, win.size = { x = 200, y = 100 }, { x = 800, y = 500 }
+monitors[1].reserved.top = 26
+snap_left()
+eq(box(win), "12,68 621x720", "snapped under the docked bar")
+monitors[1].reserved.top = 31
+fire("window.fullscreen", win)
+eq(box(win), "12,73 621x715", "the half follows the bar when it floats again")
+snap_right()
+eq(box(win), "200,100 800x500", "and the window on it still comes back to what it had")
+monitors[1].reserved.top = 26
+snap_left()
+monitors[1].reserved.top = 31
+snap_right()
+eq(box(win), "200,100 800x500", "a half the bar has moved away from is still the half the window is on")
+
+-- With a monitor on that side the window goes on to it, onto the half it
+-- enters by, and what it comes back to moves with it.
+second_monitor = true
+monitor_workspace.RIGHT = workspace
+win.at, win.size = { x = 200, y = 100 }, { x = 800, y = 500 }
+snap_right()
+snap_right()
+eq(win.monitor.name .. " " .. box(win), "RIGHT 1292,73 941x995", "from the right half: the left half of the monitor on the right")
+snap_right()
+eq(box(win), "1480,100 800x500", "and Super+Right there: the place it had, on the monitor it is on")
+second_monitor = false
+win.monitor = monitors[1]
+
+-- A dialog keeps the size its app gave it, and a tiling workspace keeps the
+-- keys for the focus.
+local ask = open("ask", { floating = true, monitor = monitors[1], at = { x = 400, y = 300 }, size = { x = 300, y = 200 } })
+snap_left()
+eq(box(ask), "400,300 300x200", "a dialog is not snapped")
+
+o.workspace_mode({ workspace = "2", mode = "dwindle" })
+workspace = { id = 2 }
+local float = open("float", { floating = true, monitor = monitors[1], at = { x = 100, y = 100 }, size = { x = 400, y = 300 }, tags = { o.FLOAT_RULE_TAG .. "*" } })
+snap_left()
+focus_left()
+eq(box(float) .. " " .. moved, "100,100 400x300 1", "on a tiling workspace Super+Left moves the focus and snaps nothing")
 
 print(string.format("window-stacking: %d checks passed", checks))

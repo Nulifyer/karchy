@@ -27,6 +27,7 @@ karchy has a keybinding system with layers and an editor (Settings › Keybindin
 - Autostart: `o.launch_on_start("my-app")` in `autostart.lua`.
 - Window rules: `o.window(match, rules)`. Read `default/hypr/windows.lua` and `default/hypr/apps/` for working examples before you write one.
 - Which window is in front: a floating window is always in front of the tiled ones, and the one with the keyboard is in front of the other floating ones. To keep a window in front of the others on its workspace, float it and tag it: `o.window("its-class", { float = true, tag = "+stay-in-front" })`. To keep one on every workspace too, pin it (`pin = true`), as picture-in-picture is. The rules are in `default/hypr/stacking.lua`.
+- Halves: on a floating workspace Super+Left and Super+Right put the window on the left or right half of its monitor, and Super+Down gives it its earlier size back (`default/hypr/snap.lua`). On a tiling workspace the same keys move the focus. `karchy-hyprland-window-minimize --down` does what Super+Down does.
 - Gaps, corners, transparency and animations have ready-made flags: `karchy hyprland toggle <flag> [on|off|toggle]`. The flag names are the files in `/usr/share/karchy/default/hypr/toggles/`.
 
 ## Reload and check

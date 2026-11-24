@@ -22,9 +22,7 @@
 
 local workspace_modes = require("default.hypr.workspace-modes")
 
--- On a window Hyprland floated itself as it opened: it has a parent or cannot
--- be resized, which is what a dialog is.
-local DIALOG_TAG = "karchy-dialog"
+local DIALOG_TAG = o.DIALOG_TAG
 -- For rules: o.window("its-class", { tag = "+stay-in-front" })
 local FRONT_TAG = "stay-in-front"
 -- Hyprland's eFocusReason: focus that only followed the pointer, and a click.
