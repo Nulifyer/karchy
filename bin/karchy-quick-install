@@ -101,6 +101,8 @@ refresh_window() {
   command -v karchy-theme-set-vscode >/dev/null && karchy-theme-set-vscode >/dev/null 2>&1
   # Vesktop installed just now has the theme, turned on, before its first start.
   command -v karchy-theme-set-vesktop >/dev/null && karchy-theme-set-vesktop >/dev/null 2>&1
+  # So has T3 Code, selected as its environment theme.
+  command -v karchy-theme-set-t3code >/dev/null && karchy-theme-set-t3code >/dev/null 2>&1
   return 0
 }
 
