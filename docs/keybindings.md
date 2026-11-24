@@ -18,7 +18,7 @@ This is the complete default set. Anything not listed is unbound. New default bi
 | Super+Minus / Super+Equal | Resize width | [O] |
 | Super+Shift+Minus / Super+Shift+Equal | Resize height | [O] |
 | Super+LMB drag / Super+RMB drag | Move / resize | [O] |
-| Alt+Tab / Alt+Shift+Tab | Next / previous window | [O] |
+| Alt+Tab / Alt+Shift+Tab | The window used before this one. While Alt stays down, each Tab goes one window further back and Shift+Tab forward again, on the current workspace (as in Windows, without its picture of the windows) | [New] (Omarchy: next / previous in a fixed order) |
 
 ## Workspaces and monitors
 

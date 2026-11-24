@@ -42,11 +42,13 @@ o.bind("SUPER + SHIFT + code:20", "Make window shorter", hl.dsp.window.resize({ 
 o.bind("SUPER + SHIFT + code:21", "Make window taller", hl.dsp.window.resize({ x = 0, y = 100, relative = true }))
 o.bind("SUPER + mouse:272", "Move window", hl.dsp.window.drag(), { mouse = true })
 o.bind("SUPER + mouse:273", "Resize window", hl.dsp.window.resize(), { mouse = true })
--- Each Alt+Tab chord carries two binds, as in Omarchy: focus, then raise.
-o.bind("ALT + TAB", "Focus on next window", hl.dsp.window.cycle_next())
+-- Alt+Tab goes to the window used before this one, and further back while Alt
+-- stays down. Each chord carries two binds, as in Omarchy: focus, then raise.
+require("default.hypr.window-switch")
+o.bind("ALT + TAB", "Focus on next window", o.switch_window(1))
 o.bind("ALT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
-o.bind("ALT + SHIFT + TAB", "Focus on previous window", hl.dsp.window.cycle_next({ next = false }))
-o.bind("ALT + SHIFT + TAB", "Reveal active window on top", hl.dsp.window.alter_zorder({ mode = "bottom" }))
+o.bind("ALT + SHIFT + TAB", "Focus on previous window", o.switch_window(-1))
+o.bind("ALT + SHIFT + TAB", "Reveal active window on top", hl.dsp.window.bring_to_top())
 
 -- Per-monitor blocks of 10 (D-13 in the audit)
 o.bind_group("Workspaces and monitors")
