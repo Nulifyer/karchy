@@ -32,6 +32,13 @@ import "Model.js" as Model
 // Keyboard: Tab walks the filter, the container list, the Compose projects
 // and Images buttons, then the page; j/k or Up/Down move through the list;
 // Ctrl+F filters; Escape closes.
+//
+// Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
+// sidebar is a SidebarSwitcher across the top, each container with its
+// status, then Compose projects and Images with their counts; the keyboard
+// starts there and Ctrl+F goes there. The page stacks what it had side by
+// side: a fact's name over its value, a section's buttons under its title, a
+// "Can't be undone" action's button under what it says.
 Item {
   id: root
 
@@ -75,6 +82,25 @@ Item {
   readonly property var rows: Model.sorted(containers)
   readonly property var listRows: Model.filtered(rows, filter)
   readonly property var current: section === "container" ? Model.find(containers, selectedId) : null
+
+  // The window is too narrow for the sidebar beside the page; the page for
+  // a button beside the words about it.
+  readonly property bool narrow: window.width < Style.spacing.windowNarrow
+  readonly property bool wide: pages.width >= Style.spacing.formWide
+  // The sidebar changes form with the keyboard in it (the window was tiled,
+  // or floated again): the keyboard goes to the form that is there now.
+  onNarrowChanged: {
+    if (!root.opened) return
+    var focused = frame.Window.activeFocusItem
+    for (var p = focused; p; p = p.parent)
+      if (p === sidebar || p === switcher) { Qt.callLater(root.focusList); return }
+  }
+
+  // The keyboard on the container list, or on the switcher that stands for it.
+  function focusList() {
+    if (root.narrow) switcher.takeFocus()
+    else containerList.forceActiveFocus()
+  }
 
   function open(payloadJson) {
     var payload = Model.parse(payloadJson || "{}", {})
@@ -303,13 +329,13 @@ Item {
     onVisibleChanged: {
       if (!visible && root.opened) root.close()
       // Start in the list, so j/k, Tab and Escape work at once.
-      if (visible) Qt.callLater(function() { containerList.forceActiveFocus() })
+      if (visible) Qt.callLater(root.focusList)
     }
 
     Shortcut {
       sequence: "Ctrl+F"
       enabled: root.opened && !confirmDialog.opened
-      onActivated: filterField.forceActiveFocus(Qt.ShortcutFocusReason)
+      onActivated: root.narrow ? switcher.takeFocus() : filterField.forceActiveFocus(Qt.ShortcutFocusReason)
     }
     Shortcut {
       sequence: "F5"
@@ -317,10 +343,13 @@ Item {
       onActivated: root.refresh()
     }
 
-    RowLayout {
+    GridLayout {
       id: frame
       anchors.fill: parent
-      spacing: 0
+      // The sidebar beside the page, or over it in a narrow window.
+      columns: root.narrow ? 1 : 2
+      columnSpacing: 0
+      rowSpacing: 0
       readonly property Item focusedItem: frame.Window.activeFocusItem
       onFocusedItemChanged: root.revealFocused(focusedItem)
       // Keys the focused control leaves unhandled end up here.
@@ -328,6 +357,8 @@ Item {
 
       // ---------- Sidebar ----------
       Rectangle {
+        id: sidebar
+        visible: !root.narrow
         Layout.fillHeight: true
         Layout.preferredWidth: Style.space(270)
         color: Util.alpha(Commons.Color.foreground, 0.04)
@@ -479,6 +510,27 @@ Item {
         }
       }
 
+      // The same sidebar for a narrow window: every container with its
+      // status, then Compose projects and Images.
+      SidebarSwitcher {
+        id: switcher
+        visible: root.narrow && !root.noEngine
+        Layout.fillWidth: true
+        value: root.section === "container" ? "container:" + root.selectedId : root.section
+        // Both engines: which one this is, and why.
+        note: Model.bothNote(root.engine, root.also)
+        options: root.rows.map(function(c) {
+          return { value: "container:" + c.id, label: c.name, icon: Icons.glyph(Model.stateIcon(c.state)), detail: root.busy[c.id] || c.status || c.state }
+        }).concat([
+          { value: "projects", label: "Compose projects", icon: Icons.glyph("containers.compose"), detail: root.projects.length > 0 ? String(root.projects.length) : "" },
+          { value: "images", label: "Images", icon: Icons.glyph("containers.image"), detail: root.images.length > 0 ? String(root.images.length) : "" }
+        ])
+        onChanged: function(value) {
+          if (value.indexOf("container:") === 0) root.select(Model.find(root.containers, value.slice(10)))
+          else root.section = value
+        }
+      }
+
       // ---------- Page ----------
       Flickable {
         id: content
@@ -492,9 +544,10 @@ Item {
 
         ColumnLayout {
           id: pages
-          x: Style.spacing.panelPadding * 2
+          // Less room at the sides in a narrow window, where the page needs it.
+          x: root.narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 2
           y: Style.spacing.panelPadding
-          width: content.width - Style.spacing.panelPadding * 4
+          width: Math.min(content.width - x * 2, Style.spacing.pageMaxWidth)
           spacing: Style.spacing.xxl
 
           Loader {
@@ -880,8 +933,9 @@ Item {
   }
 
 
-  // One destructive action with what it does, in a "Can't be undone" section.
-  component DangerRow: RowLayout {
+  // One destructive action with what it does, in a "Can't be undone"
+  // section: its button beside the words, or under them on a narrow page.
+  component DangerRow: GridLayout {
     id: danger
     property string title: ""
     property string description: ""
@@ -889,7 +943,9 @@ Item {
     property bool actionEnabled: true
     signal triggered()
     Layout.fillWidth: true
-    spacing: Style.spacing.xxl
+    columns: root.wide ? 2 : 1
+    columnSpacing: Style.spacing.xxl
+    rowSpacing: Style.spacing.md
     ColumnLayout {
       Layout.fillWidth: true
       spacing: Style.spacing.xxs
