@@ -12,10 +12,14 @@ import = [
 # The font follows fontconfig's "monospace", which Settings › Appearance sets.
 normal = { family = "monospace" }
 
-# karchy's universal clipboard keys (Super+C/V) send Ctrl+Insert and
-# Shift+Insert, so these use the clipboard, not the primary selection.
+# Copy and paste are Ctrl+Shift+C and Ctrl+Shift+V, as in every terminal:
+# Ctrl+C interrupts the running program. karchy's Super+C and Super+V and the
+# clipboard history send these. Ctrl+Insert and Shift+Insert do the same, as
+# on Windows; Shift+Insert would otherwise paste the mouse selection.
 [keyboard]
 bindings = [
-  { key = "Insert", mods = "Shift", action = "Paste" },
+  { key = "C", mods = "Control|Shift", action = "Copy" },
+  { key = "V", mods = "Control|Shift", action = "Paste" },
   { key = "Insert", mods = "Control", action = "Copy" },
+  { key = "Insert", mods = "Shift", action = "Paste" },
 ]

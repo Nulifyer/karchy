@@ -9,10 +9,14 @@ config-file = ?"~/.local/state/karchy/current/theme/ghostty.conf"
 font-family = "monospace"
 config-file = ?"~/.local/state/karchy/terminal/ghostty.conf"
 
-# karchy's universal clipboard keys (Super+C/V) send Ctrl+Insert and
-# Shift+Insert, so these use the clipboard, not the primary selection.
-keybind = shift+insert=paste_from_clipboard
+# Copy and paste are Ctrl+Shift+C and Ctrl+Shift+V, as in every terminal:
+# Ctrl+C interrupts the running program. karchy's Super+C and Super+V and the
+# clipboard history send these. Ctrl+Insert and Shift+Insert do the same, as
+# on Windows; Shift+Insert would otherwise paste the mouse selection.
+keybind = ctrl+shift+c=copy_to_clipboard
+keybind = ctrl+shift+v=paste_from_clipboard
 keybind = control+insert=copy_to_clipboard
+keybind = shift+insert=paste_from_clipboard
 
 # No "Reloaded the configuration" toast on every theme switch.
 app-notifications = no-config-reload
