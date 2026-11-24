@@ -7,6 +7,10 @@
 #
 #   lid-battery=, lid-ac=, lid-docked=   default | sleep | ignore | poweroff | hibernate
 #   hibernate-after=                     default | never | minutes (5 to 1440)
+#   hibernate-on-ac=                     default | yes | no   (whether a
+#                                        plugged-in laptop hibernates after
+#                                        that time, or stays asleep until the
+#                                        charger is pulled)
 #
 # Every call states the whole choice: a key left out is "default". It writes
 # only /etc/systemd/logind.conf.d/60-karchy-settings.conf and
@@ -24,8 +28,8 @@
 # without a password (50-karchy-power-settings.rules); everyone else must
 # authenticate as an administrator. So assume the caller is any program in
 # that user's session, hostile ones included.
-# - What it can reach: the lid actions and the sleep-then-hibernate delay,
-#   nothing else. The same session may already block the lid switch (logind's
+# - What it can reach: the lid actions, the sleep-then-hibernate delay and
+#   whether that delay counts while plugged in, nothing else. The same session may already block the lid switch (logind's
 #   inhibit-handle-lid-switch), suspend, hibernate and power off without a
 #   password, so no value here does more than it could do already. What is
 #   new is that the choice outlasts the session, which is the point of a
@@ -33,7 +37,7 @@
 #   the lid closed until the choice is changed back in Settings.
 # - Input is argv only. Nothing is read from the caller's files or
 #   environment, nothing is sourced or evaluated, and no value is ever used as
-#   a path or as part of a command. Each argument must be one of four keys
+#   a path or as part of a command. Each argument must be one of five keys
 #   with a value from a fixed list or a number in range; anything else ends
 #   the call before a file is touched.
 # - The files have fixed names in root-owned folders (the two written, and
@@ -60,13 +64,13 @@ fail() {
 }
 
 usage() {
-  fail "usage: power-settings [lid-battery|lid-ac|lid-docked=default|sleep|ignore|poweroff|hibernate] [hibernate-after=default|never|5-1440]" 64
+  fail "usage: power-settings [lid-battery|lid-ac|lid-docked=default|sleep|ignore|poweroff|hibernate] [hibernate-after=default|never|5-1440] [hibernate-on-ac=default|yes|no]" 64
 }
 
 (( EUID == 0 )) || fail "must run as root, through pkexec" 77
-(( $# <= 4 )) || usage
+(( $# <= 5 )) || usage
 
-declare -A choice=([lid-battery]=default [lid-ac]=default [lid-docked]=default [hibernate-after]=default)
+declare -A choice=([lid-battery]=default [lid-ac]=default [lid-docked]=default [hibernate-after]=default [hibernate-on-ac]=default)
 declare -A seen=()
 
 for arg in "$@"; do
@@ -89,9 +93,15 @@ for arg in "$@"; do
           ;;
       esac
       ;;
+    hibernate-on-ac)
+      case $value in
+        default | yes | no) ;;
+        *) usage ;;
+      esac
+      ;;
     *) usage ;;
   esac
-  # Only one of the four keys gets this far.
+  # Only one of the five keys gets this far.
   [[ -z ${seen[$key]:-} ]] || usage
   seen[$key]=1
   choice[$key]=$value
@@ -138,11 +148,18 @@ logind_lines=$(
   lid_line HandleLidSwitchDocked "${choice[lid-docked]}"
 )
 
-case ${choice[hibernate-after]} in
-  default) sleep_lines="" ;;
-  never) sleep_lines="AllowSuspendThenHibernate=no" ;;
-  *) sleep_lines="HibernateDelaySec=${choice[hibernate-after]}min" ;;
-esac
+sleep_lines=$(
+  case ${choice[hibernate-after]} in
+    default) ;;
+    never) printf '%s\n' "AllowSuspendThenHibernate=no" ;;
+    *) printf '%s\n' "HibernateDelaySec=${choice[hibernate-after]}min" ;;
+  esac
+  case ${choice[hibernate-on-ac]} in
+    default) ;;
+    yes) printf '%s\n' "HibernateOnACPower=yes" ;;
+    no) printf '%s\n' "HibernateOnACPower=no" ;;
+  esac
+)
 
 # Replace a file with new text, or remove it when there is none, and remove
 # the file's old name. Sets `changed` to 1 when what systemd reads is

@@ -1,15 +1,20 @@
 #!/bin/bash
 
-# karchy:summary=Read and save power settings: idle times, lid, power button, hibernation and battery warnings (Settings › Power)
+# karchy:summary=Read and save power settings: power mode, screen brightness and idle times on battery and plugged in, lid, power button, hibernation and battery warnings (Settings › Power)
 # karchy:args=[status | set <setting> <value> | reset]
-# karchy:examples=karchy settings power | karchy-settings-power status | karchy-settings-power set lock.ac 600
+# karchy:examples=karchy settings power | karchy-settings-power status | karchy-settings-power set lock.ac 600 | karchy-settings-power set profile.battery power-saver
 # karchy:hidden=true
 
 # What Settings › Power changed is recorded in ~/.config/karchy/power.json,
 # only the values that differ from karchy's defaults, and each value is written
 # where the system reads it:
 #
-#   idle times and battery warnings   the `idle` and `battery` keys of
+#   power mode                        the profile remembered for each power
+#       source, ~/.local/state/karchy/powerprofiles/{ac,battery}, through
+#       karchy-powerprofiles-set: the same two files the bar's power panel
+#       writes, so both show one setting. Not recorded in power.json.
+#   idle times, screen brightness and battery warnings
+#                                     the `idle`, `power` and `battery` keys of
 #       ~/.config/karchy/shell.json, through karchy-shell-config, one key per
 #       change. That file is also the user's to edit, and the shell reads
 #       nothing else, so a value changed there by hand is what runs and what
@@ -19,7 +24,7 @@
 #       which karchy's Hyprland config loads before ~/.config/hypr, so a
 #       binding written there by hand wins (D-27). logind leaves the key
 #       alone on karchy (10-ignore-power-button.conf), so this needs no root.
-#   lid and hibernate delay           /etc/systemd/logind.conf.d/60-karchy-settings.conf
+#   lid and hibernation               /etc/systemd/logind.conf.d/60-karchy-settings.conf
 #       and /etc/systemd/sleep.conf.d/60-karchy-settings.conf, written by the
 #       root helper /usr/lib/karchy/power-settings through pkexec (no password
 #       for the person at the computer; see the helper). Those sort after
@@ -29,21 +34,34 @@
 #   (nothing)              Open the Settings window at Power (as `karchy settings
 #                          power` does)
 #   status                 JSON: what this machine has (`battery`, `lid`,
-#                          `hibernation`), each setting's value in effect
-#                          (`values`), what is recorded here (`saved`), the
-#                          settings something else decides (`foreign`), the
-#                          last-resort battery action and the power profile
+#                          `hibernation`, `backlight`, `profiles`), each
+#                          setting's value in effect (`values`), what is
+#                          recorded here (`saved`), the settings something
+#                          else decides (`foreign`), the last-resort battery
+#                          action and the power profile running now
 #   set <setting> <value>
+#       profile.battery, profile.ac
+#                          power-saver, balanced, performance (those this
+#                          machine has). Switched to when that power source is
+#                          the one in use, at once if it is now
+#       brightness.battery, brightness.ac
+#                          keep, or percent (1 to 100): what the built-in
+#                          screen is set to when the charger goes in or out
 #       screenOff.battery, screenOff.ac, lock.battery, lock.ac, sleep.battery,
 #       sleep.ac           never, or seconds idle (10 to 86400). "ac" is
 #                          plugged in, and the only one a desktop uses
 #       battery.low, battery.critical
 #                          percent (low 5 to 50, critical 4 to 30, under low)
+#       battery.saver      on, off: Power saver from the first battery
+#                          warning until the charger goes in
 #       powerKey           menu, sleep, hibernate, shutdown, nothing
 #       lid.battery, lid.ac, lid.docked
 #                          sleep, ignore (karchy still locks the session),
 #                          poweroff, hibernate
 #       hibernateAfter     never, or minutes asleep (5 to 1440)
+#       hibernate.ac       never (stay asleep while plugged in; the time
+#                          counts from when the charger is pulled), same
+#                          (hibernate after that time plugged in too)
 #   reset                  Forget every choice made here
 
 set -euo pipefail
@@ -53,6 +71,8 @@ source karchy-shell-config
 
 POWER_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/karchy/power.json"
 HYPR_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/karchy/hypr/power.lua"
+# Where karchy-powerprofiles-set remembers each power source's profile.
+PROFILE_DIR="${KARCHY_POWERPROFILES_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/karchy/powerprofiles}"
 ROOT_HELPER=/usr/lib/karchy/power-settings
 POWER_KEY=XF86PowerOff
 
@@ -106,6 +126,46 @@ has_battery() {
   out=$(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower/devices/DisplayDevice \
     org.freedesktop.UPower.Device Type PowerSupply IsPresent 2>/dev/null | tr '\n' ' ') || return 1
   [[ $out == "u 2 b true b true " ]]
+}
+
+# The power source in use, by the signal the shell and karchy-powerprofiles-set
+# follow.
+source_in_use() {
+  if [[ $(busctl get-property org.freedesktop.UPower /org/freedesktop/UPower org.freedesktop.UPower OnBattery 2>/dev/null) == "b true" ]]; then
+    echo battery
+  else
+    echo ac
+  fi
+}
+
+# The power profiles this machine has, most sparing first, one a line; none
+# without power-profiles-daemon.
+profiles() {
+  local all name
+  all=$(karchy-powerprofiles-list 2>/dev/null) || true
+  for name in power-saver balanced performance; do
+    grep -qxF "$name" <<<"$all" && echo "$name"
+  done
+  return 0
+}
+
+# The profile a power source switches to: the one remembered for it, or
+# Balanced, as karchy-powerprofiles-set reads it.
+profile_for() {
+  local supply="$1" available="$2" profile=""
+  [[ -r $PROFILE_DIR/$supply ]] && read -r profile <"$PROFILE_DIR/$supply" || true
+  [[ -n $profile ]] && grep -qxF -- "$profile" <<<"$available" || profile=balanced
+  echo "$profile"
+}
+
+# The profile running now, read from the daemon itself. `powerprofilesctl get`
+# is a Python program that can crash on exit (python/cpython#124619).
+profile_in_use() {
+  local value
+  value=$(busctl get-property net.hadess.PowerProfiles /net/hadess/PowerProfiles \
+    net.hadess.PowerProfiles ActiveProfile 2>/dev/null) || return 0
+  value=${value#s \"}
+  printf '%s' "${value%\"}"
 }
 
 # The idle times in effect on both power sources, from a shell config on
@@ -185,6 +245,18 @@ systemd_value() {
       END { print value }'
 }
 
+# Whether a plugged-in laptop hibernates after that time too ("same") or
+# stays asleep until the charger is pulled ("never"). systemd's own default
+# is to hibernate; karchy-laptop's drop-in says not to.
+hibernate_on_ac() {
+  local value
+  value=$(systemd_value "$1" sleep HibernateOnACPower)
+  case ${value,,} in
+    no | false | 0 | off) echo never ;;
+    *) echo same ;;
+  esac
+}
+
 # Minutes of sleep before hibernation, 0 for never, -1 when systemd works it
 # out from the battery (no HibernateDelaySec anywhere on a laptop).
 hibernate_after() {
@@ -214,7 +286,9 @@ defaults_json() {
     --arg ac "$(lid_choice "${ac:-${lid:-suspend}}")" \
     --arg docked "$(lid_choice "${docked:-ignore}")" \
     --argjson hibernateAfter "$(hibernate_after packaged)" \
-    '{powerKey: "menu", "lid.battery": $lid, "lid.ac": $ac, "lid.docked": $docked, hibernateAfter: $hibernateAfter}'
+    --arg hibernateAc "$(hibernate_on_ac packaged)" \
+    '{powerKey: "menu", "lid.battery": $lid, "lid.ac": $ac, "lid.docked": $docked,
+      hibernateAfter: $hibernateAfter, "hibernate.ac": $hibernateAc}'
 }
 
 # What the power button does now, read back from Hyprland, so a binding in the
@@ -247,21 +321,36 @@ battery_action() {
   jq -n -c --argjson percent "${percent%%.*}" --arg action "${action:-Auto}" '{percent: $percent, action: ($action | ascii_downcase)}'
 }
 
-# The idle times and battery warnings the shell runs with, by setting name.
+# The idle times, screen brightness and battery choices the shell and
+# karchy-power-source run with, by setting name. A brightness of 0 leaves the
+# screen as it is; bin/karchy-power-source reads the key the same way.
 shell_values() {
   effective_config | jq -c "$IDLE_TIMES"'
+    def brightness($supply):
+      ((.power.brightness[$supply])? // 0)
+      | if type == "string" then (tonumber? // 0) else . end
+      | if type == "number" and . >= 1 and . <= 100 then floor else 0 end;
     idle_times as $idle
     | {
         "screenOff.battery": $idle.battery.screenOff, "screenOff.ac": $idle.ac.screenOff,
         "lock.battery": $idle.battery.lock, "lock.ac": $idle.ac.lock,
         "sleep.battery": $idle.battery.sleep, "sleep.ac": $idle.ac.sleep,
-        "battery.low": (.battery.low // 15), "battery.critical": (.battery.critical // 5)
+        "brightness.battery": brightness("battery"), "brightness.ac": brightness("ac"),
+        "battery.low": (.battery.low // 15), "battery.critical": (.battery.critical // 5),
+        "battery.saver": (if (.battery.saver)? == true then "on" else "off" end)
       }'
 }
 
 status() {
-  local values settings docked ac
+  local values settings docked ac available profileValues='{}'
   settings=$(saved)
+  # A profile picked for a power source (here or in the bar's panel) counts
+  # as a choice made, though its record is karchy-powerprofiles-set's.
+  available=$(profiles)
+  if [[ -n $available ]]; then
+    profileValues=$(jq -n -c --arg battery "$(profile_for battery "$available")" --arg ac "$(profile_for ac "$available")" \
+      '{"profile.battery": $battery, "profile.ac": $ac}')
+  fi
   ac=$(logind_property HandleLidSwitchExternalPower)
   [[ -n $ac ]] || ac=$(logind_property HandleLidSwitch)
   docked=$(logind_property HandleLidSwitchDocked)
@@ -271,11 +360,13 @@ status() {
     --arg lidBattery "$(lid_choice "$(logind_property HandleLidSwitch)")" \
     --arg lidAc "$(lid_choice "$ac")" \
     --arg lidDocked "$(lid_choice "${docked:-ignore}")" \
-    --argjson hibernateAfter "$(hibernate_after live)" '
-    . + {
+    --argjson hibernateAfter "$(hibernate_after live)" \
+    --arg hibernateAc "$(hibernate_on_ac live)" \
+    --argjson profiles "$profileValues" '
+    . + $profiles + {
       powerKey: $powerKey,
       "lid.battery": $lidBattery, "lid.ac": $lidAc, "lid.docked": $lidDocked,
-      hibernateAfter: $hibernateAfter
+      hibernateAfter: $hibernateAfter, "hibernate.ac": $hibernateAc
     }')
 
   # Decided somewhere else: the value in effect is not the one recorded here,
@@ -284,16 +375,20 @@ status() {
     --argjson battery "$(is has_battery)" \
     --argjson lid "$(is karchy-hw-laptop)" \
     --argjson hibernation "$(is karchy-hibernation-available)" \
+    --argjson backlight "$(is karchy-hw-display)" \
+    --argjson profiles "$(jq -R -n -c '[inputs | select(. != "")]' <<<"$available")" \
     --argjson values "$values" \
     --argjson saved "$settings" \
     --argjson defaults "$(defaults_json)" \
     --argjson batteryAction "$(battery_action)" \
-    --arg profile "$(powerprofilesctl get 2>/dev/null || true)" '
+    --arg source "$(source_in_use)" \
+    --arg profile "$([[ -z $available ]] || profile_in_use)" '
     {
-      battery: $battery, lid: $lid, hibernation: $hibernation,
-      values: $values, saved: $saved,
+      battery: $battery, lid: $lid, hibernation: $hibernation, backlight: $backlight, profiles: $profiles,
+      values: $values,
+      saved: ($saved + ($values | with_entries(select((.key | startswith("profile.")) and .value != "balanced")))),
       foreign: [$defaults | keys[] | select(($saved[.] // $defaults[.]) != $values[.])],
-      batteryAction: $batteryAction, profile: $profile
+      batteryAction: $batteryAction, source: $source, profile: $profile
     }'
 }
 
@@ -333,6 +428,33 @@ apply_battery() {
   [[ $percent == "$default" ]] && echo default || echo set
 }
 
+# The brightness the built-in screen gets on a power source, 0 to leave it as
+# it is; commit drops it from shell.json when it is karchy's (0). The screen
+# follows at once when that source is the one in use, so the choice is seen.
+apply_brightness() {
+  local supply="${1#brightness.}" percent="$2" device
+  # shellcheck disable=SC2016 # jq variables, not shell ones
+  commit '.power = (.power | if type == "object" then . else {} end)
+          | .power.brightness = (.power.brightness | if type == "object" then . else {} end)
+          | .power.brightness[$supply] = $percent' --arg supply "$supply" --argjson percent "$percent"
+  if (( percent > 0 )) && [[ $supply == "$(source_in_use)" ]] && device=$(karchy-hw-display 2>/dev/null); then
+    brightnessctl -d "$device" set "$percent%" >/dev/null 2>&1 || true
+  fi
+  (( percent == 0 )) && echo default || echo set
+}
+
+# Power saver at the first battery warning. The profile is asked for again
+# when this changes on battery, so a battery that is already low follows.
+apply_saver() {
+  local on="$1"
+  # shellcheck disable=SC2016 # jq variables, not shell ones
+  commit '.battery = (.battery | if type == "object" then . else {} end) | .battery.saver = $on' --argjson on "$on"
+  if [[ $(source_in_use) == battery ]]; then
+    karchy-powerprofiles-set battery >/dev/null 2>&1 || true
+  fi
+  [[ $on == false ]] && echo default || echo set
+}
+
 # The power button's binding, generated for karchy's Hyprland config to load.
 apply_power_key() {
   local choice="$1" tmp
@@ -356,19 +478,23 @@ apply_power_key() {
   hyprctl reload >/dev/null 2>&1 || true
 }
 
-# The lid and hibernate-delay choices, all of them at once, to the root
+# The lid and hibernation choices, all of them at once, to the root
 # helper. pkexec exits 126 when the password prompt is dismissed and 127 when
 # the request is refused.
 apply_system() {
   local settings="$1" args=() key value code=0
   [[ -x $ROOT_HELPER ]] || fail "$ROOT_HELPER is missing; update karchy-settings"
-  for key in lid.battery lid.ac lid.docked hibernateAfter; do
+  for key in lid.battery lid.ac lid.docked hibernateAfter hibernate.ac; do
     value=$(jq -r --arg k "$key" '.[$k] // empty' <<<"$settings")
     [[ -n $value ]] || continue
     case $key in
       hibernateAfter)
         [[ $value == 0 ]] && value=never
         args+=("hibernate-after=$value")
+        ;;
+      hibernate.ac)
+        [[ $value == same ]] && value=yes || value=no
+        args+=("hibernate-on-ac=$value")
         ;;
       *) args+=("${key/./-}=$value") ;;
     esac
@@ -386,7 +512,7 @@ apply_system() {
 reconciled() {
   local settings="$1"
   jq -c --argjson values "$(shell_values)" '
-    with_entries(select((.key | test("^(screenOff|lock|sleep|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
+    with_entries(select((.key | test("^(screenOff|lock|sleep|brightness|battery)\\.") | not) or .value == $values[.key]))' <<<"$settings"
 }
 
 set_value() {
@@ -394,6 +520,39 @@ set_value() {
   settings=$(reconciled "$(saved)")
 
   case $setting in
+    profile.battery | profile.ac)
+      local available
+      available=$(profiles)
+      [[ -n $available ]] || fail "This computer has no power modes (power-profiles-daemon isn't running)"
+      case $value in
+        power-saver | balanced | performance) ;;
+        *) usage ;;
+      esac
+      grep -qxF "$value" <<<"$available" || fail "This computer has no $value mode"
+      karchy-powerprofiles-set "${setting#profile.}" "$value" >/dev/null || fail "The power mode didn't change"
+      # Remembered by karchy-powerprofiles-set, not in power.json.
+      status
+      return
+      ;;
+    brightness.battery | brightness.ac)
+      if [[ $value == keep ]]; then
+        number=0
+      else
+        [[ $value =~ ^[1-9][0-9]{0,2}$ ]] || usage
+        (( value <= 100 )) || usage
+        number=$value
+      fi
+      outcome=$(apply_brightness "$setting" "$number")
+      json=$number
+      ;;
+    battery.saver)
+      case $value in
+        on) outcome=$(apply_saver true) ;;
+        off) outcome=$(apply_saver false) ;;
+        *) usage ;;
+      esac
+      json=$(jq -n --arg v "$value" '$v')
+      ;;
     screenOff.battery | screenOff.ac | lock.battery | lock.ac | sleep.battery | sleep.ac)
       if [[ $value == never ]]; then
         number=0
@@ -446,6 +605,13 @@ set_value() {
         json=$value
       fi
       ;;
+    hibernate.ac)
+      case $value in
+        never | same) ;;
+        *) usage ;;
+      esac
+      json=$(jq -n --arg v "$value" '$v')
+      ;;
     *) usage ;;
   esac
 
@@ -457,7 +623,7 @@ set_value() {
   fi
 
   case $setting in
-    lid.* | hibernateAfter) apply_system "$settings" ;;
+    lid.* | hibernateAfter | hibernate.ac) apply_system "$settings" ;;
   esac
   write_saved "$settings"
 
@@ -480,6 +646,11 @@ reset_all() {
                 then del(.idle[$source][$key]) | (if .idle[$source] == {} then del(.idle[$source]) else . end)
                 else . end' --arg source "${key#*.}" --arg key "$(idle_key "$key")"
         ;;
+      brightness.*)
+        # shellcheck disable=SC2016 # jq variables, not shell ones
+        commit 'if (.power | type) == "object" and (.power.brightness | type) == "object"
+                then .power.brightness[$supply] = 0 else . end' --arg supply "${key#brightness.}"
+        ;;
       battery.*)
         # shellcheck disable=SC2016 # jq variables, not shell ones
         commit '.battery[$key] = $karchy_shell_defaults[0].battery[$key]' --arg key "${key#battery.}"
@@ -487,10 +658,17 @@ reset_all() {
     esac
   done < <(jq -r 'keys[]' <<<"$settings")
 
+  # Both power sources go back to Balanced, the one in use at once (and to
+  # Power saver, were the battery low with that choice still on by hand).
+  if [[ -e $PROFILE_DIR/ac || -e $PROFILE_DIR/battery ]]; then
+    rm -f "$PROFILE_DIR/ac" "$PROFILE_DIR/battery"
+    karchy-powerprofiles-set autodetect >/dev/null 2>&1 || true
+  fi
+
   if [[ -e $HYPR_FILE ]]; then
     apply_power_key menu
   fi
-  if jq -e 'has("lid.battery") or has("lid.ac") or has("lid.docked") or has("hibernateAfter")' <<<"$settings" >/dev/null; then
+  if jq -e 'has("lid.battery") or has("lid.ac") or has("lid.docked") or has("hibernateAfter") or has("hibernate.ac")' <<<"$settings" >/dev/null; then
     apply_system '{}'
   fi
   rm -f "$POWER_FILE"

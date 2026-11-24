@@ -23,7 +23,7 @@ Every command prints JSON for `status`. Read `status` before a change, and read 
 | Fonts | no single command | see [themes.md](themes.md) | `karchy font` (monospace), `karchy font app` (the interface font of the shell and apps), `karchy display text size` |
 | Notifications | `karchy-settings-notifications status \| set <app> <allow\|silent\|off> [name] \| dnd <on\|off>` | `~/.config/karchy/notifications.json` | the notification service watches the file |
 | Default apps | `karchy-settings-default-apps status \| set <role> <app.desktop>` | `~/.config/mimeapps.list`, `~/.config/xdg-terminals.list` | xdg-mime |
-| Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` | see [power.md](power.md) |
+| Power | `karchy-settings-power status \| set <setting> <value> \| reset` | `~/.config/karchy/power.json` (the power profiles: `~/.local/state/karchy/powerprofiles/`) | see [power.md](power.md) |
 | Storage | `karchy-settings-storage ...` | nothing in the home folder | see [storage.md](storage.md) |
 | Date & Time (section `datetime`) | `karchy-settings-datetime status \| timezones \| timezone <Area/City> \| ntp on\|off \| sync \| clock <format>` | systemd (timezone, automatic time); the clock's format in `~/.config/karchy/shell.json` | timedated over D-Bus; `karchy bar set karchy.clock format` |
 | Users | `karchy-settings-users status \| add <name> admin\|standard [full name] \| remove <name> \| full-name <name> [full name] \| role <name> admin\|standard \| reset-password <name> \| autologin on\|off \| password` | `/etc/passwd`, `/etc/group`, `/etc/shadow`, the `[initial_session]` part of `/etc/greetd/config.toml` | see below |
@@ -38,14 +38,14 @@ The valid settings and values for each command are in its header comment. Read i
 - Each JSON file holds only the values that differ from karchy's defaults. A value that was never changed keeps following the defaults. To return a value to the default, use `reset` or `forget`. Do not write the default value into the file.
 - The Hyprland values that Settings saves load after karchy's defaults and before `~/.config/hypr`. A rule that the user wrote in `~/.config/hypr/monitors.lua` or `input.lua` wins. If a `set` has no effect, check those files, and tell the user which line overrides the setting.
 - Displays are saved for the physical monitor (make, model and serial), not the connector. `set` accepts a connector name such as `DP-1`.
-- Idle times and battery warnings are the `idle` and `battery` keys of `~/.config/karchy/shell.json`. `karchy-settings-power set` writes them there, one key for each change. A hand edit of those keys is also valid, and it is what `status` reports.
+- Idle times, the screen brightness for each power source and battery warnings are the `idle`, `power.brightness` and `battery` keys of `~/.config/karchy/shell.json`. `karchy-settings-power set` writes them there, one key for each change. A hand edit of those keys is also valid, and it is what `status` reports.
 - `~/.config/hypr/hyprsunset.conf`, if the user wrote one, replaces the night-light profiles that Settings generates.
 - A page whose area has a file the user may edit by hand links it in its header ("Open config file"): `monitors.lua` (Displays), `input.lua` (Input), `bindings.lua` (Keybindings), `shell.json` (Power, Date & Time, Appearance), `looknfeel.lua` (Appearance), the default terminal's config (Fonts), `mimeapps.list` (Default apps), `~/.ssh/config` and `~/.gitconfig` (SSH & Git), `hyprland.lua` (About). `karchy-launch-config-editor <path>` opens one in the user's editor, and creates a missing one from `/etc/skel` first.
 
 ## What needs a password
 
 - Displays, input, night light, notifications, default apps and the user's own SSH keys need none.
-- Lid actions and the hibernate delay go through the root helper `/usr/lib/karchy/power-settings`. It asks no password from the person at the computer.
+- Lid actions, the hibernate delay and hibernation while plugged in go through the root helper `/usr/lib/karchy/power-settings`. It asks no password from the person at the computer.
 - The SSH server is set up and removed in a terminal, with the password: `karchy-setup-security-sshd` and `karchy-remove-security-sshd`. Run them only when the user asked for the server to change. Opening the machine to SSH is a system-level change.
 - Trusted networks, DNS and the Wi-Fi country ask for the administrator's password. See [privilege.md](privilege.md).
 - The timezone, automatic time and `sync` ask for the password in the shell's dialog (`karchy-settings-datetime`); a dismissed dialog exits 1 with `Canceled.`. The clock's format needs none.
@@ -61,6 +61,7 @@ karchy-settings-input set repeatRate 40
 karchy-settings-input reset repeatRate          # undo
 karchy-settings-displays set DP-1 scale 1.25
 karchy-settings-power set lock.ac 600           # lock after 10 minutes on mains power
+karchy-settings-power set profile.battery power-saver   # Power saver whenever on battery
 karchy-settings-notifications set app:signal silent Signal
 karchy-settings-default-apps set browser firefox.desktop
 karchy-settings-datetime timezone Europe/Berlin   # the password dialog appears on the desktop

@@ -7,15 +7,17 @@ import qs.Commons
 import qs.Commons as Commons
 import qs.Ui
 
-// Settings › Power: what the computer does when left alone, when the lid
-// closes and when the power button is pressed, when sleep turns into
-// hibernation, and the battery warnings, through karchy-settings-power.
+// Settings › Power: how the computer runs and what it does when left alone
+// or closed, on battery and plugged in; the power button; and the battery
+// warnings, through karchy-settings-power.
 //
-// The page shows what this machine has: a desktop gets one column of idle
-// times and no lid or battery rows, a laptop gets "On battery" beside
-// "Plugged in", and hibernation appears only where it works. Every control
-// shows the value in effect, read back after each change, and each group
-// says in a sentence what that adds up to.
+// Everything that can differ by power source is one table: a row a setting,
+// "On battery" beside "Plugged in". The page shows what this machine has: a
+// desktop gets one column and no lid, brightness or battery rows, the power
+// mode appears where power-profiles-daemon runs, and hibernation only where
+// it works. Every control shows the value in effect, read back after each
+// change, and a group says in a sentence what its choices add up to when
+// that isn't plain from them.
 ColumnLayout {
   id: root
   spacing: Style.spacing.xxl
@@ -26,13 +28,17 @@ ColumnLayout {
   property var saved: ({})
   property var foreign: []
   property var batteryAction: ({})
+  // The power profile running now, and the ones this machine has.
   property string profile: ""
+  property var profiles: []
   property bool battery: false
+  // A built-in screen whose brightness can be set.
+  property bool backlight: false
   property bool lid: false
   property bool hibernation: false
   property bool ready: false
   // Why the last change didn't (fully) take, shown under the group it was in:
-  // "idle", "lid", "powerKey", "hibernateAfter", "battery", or "" for the page.
+  // "use", "idle", "lid", "powerKey", "battery", or "" for the page.
   property string error: ""
   property string errorGroup: ""
   property string runningGroup: ""
@@ -46,6 +52,17 @@ ColumnLayout {
   // A battery that appears or goes (a dock, the kernel's test battery).
   readonly property bool systemBattery: !!UPower.displayDevice && UPower.displayDevice.isLaptopBattery
   onSystemBatteryChanged: refresh()
+
+  // The shell's battery service follows power-profiles-daemon's signals, so
+  // the profile running now is live where there is one (a laptop); elsewhere
+  // it is the one read with the status. A change may be a profile picked in
+  // the bar's panel, which is this page's setting too, so the page reads again.
+  readonly property var batteryService: root.settings && root.settings.shell
+    ? root.settings.shell.serviceFor("karchy.battery") : null
+  readonly property string liveProfile: batteryService ? String(batteryService.activePowerProfile || "") : ""
+  onLiveProfileChanged: refresh()
+  readonly property string runningProfile: liveProfile !== "" ? liveProfile : profile
+  readonly property string sourceNow: root.battery && root.onBattery ? "battery" : "ac"
 
   // On opening the page and when the machine changes. What went wrong with
   // an earlier change is no longer news by then.
@@ -63,7 +80,9 @@ ColumnLayout {
       root.foreign = status.foreign || []
       root.batteryAction = status.batteryAction || {}
       root.profile = String(status.profile || "")
+      root.profiles = status.profiles || []
       root.battery = status.battery === true
+      root.backlight = status.backlight === true
       root.lid = status.lid === true
       root.hibernation = status.hibernation === true
       root.ready = true
@@ -79,16 +98,20 @@ ColumnLayout {
     setProc.running = true
   }
 
-  // The dropdowns hold "0" for never; the command calls it by name.
+  // The dropdowns hold "0" for never and for a brightness left as it is; the
+  // command calls those by name.
   function set(setting, value) {
     var timed = setting.indexOf("screenOff.") === 0 || setting.indexOf("lock.") === 0
       || setting.indexOf("sleep.") === 0 || setting === "hibernateAfter"
-    root.run(["set", setting, timed && String(value) === "0" ? "never" : String(value)])
+    var zero = timed ? "never" : setting.indexOf("brightness.") === 0 ? "keep" : "0"
+    root.run(["set", setting, String(value) === "0" ? zero : String(value)])
   }
 
   function groupOf(setting) {
     var name = String(setting).split(".")[0]
-    return name === "screenOff" || name === "lock" || name === "sleep" ? "idle" : name
+    if (name === "profile" || name === "brightness") return "use"
+    if (name === "screenOff" || name === "lock" || name === "sleep" || name === "hibernateAfter" || name === "hibernate") return "idle"
+    return name
   }
 
   function isForeign(setting) { return root.foreign.indexOf(setting) !== -1 }
@@ -113,6 +136,34 @@ ColumnLayout {
   }
 
   function timeName(seconds) { return Number(seconds) === 0 ? "Never" : root.duration(seconds) }
+
+  function profileName(profile) {
+    var names = { "power-saver": "Power saver", "balanced": "Balanced", "performance": "Performance" }
+    return names[profile] || String(profile)
+  }
+
+  readonly property var profileChoices: {
+    var out = []
+    for (var i = 0; i < root.profiles.length; i++) out.push({ value: root.profiles[i], label: root.profileName(root.profiles[i]) })
+    return out
+  }
+
+  // Said only while it is so: another profile runs than the one chosen for
+  // this power source.
+  readonly property string profileNote: {
+    var chosen = String(root.values["profile." + root.sourceNow] || "")
+    if (!root.ready || chosen === "" || root.runningProfile === "" || root.runningProfile === chosen) return ""
+    return root.profileName(root.runningProfile) + " is running now, not this choice: a low battery or an app can hold another mode for a while."
+  }
+
+  function brightnessName(percent) { return Number(percent) === 0 ? "Leave as it is" : percent + "%" }
+
+  readonly property var brightnessChoices: {
+    var out = []
+    for (var percent = 10; percent <= 100; percent += 10) out.push({ value: String(percent), label: percent + "%" })
+    out.push({ value: "0", label: root.brightnessName(0) })
+    return out
+  }
 
   readonly property var screenChoices: timeChoices([1, 2, 5, 10, 15, 30, 60])
   readonly property var sleepChoices: timeChoices([5, 10, 15, 30, 45, 60, 120])
@@ -205,10 +256,21 @@ ColumnLayout {
     return "At " + percent + "% it " + does + "."
   }
 
-  readonly property string profileName: {
-    var names = { "power-saver": "Power saver", "balanced": "Balanced", "performance": "Performance" }
-    return names[root.profile] || root.profile
+  function hibernateName(minutes) {
+    return Number(minutes) < 0 ? "When the battery runs low" : root.timeName(Number(minutes) * 60)
   }
+
+  readonly property var hibernateChoices: [
+    { value: "30", label: "30 minutes" }, { value: "60", label: "1 hour" }, { value: "120", label: "2 hours" },
+    { value: "240", label: "4 hours" }, { value: "480", label: "8 hours" }, { value: "0", label: "Never" }
+  ]
+
+  // Plugged in, a sleeping laptop hibernates after the same time or not at
+  // all: the time then counts from when the charger is pulled.
+  readonly property var hibernateAcChoices: [
+    { value: "same", label: root.hibernateName(root.values.hibernateAfter) },
+    { value: "never", label: Number(root.values.hibernateAfter) === 0 ? "Never" : "Not while plugged in" }
+  ]
 
   Component.onCompleted: refresh()
 
@@ -262,40 +324,95 @@ ColumnLayout {
     onDismissed: root.error = ""
   }
 
-  // "On battery" and "Plugged in" over the two columns; the one in use now
-  // is marked.
-  component SourceHeading: Text {
+  // A group's heading inside the table: a rule across it, then the group's
+  // name with "On battery" and "Plugged in" over the two columns (a desktop
+  // has one column and needs no names). The one in use now is marked.
+  component GroupRule: PanelSeparator {
+    Layout.columnSpan: table.columns
+    Layout.fillWidth: true
+    Layout.topMargin: Style.spacing.xxl + Style.spacing.lg - table.rowSpacing
+    Layout.bottomMargin: Style.spacing.lg - table.rowSpacing
+  }
+
+  component GroupName: PanelSectionHeader {
+    Layout.alignment: Qt.AlignVCenter
+    Layout.bottomMargin: Style.spacing.xxl - table.rowSpacing
+  }
+
+  component SourceHeading: PanelSectionHeader {
     property bool now: false
     property string name: ""
+    visible: root.battery
     Layout.fillWidth: true
-    textFormat: Text.PlainText
+    Layout.alignment: Qt.AlignVCenter
+    Layout.bottomMargin: Style.spacing.xxl - table.rowSpacing
     text: name + (now ? " (now)" : "")
-    color: now ? Commons.Color.foreground : Commons.Color.textSecondary
-    font.family: Style.font.family
-    font.pixelSize: Style.font.bodySmall
-    font.bold: true
+    color: now ? Commons.Color.foreground : Commons.Color.secondaryText(foreground, surface)
     elide: Text.ElideRight
   }
 
+  // The second cell of a group's heading on a desktop.
+  component NoHeading: Item {
+    visible: !root.battery
+    implicitWidth: 1
+    implicitHeight: 1
+  }
+
+  // A line that belongs to a group in the table.
+  component TableOutcome: Outcome { Layout.columnSpan: table.columns }
+  component TableError: GroupError { Layout.columnSpan: table.columns; Layout.fillWidth: true }
+  component TableWarning: InlineMessage { Layout.columnSpan: table.columns; Layout.fillWidth: true; kind: "warning" }
+
   PageHeader {
     title: "Power"
-    explanation: "Idle times and battery warnings you edit by hand in shell.json win over these. Lid and hibernation are system settings, changed without a password at this computer."
+    explanation: "The power mode is the one the battery in the bar sets. Screen brightness, idle times and battery warnings you edit by hand in shell.json win over these. Lid and hibernation are system settings, changed without a password at this computer."
     ConfigFileLink { closes: root.settings; file: ".config/karchy/shell.json" }
   }
 
   GroupError { group: "" }
 
-  SettingsHeader { text: "When left alone" }
-
+  // Everything that has a value for each power source: a row a setting, a
+  // column a source. Hidden rows leave no gap, so a desktop reads as a plain
+  // list with one column.
   GridLayout {
+    id: table
     Layout.fillWidth: true
     columns: root.battery ? 3 : 2
     columnSpacing: Style.spacing.xxl
     rowSpacing: Style.spacing.md
 
-    Item { visible: root.battery; implicitWidth: 1; implicitHeight: 1 }
-    SourceHeading { visible: root.battery; name: "On battery"; now: root.onBattery }
-    SourceHeading { visible: root.battery; name: "Plugged in"; now: !root.onBattery }
+    readonly property bool useGroup: root.profiles.length > 0 || (root.battery && root.backlight)
+
+    // ---------- While in use: how it runs ----------
+    GroupRule { visible: table.useGroup; Layout.topMargin: Style.spacing.lg }
+    GroupName { visible: table.useGroup; text: "While in use" }
+    SourceHeading { visible: table.useGroup && root.battery; name: "On battery"; now: root.onBattery }
+    SourceHeading { visible: table.useGroup && root.battery; name: "Plugged in"; now: !root.onBattery }
+    NoHeading { visible: table.useGroup && !root.battery }
+
+    SettingsLabel { visible: root.profiles.length > 0; text: "Power mode" }
+    PowerChoice { visible: root.profiles.length > 0 && root.battery; page: root; setting: "profile.battery"; choices: root.profileChoices; nameFor: root.profileName }
+    PowerChoice { visible: root.profiles.length > 0; page: root; setting: "profile.ac"; choices: root.profileChoices; nameFor: root.profileName }
+
+    // Set once, when the charger goes in or out; the brightness keys work as
+    // before afterwards.
+    SettingsLabel { visible: root.battery && root.backlight; text: "Screen brightness" }
+    PowerChoice { visible: root.battery && root.backlight; page: root; setting: "brightness.battery"; choices: root.brightnessChoices; nameFor: root.brightnessName }
+    PowerChoice { visible: root.battery && root.backlight; page: root; setting: "brightness.ac"; choices: root.brightnessChoices; nameFor: root.brightnessName }
+
+    TableError { group: "use" }
+
+    TableOutcome {
+      visible: root.profiles.length > 0 && root.profileNote !== ""
+      text: root.profileNote
+    }
+
+    // ---------- When left alone: screen, lock, sleep, hibernation ----------
+    GroupRule { Layout.topMargin: table.useGroup ? Style.spacing.xxl + Style.spacing.lg - table.rowSpacing : Style.spacing.lg }
+    GroupName { text: "When left alone" }
+    SourceHeading { name: "On battery"; now: root.onBattery }
+    SourceHeading { name: "Plugged in"; now: !root.onBattery }
+    NoHeading {}
 
     SettingsLabel { text: "Turn off the screen" }
     PowerChoice { visible: root.battery; page: root; setting: "screenOff.battery"; choices: root.screenChoices; nameFor: root.timeName }
@@ -308,60 +425,79 @@ ColumnLayout {
     SettingsLabel { text: "Sleep" }
     PowerChoice { visible: root.battery; page: root; setting: "sleep.battery"; choices: root.sleepChoices; nameFor: root.timeName }
     PowerChoice { page: root; setting: "sleep.ac"; choices: root.sleepChoices; nameFor: root.timeName }
-  }
 
-  GroupError { group: "idle" }
-
-  // Said only when the times interact: one of them never comes.
-  Outcome {
-    visible: root.ready && (root.idleNeedsSaying("ac") || (root.battery && root.idleNeedsSaying("battery")))
-    text: root.battery
-      ? "On battery: " + root.idleSummary("battery") + "\nPlugged in: " + root.idleSummary("ac")
-      : root.capitalized(root.idleSummary("ac"))
-  }
-
-  SettingsHeader { visible: root.lid; text: "Lid" }
-
-  GridLayout {
-    visible: root.lid
-    Layout.fillWidth: true
-    columns: root.battery ? 3 : 2
-    columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.md
-
-    Item { visible: root.battery; implicitWidth: 1; implicitHeight: 1 }
-    SourceHeading { visible: root.battery; name: "On battery"; now: root.onBattery }
-    SourceHeading { visible: root.battery; name: "Plugged in"; now: !root.onBattery }
-
-    SettingsLabel { text: "When the lid closes" }
-    PowerChoice { visible: root.battery; page: root; setting: "lid.battery"; choices: root.lidChoices; nameFor: root.actionName }
-    PowerChoice { page: root; setting: "lid.ac"; choices: root.lidChoices; nameFor: root.actionName }
-
-    SettingsLabel { text: "External display" }
+    // After any sleep: idle, the lid, the power button or the menu. A
+    // desktop has the one time; a laptop also says whether it counts while
+    // plugged in.
+    SettingsLabel { visible: root.hibernation; text: "Then hibernate after" }
+    PowerChoice { visible: root.hibernation; page: root; setting: "hibernateAfter"; choices: root.hibernateChoices; nameFor: root.hibernateName }
     PowerChoice {
+      visible: root.hibernation && root.battery
+      enabled: current !== "" && Number(root.values.hibernateAfter) !== 0
+      page: root
+      setting: "hibernate.ac"
+      choices: root.hibernateAcChoices
+    }
+
+    TableError { group: "idle" }
+
+    // Said only when the times interact: one of them never comes.
+    TableOutcome {
+      visible: root.ready && (root.idleNeedsSaying("ac") || (root.battery && root.idleNeedsSaying("battery")))
+      text: root.battery
+        ? "On battery: " + root.idleSummary("battery") + "\nPlugged in: " + root.idleSummary("ac")
+        : root.capitalized(root.idleSummary("ac"))
+    }
+
+    TableWarning {
+      visible: root.hibernation && root.ready && (root.isForeign("hibernateAfter") || root.isForeign("hibernate.ac"))
+      text: "A system configuration file controls hibernation, so that choice may have no effect."
+      details: "A file in /etc/systemd/sleep.conf.d that sorts after 60-karchy-settings.conf."
+    }
+
+    // What the choice costs, or what happens with none made.
+    TableOutcome {
+      visible: root.hibernation && root.ready && !root.isForeign("hibernateAfter") && Number(root.values.hibernateAfter) <= 0
+      text: Number(root.values.hibernateAfter) === 0
+        ? "Sleep still uses power: a battery runs down over days."
+        : "Hibernates when the battery is nearly empty."
+    }
+
+    // ---------- Lid ----------
+    GroupRule { visible: root.lid }
+    GroupName { visible: root.lid; text: "Lid" }
+    SourceHeading { visible: root.lid && root.battery; name: "On battery"; now: root.onBattery }
+    SourceHeading { visible: root.lid && root.battery; name: "Plugged in"; now: !root.onBattery }
+    NoHeading { visible: root.lid && !root.battery }
+
+    SettingsLabel { visible: root.lid; text: "When the lid closes" }
+    PowerChoice { visible: root.lid && root.battery; page: root; setting: "lid.battery"; choices: root.lidChoices; nameFor: root.actionName }
+    PowerChoice { visible: root.lid; page: root; setting: "lid.ac"; choices: root.lidChoices; nameFor: root.actionName }
+
+    SettingsLabel { visible: root.lid; text: "External display" }
+    PowerChoice {
+      visible: root.lid
       Layout.columnSpan: root.battery ? 2 : 1
       page: root
       setting: "lid.docked"
       choices: root.dockedChoices
       nameFor: root.actionName
     }
-  }
 
-  GroupError { group: "lid" }
+    TableError { group: "lid" }
 
-  // Stays while the choice does: a consequence, not an explanation.
-  InlineMessage {
-    visible: root.lid && (root.values["lid.battery"] === "ignore" || root.values["lid.ac"] === "ignore")
-    kind: "warning"
-    text: "A closed laptop that stays on can overheat in a bag and drain the battery."
-  }
+    // Stays while the choice does: a consequence, not an explanation.
+    TableWarning {
+      visible: root.lid && (root.values["lid.battery"] === "ignore" || root.values["lid.ac"] === "ignore")
+      text: "A closed laptop that stays on can overheat in a bag and drain the battery."
+    }
 
-  // Why a choice may do nothing; which file, for whoever goes looking.
-  InlineMessage {
-    visible: root.lid && (root.isForeign("lid.battery") || root.isForeign("lid.ac") || root.isForeign("lid.docked"))
-    kind: "warning"
-    text: "A system configuration file controls the lid, so these choices may have no effect."
-    details: "A file in /etc/systemd/logind.conf.d that sorts after 60-karchy-settings.conf."
+    // Why a choice may do nothing; which file, for whoever goes looking.
+    TableWarning {
+      visible: root.lid && (root.isForeign("lid.battery") || root.isForeign("lid.ac") || root.isForeign("lid.docked"))
+      text: "A system configuration file controls the lid, so these choices may have no effect."
+      details: "A file in /etc/systemd/logind.conf.d that sorts after 60-karchy-settings.conf."
+    }
   }
 
   SettingsHeader { text: "Power button" }
@@ -385,45 +521,7 @@ ColumnLayout {
     details: "A binding for XF86PowerOff in ~/.config/hypr."
   }
 
-  SettingsHeader { visible: root.hibernation; text: "Hibernation" }
-
-  GridLayout {
-    visible: root.hibernation
-    Layout.fillWidth: true
-    columns: 2
-    columnSpacing: Style.spacing.xxl
-    rowSpacing: Style.spacing.md
-
-    SettingsLabel { text: "After sleeping for" }
-    PowerChoice {
-      page: root
-      setting: "hibernateAfter"
-      choices: [
-        { value: "30", label: "30 minutes" }, { value: "60", label: "1 hour" }, { value: "120", label: "2 hours" },
-        { value: "240", label: "4 hours" }, { value: "480", label: "8 hours" }, { value: "0", label: "Never" }
-      ]
-      nameFor: function(minutes) { return Number(minutes) < 0 ? "When the battery runs low" : root.timeName(Number(minutes) * 60) }
-    }
-  }
-
-  GroupError { group: "hibernateAfter" }
-
-  InlineMessage {
-    visible: root.hibernation && root.ready && root.isForeign("hibernateAfter")
-    kind: "warning"
-    text: "A system configuration file controls hibernation, so this choice may have no effect."
-    details: "A file in /etc/systemd/sleep.conf.d that sorts after 60-karchy-settings.conf."
-  }
-
-  // What the choice costs, or what happens with none made.
-  Outcome {
-    visible: root.hibernation && root.ready && !root.isForeign("hibernateAfter") && Number(root.values.hibernateAfter) <= 0
-    text: Number(root.values.hibernateAfter) === 0
-      ? "Sleep still uses power: a battery runs down over days."
-      : "Hibernates when the battery is nearly empty."
-  }
-
-  SettingsHeader { visible: root.battery; text: "Battery" }
+  SettingsHeader { visible: root.battery; text: "Low battery" }
 
   GridLayout {
     visible: root.battery
@@ -448,6 +546,16 @@ ColumnLayout {
         return Number(root.values["battery.low"] || 0) === 0 || level < Number(root.values["battery.low"]) })
       nameFor: function(level) { return Number(level) === 0 ? "No warning" : level + "%" }
     }
+
+    // From the first warning until the charger goes in, or until another
+    // mode is picked by hand.
+    SettingsLabel { visible: root.profiles.indexOf("power-saver") !== -1; text: "At the first warning" }
+    PowerChoice {
+      visible: root.profiles.indexOf("power-saver") !== -1
+      page: root
+      setting: "battery.saver"
+      choices: [{ value: "off", label: "Keep the power mode" }, { value: "on", label: "Switch to Power saver" }]
+    }
   }
 
   GroupError { group: "battery" }
@@ -457,14 +565,6 @@ ColumnLayout {
     text: root.lastResort
   }
 
-  SettingsHeader { visible: root.profile !== ""; text: "Power mode" }
-
-  Outcome {
-    visible: root.profile !== ""
-    color: Commons.Color.foreground
-    text: root.profileName + ". Change it from the battery in the bar."
-  }
-
   Button {
     focusable: true
     visible: Object.keys(root.saved).length > 0
@@ -472,7 +572,7 @@ ColumnLayout {
     text: "Back to karchy's defaults"
     bordered: true
     // Drops every power choice saved here, so it asks first.
-    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every idle time, lid, power button, hibernation and battery choice made here is forgotten.",
+    onClicked: if (root.settings) root.settings.ask("Go back to karchy's defaults? Every power mode, brightness, idle time, lid, power button, hibernation and battery choice made here is forgotten.",
       "Back to defaults", function() { root.run(["reset"]) })
   }
 }
