@@ -115,6 +115,9 @@ Item {
   function submitResponse() {
     var flow = polkitAgent.flow
     if (!flow || !flow.isResponseRequired) return
+    // An empty password is checked and counted as a failed login; Enter on
+    // an empty field does nothing, as on the lock and login screens.
+    if (passwordInput.text.length === 0) return
     submitted = true
     errorFlash = false
     flow.submit(passwordInput.text)
