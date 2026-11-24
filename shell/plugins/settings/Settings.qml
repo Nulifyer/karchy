@@ -24,8 +24,9 @@ import qs.Ui
 // focused control shows the FocusRing and is scrolled into view.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// section list is a SidebarSwitcher across the top, one Tab stop that opens
-// the list of pages, and the page takes the whole width. Each page puts its
+// section list goes behind the menu button of a SidebarSwitcher, with the
+// open page's name beside it; the button is one Tab stop and opens the list
+// as a pane over the page, which takes the whole width. Each page puts its
 // labels above their controls where it is under Style.spacing.formWide.
 Item {
   id: root
@@ -191,8 +192,8 @@ Item {
     return !!(t.item || t.connection || t.device || t.anchor)
   }
 
-  // The keyboard on the page list: the open page's row, or the switcher that
-  // stands for the list in a narrow window.
+  // The keyboard on the page list: the open page's row, or the menu button
+  // that stands for the list in a narrow window.
   function focusSection(index) {
     if (root.narrow) { switcher.takeFocus(); return }
     var item = navRepeater.itemAt(index)
@@ -206,6 +207,7 @@ Item {
   onNarrowChanged: {
     if (!root.opened) return
     var focused = frame.Window.activeFocusItem
+    if (switcher.hasKeyboard) { Qt.callLater(function() { root.focusSection(root.currentSectionIndex()) }); return }
     for (var p = focused; p; p = p.parent)
       if (p === sidebar || p === switcher) { Qt.callLater(function() { root.focusSection(root.currentSectionIndex()) }); return }
   }
@@ -375,14 +377,18 @@ Item {
         }
       }
 
-      // The same list for a narrow window.
+      // The same list for a narrow window, behind its menu button.
       SidebarSwitcher {
         id: switcher
         visible: root.narrow
         Layout.fillWidth: true
+        title: "Settings"
         value: root.section
-        options: root.sections.map(function(entry) {
-          return { value: entry.id, label: entry.label, icon: Icons.glyph(entry.iconName) }
+        options: root.sections.map(function(entry, i) {
+          return {
+            value: entry.id, label: entry.label, icon: Icons.glyph(entry.iconName),
+            separator: i > 0 && root.sections[i - 1].group !== entry.group
+          }
         })
         onChanged: function(value) { root.section = value }
       }

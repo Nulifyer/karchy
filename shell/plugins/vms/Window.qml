@@ -26,8 +26,10 @@ import "Model.js" as Model
 // j/k or Up/Down move through the list; Ctrl+F filters; Escape closes.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// list is a SidebarSwitcher across the top, each VM with its state and "New
-// VM" last; the keyboard starts there and Ctrl+F goes there. The page puts
+// list goes behind the menu button of a SidebarSwitcher, with the open VM's
+// name and state beside it; the button opens the list as a pane over the
+// page, each VM with its state and "New VM" last. The keyboard starts on the
+// button and Ctrl+F opens the pane. The page puts
 // its labels above their controls, a snapshot's date under its name, and a
 // "Can't be undone" action's button under what it says.
 //
@@ -71,11 +73,12 @@ Item {
   onNarrowChanged: {
     if (!root.opened) return
     var focused = frame.Window.activeFocusItem
+    if (switcher.hasKeyboard) { Qt.callLater(root.focusList); return }
     for (var p = focused; p; p = p.parent)
       if (p === sidebar || p === switcher) { Qt.callLater(root.focusList); return }
   }
 
-  // The keyboard on the VM list, or on the switcher that stands for it.
+  // The keyboard on the VM list, or on the menu button that stands for it.
   function focusList() {
     if (root.narrow) switcher.takeFocus()
     else vmList.forceActiveFocus()
@@ -325,7 +328,7 @@ Item {
     Shortcut {
       sequence: "Ctrl+F"
       enabled: root.opened && !confirm.opened
-      onActivated: root.narrow ? switcher.takeFocus() : filterField.forceActiveFocus(Qt.ShortcutFocusReason)
+      onActivated: root.narrow ? switcher.open() : filterField.forceActiveFocus(Qt.ShortcutFocusReason)
     }
 
     GridLayout {
@@ -455,16 +458,17 @@ Item {
         }
       }
 
-      // The same list for a narrow window: every VM with its state, then
-      // "New VM".
+      // The same list for a narrow window, behind its menu button: every VM
+      // with its state, then "New VM".
       SidebarSwitcher {
         id: switcher
         visible: root.narrow && (root.installed || root.rows.length > 0)
         Layout.fillWidth: true
+        title: "Virtual machines"
         value: root.selected
         options: root.rows.map(function(vm) {
           return { value: vm.name, label: vm.name, icon: Icons.glyph(Model.osIcon(vm.os)), detail: Model.stateLabel(vm.state) }
-        }).concat(root.installed ? [{ value: "", label: "New VM", icon: Icons.glyph("ui.add") }] : [])
+        }).concat(root.installed ? [{ value: "", label: "New VM", icon: Icons.glyph("ui.add"), separator: true }] : [])
         onChanged: function(value) { root.selected = value }
       }
 

@@ -272,8 +272,8 @@ QtObject {
     readonly property int panelWidthWide: root.spacingToken("panel-width-wide", 560)
     readonly property int sidebarWidth: root.spacingToken("sidebar-width", 200)
     // A window narrower than this (a tile beside other windows) has no room
-    // for a sidebar beside its page: the sidebar becomes a SidebarSwitcher at
-    // the top, and the page takes the whole width.
+    // for a sidebar beside its page: the sidebar goes behind the menu button
+    // of a SidebarSwitcher at the top, and the page takes the whole width.
     readonly property int windowNarrow: root.spacingToken("window-narrow", 720)
     // A page at least this wide has its labels beside their controls; a
     // narrower one puts each label above its control.

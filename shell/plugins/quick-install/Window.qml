@@ -43,8 +43,12 @@ import "Search.js" as Search
 // apps for what was picked); Escape clears the search, then closes.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// categories are a SidebarSwitcher across the top, with their counts, at the
-// same place in the Tab order; a row says an app with an Open button is
+// categories go behind the menu button of a SidebarSwitcher, with the open
+// category's name and count beside it, at the same place in the Tab order;
+// the button opens them as a pane over the list, and while that is open the
+// window's own keys (typing to search, Space, Ctrl+F) wait. Enter there
+// chooses a category and goes on to the focused row's buttons, as Enter in
+// the sidebar does. A row says an app with an Open button is
 // installed with the check alone, and the focused row shows its whole name;
 // the bar's buttons go under its sentence; the footer keeps the keys that
 // act (Enter, Space, Esc) and goes where the window is also short.
@@ -118,6 +122,9 @@ Item {
   }
   readonly property var current: currentIndex >= 0 ? results[currentIndex].app : null
   readonly property int installedCount: Object.keys(installed).length
+  // Under the window's name, in the sidebar and at the top of its pane.
+  readonly property string countsText: root.apps.length + " apps · "
+    + (root.statusFailed ? "installed apps unknown" : root.statusLoaded ? root.installedCount + " installed" : "reading…")
 
   // The window is too narrow for the categories beside the list, or too low
   // for the footer under it.
@@ -128,12 +135,13 @@ Item {
   onNarrowChanged: {
     if (!root.opened) return
     var focused = frame.Window.activeFocusItem
+    if (switcher.hasKeyboard) { Qt.callLater(function() { root.focusCategories(Qt.OtherFocusReason) }); return }
     for (var p = focused; p; p = p.parent)
       if (p === categoryList || p === switcher) { Qt.callLater(function() { root.focusCategories(Qt.OtherFocusReason) }); return }
   }
 
-  // The keyboard on the categories: the sidebar's list, or the switcher that
-  // stands for it in a narrow window.
+  // The keyboard on the categories: the sidebar's list, or the menu button
+  // that stands for it in a narrow window.
   function focusCategories(reason) {
     if (root.narrow) switcher.takeFocus()
     else categoryList.forceActiveFocus(reason)
@@ -501,9 +509,11 @@ Item {
       if (visible) Qt.callLater(function() { searchField.forceActiveFocus() })
     }
 
+    // None of these while the categories' pane is open over the list: its
+    // keys are its own, and Space there chooses a category.
     Shortcut {
       sequence: "Ctrl+F"
-      enabled: root.opened && !confirmDialog.opened
+      enabled: root.opened && !confirmDialog.opened && !switcher.popupOpen
       onActivated: searchField.forceActiveFocus(Qt.ShortcutFocusReason)
     }
     // Picking from anywhere (`spacePicks`). The search field handles its own
@@ -511,12 +521,12 @@ Item {
     // button or the category list this comes before the control's Space.
     Shortcut {
       sequence: "Ctrl+Space"
-      enabled: root.opened && !confirmDialog.opened
+      enabled: root.opened && !confirmDialog.opened && !switcher.popupOpen
       onActivated: root.toggleSelected(root.current)
     }
     Shortcut {
       sequence: "Space"
-      enabled: root.opened && !confirmDialog.opened && !root.searchFocused
+      enabled: root.opened && !confirmDialog.opened && !root.searchFocused && !switcher.popupOpen
       onActivated: root.toggleSelected(root.current)
     }
     Shortcut {
@@ -589,7 +599,7 @@ Item {
             }
             Text {
               Layout.fillWidth: true
-              text: (root.apps.length + " apps · " + (root.statusFailed ? "installed apps unknown" : root.statusLoaded ? root.installedCount + " installed" : "reading…")).toUpperCase()
+              text: root.countsText.toUpperCase()
               color: Commons.Color.textSecondary
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -709,24 +719,37 @@ Item {
         }
       }
 
-      // The same categories for a narrow window. Tab goes on to the focused
-      // row's buttons and Shift+Tab back to the search, as from the list.
+      // The same categories for a narrow window, behind its menu button.
+      // Tab goes on to the focused row's buttons and Shift+Tab back to the
+      // search, as from the list.
       SidebarSwitcher {
         id: switcher
         visible: root.narrow
         Layout.fillWidth: true
-        value: root.category
+        title: "Quick install"
+        status: root.countsText
+        // No category is the open one while a search spans them all.
+        value: root.searching ? "" : root.category
         // The sidebar says this under the window's name.
         note: root.statusFailed ? "What is installed couldn't be read." : ""
-        options: root.categoryRows.map(function(row) {
+        options: root.categoryRows.map(function(row, i) {
           return {
             value: row.id,
             label: row.name,
             icon: Icons.glyph(row.iconName),
-            detail: row.id === "installed" && !root.statusLoaded ? "…" : String(row.count)
+            detail: row.id === "installed" && !root.statusLoaded ? "…" : String(row.count),
+            // All and Installed apart from the categories.
+            separator: i === 2
           }
         })
         onChanged: function(value) { root.setCategory(value) }
+        // A category chosen with Enter goes on to its first app's buttons,
+        // as Enter in the sidebar's list does; one chosen with the pointer
+        // leaves the keyboard where the window keeps it, in the search.
+        focusPage: function(reason) {
+          if (reason === Qt.MouseFocusReason) searchField.forceActiveFocus(reason)
+          else root.focusActions(true)
+        }
         onTabbed: function(event) {
           if (event.key === Qt.Key_Tab) root.focusActions(true)
           else searchField.forceActiveFocus(Qt.BacktabFocusReason)

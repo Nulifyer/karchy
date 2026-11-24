@@ -197,6 +197,7 @@
   "ui.hide": {"cp": "f0209", "nf": "md-eye_off"},
   "ui.history": {"cp": "f02da", "nf": "md-history"},
   "ui.loading": {"cp": "f0996", "nf": "md-progress_clock"},
+  "ui.menu": {"cp": "f035c", "nf": "md-menu"},
   "ui.more": {"cp": "f01d8", "nf": "md-dots_horizontal"},
   "ui.open-external": {"cp": "f03cc", "nf": "md-open_in_new"},
   "ui.password-dot": {"cp": "f111", "nf": "fa-circle"},

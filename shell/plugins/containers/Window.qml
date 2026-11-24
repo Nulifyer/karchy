@@ -35,9 +35,11 @@ import "Model.js" as Model
 // Ctrl+F filters; Escape closes.
 //
 // Narrow (a tile beside other windows, under Style.spacing.windowNarrow): the
-// sidebar is a SidebarSwitcher across the top, each container with its
-// status, then Compose projects and Images with their counts; the keyboard
-// starts there and Ctrl+F goes there. The page stacks what it had side by
+// sidebar goes behind the menu button of a SidebarSwitcher, with the open
+// page's name beside it; the button opens the list as a pane over the page,
+// each container with its status, then Compose projects and Images with
+// their counts. The keyboard starts on the button and Ctrl+F opens the
+// pane. The page stacks what it had side by
 // side: a fact's name over its value, a section's buttons under its title, a
 // "Can't be undone" action's button under what it says.
 Item {
@@ -80,6 +82,10 @@ Item {
   signal logsUpdated()
 
   readonly property int runningCount: Model.runningCount(containers)
+  // Under the window's name, in the sidebar and at the top of its pane. No
+  // count from an engine that didn't answer.
+  readonly property string engineLine: root.engine === "" ? ""
+    : root.engineError !== "" ? root.engine : root.runningCount + " running · " + root.engine
   readonly property var rows: Model.sorted(containers)
   readonly property var listRows: Model.filtered(rows, filter)
   readonly property var current: section === "container" ? Model.find(containers, selectedId) : null
@@ -93,11 +99,13 @@ Item {
   onNarrowChanged: {
     if (!root.opened) return
     var focused = frame.Window.activeFocusItem
+    if (switcher.hasKeyboard) { Qt.callLater(root.focusList); return }
     for (var p = focused; p; p = p.parent)
       if (p === sidebar || p === switcher) { Qt.callLater(root.focusList); return }
   }
 
-  // The keyboard on the container list, or on the switcher that stands for it.
+  // The keyboard on the container list, or on the menu button that stands
+  // for it.
   function focusList() {
     if (root.narrow) switcher.takeFocus()
     else containerList.forceActiveFocus()
@@ -344,7 +352,7 @@ Item {
     Shortcut {
       sequence: "Ctrl+F"
       enabled: root.opened && !confirmDialog.opened
-      onActivated: root.narrow ? switcher.takeFocus() : filterField.forceActiveFocus(Qt.ShortcutFocusReason)
+      onActivated: root.narrow ? switcher.open() : filterField.forceActiveFocus(Qt.ShortcutFocusReason)
     }
     Shortcut {
       sequence: "F5"
@@ -391,8 +399,7 @@ Item {
             Text {
               visible: root.engine !== ""
               Layout.fillWidth: true
-              // No count from an engine that didn't answer.
-              text: (root.engineError !== "" ? root.engine : root.runningCount + " running · " + root.engine).toUpperCase()
+              text: root.engineLine.toUpperCase()
               color: root.runningCount > 0 ? Commons.Color.status.success : Commons.Color.textSecondary
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -519,19 +526,22 @@ Item {
         }
       }
 
-      // The same sidebar for a narrow window: every container with its
-      // status, then Compose projects and Images.
+      // The same sidebar for a narrow window, behind its menu button: every
+      // container with its status, then Compose projects and Images.
       SidebarSwitcher {
         id: switcher
         visible: root.narrow && !root.noEngine
         Layout.fillWidth: true
+        title: "Containers"
+        status: root.engineLine
+        statusColor: root.runningCount > 0 ? Commons.Color.status.success : Commons.Color.textSecondary
         value: root.section === "container" ? "container:" + root.selectedId : root.section
         // Both engines: which one this is, and why.
         note: Model.bothNote(root.engine, root.also)
         options: root.rows.map(function(c) {
           return { value: "container:" + c.id, label: c.name, icon: Icons.glyph(Model.stateIcon(c.state)), detail: root.busy[c.id] || c.status || c.state }
         }).concat([
-          { value: "projects", label: "Compose projects", icon: Icons.glyph("containers.compose"), detail: root.projects.length > 0 ? String(root.projects.length) : "" },
+          { value: "projects", label: "Compose projects", icon: Icons.glyph("containers.compose"), detail: root.projects.length > 0 ? String(root.projects.length) : "", separator: true },
           { value: "images", label: "Images", icon: Icons.glyph("containers.image"), detail: root.images.length > 0 ? String(root.images.length) : "" }
         ])
         onChanged: function(value) {
