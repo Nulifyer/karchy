@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""Rebuild the colour map in default/themed/vesktop.css.tpl from Discord's own stylesheets.
+
+Usage:
+  tools/discord-theme-map <dir>           Print the map made from the .css files in <dir>
+  tools/discord-theme-map <dir> --write   Replace the map in the template
+  tools/discord-theme-map <dir> --check   Exit 1 when the template's map differs
+
+<dir> holds the stylesheets of Discord's web app, saved by hand: open
+https://discord.com/login in a browser and save the page with its files (or
+copy the .css files the Network tab lists). Nothing here downloads them.
+
+Discord names every colour it draws with: about 650 variables such as
+--background-base-low and --text-muted, each defined for its four themes
+(.theme-light, .theme-dark, .theme-darker, .theme-midnight) as a step of a
+scale: --neutral-1..100 for greys, --blurple-N for its brand colour,
+--red-new-N and so on for the status colours, --opacity-N for veils. The map
+gives each of those variables the karchy colour that plays the same part:
+which grey a variable is in Discord's light theme and in its Dark theme says
+whether it is text or a surface and how strong, and that picks one of the
+--karchy-* colours the top of the template defines. A variable drawn in a
+colour karchy has no part for (Nitro's gradients, badges, illustrations, the
+black and white veils) is left as Discord has it.
+
+Run it when Discord has renamed its variables and parts of the client show
+Discord's own greys again; `--check` says whether that happened.
+"""
+
+import re
+import sys
+from pathlib import Path
+
+TEMPLATE = Path(__file__).resolve().parent.parent / "default/themed/vesktop.css.tpl"
+BEGIN = "/* map:begin (tools/discord-theme-map writes the lines to map:end) */"
+END = "/* map:end */"
+
+# Discord's greys: the scale it draws with today, and two older ones a few
+# variables still use.
+GREYS = ("neutral", "plum", "primary")
+
+# A grey lighter than this in Discord's Dark theme is text, a darker one a surface.
+TEXT_FROM = 36
+
+# Surfaces, from Discord's Dark theme: the lightness of the grey decides the
+# level. Its window frame and server list are the darkest, the channel list
+# next, then the chat, then what floats above it.
+SURFACES = [(9.5, "bg-0"), (12, "bg-1"), (15.5, "bg-2"), (17.5, "bg-3"), (TEXT_FROM, "bg-4")]
+# Text and icons, again by the Dark theme's lightness: headings, body text,
+# then three weaker levels down to placeholders and scrollbar thumbs.
+TEXTS = [(96, "fg-0"), (84, "fg-1"), (66, "fg-2"), (58, "fg-3"), (TEXT_FROM, "fg-4")]
+
+# The scales that are one karchy colour each. A step is text or a fill when it
+# is at or lighter than the scale's own colour (50), and a pressed or hovered
+# fill when darker.
+HUES = {
+    "blurple": "accent",
+    "brand": "accent",
+    "red-new": "red",
+    "red": "red",
+    "green-new": "green",
+    "green": "green",
+    "yellow-new": "yellow",
+    "yellow": "yellow",
+    "blue-new": "blue",
+    "blue": "blue",
+    "teal-new": "cyan",
+    "teal": "cyan",
+    "orange-new": "orange",
+    "orange": "orange",
+    "pink": "magenta",
+}
+# Veils: a colour at an alpha. The grey veil is every border and hover.
+VEILS = {
+    "opacity": "fg-1",
+    "opacity-blurple": "accent",
+    "opacity-red": "red",
+    "opacity-green": "green",
+    "opacity-yellow": "yellow",
+    "opacity-blue": "blue",
+    "opacity-orange": "orange",
+    "opacity-teal": "cyan",
+    "opacity-pink": "magenta",
+}
+# The colours of ```ansi code blocks, by name.
+ANSI = {
+    "black": "bg-0",
+    "red": "red",
+    "green": "green",
+    "yellow": "yellow",
+    "blue": "blue",
+    "magenta": "magenta",
+    "cyan": "cyan",
+    "white": "fg-1",
+    "bright-black": "fg-4",
+    "bright-red": "bright-red",
+    "bright-green": "bright-green",
+    "bright-yellow": "bright-yellow",
+    "bright-blue": "bright-blue",
+    "bright-magenta": "bright-magenta",
+    "bright-cyan": "bright-cyan",
+    "bright-white": "fg-0",
+}
+# White in every theme means "on a coloured fill" when the variable is one of
+# these; elsewhere (text over pictures, the logo) white stays white.
+ON_COLOUR = re.compile(r"^--(control|badge|redesign-button|button|togglebutton|switch|checkbox|radio|notice|chip)-.*(text|icon|foreground|thumb|checkmark)")
+
+REF = re.compile(r"var\(--([a-z-]+?)-(\d+)(-hsl)?\)")
+ALPHA = re.compile(r"\)\s*/\s*([0-9.]+)\s*\)")
+
+
+def read_rules(directory):
+    """Every `selector { --name: value; ... }` rule of the theme classes and :root."""
+    rules = {}
+    for path in sorted(Path(directory).glob("*.css")):
+        text = path.read_text(errors="replace")
+        for match in re.finditer(r"([^{}]+)\{([^{}]*)\}", text):
+            selector = match.group(1).strip()
+            if selector not in (":root", ".theme-light", ".theme-darker"):
+                continue
+            target = rules.setdefault(selector, {})
+            for name, value in re.findall(r"(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+)", match.group(2)):
+                target[name] = value.strip()
+    return rules
+
+
+def lightness(root, family, step):
+    """The lightness, in percent, of one step of one of Discord's scales."""
+    value = root.get(f"--{family}-{step}-hsl", "")
+    found = re.search(r"([0-9.]+)%\s*$", value)
+    return float(found.group(1)) if found else None
+
+
+def grey_lightness(root, value):
+    """The lightness of a definition drawn in a grey, white or black; else None."""
+    ref = first_ref(value)
+    if ref and ref[0] in GREYS:
+        return lightness(root, ref[0], ref[1])
+    if re.search(r"var\(--white(-hsl)?\)", value):
+        return 100.0
+    if re.search(r"var\(--black(-hsl)?\)", value):
+        return 0.0
+    return None
+
+
+def first_ref(value):
+    """The scale step a definition draws with, and its alpha (1 when solid)."""
+    # Discord wraps most colours in a color-mix() with a Nitro custom theme's
+    # colour at 0%; the first reference is the colour itself.
+    ref = REF.search(value)
+    if not ref:
+        return None
+    alpha = ALPHA.search(value)
+    return ref.group(1), int(ref.group(2)), float(alpha.group(1)) if alpha else 1.0
+
+
+def text_level(dark_l):
+    for limit, name in TEXTS:
+        if dark_l >= limit:
+            return name
+    return TEXTS[-1][1]
+
+
+def surface_level(dark_l):
+    for limit, name in SURFACES:
+        if dark_l <= limit:
+            return name
+    return SURFACES[-1][1]
+
+
+def colour(name, alpha):
+    if alpha >= 0.995:
+        return f"var(--karchy-{name})"
+    return f"color-mix(in srgb, var(--karchy-{name}) {round(alpha * 100)}%, transparent)"
+
+
+def map_variable(name, light, dark, root):
+    """The karchy colour for one of Discord's variables, or None to leave it."""
+    if name.startswith("--ansi-"):
+        return colour(ANSI[name[7:]], 1.0) if name[7:] in ANSI else None
+
+    ref = first_ref(dark)
+    if ref is None:
+        if re.fullmatch(r"var\(--white\)", dark) and light == dark and ON_COLOUR.match(name):
+            return colour("on-accent", 1.0)
+        return None
+    family, step, alpha = ref
+
+    if family in VEILS:
+        return colour(VEILS[family], alpha)
+
+    if family in HUES:
+        hue = HUES[family]
+        # The old 100..900 scales put their own colour at 500, the new at 50.
+        middle = 500 if step > 100 else 50
+        if step > middle * 1.3:
+            return colour(f"{hue}-active" if hue == "accent" else f"{hue}-strong", alpha)
+        if step > middle * 1.08:
+            return colour(f"{hue}-hover" if hue == "accent" else f"{hue}-strong", alpha)
+        return colour(hue, alpha)
+
+    if family not in GREYS:
+        return None
+
+    dark_l = lightness(root, family, step)
+    light_l = grey_lightness(root, light)
+    if dark_l is None or light_l is None:
+        return None
+
+    if dark_l > 50 and light_l > 50:
+        # Light in both themes: text on a coloured fill, or white over a picture.
+        return colour("on-accent", alpha) if ON_COLOUR.match(name) else None
+    if dark_l <= 50 and light_l <= 50:
+        # Dark in both themes: tooltips and veils over pictures.
+        return None
+    if dark_l > TEXT_FROM:
+        return colour(text_level(dark_l), alpha)
+    return colour(surface_level(dark_l), alpha)
+
+
+def build_map(directory):
+    rules = read_rules(directory)
+    root = rules.get(":root", {})
+    light = rules.get(".theme-light", {})
+    dark = rules.get(".theme-darker", {})
+    if not dark or not light:
+        sys.exit(f"{directory}: no .theme-darker and .theme-light rules found; are these Discord's stylesheets?")
+
+    lines = []
+    for name in sorted(dark):
+        if name not in light:
+            continue
+        mapped = map_variable(name, light[name], dark[name], root)
+        if mapped:
+            lines.append(f"  {name}: {mapped};")
+    return lines
+
+
+def main():
+    args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
+    flags = {arg for arg in sys.argv[1:] if arg.startswith("--")}
+    if len(args) != 1 or flags - {"--write", "--check"}:
+        sys.exit(__doc__.strip())
+
+    lines = build_map(args[0])
+    if not flags:
+        print("\n".join(lines))
+        return
+
+    text = TEMPLATE.read_text()
+    start = text.index(BEGIN) + len(BEGIN)
+    stop = text.index(END)
+    updated = text[:start] + "\n" + "\n".join(lines) + "\n  " + text[stop:]
+    if "--check" in flags:
+        if updated != text:
+            sys.exit(f"{TEMPLATE.name}: the map differs from Discord's stylesheets in {args[0]}")
+        print(f"{TEMPLATE.name}: the map matches ({len(lines)} variables)")
+        return
+    TEMPLATE.write_text(updated)
+    print(f"{TEMPLATE.name}: {len(lines)} variables mapped")
+
+
+if __name__ == "__main__":
+    main()

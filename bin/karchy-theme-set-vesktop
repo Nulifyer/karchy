@@ -1,0 +1,111 @@
+#!/bin/bash
+
+# karchy:summary=Sync the generated Karchy theme to Vesktop (Discord)
+# karchy:hidden=true
+
+set -euo pipefail
+
+VESKTOP_SOURCE_PATH="$HOME/.local/state/karchy/current/theme/vesktop.css"
+VESKTOP_DATA_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/vesktop"
+# The filename is how Vesktop's settings name an enabled theme, and it stays
+# the same while the colors change underneath on every theme switch.
+VESKTOP_THEME_NAME="karchy.theme.css"
+VESKTOP_THEME_PATH="$VESKTOP_DATA_DIR/themes/$VESKTOP_THEME_NAME"
+VESKTOP_SETTINGS_PATH="$VESKTOP_DATA_DIR/settings/settings.json"
+VESKTOP_QUICKCSS_PATH="$VESKTOP_DATA_DIR/settings/quickCss.css"
+# Written once karchy has decided whether to turn the theme on. After that the
+# switch in Vesktop's Settings › Themes is the user's alone.
+VESKTOP_OFFERED_PATH="$HOME/.local/state/karchy/vesktop-theme-offered"
+
+# Only Vesktop is followed. The official Discord client reads no theme from
+# outside: its colors are the built-in themes and, with Nitro, the ones made
+# in its own settings.
+
+if karchy-toggle-enabled skip-vesktop-theme-changes; then
+  exit 0
+fi
+
+[[ -f $VESKTOP_SOURCE_PATH ]] || exit 0
+
+# A theme without an accent or a background leaves its placeholder unresolved,
+# which is not CSS. Skip and leave the previous colors in place.
+if grep -q '{{' "$VESKTOP_SOURCE_PATH"; then
+  echo "Skipping Vesktop theme: $(basename "$VESKTOP_SOURCE_PATH") has unresolved colors." >&2
+  exit 0
+fi
+
+# Follow Vesktop where it has run, or where it is installed and has yet to:
+# then the theme is in place for its first start. Nothing is created on a
+# machine without it.
+if [[ ! -d $VESKTOP_DATA_DIR ]] && ! karchy-cmd-present vesktop; then
+  exit 0
+fi
+
+# Electron holds this lock, a link named <host>-<pid>, while the app runs.
+vesktop_running() {
+  local lock pid
+
+  if lock=$(readlink "$VESKTOP_DATA_DIR/SingletonLock" 2>/dev/null); then
+    pid=${lock##*-}
+    [[ $pid =~ ^[0-9]+$ && -d /proc/$pid ]] && return 0
+  fi
+
+  pgrep -u "$UID" -x vesktop >/dev/null 2>&1
+}
+
+# Their own styling: a theme of theirs turned on, a theme link, or CSS typed
+# into Vesktop's QuickCSS editor.
+user_has_own_theme() {
+  if [[ -f $VESKTOP_QUICKCSS_PATH ]] && grep -q '[^[:space:]]' "$VESKTOP_QUICKCSS_PATH"; then
+    return 0
+  fi
+
+  [[ -f $VESKTOP_SETTINGS_PATH ]] || return 1
+  jq -e '((.enabledThemes // []) + (.themeLinks // [])) | length > 0' "$VESKTOP_SETTINGS_PATH" >/dev/null
+}
+
+# Turn the theme on, once, for someone who has not styled Discord themselves.
+# Vesktop reads its settings when it starts and writes the whole file back on
+# any change, so this waits for a moment when it is not running.
+offer_theme() {
+  local tmp
+
+  [[ -f $VESKTOP_OFFERED_PATH ]] && return 0
+
+  # A linked settings file is kept in someone's dotfiles (D-23), and one that
+  # is not JSON is not ours to repair. Neither is decided for.
+  [[ -L $VESKTOP_SETTINGS_PATH ]] && return 0
+  if [[ -f $VESKTOP_SETTINGS_PATH ]] && ! jq -e 'type == "object"' "$VESKTOP_SETTINGS_PATH" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  vesktop_running && return 0
+
+  if ! user_has_own_theme; then
+    mkdir -p "$(dirname "$VESKTOP_SETTINGS_PATH")"
+    tmp=$(mktemp "$VESKTOP_SETTINGS_PATH.XXXXXX")
+    if [[ -f $VESKTOP_SETTINGS_PATH ]]; then
+      jq --indent 4 --arg theme "$VESKTOP_THEME_NAME" '.enabledThemes = [$theme]' "$VESKTOP_SETTINGS_PATH" >"$tmp"
+    else
+      jq -n --indent 4 --arg theme "$VESKTOP_THEME_NAME" '{enabledThemes: [$theme]}' >"$tmp"
+    fi
+    mv "$tmp" "$VESKTOP_SETTINGS_PATH"
+  fi
+
+  mkdir -p "$(dirname "$VESKTOP_OFFERED_PATH")"
+  : >"$VESKTOP_OFFERED_PATH"
+}
+
+# Vesktop watches its themes folder and reloads the enabled themes on a change,
+# so a running client retints without a restart. The write is atomic (a
+# half-written file would be read as it is) and skipped when nothing changed,
+# so the client isn't made to reload for the same colors. The temporary name
+# does not end in .css, which keeps it out of Vesktop's list of themes.
+if ! cmp -s "$VESKTOP_SOURCE_PATH" "$VESKTOP_THEME_PATH"; then
+  mkdir -p "$(dirname "$VESKTOP_THEME_PATH")"
+  tmp=$(mktemp "$VESKTOP_THEME_PATH.XXXXXX")
+  cp "$VESKTOP_SOURCE_PATH" "$tmp"
+  mv "$tmp" "$VESKTOP_THEME_PATH"
+fi
+
+offer_theme

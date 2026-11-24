@@ -99,6 +99,8 @@ refresh_window() {
   # A code editor installed just now (VS Code, VSCodium, Cursor) gets the
   # generated "Karchy" color theme without waiting for a theme switch (D-88).
   command -v karchy-theme-set-vscode >/dev/null && karchy-theme-set-vscode >/dev/null 2>&1
+  # Vesktop installed just now has the theme, turned on, before its first start.
+  command -v karchy-theme-set-vesktop >/dev/null && karchy-theme-set-vesktop >/dev/null 2>&1
   return 0
 }
 

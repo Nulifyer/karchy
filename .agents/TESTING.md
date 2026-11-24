@@ -34,6 +34,7 @@ bun tests/notifications-panel.js "$PWD"   # the notifications panel: sections, g
 bun tests/storage-model.js "$PWD"  # Settings › Storage: sizes, the live figures, the overview's tiles, the stack and subvolume rows
 bun tests/network-model.js "$PWD"  # the network panel: the internet through the VPN (never "No internet" while it protects), a WireGuard tunnel's health and its words
 tests/settings-power.sh            # Settings › Power (D-160): karchy-settings-power, karchy-powerprofiles-set, karchy-power-source and the root helper on a made-up laptop and desktop in a user namespace (stand-in UPower, logind, power-profiles-daemon and backlight; the real systemd-analyze). `--machine <dir> laptop|desktop <command>` keeps such a machine to try a command or the page on
+tests/vesktop-theme.sh         # the Vesktop (Discord) theme: every theme renders to CSS, and karchy-theme-set-vesktop in a made-up home (no Vesktop, first start, a theme of the user's own, turned off, running, a linked settings file); with a folder of Discord's stylesheets as second argument, the colour map against them
 tests/vpn-setup.sh                 # karchy-network-vpn: setup's configuration and refusals, and remove turning the VPN off first for its own profile (stand-in nmcli and karchy-vpn)
 tests/storage-helpers.sh system/storage   # Storage's root side: what the helpers refuse, and how they read bees, SMART and the subvolume list
 tests/agent-skills.sh        # karchy-agent-skills in a made-up home (never run the command against a real home to test it), and each skill packaged once
