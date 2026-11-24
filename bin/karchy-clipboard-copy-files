@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+# karchy:summary=Copy files to the clipboard, as a file manager's Copy does
+# karchy:group=clipboard
+# karchy:args=[--uri-list <file>] [<path>...]
+# karchy:examples=karchy clipboard copy files ~/Pictures/photo.png | karchy clipboard copy files report.pdf notes.txt
+# karchy:hidden=true
+"""Puts files on the clipboard so that Paste in a file manager copies them and
+Paste in a chat or a browser attaches them.
+
+A file copy has no single form: Thunar reads x-special/gnome-copied-files,
+Nautilus, Dolphin and browsers read text/uri-list, and a text field takes the
+paths. wl-copy offers one type only, so this speaks the compositor's
+data-control protocol itself and offers all of them at once, the way the app
+that copied would. The clipboard history (D-167) pastes a kept file copy
+through it.
+
+  karchy-clipboard-copy-files <path>...        these files and folders
+  karchy-clipboard-copy-files --uri-list <f>   the file:// lines in <f>
+
+It returns as soon as the copy is on the clipboard and keeps serving it in the
+background until something else is copied. It waits for the compositor's
+events; nothing polls. Exit 1: nothing to copy, or no compositor to copy to.
+"""
+
+import os
+import socket
+import struct
+import sys
+from urllib.parse import quote, unquote, urlsplit
+
+MANAGERS = ("ext_data_control_manager_v1", "zwlr_data_control_manager_v1")
+
+
+def fail(message):
+    print(f"karchy-clipboard-copy-files: {message}", file=sys.stderr)
+    sys.exit(1)
+
+
+def file_uris(args):
+    """The file:// URIs to copy, from paths or a --uri-list file."""
+    if args[:1] == ["--uri-list"]:
+        if len(args) != 2:
+            fail("usage: karchy-clipboard-copy-files [--uri-list <file>] [<path>...]")
+        try:
+            with open(args[1], encoding="utf-8", errors="surrogateescape") as handle:
+                lines = handle.read().splitlines()
+        except OSError as error:
+            fail(str(error))
+        return [line.strip() for line in lines if line.strip().startswith("file://")]
+    return ["file://" + quote(os.path.abspath(path)) for path in args if os.path.lexists(path)]
+
+
+def payloads(uris):
+    """What each offered type answers with."""
+    paths = [unquote(urlsplit(uri).path, errors="surrogateescape") for uri in uris]
+    plain = "\n".join(paths).encode("utf-8", "surrogateescape")
+    data = {
+        "text/uri-list": "".join(uri + "\r\n" for uri in uris).encode("utf-8", "surrogateescape"),
+        "x-special/gnome-copied-files": ("copy\n" + "\n".join(uris)).encode("utf-8", "surrogateescape"),
+    }
+    for mime in ("text/plain;charset=utf-8", "text/plain", "UTF8_STRING", "STRING", "TEXT"):
+        data[mime] = plain
+    return data
+
+
+class Wayland:
+    """Just enough of the Wayland wire format for data-control."""
+
+    def __init__(self):
+        runtime = os.environ.get("XDG_RUNTIME_DIR", "")
+        display = os.environ.get("WAYLAND_DISPLAY", "wayland-0")
+        path = display if display.startswith("/") else os.path.join(runtime, display)
+        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try:
+            self.sock.connect(path)
+        except OSError as error:
+            fail(f"no Wayland compositor at {path}: {error}")
+        self.buffer = b""
+        self.fds = []
+        self.next_id = 2  # 1 is wl_display
+
+    def new_id(self):
+        self.next_id += 1
+        return self.next_id - 1
+
+    @staticmethod
+    def string(text):
+        raw = text.encode() + b"\0"
+        return struct.pack("<I", len(raw)) + raw + b"\0" * (-len(raw) % 4)
+
+    def send(self, obj, opcode, body=b""):
+        self.sock.sendall(struct.pack("<IHH", obj, opcode, 8 + len(body)) + body)
+
+    def events(self):
+        """Blocks for the next batch of events: (object, opcode, body) each."""
+        try:
+            data, ancillary, _flags, _address = self.sock.recvmsg(65536, socket.CMSG_SPACE(16 * 4))
+        except InterruptedError:
+            return []
+        if not data:
+            sys.exit(0)  # the compositor went away
+        for level, kind, raw in ancillary:
+            if level == socket.SOL_SOCKET and kind == socket.SCM_RIGHTS:
+                self.fds.extend(struct.unpack(f"{len(raw) // 4}i", raw[: len(raw) // 4 * 4]))
+        self.buffer += data
+        out = []
+        while len(self.buffer) >= 8:
+            obj, opcode, size = struct.unpack_from("<IHH", self.buffer)
+            if size < 8 or len(self.buffer) < size:
+                break
+            out.append((obj, opcode, self.buffer[8:size]))
+            self.buffer = self.buffer[size:]
+        return out
+
+    def roundtrip(self, handle):
+        """Runs handle on every event until the compositor has answered all sent so far."""
+        callback = self.new_id()
+        self.send(1, 0, struct.pack("<I", callback))  # wl_display.sync
+        while True:
+            for obj, opcode, body in self.events():
+                if obj == 1 and opcode == 0:  # wl_display.error
+                    fail("the compositor refused: " + read_string(body, 8)[0])
+                if obj == callback:
+                    return
+                handle(obj, opcode, body)
+
+
+def read_string(body, offset):
+    (length,) = struct.unpack_from("<I", body, offset)
+    text = body[offset + 4 : offset + 4 + max(0, length - 1)].decode("utf-8", "replace")
+    return text, offset + 4 + length + (-length % 4)
+
+
+def main():
+    uris = file_uris(sys.argv[1:])
+    if not uris:
+        fail("no files to copy")
+    data = payloads(uris)
+
+    wl = Wayland()
+    registry = wl.new_id()
+    wl.send(1, 1, struct.pack("<I", registry))  # wl_display.get_registry
+    found = {}
+
+    def on_global(obj, opcode, body):
+        if obj == registry and opcode == 0:
+            (name,) = struct.unpack_from("<I", body)
+            interface, _end = read_string(body, 4)
+            found.setdefault(interface, name)
+
+    wl.roundtrip(on_global)
+    manager_name = next((name for name in MANAGERS if name in found), None)
+    if "wl_seat" not in found or manager_name is None:
+        fail("the compositor has no clipboard manager protocol (data-control)")
+
+    def bind(interface):
+        new = wl.new_id()
+        wl.send(registry, 0, struct.pack("<I", found[interface]) + wl.string(interface) + struct.pack("<II", 1, new))
+        return new
+
+    seat = bind("wl_seat")
+    manager = bind(manager_name)
+    source = wl.new_id()
+    wl.send(manager, 0, struct.pack("<I", source))  # create_data_source
+    device = wl.new_id()
+    wl.send(manager, 1, struct.pack("<II", device, seat))  # get_data_device
+    for mime in data:
+        wl.send(source, 0, wl.string(mime))  # offer
+    wl.send(device, 0, struct.pack("<I", source))  # set_selection
+
+    def serve(obj, opcode, body):
+        if obj == source and opcode == 0:  # send: an app pastes
+            mime, _end = read_string(body, 0)
+            fd = wl.fds.pop(0) if wl.fds else -1
+            if fd < 0:
+                return
+            try:
+                with os.fdopen(fd, "wb") as pipe:
+                    pipe.write(data.get(mime, b""))
+            except OSError:
+                pass  # the app stopped reading
+        elif obj == source and opcode == 1:  # cancelled: something else was copied
+            sys.exit(0)
+        elif obj == device and opcode == 2:  # finished
+            sys.exit(0)
+
+    wl.roundtrip(serve)
+
+    # The copy is on the clipboard: return, and serve it from the background.
+    if os.fork() > 0:
+        os._exit(0)
+    os.setsid()
+    null = os.open(os.devnull, os.O_RDWR)
+    for fd in (0, 1, 2):
+        os.dup2(null, fd)
+    # Hold nothing of the caller's but the compositor's socket, so whoever
+    # waits for the caller's output to end is not kept waiting.
+    keep = wl.sock.fileno()
+    os.closerange(3, keep)
+    os.closerange(keep + 1, os.sysconf("SC_OPEN_MAX"))
+    while True:
+        for event in wl.events():
+            serve(*event)
+
+
+if __name__ == "__main__":
+    main()
