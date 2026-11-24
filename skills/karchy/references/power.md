@@ -71,6 +71,7 @@ Power profiles exist where `power-profiles-daemon` is installed, which karchy do
 ## Battery warnings
 
 - The shell warns at `battery.low` (default 15) and `battery.critical` (default 5).
+- On battery at or under the first warning the battery counts as low (`karchy-battery-running-low` exits 0). Two things follow: Power saver (unless `battery.saver` is off) and no screensaver. The idle cycle still dims, locks and sleeps. Nothing turns the screensaver rule off; `karchy-launch-screensaver force` starts the screensaver anyway.
 - A little below the critical level UPower hibernates the machine, or powers it off where it cannot hibernate. That level is in `/etc/UPower/UPower.conf.d/50-karchy-laptop.conf`. Keep `battery.critical` above it, or the action comes before the warning.
 - `karchy-battery-status` prints the charge and the power draw.
 

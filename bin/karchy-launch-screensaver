@@ -10,6 +10,15 @@ if karchy-toggle-enabled screensaver-off && [[ $1 != "force" ]]; then
   exit 1
 fi
 
+# Not on a low battery: an animation in a terminal keeps the processor and
+# the screen busy for nothing. "Low" is the test Power saver uses, on battery
+# at or under the first battery warning. Above it, and plugged in, the
+# screensaver starts as ever; the idle cycle goes on to dim, lock and sleep
+# either way. `force` still starts it.
+if [[ $1 != "force" ]] && karchy-battery-running-low; then
+  exit 1
+fi
+
 focused=$(karchy-hyprland-monitor-focused)
 terminal=$(xdg-terminal-exec --print-id)
 

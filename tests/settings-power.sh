@@ -143,6 +143,21 @@ stub karchy-shell <<'STUB'
 #!/bin/bash
 exit 0
 STUB
+# The screensaver's launcher gets as far as asking for the terminal, which
+# says there is none it can use; reaching that is recorded.
+stub xdg-terminal-exec <<'STUB'
+#!/bin/bash
+echo "screensaver would start" >>/run/t/log
+echo none
+STUB
+stub karchy-notification-send <<'STUB'
+#!/bin/bash
+exit 0
+STUB
+stub karchy-hyprland-monitor-focused <<'STUB'
+#!/bin/bash
+echo eDP-1
+STUB
 stub systemctl <<'STUB'
 #!/bin/bash
 echo "systemctl $*" >>/run/t/log
@@ -360,6 +375,23 @@ rm $t/on-battery
 clear_log; karchy-powerprofiles-set ac
 is "plugged in: never Power saver for the charge" "$(log)" "profile performance;"
 touch $t/on-battery
+# No screensaver on a low battery; as ever above the level and plugged in.
+echo 15 >$t/percent; clear_log
+karchy-launch-screensaver >/dev/null 2>&1; is "low battery: the screensaver does not start" "$? [$(log)]" "1 []"
+karchy-launch-screensaver force >/dev/null 2>&1; is "…unless forced" "$(log)" "screensaver would start;"
+echo 16 >$t/percent; clear_log
+karchy-launch-screensaver >/dev/null 2>&1; is "on battery above the warning level: it starts" "$(log)" "screensaver would start;"
+rm $t/on-battery; echo 5 >$t/percent; clear_log
+karchy-launch-screensaver >/dev/null 2>&1; is "plugged in, however low: it starts" "$(log)" "screensaver would start;"
+touch $t/on-battery
+power set battery.saver off >/dev/null; clear_log
+karchy-launch-screensaver >/dev/null 2>&1; is "low battery with Power saver turned off: still no screensaver" "$? [$(log)]" "1 []"
+power set battery.saver on >/dev/null
+mkdir -p "$HOME/.local/state/karchy/toggles"; touch "$HOME/.local/state/karchy/toggles/screensaver-off"
+echo 80 >$t/percent; clear_log
+karchy-launch-screensaver >/dev/null 2>&1; is "the screensaver-off toggle still stops it at any charge" "$? [$(log)]" "1 []"
+rm "$HOME/.local/state/karchy/toggles/screensaver-off"
+echo 10 >$t/percent
 jq '.battery.low = 0 | .battery.critical = 0' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
 echo 1 >$t/percent
 karchy-battery-running-low; is "both warnings off: never low" "$?" 1
