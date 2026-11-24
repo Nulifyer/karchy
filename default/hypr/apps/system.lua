@@ -3,8 +3,12 @@ o.window({ tag = "floating-window" }, { float = true })
 o.window({ tag = "floating-window" }, { center = true })
 o.window({ tag = "floating-window" }, { size = { 875, 600 } })
 
+-- Windows that are dealt with and closed. The image viewer, the video player
+-- and the document viewer are not among them: they are kept open and switched
+-- to, so they are app windows, which tile on a tiling workspace (D-165). A
+-- floating window there would sit in front of every tiled one.
 o.window(
-  "(org.karchy.btop|org.karchy.terminal|org.karchy.bash|org.codeberg.dnkl.foot|org.gnome.NautilusPreviewer|org.gnome.Evince|Karchy|About|TUI.float|imv|mpv)",
+  "(org.karchy.btop|org.karchy.terminal|org.karchy.bash|org.codeberg.dnkl.foot|org.gnome.NautilusPreviewer|Karchy|About|TUI.float)",
   {
     tag = "+floating-window",
   }

@@ -57,7 +57,7 @@ A workspace tiles or floats (Settings › Appearance › Workspace layout sets t
 **Tiling**
 
 - App windows share the workspace and never overlap.
-- A floating window is drawn in front of every tiled one, and nothing can put a tiled window in front of it. So only a window you deal with and close floats here: a dialog, a file chooser, karchy's floating terminal, About, the calculator. karchy's own windows (Settings, Quick install, Updates, Virtual machines, Containers) float too (D-114).
+- A floating window is drawn in front of every tiled one, and nothing can put a tiled window in front of it. So only a window you deal with and close floats here: a dialog, a file chooser, karchy's floating terminal, About, the calculator. A window you keep open and switch to tiles, the image viewer, the video player and the document viewer among them (D-165). karchy's own windows (Settings, Quick install, Updates, Virtual machines, Containers) float too (D-114).
 - Among the floating windows, the one with the keyboard is in front, whether a click, Alt+Tab or a command gave it the keyboard. Focus follows the pointer here, and focus that only followed the pointer raises nothing.
 - Super+T floats one window, or tiles it again.
 
@@ -79,12 +79,12 @@ Which kind a window is:
 
 | Window | Kind | Tiling | Floating |
 |---|---|---|---|
-| An app's own window, a terminal, a browser | app window | tiles | floats, stacks by use |
+| An app's own window, a terminal, a browser, imv, mpv, Evince | app window | tiles | floats, stacks by use |
 | A dialog (it has a parent window, or cannot be resized): confirmations, Preferences, a toolkit's own file chooser | dialog | floats | own size, in front of its app |
 | The portal's file chooser and permission prompts (`xdg-desktop-portal-gtk`) | dialog of another app | floats | in front of every window, tag `stay-in-front` |
 | karchy's floating terminal (`org.karchy.terminal`), About, `TUI.float`, btop, the calculator, the captive portal sign-in, LocalSend | short-lived | floats | floats, stacks by use |
 | Settings, Quick install, Updates, Virtual machines, Containers | karchy's own | float (D-114) | float at their own size, stack by use |
-| imv, mpv, Evince, Steam | app windows that Omarchy floats | float | float at 875×600 (Steam at its own size), stack by use |
+| Steam | app window that Omarchy floats | floats | floats at its own size, stacks by use |
 | Picture-in-picture, the webcam overlay | overlay | pinned | pinned |
 | The password prompt (polkit), the menu, notifications, the lock screen | not windows: shell layers above all windows | | |
 
