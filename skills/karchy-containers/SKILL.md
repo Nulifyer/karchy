@@ -26,7 +26,7 @@ echo "$DOCKER_HOST"                 # unix:///run/user/<uid>/podman/podman.sock
 systemctl --user is-active podman.socket
 ```
 
-If the status is `available`, the user adds it from Quick install › System features › Containers (`karchy quick-install window @system`), or with `karchy quick-install install containers` in a terminal. The install uses `sudo`. It refuses when the real `docker` package is installed, because `podman-docker` conflicts with it. In that case the panel and `karchy containers` already work with Docker as the engine, and this skill's Podman details do not apply.
+If the status is `available`, the user adds it from Quick install › System › Containers (`karchy quick-install window @system`), or with `karchy quick-install install containers` in a terminal. The install uses `sudo`. It refuses when the real `docker` package is installed, because `podman-docker` conflicts with it. In that case the panel and `karchy containers` already work with Docker as the engine, and this skill's Podman details do not apply.
 
 Removing it (`karchy quick-install remove containers`) stops running containers, then asks whether to delete the user's containers, images and volumes. Kept data stays in `~/.local/share/containers`.
 

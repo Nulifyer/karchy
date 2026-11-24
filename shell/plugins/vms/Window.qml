@@ -483,7 +483,7 @@ Item {
       Layout.fillWidth: true
       iconName: "vms"
       title: "Virtual machines aren't set up"
-      body: "Install Virtual machines from Quick install › System features."
+      body: "Install Virtual machines from Quick install › System."
       actionText: "Open Quick install"
       onAction: Quickshell.execDetached(["karchy-quick-install", "window", "@system"])
     }

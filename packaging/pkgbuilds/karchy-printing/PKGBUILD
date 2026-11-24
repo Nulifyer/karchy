@@ -1,5 +1,5 @@
 # karchy-printing: printing and scanning, an optional feature (D-38, D-67),
-# installed from Quick install › System features by karchy-feature-printing,
+# installed from Quick install › System by karchy-feature-printing,
 # which also turns on cups.socket and cups-browsed. CUPS with Omarchy's
 # hardened cups-browsed (its own user, sandboxed, queues only for driverless
 # network printers), system-config-printer to add other printers, and SANE

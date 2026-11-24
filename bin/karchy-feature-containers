@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy:summary=Add or remove containers: rootless Podman with the docker command and Compose (Quick install › System features, D-63)
+# karchy:summary=Add or remove containers: rootless Podman with the docker command and Compose (Quick install › System, D-63)
 # karchy:args=status | install | remove
 # karchy:hidden=true
 

@@ -44,7 +44,7 @@ karchy-feature-vms status     # installed | available
 ls -l /dev/kvm
 ```
 
-If the status is `available`, the user adds it from Quick install › System features › Virtual machines (`karchy quick-install window @system`), or with `karchy quick-install install vms` in a terminal. It installs `qemu-desktop`, `edk2-ovmf`, `swtpm` and `spice-gtk` with `sudo`. Removing it (`karchy quick-install remove vms`) refuses while a VM runs and keeps `~/VMs`.
+If the status is `available`, the user adds it from Quick install › System › Virtual machines (`karchy quick-install window @system`), or with `karchy quick-install install vms` in a terminal. It installs `qemu-desktop`, `edk2-ovmf`, `swtpm` and `spice-gtk` with `sudo`. Removing it (`karchy quick-install remove vms`) refuses while a VM runs and keeps `~/VMs`.
 
 `karchy vm start` needs a writable `/dev/kvm`. If the device is missing, virtualization (Intel VT-x or AMD-V) is off in the firmware settings, and only the user can turn it on. If the device exists but is not writable, the feature's install step adds the user to the `kvm` group, which takes effect at the next login.
 

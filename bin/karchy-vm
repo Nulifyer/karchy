@@ -33,7 +33,7 @@ usage() {
 need() {
   local cmd
   for cmd in "$@"; do
-    command -v "$cmd" >/dev/null || die "$cmd is missing; install Virtual machines from Quick install › System features (karchy quick-install window @system)"
+    command -v "$cmd" >/dev/null || die "$cmd is missing; install Virtual machines from Quick install › System (karchy quick-install window @system)"
   done
 }
 

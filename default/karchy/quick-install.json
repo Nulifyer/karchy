@@ -382,7 +382,7 @@
     },
     {
       "id": "system",
-      "name": "System features",
+      "name": "System",
       "groups": [
         {
           "id": "devices",

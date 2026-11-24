@@ -62,7 +62,7 @@ The bar has quick panels for the things you change often: sound, microphone, net
 
 - Apps from the signed repositories install in the window, with progress for each.
 - Apps from the AUR are built on your computer from a community script. They install in a terminal, where you can read the build files first.
-- Optional features, under **System features**: Printers & scanners, Containers and Virtual machines.
+- Optional features, under **System**: Printers & scanners, Containers and Virtual machines.
 
 For anything not in the list, use menu › Packages › **Install Package**, which searches every package in the repositories and the AUR. **Remove Package** lists what you installed.
 
