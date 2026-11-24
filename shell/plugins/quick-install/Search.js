@@ -5,13 +5,13 @@
 // The results rank in tiers, best first:
 //   5    the name starts with the query          "obs"  OBS Studio, Obsidian
 //   4.5  a keyword, a package or the id is it    "adb"  Android platform tools,
-//        "vm"  Virtual machines before ScummVM
+//        "vm"  Virtual machines before ScummVM, "ff"  Firefox
 //   4    a word in the name starts with it       "studio"  OBS Studio
 //   3    the name contains it                    "fox"  Firefox
 //   2.7  its letters are the name's word starts  "kpx"  KeePassXC
 //   2.5  every word of it is a word, or starts one, in the name, keywords,
 //        description or packages                 "ssh"  PuTTY, "video edit"
-//   2    the name holds its letters in order     "ff"  Firefox
+//   2    the name holds its letters in order     "kdn"  Kdenlive
 //   1    the name and the rest contain every word of it somewhere
 //   0.5  four letters or more scattered through the name with no word start
 //        or run to hold them: almost always chance ("excel" in Sched-ext
@@ -153,10 +153,16 @@ function match(app, query) {
   var at = text.indexOf(q)
   var firstAt = at
   // The whole of a keyword, a package name or the id: what the app is called
-  // by people who don't know its name here ("adb", "npm", "vm").
+  // by people who don't know its name here ("adb", "npm", "vm", "ff"). The
+  // keyword is what matched, so the name is marked only where the name alone
+  // would match too: the letters the tiers below would mark (F and f of
+  // Firefox for "ff"), or none (Node.js for "npm").
   var known = (app.keywords || []).concat(app.packages || [], [app.id])
   for (var k = 0; k < known.length; k++)
-    if (lower(known[k]) === q) return { tier: 4.5, score: 0, positions: firstAt >= 0 ? range(firstAt, q.length) : [] }
+    if (lower(known[k]) === q) {
+      var own = match({ name: name }, q)
+      return { tier: 4.5, score: 0, positions: own && own.tier >= 2 ? own.positions : [] }
+    }
   while (at > 0) {
     if (starts[at]) return { tier: 4, score: -at, positions: range(at, q.length) }
     at = text.indexOf(q, at + 1)

@@ -61,12 +61,27 @@ check("vs code (with a space) still finds VSCodium", () => {
   assert.ok(rank("vs code", "VSCodium") >= 0)
 })
 
-// Names that contain "ff" (Kaffeine, OnlyOffice, Ruff) come first, as a
-// substring ranks above letters in order, and FontForge's two word starts
-// beat Firefox's one; Firefox still shows without much scrolling.
-check("ff finds Firefox in the first fifteen", () => {
-  const at = rank("ff", "Firefox")
-  assert.ok(at >= 0 && at < 15, "Firefox at " + at + ": " + names("ff", 16).join(", "))
+// Names that contain "ff" (Ruff, Kaffeine, OnlyOffice) would rank above its
+// letters in Firefox; Firefox has "ff" as a keyword, which people type for it.
+check("ff finds Firefox first", () => {
+  assert.equal(names("ff", 1)[0], "Firefox", names("ff", 5).join(", "))
+})
+
+// A keyword match marks the name only where the name's own letters match:
+// never letters that aren't the query's, in order.
+check("a keyword match highlights only the name's own letters", () => {
+  const ff = Search.search(apps, "ff")[0]
+  assert.deepEqual(ff.positions, [0, 4]) // F and f of Firefox
+  assert.deepEqual(Search.search(apps, "npm")[0].positions, []) // Node.js
+  for (const app of apps) {
+    for (const word of (app.keywords || []).concat(app.packages || [], [app.id])) {
+      const q = word.toLowerCase()
+      const m = Search.match(app, q)
+      if (m.tier !== 4.5) continue
+      const marked = m.positions.map((i) => app.name.charAt(i).toLowerCase()).join("").replace(/\s+/g, "")
+      assert.ok(marked === "" || marked === q.replace(/\s+/g, ""), app.name + " for " + q + ": " + marked)
+    }
+  }
 })
 
 check("word starts beat scattered letters: kpx finds KeePassXC", () => {
