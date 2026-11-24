@@ -321,6 +321,18 @@ Branch `t3/familiar-settings-navigation` (worktree, not merged), on `999f770`. T
 - **Left as it is:** in a narrow window the page's title shows twice, in the bar and in the page's own heading. `caption` and `bodySmall` are 11 px at the default text size, in the pane as in the sidebars.
 - **Not tested:** a real battery, lid or power button; a screen reader; touch; a display scale above 1.
 
+## The title once, Space on a button, the windows' own names (D-178), 2026-11-24
+
+Branch `t3/narrow-window-titlebar-fixes` (worktree, not merged), on `25f7b42`. Three things D-177's pane left against the familiar form, one commit each, then the records.
+
+- **Built:** a narrow window's bar shows the window's name beside the menu button, and the page is named once, by its own heading. In Quick install Space presses the button that has the keyboard, except the highlighted row's Install or Open, where it picks the row. The shell's app id is `karchy-shell` and Settings' title is "Settings", so a floating window's titlebar and the Alt+Tab switcher show Settings, Quick install, Updates, Virtual machines and Containers; the switcher draws their icons from the icon map.
+- **Checks:** `tools/icon-check`, `bun tools/quick-install-search-check`, `lua tests/window-stacking.lua`, `bun tests/window-switcher.js "$PWD"`, `python3 tests/keybindings.py`, `tests/agent-skills.sh`.
+- **Seen on the host, offscreen** (`tools/shell-render`): the four windows narrow and wide before and after; the Space key on every kind of button in Quick install.
+- **Seen in VM `win`** (rc.13, snapshot `installed`; the packages built from the branch, dev mode off): the five titlebars, the switcher, two half tiles, Space by real keys, another app's window titled "Settings" left alone. Pictures in the worktree's `out/narrow-followups`. The VM is restored to `installed` and shut off.
+- **Found on the way:** `org.karchy.shell` as the app id made every shell window a terminal to the rules (`org.karchy.<name>` is the terminals' class); after Clear cleared the picks the keyboard stayed on the hidden button.
+- **For the user:** whether Space on the highlighted row's Install should stay "pick"; a rule of your own naming `org.quickshell` or "karchy Settings" no longer matches.
+- **Not tested:** Virtual machines and Containers narrow in the VM (their pane needs QEMU or an engine; seen offscreen); a screen reader; a display scale above 1.
+
 ## Current batch
 
 None: everything is merged.
