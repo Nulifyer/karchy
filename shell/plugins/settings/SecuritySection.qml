@@ -127,6 +127,9 @@ ColumnLayout {
         color: Commons.Color.textSecondary
         font.family: Style.font.family
         font.pixelSize: Style.font.body
+        // On a narrow page a state takes a second line before it is cut.
+        wrapMode: root.wide ? Text.NoWrap : Text.Wrap
+        maximumLineCount: root.wide ? 1 : 2
         elide: Text.ElideRight
       }
       InfoTip {
