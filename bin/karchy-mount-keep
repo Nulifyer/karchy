@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # karchy:summary=Keep a network share mounted at /mnt, or remove a kept one (D-24)
-# karchy:args=[smb://server/share | folder on an open share] | --remove [--yes] [kept mount folder] | --bookmarks
+# karchy:args=[smb://server/share | folder on an open share] | --remove [--yes] [kept mount folder]
 # karchy:hidden=true
 
 # Settings › Storage runs this in a floating terminal. With no
@@ -18,15 +18,9 @@
 #   waits about 30 seconds instead of 3 minutes; each later call still waits
 #   about 20 seconds for the kernel's reconnect attempt, which no option
 #   shortens. The cost is a small echo packet every 5 seconds while the share
-#   is mounted and idle.
-#   a bookmark in the file manager's side pane (GTK's bookmarks file), named
-#   "<share> on <server>", as a mapped network drive is on Windows (D-190).
-#   Opening it opens the folder, and the automount mounts the share. Not
-#   x-gvfs-show: that lists it as a device, and the file manager then mounts
-#   it itself as the user, which fails on the root-only credentials before
-#   the automount has mounted it (D-188 did that).
-# --bookmarks adds the missing bookmarks of every kept share for this user,
-# for a migration and for another user of the machine.
+#   is mounted and idle. x-gvfs-show lists it in the file manager's side
+#   pane, as data disks are (karchy-disk-fstab): GIO hides fstab entries
+#   under /mnt otherwise.
 # Each system change goes through sudo; this script itself never runs as root.
 
 set -euo pipefail
@@ -229,13 +223,12 @@ keep() {
       sudo mkdir -p "$target" || give_up 1 "Couldn't create $target."
     fi
     added_fstab=1
-    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,echo_interval=5,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s 0 0 %s\n' \
+    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,echo_interval=5,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s,x-gvfs-show 0 0 %s\n' \
       "$(fstab_escape "//$server/$share")" "$(fstab_escape "$target")" "$(fstab_escape "$cred")" \
       "$(id -u)" "$(id -g)" "$MARKER" | sudo tee -a "$FSTAB" >/dev/null || give_up 1 "Couldn't add the share to /etc/fstab."
     sudo systemctl daemon-reload || give_up 1 "systemd couldn't read the new /etc/fstab."
     sudo systemctl start "$unit" || give_up 1 "Couldn't start mounting $target on use."
     trap - HUP TERM
-    bookmark_add "$target" "$share on ${server%%.*}"
     karchy-notification-send -g share "Share kept" "//$server/$share is at $target"
     echo "Done: //$server/$share is at $target."
     [[ -z $probe_left ]] || { echo "Only the check mount at $probe_left is left over; it goes at the next restart."; exit 1; }
@@ -359,36 +352,6 @@ pick_kept() {
   return 1
 }
 
-# The file manager's side pane: GTK's bookmarks file, one "URI label" a line.
-BOOKMARKS="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks"
-
-bookmark_uri() { printf 'file://%s' "$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "$1")"; }
-
-bookmark_add() {  # bookmark_add <folder> <label>
-  local uri
-  uri=$(bookmark_uri "$1")
-  mkdir -p "${BOOKMARKS%/*}"
-  grep -qF -- "$uri" "$BOOKMARKS" 2>/dev/null && return 0
-  printf '%s %s\n' "$uri" "$2" >>"$BOOKMARKS"
-}
-
-bookmark_remove() {  # bookmark_remove <folder>
-  local uri
-  uri=$(bookmark_uri "$1")
-  [[ -f $BOOKMARKS ]] || return 0
-  U="$uri" awk '$1 != ENVIRON["U"]' "$BOOKMARKS" >"$BOOKMARKS.karchy-new" && mv "$BOOKMARKS.karchy-new" "$BOOKMARKS"
-}
-
-# Every kept share's bookmark, for this user.
-bookmarks() {
-  local source target server share
-  while read -r source target _; do
-    source=$(fstab_unescape "$source"); target=$(fstab_unescape "$target")
-    server=${source#//}; share=${server#*/}; server=${server%%/*}
-    bookmark_add "$target" "$share on ${server%%.*}"
-  done < <(grep -F "$MARKER" "$FSTAB" | grep -v '^[[:space:]]*#' || true)
-}
-
 remove() {
   local path="$1" target line unit cred
   target=$(realpath -m "$path")
@@ -427,7 +390,6 @@ remove() {
     echo "The folder $target is left (it isn't empty, or is in use): $(fix_with sudo rmdir "$target")"
     leftover=1
   fi
-  bookmark_remove "$target"
   karchy-notification-send -g share "Share no longer kept" "$source at $target"
   echo "Done: $source is no longer kept at $target."
   exit "$leftover"
@@ -445,9 +407,6 @@ flock -n "$lock_fd" || die "Another window is keeping or removing a network shar
 # nothing kept, pick_kept has said so and failed.
 confirmed=""
 case "${1:-}" in
-  --bookmarks)
-    bookmarks
-    ;;
   --remove)
     if [[ ${2:-} == --yes ]]; then
       confirmed=1
