@@ -119,7 +119,7 @@ Things a VM can't show. Write down what happened for each.
 
 Both machines:
 - Boot a snapshot from the Limine menu: the desktop comes up (writable overlay), then reboot normally.
-- The Limine menu's letters (D-154) read as JetBrains Mono, with even stems and no missing parts, and the tree's lines join; with Secure Boot set up the menu still shows karchy's font, not Limine's wide one (the font's hash is enrolled with the config).
+- The Limine menu shows Limine's own font doubled both ways (D-182), in karchy's colours, and reads well on the Framework's panel; `/boot/karchy` is gone after the update; with Secure Boot set up the menu still comes up after the migration (the changed config is enrolled again).
 - `vainfo` and brave://gpu show hardware video decode.
 - A data disk: mounted at boot; the 3.6 TB disk comes up without "timed out waiting for device" (`journalctl -b`).
 - Secure Boot recovery, before relying on it: what turning Secure Boot off in the firmware does to booting, written down.
