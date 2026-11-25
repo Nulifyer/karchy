@@ -351,7 +351,8 @@ Panel {
           visible: root.rows.length === 0
           width: parent.width
           iconName: "containers"
-          title: listProc.loaded ? "Nothing is running" : "Reading containers…"
+          busy: !listProc.loaded
+          title: listProc.loaded ? "Nothing is running" : "Reading containers"
           body: listProc.loaded ? "Containers you start with " + Model.startHint(root.cli) + " show here." : ""
           foreground: root.panelText
           surface: root.panelSurface

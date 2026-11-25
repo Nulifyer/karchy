@@ -181,6 +181,8 @@ function runningCount(containers) {
 }
 
 // What a row says while its action runs, from the karchy-containers args.
+// The control that asked compares against it (busyLabel(["restart"])), so
+// only that one is busy.
 function busyLabel(args) {
   var verb = args[0] === "compose" ? args[1] : args[0]
   var labels = {

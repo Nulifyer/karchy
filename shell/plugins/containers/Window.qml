@@ -640,7 +640,8 @@ Item {
       centered: true
       Layout.fillWidth: true
       iconName: "containers"
-      title: root.loaded ? "No containers yet" : "Reading containers…"
+      busy: !root.loaded
+      title: root.loaded ? "No containers yet" : "Reading containers"
       body: root.loaded ? "Start one with " + Model.startHint(root.cli) + " and it shows here." : ""
     }
   }
@@ -672,7 +673,8 @@ Item {
           text: "Restart"
           iconText: Icons.glyph("ui.refresh")
           bordered: true
-          enabled: page.busyText === ""
+          busy: page.busyText === Model.busyLabel(["restart"])
+          enabled: page.busyText === "" || busy
           onClicked: root.act(page.c.id, ["restart", page.c.id], "restart " + page.c.name)
         }
         Button {
@@ -680,7 +682,8 @@ Item {
           variant: "primary"
           text: page.running ? "Stop" : "Start"
           iconText: Icons.glyph(page.running ? "media.stop" : "media.play")
-          busy: page.busyText !== ""
+          busy: page.busyText === Model.busyLabel(["start"]) || page.busyText === Model.busyLabel(["stop"])
+          enabled: page.busyText === "" || busy
           onClicked: root.power(page.c)
         }
       }
@@ -795,7 +798,8 @@ Item {
           description: "Deletes the container and what it wrote outside its volumes. Its image and named volumes are kept."
             + (page.running ? " Stop it first." : "")
           actionText: "Remove…"
-          actionEnabled: !page.running && page.busyText === ""
+          actionBusy: page.busyText === Model.busyLabel(["remove"])
+          actionEnabled: (!page.running && page.busyText === "") || actionBusy
           onTriggered: root.confirm("Remove the container " + page.c.name + "?", "Remove", page.c.id, ["remove", page.c.id], "remove it")
         }
       }
@@ -845,7 +849,8 @@ Item {
               focusable: true
               text: "Up"
               bordered: true
-              busy: projectCard.busyAction !== ""
+              busy: projectCard.busyAction === Model.busyLabel(["compose", "up"])
+              enabled: projectCard.busyAction === "" || busy
               onClicked: root.act(projectCard.modelData.name, ["compose", "up", projectCard.modelData.name], "bring it up")
             },
             Button {
@@ -853,7 +858,8 @@ Item {
               focusable: true
               text: "Restart"
               bordered: true
-              enabled: projectCard.busyAction === ""
+              busy: projectCard.busyAction === Model.busyLabel(["compose", "restart"])
+              enabled: projectCard.busyAction === "" || busy
               onClicked: root.act(projectCard.modelData.name, ["compose", "restart", projectCard.modelData.name], "restart it")
             },
             Button {
@@ -861,7 +867,8 @@ Item {
               focusable: true
               variant: "destructive"
               text: "Take down…"
-              enabled: projectCard.busyAction === ""
+              busy: projectCard.busyAction === Model.busyLabel(["compose", "down"])
+              enabled: projectCard.busyAction === "" || busy
               onClicked: root.confirm(
                 "Take " + projectCard.modelData.name + " down? Its containers are stopped and removed; volumes are kept.",
                 "Take down", projectCard.modelData.name, ["compose", "down", projectCard.modelData.name], "take it down")
@@ -872,7 +879,8 @@ Item {
               text: "Forget"
               tooltipText: "Remove it from this list; its folder is left alone"
               bordered: true
-              enabled: projectCard.busyAction === ""
+              busy: projectCard.busyAction === Model.busyLabel(["forget"])
+              enabled: projectCard.busyAction === "" || busy
               onClicked: root.act(projectCard.modelData.name, ["forget", projectCard.modelData.name], "forget it")
             }
           ]
@@ -918,7 +926,8 @@ Item {
             focusable: true
             variant: "destructive"
             text: "Remove…"
-            enabled: imageCard.busyAction === "" && !imageCard.used
+            busy: imageCard.busyAction !== ""
+            enabled: !imageCard.used || busy
             onClicked: root.confirm("Remove the image " + Model.shortImage(imageCard.modelData.name) + "?", "Remove",
               imageCard.modelData.id, ["remove-image", imageCard.modelData.id], "remove the image")
           }
@@ -931,7 +940,7 @@ Item {
           title: "Prune"
           description: "Removes every stopped container, unused network and dangling image. Volumes and tagged images are kept."
           actionText: "Prune…"
-          actionEnabled: !root.busy["prune"]
+          actionBusy: !!root.busy["prune"]
           onTriggered: root.confirm(
             "Remove all stopped containers, unused networks and dangling images? Volumes and tagged images are kept.",
             "Prune", "prune", ["prune"], "prune")
@@ -960,6 +969,7 @@ Item {
     property string description: ""
     property string actionText: ""
     property bool actionEnabled: true
+    property bool actionBusy: false
     signal triggered()
     Layout.fillWidth: true
     columns: root.wide ? 2 : 1
@@ -990,6 +1000,7 @@ Item {
       variant: "destructive"
       text: danger.actionText
       enabled: danger.actionEnabled
+      busy: danger.actionBusy
       onClicked: danger.triggered()
     }
   }
