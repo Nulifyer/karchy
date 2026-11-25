@@ -245,7 +245,11 @@ package() {
   # btrfs filesystem's subvolumes (D-141); and the one reader of bees' status
   # file.
   install -Dm755 -t "$pkgdir/usr/lib/karchy" storage/storage-measure storage/storage-settings storage/storage-health \
-    storage/storage-subvolumes storage/bees-summary
+    storage/storage-subvolumes storage/bees-summary storage/kept-shares
+  # Kept network shares connect where their server answers and let go where
+  # it doesn't, on every network change (D-191).
+  install -Dm755 NetworkManager/dispatcher.d/90-karchy-kept-shares \
+    "$pkgdir/usr/lib/NetworkManager/dispatcher.d/90-karchy-kept-shares"
   # Quick install's root side (D-109): installs and removes catalog apps by
   # id, always with an administrator's password.
   install -Dm755 packages/app-packages "$pkgdir/usr/lib/karchy/app-packages"

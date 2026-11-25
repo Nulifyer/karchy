@@ -1,0 +1,66 @@
+#!/bin/bash
+# karchy (D-191): keeps the network shares kept in Settings › Storage
+# (karchy-mount-keep, "# karchy-kept-mount" in /etc/fstab) connected wherever
+# their server answers, and lets go of them wherever it doesn't, as Windows
+# reconnects a mapped drive. Run by root, outside NetworkManager's dispatcher
+# (90-karchy-kept-shares starts it on every network change), by a migration
+# and by karchy-mount-keep after keeping a share. Nothing polls.
+#
+#   server answers  the share is mounted now and stays mounted, so the file
+#                   manager finds it connected and opens it on the first
+#                   click (it would otherwise try to mount it itself, as the
+#                   user, and fail on the root-only credentials)
+#   it doesn't      a mount left from a network that had the server is let
+#                   go at once, so nothing waits on a dead connection; the
+#                   automount stays, so a program writing to the folder gets
+#                   an error instead of writing to the local disk
+set -euo pipefail
+export PATH=/usr/bin
+
+FSTAB=/etc/fstab
+MARKER="# karchy-kept-mount"
+# A server that takes longer than this to accept a connection counts as away.
+ANSWER_SECONDS=3
+
+(( EUID == 0 )) || { echo "kept-shares: run as root" >&2; exit 1; }
+grep -qF "$MARKER" "$FSTAB" 2>/dev/null || exit 0
+
+# One run at a time; a network change during a run waits for it.
+exec 9>/run/lock/karchy-kept-shares
+flock 9
+
+unescape() {
+  local value=${1//\\040/ }
+  printf '%s' "${value//\\011/$'\t'}"
+}
+
+# SMB's port, 445: the share's server, not only its name, has to answer.
+answers() {
+  # shellcheck disable=SC2016 # $1 is the inner shell's
+  timeout "$ANSWER_SECONDS" bash -c 'exec 3<>"/dev/tcp/$1/445"' _ "$1" 2>/dev/null
+}
+
+declare -A reachable=()
+while read -r source target _; do
+  source=$(unescape "$source")
+  target=$(unescape "$target")
+  server=${source#//}
+  server=${server%%/*}
+  [[ -n $server && $target == /mnt/* ]] || continue
+  if [[ -z ${reachable[$server]:-} ]]; then
+    if answers "$server"; then reachable[$server]=yes; else reachable[$server]=no; fi
+  fi
+  unit=$(systemd-escape --path --suffix=mount "$target")
+  if [[ ${reachable[$server]} == yes ]]; then
+    if ! findmnt -n -t cifs --mountpoint "$target" >/dev/null 2>&1; then
+      if timeout 30 systemctl start "$unit" 2>/dev/null; then
+        echo "kept-shares: $source connected at $target"
+      else
+        echo "kept-shares: $source answers but didn't mount at $target" >&2
+      fi
+    fi
+  elif findmnt -n -t cifs --mountpoint "$target" >/dev/null 2>&1; then
+    umount -l "$target" 2>/dev/null || true
+    echo "kept-shares: $server doesn't answer here; let go of $target"
+  fi
+done < <(grep -F "$MARKER" "$FSTAB" | grep -v '^[[:space:]]*#' || true)

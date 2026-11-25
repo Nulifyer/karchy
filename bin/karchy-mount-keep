@@ -10,17 +10,19 @@
 # skips its question for a caller that has asked already (Settings › Storage).
 # Keeping a share writes:
 #   /etc/karchy/smb/<server>-<share>.cred   username and password, root only
-#   an fstab line tagged "# karchy-kept-mount" that automounts the share at
-#   /mnt/<share> on first use (nofail, _netdev, idle timeout), so boot never
-#   waits for a NAS that is away. echo_interval=5: the kernel gives up on a
+#   an fstab line tagged "# karchy-kept-mount" that mounts the share at
+#   /mnt/<share> (an automount: nofail, _netdev, so boot never waits for a
+#   NAS that is away), listed in the file manager's Devices as a mapped drive
+#   is on Windows: "<share> on <server>" with a network folder's icon. It
+#   stays connected wherever its server answers and is let go wherever it
+#   doesn't, on every network change (/usr/lib/karchy/kept-shares, D-191).
+#   echo_interval=5: the kernel gives up on a
 #   server that stopped answering after 3 echo intervals, so the first thing
 #   to touch the share (a file manager, `df`, statfs) once the NAS has gone
 #   waits about 30 seconds instead of 3 minutes; each later call still waits
 #   about 20 seconds for the kernel's reconnect attempt, which no option
 #   shortens. The cost is a small echo packet every 5 seconds while the share
-#   is mounted and idle. x-gvfs-show lists it in the file manager's side
-#   pane, as data disks are (karchy-disk-fstab): GIO hides fstab entries
-#   under /mnt otherwise.
+#   is mounted and idle.
 # Each system change goes through sudo; this script itself never runs as root.
 
 set -euo pipefail
@@ -45,6 +47,15 @@ fix_with() {
 fstab_escape() {
   local value=${1// /\\040}
   printf '%s' "${value//$'\t'/\\011}"
+}
+
+# How the file manager lists a kept share: under Devices, as a mapped drive,
+# "<share> on <server>" with a network folder's icon (D-191).
+device_options() {  # device_options <share> <server>
+  local host=$2
+  # A name's first label ("truenas"), an address in full.
+  [[ $host =~ ^[0-9.]+$ ]] || host=${host%%.*}
+  printf 'x-gvfs-show,x-gvfs-name=%s on %s,x-gvfs-icon=folder-remote,x-gvfs-symbolic-icon=folder-remote-symbolic' "$1" "$host"
 }
 
 fstab_unescape() {
@@ -169,7 +180,7 @@ keep() {
     # a hash of the exact share, so two shares never share a credentials file.
     cred="$CRED_DIR/$(tr -c 'A-Za-z0-9._-' '_' <<<"$server-$share" | sed 's/_$//')-$(printf '%s' "//$server/$share" | sha256sum | cut -c1-8).cred"
     echo "Keep //$server/$share mounted at $target"
-    echo "It mounts when first opened and never delays startup when the server is away."
+    echo "It connects whenever its server can be reached, and never delays startup when it can't."
   fi
   echo
   unit=$(systemd-escape --path --suffix=automount "$target")
@@ -225,12 +236,15 @@ keep() {
       sudo mkdir -p "$target" || give_up 1 "Couldn't create $target."
     fi
     added_fstab=1
-    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,echo_interval=5,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=10min,x-systemd.mount-timeout=15s,x-gvfs-show 0 0 %s\n' \
+    printf '%s %s cifs credentials=%s,uid=%s,gid=%s,iocharset=utf8,nosuid,nodev,echo_interval=5,nofail,_netdev,x-systemd.automount,x-systemd.mount-timeout=15s,%s 0 0 %s\n' \
       "$(fstab_escape "//$server/$share")" "$(fstab_escape "$target")" "$(fstab_escape "$cred")" \
-      "$(id -u)" "$(id -g)" "$MARKER" | sudo tee -a "$FSTAB" >/dev/null || give_up 1 "Couldn't add the share to /etc/fstab."
+      "$(id -u)" "$(id -g)" "$(fstab_escape "$(device_options "$share" "$server")")" "$MARKER" |
+      sudo tee -a "$FSTAB" >/dev/null || give_up 1 "Couldn't add the share to /etc/fstab."
     sudo systemctl daemon-reload || give_up 1 "systemd couldn't read the new /etc/fstab."
     sudo systemctl start "$unit" || give_up 1 "Couldn't start mounting $target on use."
     trap - HUP TERM
+    # Connected now, as it will be on every network where the server answers.
+    sudo /usr/lib/karchy/kept-shares >/dev/null 2>&1 || true
     karchy-notification-send -g share "Share kept" "//$server/$share is at $target"
     echo "Done: //$server/$share is at $target."
     [[ -z $probe_left ]] || { echo "Only the check mount at $probe_left is left over; it goes at the next restart."; exit 1; }

@@ -1,0 +1,9 @@
+#!/bin/sh
+# karchy (D-191): a network change has the kept network shares connect where
+# their server answers and let go where it doesn't (/usr/lib/karchy/kept-shares).
+# Run outside the dispatcher, which runs one script at a time.
+grep -qs '# karchy-kept-mount' /etc/fstab || exit 0
+case "$2" in
+  up|down|dhcp4-change|dhcp6-change|connectivity-change|vpn-up|vpn-down)
+    exec systemd-run --quiet --no-block --collect /usr/lib/karchy/kept-shares ;;
+esac
