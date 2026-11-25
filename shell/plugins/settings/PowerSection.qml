@@ -206,10 +206,12 @@ ColumnLayout {
 
   // What the times of one power source ("battery" or "ac") do that their
   // rows don't show, as sentences; none when each time simply comes.
-  // - The screensaver starts only before the first of the screen-off time,
-  //   the lock and sleep: there is nothing to draw on a dark or locked screen.
-  // - The lock screen turns the screen off itself, 5 seconds after it
-  //   appears, so a screen-off time after the lock's never comes.
+  // - The screensaver starts only before the screen-off time and sleep:
+  //   there is nothing to draw on a dark screen. The lock comes under it
+  //   (D-184), so a lock before it stops nothing.
+  // - Where there is no screensaver, the lock screen turns the screen off
+  //   itself, 5 seconds after it appears, so a screen-off time after the
+  //   lock's never comes. With one, the lock screen shows it until then.
   // A time at or after sleep's never comes either, and the rows say so by
   // themselves: the computer is asleep.
   function idleNotes(source) {
@@ -218,12 +220,12 @@ ColumnLayout {
     var lock = Number(root.values["lock." + source] || 0)
     var sleep = Number(root.values["sleep." + source] || 0)
     var notes = []
-    var first = root.firstOf(off, lock, sleep)
+    var first = root.firstOf(off, 0, sleep)
     if (saver > 0 && first > 0 && saver >= first) {
       notes.push("the screensaver never starts: "
-        + (first === sleep ? "the computer is asleep" : first === lock ? "the screen is locked" : "the screen is off") + " by then")
+        + (first === sleep ? "the computer is asleep" : "the screen is off") + " by then")
     }
-    if (lock > 0 && off > lock && !(sleep > 0 && lock >= sleep))
+    if (!(saver > 0) && lock > 0 && off > lock && !(sleep > 0 && lock >= sleep))
       notes.push("the screen turns off when it locks, after " + duration(lock))
     return notes
   }

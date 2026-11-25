@@ -58,8 +58,8 @@
 #                          screensaver starts. karchy's: 150 where the screen
 #                          turns off, the session locks or the computer
 #                          sleeps on that source, and never where none of
-#                          them does. A time at or after the first of those
-#                          never comes
+#                          them does. A time at or after the screen-off or
+#                          sleep time never comes; the lock comes under it
 #       dim.battery, dim.ac
 #                          never, or seconds (5 to 600): the built-in screen
 #                          is dimmed that long before it turns off (karchy's:

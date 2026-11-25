@@ -26,6 +26,8 @@ Item {
 
   // Injected by karchy-shell (the first-party service loader).
   property var shell: null
+  readonly property var screensaver: shell && shell.services ? shell.serviceFor("karchy.screensaver") : null
+  readonly property bool screensaverShown: !!(screensaver && screensaver.overlayShown)
 
   // ------------------------------------------------------------- displays
   //
@@ -649,6 +651,10 @@ Item {
     // and waits in the panel with its sender still listening when it is one
     // to answer. A blocked app's is dropped.
     var muted = Delivery.verdict(row, doNotDisturb, appRules[row.groupKey])
+    // Nobody is looking while the screensaver shows (D-184), and what would
+    // pop up over it could be read by anybody passing: every one waits in
+    // the panel, sign-in codes and alerts too.
+    if (muted !== "blocked" && screensaverShown) muted = "silenced"
     if (muted) {
       var recorded = muted !== "blocked" && !Delivery.isEphemeral(row)
       if (recorded && rowIndexFor(key) < 0 && Delivery.waits(row, muted)) parked[key] = true

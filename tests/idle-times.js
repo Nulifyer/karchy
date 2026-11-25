@@ -70,34 +70,32 @@ eq(saver({ screensaver: "150" }, true), 150, "a number written as text")
 eq([M.timeouts({}, true, d).screensaver, M.timeouts({ ac: { lock: 0, screenOff: 0 } }, false, d).screensaver], [150, 0])
 
 // When the screensaver starts: its time, where that is before the screen
-// turns off, the session locks and the computer sleeps.
+// turns off and the computer sleeps. The lock comes under it (D-184).
 const S = (screensaver, screenOff, lock, suspend) => ({ screensaver, screenOff, lock, suspend, dim: 30 })
 eq(M.screensaverAfter(S(150, 300, 300, 900)), 150, "the defaults")
 eq(M.screensaverAfter(S(0, 300, 300, 900)), 0, "Never")
 eq(M.screensaverAfter(S(300, 0, 0, 0)), 300, "alone: it starts and stays")
 eq(M.screensaverAfter(S(600, 300, 0, 0)), 0, "after the screen has turned off: never")
 eq(M.screensaverAfter(S(300, 300, 0, 0)), 0, "at the screen-off time: never")
-eq(M.screensaverAfter(S(600, 0, 300, 0)), 0, "after the lock: never")
+eq(M.screensaverAfter(S(600, 0, 300, 0)), 600, "after the lock: it starts, on the lock screen")
 eq(M.screensaverAfter(S(600, 0, 0, 300)), 0, "after the computer sleeps: never")
-eq(M.screensaverAfter(S(150, 600, 120, 0)), 0, "the lock before the screen-off time counts")
+eq(M.screensaverAfter(S(150, 600, 120, 0)), 150, "a lock before it does not stop it")
 eq(M.screensaverAfter(S(299, 300, 300, 900)), 299)
 // The order holds for every combination: the screensaver, where it starts,
-// is before the screen-off time, the lock and sleep; the dimming is before
-// the screen goes dark and counts back from there whatever the screensaver
-// does; this service turns the screen off only before the lock.
+// is before the screen-off time and sleep; the dimming is before the screen
+// goes dark; this service turns the screen off at its own time, locked or not.
 {
   const values = [0, 10, 60, 150, 300, 600, 900]
   for (const screensaver of values) for (const screenOff of values) for (const lock of values) for (const suspend of values)
     for (const lead of [0, 30, 120]) {
       const times = { screensaver, screenOff, lock, suspend, dim: lead }
       const plan = M.plan(times, true), name = JSON.stringify(times)
-      for (const other of [screenOff, lock, suspend])
+      for (const other of [screenOff, suspend])
         assert.ok(plan.screensaver === 0 || other === 0 || plan.screensaver < other, "screensaver before the rest: " + name)
       assert.ok(plan.screensaver === 0 || plan.screensaver === screensaver, "its own time or never: " + name)
-      eq(plan.dim, M.dimAfter(Object.assign({}, times, { screensaver: 0 }), true), "the dimming doesn't depend on the screensaver: " + name)
       const dark = M.screenDarkAfter(times)
       assert.ok(plan.dim === 0 || (plan.dim > 0 && plan.dim < dark), "dimmed before dark: " + name)
-      assert.ok(plan.screenOff === 0 || lock === 0 || plan.screenOff < lock, "screen off by this service only before the lock: " + name)
+      eq(plan.screenOff, screenOff, "the screen-off time as it is: " + name)
       eq([plan.lock, plan.suspend], [lock, suspend], name)
       // What starts the idle cycle is the first step of the plan.
       eq(M.firstIdleTimeout(plan.screensaver, screenOff, lock, suspend, plan.dim),
@@ -118,9 +116,9 @@ eq(M.retimed(P(reported, false), { screensaver: true }, ms(200)), { endScreensav
   "…and one already running ends")
 // Plugged in with a screensaver of its own and nothing else; the power fails.
 const savingOnly = { ac: { lock: 0, screenOff: 0, screensaver: 150 } }
-eq(M.retimed(P(savingOnly, true), { screensaver: true }, ms(200)), { endScreensaver: false, screensaver: 0, dim: ms(70), screenOff: 0, lock: ms(100) },
-  "on battery after a power cut: the screensaver stays, and the battery's dimming and lock are armed")
-eq(M.retimed(P(savingOnly, true), {}, ms(100)), { endScreensaver: false, screensaver: ms(50), dim: ms(170), screenOff: 0, lock: ms(200) },
+eq(M.retimed(P(savingOnly, true), { screensaver: true }, ms(200)), { endScreensaver: false, screensaver: 0, dim: ms(70), screenOff: ms(100), lock: ms(100) },
+  "on battery after a power cut: the screensaver stays, and the battery's dimming, lock and screen-off are armed")
+eq(M.retimed(P(savingOnly, true), {}, ms(100)), { endScreensaver: false, screensaver: ms(50), dim: ms(170), screenOff: ms(200), lock: ms(200) },
   "before it started: at the battery's time, counted from the stretch's start")
 // A later time on the new source: a running one stays, a pending one waits.
 const later = { ac: { screensaver: 240 } }
@@ -132,12 +130,14 @@ eq(M.retimed(P(quick, true), {}, ms(90)), { endScreensaver: false, screensaver: 
   "its time has passed: it starts now; the dimming's time has passed too and is not made up")
 eq(M.retimed(P(quick, true), {}, ms(130)), { endScreensaver: false, screensaver: 0, dim: 0, screenOff: 1000, lock: 0 },
   "…but not only to be ended by the screen turning off at once")
-eq(M.retimed(P({ battery: { lock: 60 } }, true), { screensaver: true }, ms(200)).lock, 1000, "a lock whose time has passed locks now (and ends the screensaver)")
+eq(M.retimed(P({ battery: { lock: 60 } }, true), { screensaver: true }, ms(200)), { endScreensaver: false, screensaver: 0, dim: ms(70), screenOff: ms(100), lock: 1000 },
+  "a lock whose time has passed locks now, under the screensaver, which goes on")
+eq(M.retimed(P({ battery: { lock: 60 } }, true), {}, ms(100)).screensaver, ms(50), "a lock already due does not keep a screensaver from starting")
 eq(M.retimed(P({}, true), { screensaver: true, screenOff: true }, ms(400)), { endScreensaver: false, screensaver: 0, dim: 0, screenOff: 0, lock: 1000 },
   "a screen already off stays off and is not dimmed")
 eq(M.retimed(P({ battery: { screensaver: 0 } }, true), { screensaver: true }, ms(200)).endScreensaver, true, "Never chosen on the new source ends it")
 // Every combination: nothing is armed that the new times don't have, and
-// the screensaver never starts at or after another step that is due.
+// the screensaver never starts at or after the screen going off.
 {
   const values = [0, 60, 150, 300, 600]
   for (const screensaver of values) for (const screenOff of values) for (const lock of values) for (const suspend of values)
@@ -146,16 +146,20 @@ eq(M.retimed(P({ battery: { screensaver: 0 } }, true), { screensaver: true }, ms
       const next = M.retimed(plan, { screensaver: started }, elapsed), name = JSON.stringify([plan, elapsed, started])
       eq(next.endScreensaver, started && plan.screensaver === 0, name)
       for (const step of ["screensaver", "dim", "screenOff", "lock"]) assert.ok(plan[step] > 0 || next[step] === 0, step + " not armed: " + name)
-      if (next.screensaver > 0) for (const step of ["screenOff", "lock"])
+      if (next.screensaver > 0) for (const step of ["screenOff"])
         assert.ok(next[step] === 0 || next.screensaver < next[step], "screensaver before " + step + ": " + name)
       assert.ok(!started || next.screensaver === 0, "not started twice: " + name)
     }
 }
 
 // When the screen goes dark by itself, and when it is dimmed before that.
-const T = (screenOff, lock, suspend, dimSeconds) => ({ screenOff, lock, suspend, dim: dimSeconds })
+// T has no screensaver, as on a source where it is Never: the lock screen
+// then turns the screen off itself. With one, the lock screen shows it.
+const T = (screenOff, lock, suspend, dimSeconds) => ({ screensaver: 0, screenOff, lock, suspend, dim: dimSeconds })
 eq(M.screenDarkAfter(T(300, 300, 900)), 300)
 eq(M.screenDarkAfter(T(300, 120, 900)), 120, "an earlier lock turns the screen off (5 seconds after it)")
+eq(M.screenDarkAfter(Object.assign(T(300, 120, 900), { screensaver: 150 })), 300, "…unless it shows the screensaver: dark at the screen-off time")
+eq(M.dimAfter(Object.assign(T(300, 120, 0, 30), { screensaver: 150 }), true), 270, "and dimmed before that")
 eq(M.screenDarkAfter(T(300, 0, 0)), 300, "no lock")
 eq(M.screenDarkAfter(T(0, 300, 0)), 0, "screen-off at Never: the lock stays lit")
 eq(M.screenDarkAfter(T(0, 300, 900)), 900, "…until the computer sleeps")

@@ -32,6 +32,7 @@ startup; other panels, overlays, and menus are loaded on demand.
 | Polkit Agent | `karchy.polkit` | `service` | `polkit/PolkitAgent.qml` |
 | Quick install | `karchy.quick-install` | `panel` | `quick-install/Window.qml` |
 | Reminders | `karchy.reminders` | `overlay` | `reminders/ReminderFlow.qml` |
+| Screensaver | `karchy.screensaver` | `service` | `screensaver/Service.qml` |
 | Battery | `karchy.battery` | `service` | `services/battery/Service.qml` |
 | Idle | `karchy.idle` | `service` | `services/idle/Service.qml` |
 | Media | `karchy.media` | `service`, `bar-widget` | `services/media/Service.qml`, `services/media/BarWidget.qml` |

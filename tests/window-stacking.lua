@@ -599,110 +599,29 @@ snap_left()
 focus_left()
 eq(box(float) .. " " .. moved, "100,100 400x300 1", "on a tiling workspace Super+Left moves the focus and snaps nothing")
 
--- A window that opens while the screensaver shows (D-179) goes to the
--- workspace its monitor was showing, not the screensaver's, and leaves the
--- keyboard to the screensaver, which stays up; it gets the keyboard once the
--- screensaver is gone. So does a window that asked for it meanwhile.
-local saver_rule
-for _, rule in ipairs(static_rules) do
-  if rule.match and rule.match.workspace == "n[s:special:screensaver]" then
-    saver_rule = rule
-  end
-end
-eq(saver_rule ~= nil and saver_rule.workspace, "m+0 silent", "a window opening on the screensaver's workspace goes to the one its monitor shows")
-eq(saver_rule.no_initial_focus, true, "without the keyboard")
-eq(saver_rule.match.class, "negative:^(org\\.karchy\\.screensaver)$", "and the screensaver itself is left where the launcher put it")
-local saver_tagged = false
-for _, rule in ipairs(static_rules) do
-  if rule.match and rule.match.class == "org.karchy.screensaver" and rule.tag == "+screensaver" then
-    saver_tagged = true
-  end
-end
-eq(saver_tagged, true, "the screensaver is tagged for the config to know it")
-
+-- A window that asks for the keyboard gets it, unless a layer holds the
+-- keyboard: a menu, or the screensaver, which the shell draws as such a layer
+-- (D-184). The window then stays urgent.
 o.fullscreen_game = o.fullscreen_game or function() return false end
+local layers = {}
+hl.get_layers = function() return layers end
 require("default.hypr.activation")
 reset()
 workspace = { id = 1 }
-local screensaver_workspace = { id = -98, name = "special:screensaver-LEFT", special = true, visible = true }
-
--- Hyprland gives a window the rule opens without focus no keyboard and puts
--- it last in the focus history (seen in VM clip); the stand-in focuses every
--- window it opens, so the keyboard is handed back.
-local function open_under_screensaver(address, fields)
-  local keyboard = history[1]
-  local window = open(address, fields)
-  focus((find(keyboard)), 0)
-  table.remove(history, 2)
-  table.insert(history, address)
-  return window
-end
-local function close(window)
-  table.remove(stack, select(2, find(window.address)))
-  for index, address in ipairs(history) do
-    if address == window.address then
-      table.remove(history, index)
-    end
-  end
-  fire("window.close", window)
-end
 
 local left = open("left")
 fire("window.urgent", left)
 eq(history[1], "left", "a window that asks for the keyboard gets it")
 local other = open("other")
-local saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
+layers = { { mapped = true, keyboard_interactivity = 1, namespace = "karchy-screensaver" } }
 fire("window.urgent", left)
-eq(history[1], "saver", "while the screensaver shows, a window that asks for the keyboard leaves it to the screensaver")
-close(saver)
-eq(history[1], "left", "and gets it once the screensaver is gone")
+eq(history[1], "other", "while the screensaver holds the keyboard, a window that asks for it does not take it")
+layers = {}
+fire("window.urgent", left)
+eq(history[1], "left", "with no screensaver it gets it again")
 
-saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
-local late = open_under_screensaver("late")
-eq(history[1], "saver", "a window that opens while the screensaver shows leaves it the keyboard")
-close(saver)
-eq(history[1], "late", "and gets it once the screensaver is gone: the newest one")
-
-saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
-local saver_right = open("saver-right", { floating = true, fullscreen = 2, workspace = { id = -97, name = "special:screensaver-RIGHT", special = true }, tags = { "screensaver*" } })
--- The launcher hands the keyboard back to the monitor that had it.
-focus(saver, 0)
-local later = open_under_screensaver("later")
-close(saver_right)
-eq(history[1], "saver", "while one monitor's screensaver is still up, nothing moves")
-close(saver)
-eq(history[1], "later", "once both are gone the newest window gets the keyboard")
-
-saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
-close(saver)
-eq(history[1], "later", "a screensaver that ends with nothing new leaves the keyboard to Hyprland")
-
--- Super+Enter while the screensaver shows (the rc.14 release gate's case):
--- the bound key never reaches the screensaver, and the binding starts a
--- terminal with no workspace of its own, so the rule above places it on the
--- workspace the monitor shows; the screensaver keeps the keyboard, and the
--- terminal gets it once the screensaver is gone (seen in VM win, out/pre-rc14).
-saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
-o.launch_terminal()()
-eq(executed[#executed], "karchy-launch-terminal --pid=1", "Super+Enter under the screensaver starts a terminal")
-eq(executed[#executed]:find("workspace", 1, true), nil, "with no workspace of its own, so the screensaver's rule places it")
-local terminal = open_under_screensaver("terminal")
-eq(history[1], "saver", "the screensaver keeps the keyboard")
-close(saver)
-eq(history[1], "terminal", "and the terminal gets it once the screensaver is gone")
-close(terminal)
-
--- The shell's summon of a window that is already open waits the same way.
-saver = open("saver", { floating = true, fullscreen = 2, workspace = screensaver_workspace, tags = { "screensaver*" } })
+-- The shell's summon of a window that is already open.
 hl.dispatch(o.focus_window("address:other"))
-eq(history[1], "saver", "a window summoned while the screensaver shows leaves it the keyboard")
-close(saver)
-eq(history[1], "other", "and gets it once the screensaver is gone")
-hl.dispatch(o.focus_window("address:left"))
-eq(history[1], "left", "with no screensaver a summoned window gets the keyboard at once")
-
-close(later)
-fire("window.urgent", other)
-eq(history[1], "other", "with no screensaver a window that asks for the keyboard gets it again")
+eq(history[1], "other", "a summoned window gets the keyboard")
 
 print(string.format("window-stacking: %d checks passed", checks))

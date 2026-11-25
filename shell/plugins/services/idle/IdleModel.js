@@ -63,13 +63,14 @@ function screensaverSeconds(own, shared, karchys, somethingHappens) {
 }
 
 // How long idle until the screensaver starts on these times, 0 for never: its
-// time, where that is before the screen turns off, the session locks and the
-// computer sleeps. A time at or after the first of those never comes: there
-// is nothing to draw on a dark or locked screen. The time itself stays as it
-// was chosen, as a screen-off time after the lock's does.
+// time, where that is before the screen turns off and the computer sleeps. A
+// time at or after either of those never comes: there is nothing to draw on a
+// dark screen. The lock does not count (D-184): the session locks under the
+// screensaver, and a screensaver due after the lock shows on the lock screen.
+// The time itself stays as it was chosen.
 function screensaverAfter(times) {
   if (!(times.screensaver > 0)) return 0
-  var first = firstIdleTimeout(times.screenOff, times.lock, times.suspend)
+  var first = firstIdleTimeout(times.screenOff, times.suspend)
   return first > 0 && times.screensaver >= first ? 0 : times.screensaver
 }
 
@@ -80,9 +81,8 @@ function plan(times, hasBacklight) {
   return {
     screensaver: screensaverAfter(times),
     dim: dimAfter(times, hasBacklight),
-    // A screen-off time at or after the lock's is the lock screen's to keep:
-    // it turns the screen off 5 seconds after locking.
-    screenOff: times.screenOff > 0 && !(times.lock > 0 && times.lock <= times.screenOff) ? times.screenOff : 0,
+    // The screen turns off on its own time, locked or not (D-184).
+    screenOff: times.screenOff > 0 ? times.screenOff : 0,
     lock: times.lock > 0 ? times.lock : 0,
     suspend: times.suspend > 0 ? times.suspend : 0
   }
@@ -112,8 +112,9 @@ function retimed(plan, done, elapsedMs) {
   var started = !!(done && done.screensaver)
   var dark = !!(done && done.screenOff)
   function passed(seconds) { return seconds > 0 && seconds * 1000 <= elapsedMs }
-  // Not started only to be ended by a step that is due at once as well.
-  var tooLate = passed(plan.screenOff) || passed(plan.lock) || passed(plan.suspend)
+  // Not started only to be ended by a step that is due at once as well; the
+  // lock is not one, the screensaver goes on under it.
+  var tooLate = passed(plan.screenOff) || passed(plan.suspend)
   return {
     endScreensaver: started && !(plan.screensaver > 0),
     screensaver: started || dark || tooLate ? 0 : dueIn(plan.screensaver, elapsedMs),
@@ -131,11 +132,14 @@ function dimBrightness(value, fallback) {
 }
 
 // How long idle until the screen goes dark by itself on these times, 0 for
-// never. The screen-off time and the lock both do it (the lock screen turns
-// the screen off 5 seconds after it appears), but only where a screen-off
-// time is set: with "Never" the lock stays lit. Sleep always does.
+// never. The screen-off time does it, locked or not. Where there is no
+// screensaver on this source the lock does it too, sooner (the lock screen
+// turns the screen off 5 seconds after it appears), but only where a
+// screen-off time is set: with "Never" the lock stays lit. Where there is a
+// screensaver, the lock screen shows it instead (D-184). Sleep always does.
 function screenDarkAfter(times) {
-  var off = times.screenOff > 0 ? firstIdleTimeout(times.screenOff, times.lock) : 0
+  var off = 0
+  if (times.screenOff > 0) off = times.screensaver > 0 ? times.screenOff : firstIdleTimeout(times.screenOff, times.lock)
   return firstIdleTimeout(off, times.suspend)
 }
 
@@ -228,37 +232,6 @@ function eventParts(event, count) {
   return String(event && event.data ? event.data : "").split(",")
 }
 
-function screensaverWindowsAfter(windows, address, visible) {
-  var key = String(address || "")
-  if (!key) {
-    var current = windows || {}
-    var existingCount = 0
-    for (var currentKey in current) {
-      if (current[currentKey]) existingCount++
-    }
-    return { windows: current, count: existingCount }
-  }
-
-  var next = {}
-  var count = 0
-  for (var existing in windows || {}) {
-    if (existing !== key && windows[existing]) {
-      next[existing] = true
-      count++
-    }
-  }
-
-  if (visible) {
-    next[key] = true
-    count++
-  }
-
-  return {
-    windows: next,
-    count: count
-  }
-}
-
 // One line from `karchy-system-idle-inhibit watch`: {"inhibitors": [...]}.
 // Returns the list, or null for a line that is not one (which changes nothing).
 function parseInhibitors(line) {
@@ -320,7 +293,6 @@ if (typeof module !== "undefined") {
     dimPending: dimPending,
     firstIdleTimeout: firstIdleTimeout,
     delayAfterFirstIdle: delayAfterFirstIdle,
-    eventParts: eventParts,
-    screensaverWindowsAfter: screensaverWindowsAfter
+    eventParts: eventParts
   }
 }

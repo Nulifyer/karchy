@@ -145,7 +145,6 @@ bin/karchy-restart-shell	bin/omarchy-restart-shell	0794d6b07b35de585ee71f3f32c65
 bin/karchy-restart-terminal	bin/omarchy-restart-terminal	d767879d184443011fc9fe2fa8bccae590f8170b
 bin/karchy-restart-trackpad	bin/omarchy-restart-trackpad	10cb70fe24faadf5dbe21e3133d5b6be53752e4b
 bin/karchy-restart-wifi	bin/omarchy-restart-wifi	64f85a727a9b19588c60978949691d9d1f4ffb53
-bin/karchy-screensaver	bin/omarchy-screensaver	44cbfad2c36752eee85fb812a7d673abead19f46
 bin/karchy-setup-git	bin/omarchy-setup-git	81cefc009d492670916f5a4b0fe91fb61acdef67
 bin/karchy-setup-security-fido2	bin/omarchy-setup-security-fido2	75a871245d2c51aaed0c267c7cb901350e8efed8
 bin/karchy-setup-security-fingerprint	bin/omarchy-setup-security-fingerprint	c1d8cb5d5a2b86db30de9e0f085bb2717cdc4bdb
@@ -200,9 +199,6 @@ bin/karchy-webapp-install	bin/omarchy-webapp-install	89f2223ef34b9cbd7d5c37535c7
 bin/karchy-webapp-remove	bin/omarchy-webapp-remove	b86837f5f233deb6e4c79201fb2a0ed12f30997a
 bin/karchy-webapp-window-class	bin/omarchy-webapp-window-class	99d2562ac1b0fe2779b139b15d1c0c1038bfecff
 default/alacritty/Alacritty.desktop	default/alacritty/Alacritty.desktop	f53c813e4c9e3ae59be3c79e10441d949c5727a2
-default/alacritty/screensaver.toml	default/alacritty/screensaver.toml	7db389ed920117cd971b0d0552677a7d3c15f370
-default/foot/screensaver.ini	default/foot/screensaver.ini	7130d0694949aa9f00dd395d3a3b0d1d8c13b2f9
-default/ghostty/screensaver	default/ghostty/screensaver	dc35906299ec47541f66f6c25f35feb5a600973f
 default/gtk/glass.css	default/gtk/glass.css	4c2c21910a0a0e229ca753723aa6c7b5b0fc08fb
 default/hypr/apps.lua	default/hypr/apps.lua	c230159418fad5b165aab67857f609eec324ab8a
 default/hypr/apps/browser.lua	default/hypr/apps/browser.lua	613ba64eb4294ff334d2f4a9893cf5338ed38279

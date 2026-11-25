@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.Commons
 import qs.Commons as Commons
 import "FingerprintModel.js" as FingerprintModel
+import "../screensaver"
 
 Item {
   id: root
@@ -99,6 +100,47 @@ Item {
   readonly property var idleService: shell && shell.serviceFor
     ? shell.serviceFor("karchy.idle") : null
   readonly property bool blankWhenLocked: !idleService || idleService.screenOffEnabled !== false
+  // The screensaver (D-184). The lock screen draws it while saverShown: the
+  // screensaver the session locked under goes on, and a lock screen left
+  // alone shows it again 5 seconds after it was last used, where the power
+  // source in use has a screensaver. A key, the pointer or a finger on the
+  // reader brings the password field back.
+  readonly property var screensaver: shell && shell.services ? shell.serviceFor("karchy.screensaver") : null
+  readonly property bool saverWanted: !!screensaver && !!idleService && idleService.screensaverTimeoutSeconds > 0
+  property bool saverShown: false
+  // The lock turned the screen off, and nothing has woken it since.
+  property bool screenDark: false
+
+  function showSaver(reason) {
+    if (!lockRequested || !screensaver || saverShown || screenDark) return
+    saverShown = true
+    screensaver.holdForLock(true)
+    logEvent("screensaver: " + reason)
+  }
+
+  function hideSaver() {
+    if (!saverShown) return
+    saverShown = false
+    if (screensaver) screensaver.holdForLock(false)
+  }
+
+  // The lock screen left alone: the screensaver where there is one and the
+  // launcher lets it start (not turned off, not on a low battery), else the
+  // screen off where a screen-off time is set.
+  function rest() {
+    if (saverWanted) {
+      if (!saverCheck.running) saverCheck.running = true
+      return
+    }
+    if (blankWhenLocked) runBlank()
+  }
+
+  // The idle service's screen-off time came while locked.
+  function blankNow() {
+    if (!lockRequested) return
+    idleBlankTimer.stop()
+    runBlank()
+  }
   readonly property bool fingerprintUnavailable: FingerprintModel.isUnavailable(fingerprintProbeStreak) || (fingerprintConfigured && (!fingerprintAttemptReachedDevice || fingerprintAttemptFastError) && FingerprintModel.isUnavailable(fingerprintUnreachedStreak))
 
   function realScreenCount() {
@@ -249,8 +291,13 @@ Item {
     }
 
     resetAuthenticationState()
+    screenDark = false
     lockRequested = true
-    armBlankTimer()
+    // Locking under the screensaver: it goes on, on the lock screen.
+    // Under one whose screen has already turned off, the screen stays off.
+    if (screensaver && screensaver.overlayShown && screensaver.paused) screenDark = true
+    else if (screensaver && screensaver.overlayShown) showSaver("locked under it")
+    else armBlankTimer()
     logEvent("lock-requested")
     queueSessionLock()
 
@@ -271,6 +318,7 @@ Item {
     pendingSessionLockTimer.stop()
     resetAuthenticationState()
     idleBlankTimer.stop()
+    hideSaver()
     sessionLock.locked = false
     logEvent("unlocked")
     runWake()
@@ -288,7 +336,7 @@ Item {
   }
 
   function armBlankTimer(delayMs) {
-    if (!blankWhenLocked) {
+    if (!blankWhenLocked && !saverWanted) {
       idleBlankTimer.stop()
       return
     }
@@ -315,6 +363,8 @@ Item {
   }
 
   function runWake() {
+    hideSaver()
+    screenDark = false
     if (!wakeProcess.running) wakeProcess.running = true
     if (lockRequested) armBlankTimer()
     resumeFingerprint()
@@ -411,6 +461,8 @@ Item {
   }
 
   function runBlank() {
+    hideSaver()
+    screenDark = true
     pauseFingerprint()
     if (!blankProcess.running) blankProcess.running = true
   }
@@ -533,6 +585,8 @@ Item {
     onSecureStateChanged: {
       root.logEvent("secure=" + secure)
       if (secure) {
+        // Every screen shows the lock now: the overlay it locked under can go.
+        if (root.screensaver) root.screensaver.end("locked")
         root.pendingSessionLock = false
         sessionLockStabilizeTimer.stop()
         pendingSessionLockTimer.stop()
@@ -550,6 +604,7 @@ Item {
       }
 
       if (!locked && root.lockRequested) {
+        root.hideSaver()
         root.lockRequested = false
         root.pendingSessionLock = false
         sessionLockStabilizeTimer.stop()
@@ -589,6 +644,20 @@ Item {
         onWakeRequested: root.runWake()
       }
 
+      // Over the lock screen while it rests; input still reaches the lock
+      // view under it, which wakes it.
+      Loader {
+        anchors.fill: parent
+        active: root.saverShown
+        sourceComponent: ScreensaverView { saver: root.screensaver }
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        visible: root.saverShown
+        acceptedButtons: Qt.NoButton
+        cursorShape: Qt.BlankCursor
+      }
     }
   }
 
@@ -850,7 +919,19 @@ Item {
       // Only a password check in flight should hold the display up. The
       // fingerprint PAM stays armed for the whole lock, so gating on
       // `authenticating` here would keep the panel lit until unlock.
-      if (root.lockRequested && !root.authenticatingPassword) root.runBlank()
+      if (root.lockRequested && !root.authenticatingPassword) root.rest()
+    }
+  }
+
+  // Whether the screensaver may start now (karchy-launch-screensaver check).
+  // A lock screen used meanwhile has armed the timer again and stays as it is.
+  Process {
+    id: saverCheck
+    command: ["karchy-launch-screensaver", "check"]
+    onExited: function(exitCode) {
+      if (!root.lockRequested || root.authenticatingPassword || idleBlankTimer.running) return
+      if (exitCode === 0) root.showSaver("left alone")
+      else if (root.blankWhenLocked) root.runBlank()
     }
   }
 
@@ -912,10 +993,22 @@ Item {
 
   // The screen-off time changed while locked: Settings, or the charger pulled
   // or plugged in. A screen already off stays off until it is used.
+  // The screensaver's time changed while locked (the charger, or Settings):
+  // one the source no longer has gives way to the lock screen.
+  onSaverWantedChanged: {
+    if (!lockRequested) return
+    if (!saverWanted && saverShown) {
+      hideSaver()
+      armBlankTimer()
+    } else if (saverWanted && !saverShown && !screenDark && !authenticatingPassword && !idleBlankTimer.running) {
+      armBlankTimer()
+    }
+  }
+
   onBlankWhenLockedChanged: {
     if (!lockRequested) return
-    if (blankWhenLocked && !authenticatingPassword) armBlankTimer()
-    else if (!blankWhenLocked) idleBlankTimer.stop()
+    if ((blankWhenLocked || saverWanted) && !authenticatingPassword) armBlankTimer()
+    else if (!blankWhenLocked && !saverWanted) idleBlankTimer.stop()
   }
 
   FileView {
@@ -971,6 +1064,7 @@ Item {
         passwordPam: root.passwordPamConfigured,
         blankWhenLocked: root.blankWhenLocked,
         blankTimer: idleBlankTimer.running,
+        screensaver: root.saverShown,
         fingerprint: root.fingerprintConfigured,
         fingerprintUnavailable: root.fingerprintUnavailable,
         authenticating: root.authenticating,

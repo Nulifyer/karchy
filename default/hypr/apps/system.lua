@@ -52,24 +52,6 @@ o.own_size_window({ class = "^karchy-shell$", title = "^Settings$", size = { 900
 o.own_size_window({ class = "^karchy-shell$", title = "^Quick install$", size = { 1000, 740 } })
 o.own_size_window({ class = "^karchy-shell$", title = "^Updates$", size = { 760, 640 } })
 
--- Fullscreen screensaver.
-o.window("org.karchy.screensaver", { fullscreen = true })
-o.window("org.karchy.screensaver", { float = true })
-o.window("org.karchy.screensaver", { animation = "slide" })
--- How screensaver.lua knows it.
-o.window("org.karchy.screensaver", { tag = "+screensaver" })
--- The launcher picks each screensaver's workspace. A terminal mapped again as it closes lands out of sight instead,
--- where its fullscreen rule cannot take fullscreen from a window.
-o.window("org.karchy.screensaver", { workspace = "special:screensaver silent" })
--- The screensaver's workspace is the focused one while it shows, so a window
--- that opened then landed on it and took its fullscreen, and the screensaver,
--- losing the keyboard, ended as if dismissed. Such a window opens on the
--- workspace the monitor was showing instead, as it would have, and leaves
--- the keyboard to the screensaver until it ends (screensaver.lua, D-179). A
--- password prompt is the shell's, above the screensaver.
-o.window({ workspace = "n[s:special:screensaver]", class = "negative:^(org\\.karchy\\.screensaver)$" },
-  { workspace = "m+0 silent", no_initial_focus = true })
-
 -- Popped window rounding.
 o.window({ tag = "pop" }, { rounding = 8 })
 

@@ -474,9 +474,8 @@ ShellRoot {
   }
 
   // Hyprland goes to the window's workspace and gives it the keyboard, and a
-  // floating window that gets the keyboard is raised (default/hypr/stacking.lua);
-  // while the screensaver shows, once it is gone (o.focus_window,
-  // default/hypr/activation.lua). The window is found by the shell's class and
+  // floating window that gets the keyboard is raised (default/hypr/stacking.lua,
+  // o.focus_window in default/hypr/activation.lua). The window is found by the shell's class and
   // its title together: a title alone ("Settings") can be another app's window.
   function focusPluginWindow(pluginId) {
     var loader = panelLoaders[pluginId]

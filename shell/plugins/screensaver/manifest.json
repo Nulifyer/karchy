@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "karchy.screensaver",
+  "name": "Screensaver",
+  "version": "1.0.0",
+  "author": "Karchy",
+  "description": "The screensaver: ttfx's effects on the branding art, drawn by the shell over every screen and on the lock screen.",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml"
+  }
+}

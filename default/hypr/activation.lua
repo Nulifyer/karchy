@@ -15,8 +15,6 @@
 -- end of this file tags Telegram's. A request that is not followed keeps the
 -- mark too, and the bar shows it on the window's workspace.
 
-local screensaver = require("default.hypr.screensaver")
-
 hl.on("window.urgent", function(window)
   if not (window and window.mapped) or o.window_tagged(window, "attention-only") then return end
 
@@ -32,7 +30,8 @@ hl.on("window.urgent", function(window)
     local workspace = current.workspace
     if workspace and workspace.special and not workspace.visible then return end
 
-    -- A menu that holds the keyboard keeps it; the window stays urgent.
+    -- A menu that holds the keyboard keeps it, and so does the screensaver,
+    -- which the shell draws as such a layer (D-184); the window stays urgent.
     for _, layer in ipairs(hl.get_layers() or {}) do
       if layer.mapped and layer.keyboard_interactivity == 1 then return end
     end
@@ -40,14 +39,6 @@ hl.on("window.urgent", function(window)
     -- So does a fullscreen game: losing the keyboard in the middle of a match
     -- costs more than an answer that waits. The window stays urgent.
     if o.fullscreen_game(hl.get_active_window()) then return end
-
-    -- So does the screensaver, which would end as if dismissed and take the
-    -- lock with it: a window asking for the keyboard is not somebody coming
-    -- back. It gets the keyboard once the screensaver is gone.
-    if screensaver.showing() then
-      screensaver.keyboard_after(current)
-      return
-    end
 
     local before = hl.get_active_workspace()
     hl.dispatch(hl.dsp.focus({ window = target }))
@@ -66,17 +57,12 @@ end)
 -- A window something asks to bring forward without a click: the shell's
 -- summon of a window that is already open (`karchy settings` with Settings
 -- open). Hyprland goes to its workspace and gives it the keyboard, and
--- stacking.lua raises it; while the screensaver shows, that waits until it is
--- gone. For `hyprctl dispatch 'o.focus_window("address:0x...")'`.
+-- stacking.lua raises it. For
+-- `hyprctl dispatch 'o.focus_window("address:0x...")'`.
 function o.focus_window(selector)
   return function()
     local window = hl.get_window(selector)
     if not (window and window.mapped) then return end
-
-    if screensaver.showing() then
-      screensaver.keyboard_after(window)
-      return
-    end
 
     hl.dispatch(hl.dsp.focus({ window = selector }))
   end

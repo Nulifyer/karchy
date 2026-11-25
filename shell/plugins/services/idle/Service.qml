@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import Quickshell.Services.UPower
 import Quickshell.Wayland
@@ -52,7 +51,7 @@ Item {
   readonly property bool hasBacklight: !!(shell && shell.brightnessKeys && shell.brightnessKeys.device)
   // What an idle stretch does on those times, each step in seconds idle and
   // 0 where it doesn't happen: the screensaver only before the screen turns
-  // off or the session locks, the dimming before the screen goes dark.
+  // off (the session locks under it), the dimming before the screen goes dark.
   readonly property var plan: IdleModel.plan(timeouts, hasBacklight)
   // The screensaver's time as set, and when it starts (0: it doesn't).
   readonly property int screensaverTimeoutSeconds: timeouts.screensaver
@@ -67,8 +66,8 @@ Item {
   readonly property bool idleTimersEnabled: screensaverEnabled || screenOffEnabled || lockEnabled || suspendNow
   // Seconds idle until the screen is dimmed on this power source, 0 for never.
   readonly property int dimAfterSeconds: plan.dim
-  // Seconds idle until this service turns the screen off, 0 where it doesn't:
-  // at Never, and where the lock comes first and turns it off itself.
+  // Seconds idle until this service turns the screen off, 0 at Never; locked
+  // or not (D-184).
   readonly property int screenOffAfterSeconds: plan.screenOff
   readonly property int firstIdleTimeoutSeconds: IdleModel.firstIdleTimeout(
     screensaverAfterSeconds, screenOffTimeoutSeconds, lockTimeoutSeconds, suspendTimeoutSeconds, dimAfterSeconds)
@@ -78,7 +77,15 @@ Item {
   readonly property int lockDelaySeconds: IdleModel.delayAfterFirstIdle(lockTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property int suspendDelaySeconds: IdleModel.delayAfterFirstIdle(suspendTimeoutSeconds, firstIdleTimeoutSeconds)
   readonly property bool idleEnabled: stayAwakeStateLoaded && !stayAwake
-  readonly property string screensaverClass: "org.karchy.screensaver"
+  // The screensaver is the shell's (D-184), and so is the lock it goes on
+  // under.
+  readonly property var screensaver: shell && shell.services ? shell.serviceFor("karchy.screensaver") : null
+  readonly property var lockService: shell && shell.services ? shell.serviceFor("karchy.lock") : null
+  readonly property bool screensaverShown: !!(screensaver && screensaver.overlayShown)
+
+  function sessionLocked() {
+    return !!(lockService && lockService.currentlyLocked && lockService.currentlyLocked())
+  }
 
   // Inhibitors that never reach the compositor: org.freedesktop.ScreenSaver
   // cookies (games, Electron, the portal) and logind locks, as reported by
@@ -211,7 +218,7 @@ Item {
   // service's to put back, is karchy-brightness-display's note: it dims
   // nothing that is already darker and undoes nothing somebody else has set
   // since. This service only says when:
-  // - dim: the dim timer, in an unlocked session with the screen still on.
+  // - dim: the dim timer, with the screen still on, locked or not.
   // - undim: activity (the end of the idle stretch), stay-awake, an inhibitor,
   //   the charger going in or out (karchy-power-source then sets that
   //   source's brightness, if it has one). The screen turning off and waking
@@ -232,8 +239,7 @@ Item {
     root.dimState = step.state
     if (step.run === "dim") {
       logEvent("dim", "to " + root.timeouts.dimBrightness + "%")
-      dimProcess.command = ["bash", "-lc",
-        "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || karchy-brightness-display dim " + root.timeouts.dimBrightness]
+      dimProcess.command = ["karchy-brightness-display", "dim", String(root.timeouts.dimBrightness)]
       dimProcess.running = true
     } else if (step.run === "undim") {
       logEvent("undim")
@@ -250,8 +256,6 @@ Item {
   onOnBatteryChanged: undimScreen()
   property string lastEvent: "starting"
   property string lastEventAt: ""
-  property var screensaverWindows: ({})
-  property int screensaverWindowCount: 0
 
   function nowIso() {
     return new Date().toISOString()
@@ -276,46 +280,55 @@ Item {
   }
 
   function launchScreensaver() {
-    // Nothing to draw on a screen that is already off.
-    if (root.screenOffThisCycle) return
+    // Nothing to draw on a screen that is already off. A locked session's
+    // lock screen shows the screensaver by itself.
+    if (root.screenOffThisCycle || root.sessionLocked()) return
     root.screensaverStartedThisCycle = true
     screensaverLaunchGraceTimer.restart()
-    runProcess(screensaverProcess, "screensaver", "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || karchy-launch-screensaver")
+    // The launcher decides whether it may start (the screensaver-off toggle,
+    // a low battery) and asks the screensaver service to show it.
+    runProcess(screensaverProcess, "screensaver", "karchy-launch-screensaver")
   }
 
-  // Ends a screensaver this service started, as the lock does. The window
-  // closing is then not the screensaver being dismissed by somebody; the
-  // caller ends the idle cycle itself.
+  // Ends a screensaver this service started. That is then not somebody
+  // coming back; the caller ends the idle cycle itself.
   function endScreensaver(reason) {
     if (!root.screensaverStartedThisCycle) return
     logEvent("screensaver-end", reason)
     root.screensaverStartedThisCycle = false
     screensaverLaunchGraceTimer.stop()
-    runProcess(screensaverEndProcess, "screensaver-end",
-      "pkill -x ttfx; timeout 1s pidwait -x ttfx; pkill -f '[o]rg.karchy.screensaver'; true")
+    if (root.screensaver) root.screensaver.end(reason)
   }
 
-  // The screen turns off on its own deadline, whether or not the session
-  // locks (settings audit F4). A locked session is left alone: the lock screen
-  // turns the screen off itself, 5 seconds after it appears or was last used.
+  // The screen turns off on its own deadline, locked or not (settings audit
+  // F4, D-184). The lock screen does it itself when locked, so it shows its
+  // password field, not the screensaver, when the screen comes back; a
+  // screensaver on the screen stops drawing.
   function turnScreenOff() {
     root.screenOffThisCycle = true
-    runProcess(screenOffProcess, "screen-off",
-      "[[ $(karchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || { karchy-brightness-keyboard off; karchy-brightness-display off; }")
+    if (root.sessionLocked() && root.lockService.blankNow) {
+      logEvent("screen-off", "the lock screen turns it off")
+      root.lockService.blankNow()
+      return
+    }
+    if (root.screensaver) root.screensaver.pause(true)
+    runProcess(screenOffProcess, "screen-off", "karchy-brightness-keyboard off; karchy-brightness-display off")
   }
 
+  // The session locks under the screensaver, which the lock screen takes
+  // over (D-184). The screen-off time and the dimming before it go on, as
+  // does sleep; the next activity ends them.
   function lockSystem(reason) {
     logEvent("lock-system", reason || "requested")
     screensaverTimer.stop()
-    screenOffTimer.stop()
     lockTimer.stop()
-    // A locked session is not dimmed. A screen dimmed before the lock stays
-    // so for the lock screen's 5 seconds and is put back as it goes dark.
-    dimTimer.stop()
     screensaverLaunchGraceTimer.stop()
     root.idledThisCycle = false
     root.screensaverStartedThisCycle = false
-    resetScreensaverWindows()
+    if (root.sessionLocked()) {
+      logEvent("lock-skip", "already locked")
+      return
+    }
     runProcess(lockProcess, "lock", "karchy-system-lock")
   }
 
@@ -344,7 +357,6 @@ Item {
     root.screenOffThisCycle = false
     root.idleSince = Date.now() - idleMonitor.timeout * 1000
     root.cyclePlan = root.planKey()
-    resetScreensaverWindows()
 
     // Set this cycle's deadlines once: a bound interval would restart a pending
     // timer from the moment shell.json changes, locking early or late.
@@ -364,8 +376,6 @@ Item {
       }
     }
 
-    // A screen-off time at or after the lock's is the lock screen's to keep:
-    // it turns the screen off 5 seconds after locking.
     if (root.screenOffAfterSeconds > 0) {
       if (root.screenOffDelaySeconds === 0) turnScreenOff()
       else {
@@ -411,51 +421,12 @@ Item {
 
     root.idledThisCycle = false
     root.screensaverStartedThisCycle = false
-    resetScreensaverWindows()
   }
 
-  function resetScreensaverWindows() {
-    root.screensaverWindows = ({})
-    root.screensaverWindowCount = 0
-  }
-
-  function setScreensaverWindow(address, visible) {
-    var next = IdleModel.screensaverWindowsAfter(root.screensaverWindows, address, visible)
-    root.screensaverWindows = next.windows
-    root.screensaverWindowCount = next.count
-  }
-
-  function handleScreensaverWindowOpened(address) {
-    setScreensaverWindow(address, true)
-    screensaverLaunchGraceTimer.stop()
-  }
-
-  function handleScreensaverWindowClosed(address) {
-    setScreensaverWindow(address, false)
-
+  // The screensaver's own input ended it: somebody is back.
+  function handleScreensaverDismissed() {
     if (!root.idleEnabled || !root.idledThisCycle || !root.screensaverStartedThisCycle) return
-    if (root.screensaverWindowCount > 0) return
-
-    // The user dismissed the screensaver before the lock deadline. Treat that
-    // as activity and cancel the pending lock; the lock timer is only allowed
-    // to fire while the screensaver remains up.
     root.cancelIdleCycle("screensaver-dismissed")
-  }
-
-  function eventParts(event, count) {
-    return IdleModel.eventParts(event, count)
-  }
-
-  function handleHyprlandEvent(event) {
-    var name = String(event && event.name ? event.name : "")
-    if (name === "openwindow") {
-      var open = eventParts(event, 4)
-      if (String(open[2] || "") === root.screensaverClass) root.handleScreensaverWindowOpened(open[0])
-    } else if (name === "closewindow") {
-      var close = eventParts(event, 1)
-      var address = String(close[0] || "")
-      if (root.screensaverWindows[address]) root.handleScreensaverWindowClosed(address)
-    }
   }
 
   function handleActiveSignal() {
@@ -470,15 +441,16 @@ Item {
       return
     }
 
-    // Starting the screensaver can make the compositor report activity. Keep
-    // the lock timer running once the screensaver exists (or during its short
-    // launch grace); Hyprland window events cancel the cycle if it exits before
-    // the normal lock deadline.
-    if (root.screensaverStartedThisCycle && (root.screensaverWindowCount > 0 || screensaverLaunchGraceTimer.running)) {
+    // Putting the screensaver up can make the compositor report activity, so
+    // the cycle stays armed for its short launch grace.
+    if (root.screensaverStartedThisCycle && screensaverLaunchGraceTimer.running) {
       logEvent("idle-monitor-active", "screensaver cycle remains armed")
       return
     }
 
+    // Input the screensaver never sees (a bound key, a touchscreen) still
+    // means somebody is back.
+    endScreensaver("activity")
     cancelIdleCycle("activity")
   }
 
@@ -517,7 +489,7 @@ Item {
       inhibitors: root.inhibitors,
       screensaverDelay: root.screensaverDelaySeconds,
       lockDelay: root.lockDelaySeconds,
-      screensaverWindows: root.screensaverWindowCount,
+      screensaverShown: root.screensaverShown,
       timers: {
         idleMonitorRearm: idleMonitorRearmTimer.running,
         screensaver: screensaverTimer.running,
@@ -622,13 +594,14 @@ Item {
   Timer {
     id: screenOffTimer
     repeat: false
-    onTriggered: if (root.idleEnabled && root.idledThisCycle && root.screenOffEnabled) root.turnScreenOff()
+    // Also after the lock, while the idle stretch lasts.
+    onTriggered: if (root.idleEnabled && root.idleSince > 0 && root.screenOffEnabled) root.turnScreenOff()
   }
 
   Timer {
     id: dimTimer
     repeat: false
-    onTriggered: if (root.idleEnabled && root.idledThisCycle && root.dimAfterSeconds > 0) root.dimScreen()
+    onTriggered: if (root.idleEnabled && root.idleSince > 0 && root.dimAfterSeconds > 0) root.dimScreen()
   }
 
   Timer {
@@ -658,24 +631,20 @@ Item {
     interval: 3000
     repeat: false
     onTriggered: {
-      if (root.idleEnabled && root.idledThisCycle && root.screensaverStartedThisCycle && root.screensaverWindowCount === 0 && !idleMonitor.isIdle) {
+      if (root.idleEnabled && root.idledThisCycle && root.screensaverStartedThisCycle && !root.screensaverShown && !idleMonitor.isIdle) {
         root.cancelIdleCycle("screensaver-not-running")
       }
     }
   }
 
   Connections {
-    target: Hyprland
-    function onRawEvent(event) { root.handleHyprlandEvent(event) }
+    target: root.screensaver
+    function onDismissed() { root.handleScreensaverDismissed() }
   }
 
   Process {
     id: screensaverProcess
     onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver exitCode=" + exitCode + " status=" + exitStatus) }
-  }
-  Process {
-    id: screensaverEndProcess
-    onExited: function(exitCode, exitStatus) { root.logEvent("process-exit", "screensaver-end exitCode=" + exitCode + " status=" + exitStatus) }
   }
   Process {
     id: screenOffProcess

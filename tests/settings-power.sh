@@ -154,24 +154,14 @@ stub hyprctl <<'STUB'
 [[ $1 == binds ]] && echo '[{"key": "XF86PowerOff", "modmask": 0, "description": "Power menu"}]'
 exit 0
 STUB
+# The screensaver's launcher asking the shell to show it is recorded.
 stub karchy-shell <<'STUB'
 #!/bin/bash
+if [[ $1 == screensaver && $2 == show ]]; then
+  echo "screensaver would start" >>/run/t/log
+  echo ok
+fi
 exit 0
-STUB
-# The screensaver's launcher gets as far as asking for the terminal, which
-# says there is none it can use; reaching that is recorded.
-stub xdg-terminal-exec <<'STUB'
-#!/bin/bash
-echo "screensaver would start" >>/run/t/log
-echo none
-STUB
-stub karchy-notification-send <<'STUB'
-#!/bin/bash
-exit 0
-STUB
-stub karchy-hyprland-monitor-focused <<'STUB'
-#!/bin/bash
-echo eDP-1
 STUB
 stub systemctl <<'STUB'
 #!/bin/bash
@@ -492,7 +482,10 @@ power set battery.saver on >/dev/null
 mkdir -p "$HOME/.local/state/karchy/toggles"; touch "$HOME/.local/state/karchy/toggles/screensaver-off"
 echo 80 >$t/percent; clear_log
 karchy-launch-screensaver >/dev/null 2>&1; is "the screensaver-off toggle still stops it at any charge" "$? [$(log)]" "1 []"
+karchy-launch-screensaver check >/dev/null 2>&1; is "…and check says so" "$?" "1"
 rm "$HOME/.local/state/karchy/toggles/screensaver-off"
+karchy-launch-screensaver check >/dev/null 2>&1; is "check: it would start, and nothing is shown" "$? [$(log)]" "0 []"
+karchy-launch-screensaver >/dev/null 2>&1; is "it starts: exit 0 when the shell shows it" "$? $(log)" "0 screensaver would start;"
 echo 10 >$t/percent
 jq '.battery.low = 0 | .battery.critical = 0' "$HOME/.config/karchy/shell.json" >$t/edit && cp $t/edit "$HOME/.config/karchy/shell.json"
 echo 1 >$t/percent
