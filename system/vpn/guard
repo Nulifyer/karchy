@@ -18,9 +18,13 @@
 #            On mode, so the NAS and printers still work)
 #   dns=     also plain DNS to these servers on the upstream link (the
 #            router's, for its local names)
-#   hairpin= a home router whose broken hairpin NAT answers from its own
-#            address: its WireGuard replies get the endpoint's address back
-#            before connection tracking, so ufw sees them as replies
+#   hairpin= the network's router: a home router whose hairpin NAT answers
+#            from its own address (the VPN server behind it, the laptop at
+#            home) sends WireGuard's replies from there, which ufw would drop
+#            as strangers. They get the endpoint's address back before
+#            connection tracking, so ufw sees them as replies. Harmless on any
+#            other network: WireGuard authenticates every packet, so one that
+#            only looks like the server's goes nowhere
 set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=common.sh
 source /usr/lib/karchy-vpn/common.sh
@@ -132,7 +136,7 @@ hairpin_chain=''
 if [[ -n $hairpin && -n $upstream && $endpoint != 127.0.0.1 ]]; then
   hairpin_chain="chain hairpin {
     type filter hook prerouting priority raw; policy accept;
-    iifname \"$upstream\" ip saddr $hairpin udp sport $VPN_ENDPOINT_PORT udp dport $VPN_CLIENT_PORT ip saddr set $endpoint
+    iifname \"$upstream\" ip saddr $hairpin udp sport $VPN_ENDPOINT_PORT ip saddr set $endpoint
   }"
 fi
 

@@ -164,10 +164,13 @@ polling:
   tunnel's live connection (not the saved one) gets NetworkManager's default
   VPN DNS priority instead of the negative one, so the router answers for its
   own domains (`nas.lan`) and the VPN for everything else.
-- If your VPN server is behind your home router and the router's hairpin NAT
-  answers from its own address, set `TRUSTED_GATEWAY` to the router's address:
-  on that network the kill switch's table gives those replies the endpoint's
-  address back before connection tracking sees them.
+- If your VPN server is behind your home router, the router's hairpin NAT may
+  answer from its own address instead of the server's public one, and the
+  firewall would drop those replies. The kill switch's table gives replies
+  from the current network's router on the server's port the server's
+  address back before connection tracking sees them, on every network and
+  for any client port, so nothing needs setting up. `TRUSTED_GATEWAY` and
+  `TRUSTED_INTERFACE` in older configurations are no longer used.
 
 Where the files are: the root helpers in `/usr/lib/karchy-vpn` (from
 `system/vpn` in karchy's repository), its units in `/usr/lib/systemd/system`,

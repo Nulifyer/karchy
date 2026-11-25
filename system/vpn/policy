@@ -300,11 +300,11 @@ if [[ $net_trusted == true && $HOME_LAN == yes ]]; then
   home=yes
   [[ -n $net_lan ]] && guard_args+=("lan=$net_lan")
   [[ -n $net_dns ]] && guard_args+=("dns=$net_dns")
-  if [[ -n $TRUSTED_GATEWAY && $TRUSTED_GATEWAY == "$net_gateway" &&
-    ( -z $TRUSTED_INTERFACE || $TRUSTED_INTERFACE == "$net_device" ) ]]; then
-    guard_args+=("hairpin=$TRUSTED_GATEWAY")
-  fi
 fi
+# The VPN server may sit behind this network's router, whose hairpin NAT can
+# answer from its own address: on every network, not only one set up by hand
+# (TRUSTED_GATEWAY, which this replaces), and whatever port the client uses.
+[[ -n $net_gateway ]] && guard_args+=("hairpin=$net_gateway")
 
 if [[ -e $NV_RUN/restart ]]; then
   rm -f "$NV_RUN/restart"

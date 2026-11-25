@@ -18,8 +18,9 @@ VPN_DNS='10.66.0.1'
 # On a trusted network in On mode, keep the local network and the router's
 # own names (nas.lan) reachable beside the tunnel.
 HOME_LAN='yes'
-# If the VPN server sits behind your home router and the router's hairpin NAT
-# answers from its own address: the router's address (and interface, optional).
+# No longer used: replies from the network's router on the server's port are
+# always taken as the server's (a home router whose hairpin NAT answers from
+# its own address). Accepted in older files.
 TRUSTED_GATEWAY=''
 TRUSTED_INTERFACE=''
 
