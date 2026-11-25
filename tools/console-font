@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Render karchy's monospace font as bitmap fonts for the screens before the
-desktop: the Linux console (PSF2) and Limine (a raw font, 8 dots wide).
+"""Render karchy's monospace font as bitmap fonts (PSF2) for the Linux
+console, the text screen before the desktop. The boot menu uses Limine's own
+font (D-182).
 
   tools/console-font --fonts /usr/share/fonts/TTF --out system/console
 
@@ -9,16 +10,11 @@ without a reserved name, so a bitmap derivative may keep the name; the licence
 ships beside the fonts). The results are committed, so building karchy's
 packages needs neither this script nor the TTF. Needs python-pillow.
 
-Every font holds the 256 characters of code page 437 in that order: Limine
-requires it, and the console's 256-glyph limit keeps all 16 colours. Letters
+Every font holds the 256 characters of code page 437 in that order: the
+console's 256-glyph limit keeps all 16 colours. Letters
 and symbols are rendered from the TTF without antialiasing. Lines, blocks and
 shades are drawn here so they meet at the cell edges, which the TTF's own
 don't at a bitmap cell's proportions.
-
-Limine takes only fonts 8 dots wide and enlarges them by whole numbers, so
-its font is 8x32 for `term_font_scale: 2x1`: a dot is two screen pixels wide
-and one tall, which gives the same 16x32 cell as an 8x16 font doubled both
-ways, with every row of the letters' curves and diagonals kept (D-154).
 """
 
 import argparse
@@ -29,18 +25,11 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-# Cell sizes: the console's, picked by screen height at boot, and Limine's,
-# in dots, with how many screen pixels Limine draws a dot as
-# (system/limine/limine-brand holds the same numbers).
+# Cell sizes, picked by screen height at boot.
 CONSOLE_SIZES = [(10, 20), (12, 24), (16, 32)]
-LIMINE_SIZE = (8, 32)
-LIMINE_SCALE = (2, 1)
 # Without antialiasing, Medium's stems come out an even two pixels in the
 # large cells; in the small ones only Regular keeps the letters open.
-# Limine's cell is the 16x32 one on screen, so it takes Medium too.
-WEIGHTS = {8: "Medium", 10: "Regular", 12: "Medium", 16: "Medium"}
-# Limine's letters are drawn this many times larger and reduced to dots.
-SUPERSAMPLE = 8
+WEIGHTS = {10: "Regular", 12: "Medium", 16: "Medium"}
 TTF_NAME = "JetBrainsMonoNerdFont-{}.ttf"
 
 # Code page 437 as Unicode, including its graphics in the control positions.
@@ -49,7 +38,7 @@ CP437 = [LOW[i] if i < 32 else "⌂" if i == 127 else bytes([i]).decode("cp437")
 
 # More characters the console can show with glyphs the font already has.
 # Characters the console needs more than code page 437's own at that
-# position: drawn in its place in the console fonts (Limine keeps the page).
+# position: drawn in its place.
 CONSOLE_GLYPHS = {"√": "✓"}
 
 ALIASES = {
@@ -102,20 +91,15 @@ def box_arms(char):
     return arms
 
 
-def draw_box(arms, w, h, tx=None, ty=None):
-    """tx, ty: how thick an upright and a level line are, in dots (they
-    differ where a dot isn't square on screen)."""
+def draw_box(arms, w, h):
     px = [[0] * w for _ in range(h)]
-    tx = tx or max(1, round(w / 8))
-    ty = ty or tx
-    gx, gy = tx, ty  # between the two lines of a double
-    band_x, band_y = 2 * tx + gx, 2 * ty + gy  # a double line's full width
-    cx, cy = (w - tx) // 2, (h - ty) // 2  # where a single line runs
-    bx, by = cx - tx - gx // 2, cy - ty - gy // 2  # where a double's band starts
-    if gx % 2 == 0:
-        bx = cx - (band_x - tx) // 2
-    if gy % 2 == 0:
-        by = cy - (band_y - ty) // 2
+    t = max(1, round(w / 8))  # line thickness
+    gap = t  # between the two lines of a double
+    band = 2 * t + gap  # a double line's full width
+    cx, cy = (w - t) // 2, (h - t) // 2  # where a single line runs
+    bx, by = cx - t - gap // 2, cy - t - gap // 2  # where a double's band starts
+    if gap % 2 == 0:
+        bx, by = cx - (band - t) // 2, cy - (band - t) // 2
     across = {"up": max(arms["left"], arms["right"]), "left": max(arms["up"], arms["down"])}
     across["down"], across["right"] = across["up"], across["left"]
 
@@ -127,15 +111,12 @@ def draw_box(arms, w, h, tx=None, ty=None):
                 px[y][x] = value
 
     # Each arm runs from its edge towards the centre. `length` is the cell's
-    # size along the arm, `c` and `b` the single and double positions, `t`,
-    # `g` and `band` a line's thickness, a double's gap and its full width:
-    # each along the arm (what the arm meets) and across it (the arm itself).
+    # size along the arm, `c` and `b` the single and double positions across it.
     def geometry(arm):
         vertical = arm in ("up", "down")
-        first = arm in ("up", "left")
-        if vertical:
-            return vertical, h, (cy, by, ty, gy, band_y), (cx, bx, tx, gx, band_x), first
-        return vertical, w, (cx, bx, tx, gx, band_x), (cy, by, ty, gy, band_y), first
+        length, c_along, b_along = (h, cy, by) if vertical else (w, cx, bx)
+        c_across, b_across = (cx, bx) if vertical else (cy, by)
+        return vertical, length, c_along, b_along, c_across, b_across, arm in ("up", "left")
 
     def span(from_edge, stop, length, first):
         """From the edge to `stop` (first arms) or from `stop` to the edge."""
@@ -144,41 +125,37 @@ def draw_box(arms, w, h, tx=None, ty=None):
     for arm, weight in arms.items():
         if weight == 0:
             continue
-        vertical, length, (c_along, b_along, t_along, g_along, band_along), \
-            (c_across, b_across, t_across, _, band_across), first = geometry(arm)
+        vertical, length, c_along, b_along, c_across, b_across, first = geometry(arm)
         if weight == 2:
             # Into a double crossing: fill its whole band, hollowed below.
             # Otherwise stop at the single line (or meet the opposite arm).
-            stop = (b_along + band_along if first else b_along) if across[arm] == 2 else (c_along + t_along if first else c_along)
-            fill(*span(0, stop, length, first), b_across, b_across + band_across, vertical, 1)
+            stop = (b_along + band if first else b_along) if across[arm] == 2 else (c_along + t if first else c_along)
+            fill(*span(0, stop, length, first), b_across, b_across + band, vertical, 1)
         else:
             # A single arm stops at the near line of a double crossing.
-            stop = (b_along + t_along if first else b_along + t_along + g_along) if across[arm] == 2 else (c_along + t_along if first else c_along)
-            fill(*span(0, stop, length, first), c_across, c_across + t_across, vertical, 1)
+            stop = (b_along + t if first else b_along + t + gap) if across[arm] == 2 else (c_along + t if first else c_along)
+            fill(*span(0, stop, length, first), c_across, c_across + t, vertical, 1)
     for arm, weight in arms.items():
         if weight != 2:
             continue
-        vertical, length, (c_along, b_along, t_along, g_along, _), \
-            (_, b_across, t_across, g_across, _), first = geometry(arm)
+        vertical, length, c_along, b_along, c_across, b_across, first = geometry(arm)
         if across[arm] == 2:
-            stop = b_along + t_along + g_along if first else b_along + t_along
+            stop = b_along + t + gap if first else b_along + t
         elif across[arm] == 1:
-            stop = c_along if first else c_along + t_along
+            stop = c_along if first else c_along + t
         else:
-            stop = c_along + t_along if first else c_along
-        fill(*span(0, stop, length, first), b_across + t_across, b_across + t_across + g_across, vertical, 0)
+            stop = c_along + t if first else c_along
+        fill(*span(0, stop, length, first), b_across + t, b_across + t + gap, vertical, 0)
     # A single line that runs straight through crosses whatever it meets.
     if arms["up"] == 1 and arms["down"] == 1:
-        fill(0, h, cx, cx + tx, True, 1)
+        fill(0, h, cx, cx + t, True, 1)
     if arms["left"] == 1 and arms["right"] == 1:
-        fill(0, w, cy, cy + ty, False, 1)
+        fill(0, w, cy, cy + t, False, 1)
     return px
 
 
-def draw_block(char, w, h, rows_per_dot=1):
-    """Blocks and shades as exact fractions of the cell. rows_per_dot: how
-    many rows are as tall as a dot is wide on screen, so a shade's pattern is
-    of squares."""
+def draw_block(char, w, h):
+    """Blocks and shades as exact fractions of the cell."""
     px = [[0] * w for _ in range(h)]
     regions = {
         "█": (0, 0, w, h),
@@ -199,7 +176,7 @@ def draw_block(char, w, h, rows_per_dot=1):
         "▓": lambda x, y: not (x % 2 == 0 and y % 2 == 0 and (x // 2 + y // 2) % 2 == 0),
     }
     if char in shades:
-        return [[int(shades[char](x, y // rows_per_dot)) for x in range(w)] for y in range(h)]
+        return [[int(shades[char](x, y)) for x in range(w)] for y in range(h)]
     return None
 
 
@@ -212,50 +189,11 @@ def render(char, font, w, h, baseline):
     return [[1 if cell.getpixel((x, y)) else 0 for x in range(w)] for y in range(h)]
 
 
-def render_dots(char, font, w, h, sx, sy, baseline):
-    """A character for a cell of w x h dots that are sx x sy screen pixels
-    each: drawn SUPERSAMPLE times larger than on screen, then a dot is on
-    when the letter covers half of it. The outline carries no hints for a dot
-    this wide, so the letter is tried at eight places within one dot's width
-    and the one that leaves the fewest half-covered dots is kept: that puts
-    the stems on whole dots."""
-    cell_w, cell_h = w * sx * SUPERSAMPLE, h * sy * SUPERSAMPLE
-    dot_w = sx * SUPERSAMPLE
-    best_score, best = -1.0, None
-    for shift in range(0, dot_w, max(1, dot_w // 8)):
-        image = Image.new("L", (cell_w * 3, cell_h * 3), 0)
-        left = cell_w + shift - dot_w // 2
-        ImageDraw.Draw(image).text((left, cell_h + baseline), char, font=font, fill=255, anchor="ls")
-        cell = image.crop((cell_w, cell_h, 2 * cell_w, 2 * cell_h)).resize((w, h), Image.BOX)
-        cover = [[cell.getpixel((x, y)) / 255 for x in range(w)] for y in range(h)]
-        score = sum((v - 0.5) ** 2 for row in cover for v in row)
-        if score > best_score:
-            best_score, best = score, cover
-    return [[1 if v >= 0.5 else 0 for v in row] for row in best]
-
-
-def glyphs(ttf, w, h, replace=None, scale=(1, 1)):
-    """scale: the screen pixels one dot is drawn as (Limine's font)."""
-    sx, sy = scale
-    tx = ty = None
-    if scale == (1, 1):
-        # The font's advance is 0.6 em; the size that makes it exactly w.
-        font = ImageFont.truetype(str(ttf), w / 0.6)
-        baseline = round(h * 0.77)
-
-        def draw(char):
-            return render(char, font, w, h, baseline)
-    else:
-        font = ImageFont.truetype(str(ttf), w * sx * SUPERSAMPLE / 0.6)
-        baseline = round(h * sy * SUPERSAMPLE * 0.77)
-        # Lines as thick on screen as a console font's of this cell.
-        thick = max(1, round(w * sx / 8))
-        tx, ty = max(1, thick // sx), max(1, thick // sy)
-
-        def draw(char):
-            return render_dots(char, font, w, h, sx, sy, baseline)
-
-    missing = draw("\uffff")
+def glyphs(ttf, w, h, replace=None):
+    # The font's advance is 0.6 em; the size that makes it exactly w.
+    font = ImageFont.truetype(str(ttf), w / 0.6)
+    baseline = round(h * 0.77)
+    missing = render("\uffff", font, w, h, baseline)
     out = []
     for char in CP437:
         px = None
@@ -264,11 +202,11 @@ def glyphs(ttf, w, h, replace=None, scale=(1, 1)):
         if px is None:
             arms = box_arms(char)
             if arms:
-                px = draw_box(arms, w, h, tx, ty)
+                px = draw_box(arms, w, h)
         if px is None:
-            px = draw_block(char, w, h, max(1, sx // sy))
+            px = draw_block(char, w, h)
         if px is None:
-            px = draw((replace or {}).get(char, char))
+            px = render((replace or {}).get(char, char), font, w, h, baseline)
             if px == missing:  # the font's "no such character" box
                 px = [[0] * w for _ in range(h)]
         out.append(px)
@@ -296,18 +234,14 @@ def psf2(all_px, w, h):
     return header + body + bytes(table)
 
 
-def preview(all_px, w, h, path, scale=(1, 1)):
-    """As on screen: each dot as scale's pixels."""
-    sx, sy = scale
-    image = Image.new("1", (w * sx * 32, h * sy * 8), 0)
+def preview(all_px, w, h, path):
+    image = Image.new("1", (w * 32, h * 8), 0)
     for index, px in enumerate(all_px):
-        ox, oy = index % 32 * w * sx, index // 32 * h * sy
+        ox, oy = index % 32 * w, index // 32 * h
         for y in range(h):
             for x in range(w):
                 if px[y][x]:
-                    for dy in range(sy):
-                        for dx in range(sx):
-                            image.putpixel((ox + x * sx + dx, oy + y * sy + dy), 1)
+                    image.putpixel((ox + x, oy + y), 1)
     image.save(path)
 
 
@@ -319,20 +253,14 @@ def main():
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
 
-    for w, h in [LIMINE_SIZE, *CONSOLE_SIZES]:
-        limine = (w, h) == LIMINE_SIZE
-        scale = LIMINE_SCALE if limine else (1, 1)
-        all_px = glyphs(args.fonts / TTF_NAME.format(WEIGHTS[w]), w, h, None if limine else CONSOLE_GLYPHS, scale)
-        if limine:
-            target = args.out / f"karchy-{w}x{h}.bin"
-            target.write_bytes(b"".join(pack(px, w) for px in all_px))
-        else:
-            target = args.out / f"karchy-{w}x{h}.psfu"
-            target.write_bytes(psf2(all_px, w, h))
+    for w, h in CONSOLE_SIZES:
+        all_px = glyphs(args.fonts / TTF_NAME.format(WEIGHTS[w]), w, h, CONSOLE_GLYPHS)
+        target = args.out / f"karchy-{w}x{h}.psfu"
+        target.write_bytes(psf2(all_px, w, h))
         print(f"{target} ({target.stat().st_size} bytes)")
         if args.preview:
             args.preview.mkdir(parents=True, exist_ok=True)
-            preview(all_px, w, h, args.preview / f"karchy-{w}x{h}.png", scale)
+            preview(all_px, w, h, args.preview / f"karchy-{w}x{h}.png")
     return 0
 
 

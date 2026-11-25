@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# karchy: gives the Limine boot menu karchy's name, colours and font.
+# karchy: gives the Limine boot menu karchy's name and colours.
 # Installed as /usr/lib/karchy/limine-brand; the installer runs it as root
 # after limine-update has written limine.conf, and it can be run again at any
 # time (a later karchy that changes the look runs it from a migration).
@@ -12,17 +12,10 @@
 # Options the tools own (timeout, default_entry, hash_mismatch_panic) are left
 # alone.
 #
-# The font is a file on the ESP, so its path carries the file's BLAKE2B hash:
-# with Secure Boot and an enrolled config Limine loads no file without one.
-# Limine skips a font it can't load or verify and uses its built-in one, so a
-# damaged or missing font file never stops a boot.
-#
-# Limine draws only fonts 8 dots wide and enlarges them by whole numbers. The
-# font is 8x32 and drawn at 2x1 (D-154, tools/console-font): a dot is two
-# pixels wide and one tall, so a letter is 16x32 pixels, as an 8x16 font
-# doubled both ways would be, but its curves and diagonals keep every row.
-# When Limine skips the font, its own 8x16 one is drawn at 2x1 too: wide, low
-# letters that still read.
+# The letters are Limine's own font, doubled both ways (D-182). Limine draws
+# only fonts 8 dots wide and enlarges them by whole numbers, so a font of
+# karchy's own (D-121, D-154) gave no more detail, and Limine's is made for
+# those 8 dots. The font files earlier karchys put on the ESP are removed.
 #
 # When limine.conf's hash is enrolled in the Limine binary (Secure Boot), a
 # changed limine.conf must be enrolled again: limine-update does that through
@@ -39,23 +32,11 @@ setting() {
 esp=$(setting ESP_PATH)
 esp=${esp:-/boot}
 config=$esp/limine.conf
-font_src=/usr/share/karchy/limine/karchy-8x32.bin
 font_dir=$esp/karchy
-font="font-8x32.bin"
 begin="### karchy: begin (written by /usr/lib/karchy/limine-brand, which replaces this block)"
 end="### karchy: end"
 
 [[ -f $config ]] || { echo "limine-brand: $config not found; run limine-update first" >&2; exit 1; }
-
-# Without karchy's font: Limine's own, doubled both ways.
-font_lines="term_font_scale: 2x2"
-if [[ -f $font_src ]] && install -Dm644 "$font_src" "$font_dir/$font"; then
-  hash=$(b2sum "$font_dir/$font" | cut -d' ' -f1)
-  font_lines="term_font: boot():/karchy/$font#$hash
-term_font_size: 8x32
-term_font_scale: 2x1
-term_font_spacing: 0"
-fi
 
 # The default theme (themes/nulifyer/colors.toml), which is what a karchy
 # machine shows before any user's theme can apply.
@@ -70,7 +51,7 @@ term_background: 202020
 term_foreground: ddc7a1
 term_background_bright: 7c6f64
 term_foreground_bright: ebdbb2
-$font_lines
+term_font_scale: 2x2
 $end"
 
 new=$(mktemp "$config.karchy.XXXXXX")
@@ -93,8 +74,9 @@ if ! cmp -s "$new" "$config"; then
   echo "limine-brand: $config updated"
   changed=1
 fi
-# The font of karchy before D-154, which no line names now.
-rm -f "$font_dir/font-8x16.bin"
+# The fonts of karchy before D-182, which no line names now.
+rm -f "$font_dir/font-8x16.bin" "$font_dir/font-8x32.bin"
+rmdir "$font_dir" 2>/dev/null || true
 ((changed)) || exit 0
 
 if [[ $(setting ENABLE_ENROLL_LIMINE_CONFIG) == "yes" ]]; then

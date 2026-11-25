@@ -1,8 +1,8 @@
-# The boot menu's letters are drawn from an 8x32 font at 2x1, not an 8x16 one
-# doubled both ways (D-154). The package brings the font and limine-brand;
-# this has limine-brand write its block of limine.conf again and put the font
-# on the ESP, which no package owns. Every user of the machine runs it; only
-# the first changes anything.
+# The boot menu's letters are Limine's own font, doubled both ways (D-182),
+# no longer a font of karchy's on the ESP (D-121, D-154). The package brings
+# the new limine-brand; this has it write its block of limine.conf again and
+# remove the font files from the ESP, which no package owns. Every user of
+# the machine runs it; only the first changes anything.
 limine=/etc/default/limine
 brand=/usr/lib/karchy/limine-brand
 
@@ -19,4 +19,7 @@ sudo true
 sudo grep -qs '^### karchy: begin' "$config" || { echo "$config has no karchy block: the menu stays as it is"; exit 0; }
 
 sudo "$brand"
-sudo grep -q '^term_font_size: 8x32$' "$config" || { echo "$config still has the old font after limine-brand"; exit 1; }
+if sudo grep -q '^term_font: ' "$config"; then
+  echo "$config still names a font file after limine-brand"
+  exit 1
+fi
