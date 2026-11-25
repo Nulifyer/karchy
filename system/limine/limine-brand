@@ -17,6 +17,13 @@
 # karchy's own (D-121, D-154) gave no more detail, and Limine's is made for
 # those 8 dots. The font files earlier karchys put on the ESP are removed.
 #
+# limine-snapper-sync rewrites limine.conf after every snapshot, from what it
+# read a moment before. Without its lock, a block written in between was put
+# back as it was (seen on the Framework 2026-11-25: the update's own "after"
+# snapshot undid the migration of D-182 in the same second). So the change is
+# made under limine's boot-partition lock (/usr/lib/limine/limine-mutex),
+# which every limine tool takes for the same file.
+#
 # When limine.conf's hash is enrolled in the Limine binary (Secure Boot), a
 # changed limine.conf must be enrolled again: limine-update does that through
 # its hooks, so this runs it after a change.
@@ -37,6 +44,16 @@ begin="### karchy: begin (written by /usr/lib/karchy/limine-brand, which replace
 end="### karchy: end"
 
 [[ -f $config ]] || { echo "limine-brand: $config not found; run limine-update first" >&2; exit 1; }
+
+# The boot partition's lock, held from reading limine.conf to writing it.
+mutex=/usr/lib/limine/limine-mutex
+locked=0
+if [[ -f $mutex ]]; then
+  # shellcheck source=/dev/null
+  source "$mutex"
+  mutex_lock "karchy-limine-brand" 120 || { echo "limine-brand: the boot partition stayed busy; try again" >&2; exit 1; }
+  locked=1
+fi
 
 # The default theme (themes/nulifyer/colors.toml), which is what a karchy
 # machine shows before any user's theme can apply.
@@ -77,6 +94,8 @@ fi
 # The fonts of karchy before D-182, which no line names now.
 rm -f "$font_dir/font-8x16.bin" "$font_dir/font-8x32.bin"
 rmdir "$font_dir" 2>/dev/null || true
+# limine-update takes the lock itself.
+((locked)) && mutex_unlock
 ((changed)) || exit 0
 
 if [[ $(setting ENABLE_ENROLL_LIMINE_CONFIG) == "yes" ]]; then
