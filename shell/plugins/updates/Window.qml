@@ -327,7 +327,6 @@ Item {
           text: "Check now"
           tooltipText: "Check for updates again (F5)"
           busy: root.checking
-          enabled: !root.checking
           onClicked: root.check()
         }
         Button {
@@ -374,7 +373,7 @@ Item {
             Layout.topMargin: Style.space(60)
             visible: root.plan === null
             centered: true
-            iconName: "update"
+            busy: true
             title: "Checking for updates"
             body: ""
           }
