@@ -154,13 +154,15 @@ function applyFrame(state, data) {
 // A block element that a terminal draws as part of its cell rather than as a
 // glyph, so that blocks meet without a seam in any font: 0 for none, else
 // which part (1 full, 2 upper half, 3 lower half, 4 left half, 5 right half).
+// Compared as code points: they are ttfx's characters, not the shell's own.
 function block(ch) {
-  switch (ch) {
-  case "█": return 1
-  case "▀": return 2
-  case "▄": return 3
-  case "▌": return 4
-  case "▐": return 5
+  if (typeof ch !== "string" || ch.length !== 1) return 0
+  switch (ch.charCodeAt(0)) {
+  case 0x2588: return 1
+  case 0x2580: return 2
+  case 0x2584: return 3
+  case 0x258C: return 4
+  case 0x2590: return 5
   }
   return 0
 }

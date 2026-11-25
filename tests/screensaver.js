@@ -5,7 +5,7 @@ const M = require(process.argv[2] + "/shell/plugins/screensaver/ScreensaverModel
 const eq = (a, b, msg) => assert.deepStrictEqual(a, b, msg)
 
 // The art's size counts characters, not UTF-16 units or trailing blanks.
-eq(M.artSize("█▀▄\n ab  \n\n"), { cols: 3, rows: 2 })
+eq(M.artSize(String.fromCharCode(0x2588, 0x2580, 0x2584) + "\n ab  \n\n"), { cols: 3, rows: 2 })
 eq(M.artSize(""), { cols: 0, rows: 0 })
 
 // One grid for every screen: the largest's cells, the art fitting the smallest.
@@ -56,5 +56,6 @@ eq(M.applyFrame(state, "\u{1F600}cd\n"), [0, 1, 2], "a character outside the BMP
 eq(state.chars[0], "\u{1F600}")
 eq(M.applyFrame(state, "abcdefgh\n"), [0, 1, 2, 3], "a row longer than the grid is cut at its edge")
 
-eq([M.block("█"), M.block("▀"), M.block("▄"), M.block("▌"), M.block("▐"), M.block("a")], [1, 2, 3, 4, 5, 0])
+const blocks = [0x2588, 0x2580, 0x2584, 0x258C, 0x2590].map((cp) => M.block(String.fromCharCode(cp)))
+eq(blocks.concat(M.block("a"), M.block(""), M.block(undefined)), [1, 2, 3, 4, 5, 0, 0, 0], "the full, upper, lower, left and right blocks")
 console.log("screensaver: ok")
