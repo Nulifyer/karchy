@@ -256,8 +256,7 @@ ColumnLayout {
         Layout.fillWidth: true
         fonts: root.fonts
         family: root.family
-        enabled: root.installingId === ""
-        opacity: enabled ? 1 : 0.6
+        busy: root.installingId !== ""
         busyLabel: root.installingId !== "" ? "Installing " + root.installingName + "…" : ""
         onChosen: function(family) { root.setFont(family) }
         onInstall: function(id, name, family) { root.installFont(id, name, family) }

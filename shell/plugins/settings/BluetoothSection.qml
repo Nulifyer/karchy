@@ -255,7 +255,10 @@ ColumnLayout {
       delegate: Card {
         id: deviceCard
         required property var modelData
-        readonly property bool busy: BluetoothControl.pendingAction(modelData.address) !== ""
+        readonly property string pending: BluetoothControl.pendingAction(modelData.address)
+        readonly property bool busy: pending !== ""
+        // The change the first button asks for.
+        readonly property bool connecting: pending === "connecting" || pending === "disconnecting"
         Layout.fillWidth: true
         iconName: modelData.connected ? "bluetooth.connected" : "bluetooth"
         title: modelData.label
@@ -264,7 +267,7 @@ ColumnLayout {
           Button {
             focusable: true
             bordered: true
-            enabled: !deviceCard.busy
+            busy: deviceCard.connecting
             text: deviceCard.modelData.connected ? Commons.I18n.t("bluetooth.disconnect") : Commons.I18n.t("bluetooth.connect")
             accessibleName: text + " " + deviceCard.modelData.label
             onClicked: {
@@ -324,7 +327,7 @@ ColumnLayout {
           focusable: true
           bordered: true
           // One pairing at a time.
-          enabled: BluetoothControl.pairingAddress === ""
+          enabled: BluetoothControl.pairingAddress === "" || busy
           busy: nearbyCard.pairingThis
           text: Commons.I18n.t("bluetooth.pair")
           accessibleName: text + " " + nearbyCard.modelData.label

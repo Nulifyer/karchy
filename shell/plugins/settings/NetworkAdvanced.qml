@@ -81,7 +81,7 @@ ColumnLayout {
       visible: root.hasWifi
       Layout.fillWidth: true
       showLabel: false
-      enabled: !countryAct.running
+      busy: countryAct.running
       value: root.country.override || "auto"
       options: root.countryOptions
       onChanged: function(value) {

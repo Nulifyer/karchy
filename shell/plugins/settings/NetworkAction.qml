@@ -14,7 +14,10 @@ Item {
   id: root
 
   property bool polkit: false
-  readonly property bool running: proc.running
+  // True from start to the answer, through both stages of an elevated run:
+  // a control that is busy for it stays busy without a gap.
+  readonly property bool running: proc.running || _between
+  property bool _between: false
   // The command's own words when it failed, "" otherwise (karchy's commands
   // write one sentence for people on stderr).
   property string error: ""
@@ -44,7 +47,7 @@ Item {
   visible: false
 
   function start(cmd, done, input) {
-    if (proc.running) return false
+    if (running) return false
     _input = input === undefined ? "" : String(input)
     error = ""
     _done = done || null
@@ -72,10 +75,12 @@ Item {
       _then = null
       _exited = false
       _streams = 0
+      _between = true
       // Next turn of the event loop: not from inside the first run's exit.
       Qt.callLater(function() {
         proc.command = next
         proc.running = true
+        root._between = false
       })
       return
     }

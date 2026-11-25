@@ -52,8 +52,11 @@ ColumnLayout {
     customEdited = false
   }
 
-  // Every setting at once, so root writes one consistent file.
-  function apply(changes) {
+  // Every setting at once, so root writes one consistent file. `what` names
+  // the control that asked (`act.tag`), so only that one is busy meanwhile.
+  function apply(changes, what) {
+    if (act.running) return
+    act.tag = what
     var next = {
       provider: dns.provider,
       encrypted: dns.encrypted ? "yes" : "no",
@@ -80,7 +83,7 @@ ColumnLayout {
     var name = tlsField.text.trim()
     var servers = addressesField.text.trim().split(/[\s,]+/).filter(function(s) { return s !== "" })
       .map(function(s) { return name !== "" ? s + "#" + name : s })
-    apply({ provider: "custom", servers: servers.join(" "), encrypted: name !== "" && dns.encrypted ? "yes" : "no" })
+    apply({ provider: "custom", servers: servers.join(" "), encrypted: name !== "" && dns.encrypted ? "yes" : "no" }, "custom")
   }
 
   // What a link's state means, in words.
@@ -145,7 +148,8 @@ ColumnLayout {
       id: providerBox
       Layout.fillWidth: true
       showLabel: false
-      enabled: !act.running
+      busy: act.running && act.tag === "provider"
+      enabled: !act.running || busy
       value: root.provider
       options: [
         { value: "network", label: "Automatic (from the network)" },
@@ -163,7 +167,7 @@ ColumnLayout {
           return
         }
         root.pendingProvider = value
-        root.apply({ provider: value })
+        root.apply({ provider: value }, "provider")
       }
     }
 
@@ -197,7 +201,7 @@ ColumnLayout {
       focusable: true
       variant: "primary"
       text: "Save DNS servers"
-      busy: act.running
+      busy: act.running && act.tag === "custom"
       enabled: addressesField.text.trim() !== ""
       onClicked: root.saveCustom()
     }
@@ -215,14 +219,14 @@ ColumnLayout {
     spacing: Style.spacing.md
 
     SettingRow {
-      enabled: root.canEncrypt
+      enabled: root.canEncrypt && (!act.running || busy)
       label: "Encrypted DNS"
       info: "DNS over TLS: the network can't see or change which sites you look up."
       // Why it can't be switched on.
       note: root.canEncrypt ? "" : "Needs the servers' certificate name."
       checked: root.dns.encrypted && root.canEncrypt
-      busy: act.running
-      onToggled: root.apply({ encrypted: checked ? "no" : "yes" })
+      busy: act.running && act.tag === "encrypted"
+      onToggled: root.apply({ encrypted: checked ? "no" : "yes" }, "encrypted")
     }
 
     // What the choice costs sits beside its switch while it is on, never
@@ -233,8 +237,9 @@ ColumnLayout {
       note: root.dns.fallback_allowed ? "" : "Websites won't load on networks that block encrypted DNS, or on sign-in pages."
       warning: !root.dns.fallback_allowed
       checked: !root.dns.fallback_allowed
-      busy: act.running
-      onToggled: root.apply({ fallback: checked ? "yes" : "no" })
+      busy: act.running && act.tag === "fallback"
+      enabled: !act.running || busy
+      onToggled: root.apply({ fallback: checked ? "yes" : "no" }, "fallback")
     }
 
     SettingRow {
@@ -242,8 +247,9 @@ ColumnLayout {
       info: "Off, a trusted network keeps its own DNS."
       note: root.dns.trusted_too ? "Local names such as nas.lan may stop working on trusted networks." : ""
       checked: root.dns.trusted_too
-      busy: act.running
-      onToggled: root.apply({ trusted: checked ? "no" : "yes" })
+      busy: act.running && act.tag === "trusted"
+      enabled: !act.running || busy
+      onToggled: root.apply({ trusted: checked ? "no" : "yes" }, "trusted")
     }
   }
 

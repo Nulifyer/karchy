@@ -332,7 +332,7 @@ ColumnLayout {
     visible: root.packaged && !root.info.configured && root.wireguardProfiles.length > 0
     focusable: true
     variant: "primary"
-    text: setupAct.running ? "Setting up…" : "Set up VPN"
+    text: "Set up VPN"
     busy: setupAct.running
     enabled: !root.setupNeedsDns || dnsField.text.trim() !== ""
     onClicked: root.setUp(root.setupProfile)
@@ -482,7 +482,8 @@ ColumnLayout {
     focusable: true
     bordered: true
     text: "Import WireGuard file…"
-    busy: chooser.running || importAct.running
+    // Not while the file is being chosen: that waits for the person.
+    busy: importAct.running
     onClicked: root.importFile()
   }
 

@@ -22,6 +22,11 @@ ColumnLayout {
   // Labels beside the controls when there is room, above them when not.
   readonly property bool wide: width >= Style.spacing.formWide
 
+  // The setting being changed, as "<monitor> <setting>": the control that
+  // asked is the one that is busy.
+  readonly property string applying: setProc.running && setProc.command.length > 3 && setProc.command[1] === "set"
+    ? setProc.command[2] + " " + setProc.command[3] : ""
+
   function apply(args) {
     root.error = ""
     setProc.command = ["karchy-settings-displays"].concat(args)
@@ -150,6 +155,10 @@ ColumnLayout {
 
   // One change at a time; the newest one made meanwhile runs next.
   property var nightQueued: null
+  // What the change in flight changes ("power", "schedule", "from", …): the
+  // control that asked is the one that is busy.
+  readonly property string nightActing: !nightProc.running || nightProc.command.length < 2 ? ""
+    : nightProc.command[1] === "set" ? String(nightProc.command[2] || "") : "power"
 
   function setNight(args) {
     if (nightProc.running) {
@@ -339,7 +348,7 @@ ColumnLayout {
       flush: true
       visible: root.night.installed
       checked: root.night.on
-      busy: nightProc.running
+      busy: root.nightActing === "power"
       accessibleName: "Night light"
       onToggled: root.setNight([root.night.on ? "off" : "on"])
     }
@@ -369,7 +378,7 @@ ColumnLayout {
       ToggleSwitch {
         flush: true
         checked: root.night.schedule
-        busy: nightProc.running
+        busy: root.nightActing === "schedule"
         accessibleName: "Night light on a schedule"
         onToggled: root.setNight(["set", "schedule", root.night.schedule ? "off" : "on"])
       }
@@ -480,7 +489,7 @@ ColumnLayout {
         visible: root.monitors.length > 1
         checked: card.monitor.enabled
         enabled: !card.lastOn
-        busy: setProc.running
+        busy: root.applying === card.monitor.name + " enabled"
         accessibleName: card.monitor.name
         onToggled: root.apply(["set", card.monitor.name, "enabled", card.monitor.enabled ? "false" : "true"])
       }

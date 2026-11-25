@@ -211,7 +211,7 @@ ColumnLayout {
         text: "Test sound"
         tooltipText: "Says \"front left\" and \"front right\" from each speaker"
         busy: testProc.running
-        enabled: AudioControl.hasOutput && !testProc.running
+        enabled: AudioControl.hasOutput
         onClicked: {
           root.error = ""
           testProc.running = true

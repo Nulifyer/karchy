@@ -55,6 +55,7 @@ ColumnLayout {
   }
 
   function change(args, title, onDone) {
+    if (changeProc.running) return
     root.error = ""
     root.addError = ""
     root.errorTitle = title
@@ -204,7 +205,7 @@ ColumnLayout {
       id: addButton
       focusable: true
       bordered: true
-      enabled: root.addValue !== "" && !changeProc.running
+      enabled: root.addValue !== ""
       busy: changeProc.running && root.errorTitle === "Couldn't add the key."
       text: root.addIsGithub ? "Add their GitHub keys" : "Add key"
       onClicked: if (enabled) root.change(["authorized", "add", root.addValue], "Couldn't add the key.",

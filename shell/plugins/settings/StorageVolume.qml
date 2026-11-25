@@ -275,7 +275,7 @@ ColumnLayout {
       focusable: true
       bordered: true
       busy: root.measuring
-      text: root.measuring ? "Measuring" : "Measure now"
+      text: "Measure now"
       accessibleName: "Measure now, " + root.name
       onClicked: root.page.measure(root.volume.path)
     }

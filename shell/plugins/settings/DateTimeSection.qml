@@ -166,7 +166,8 @@ ColumnLayout {
       id: zoneDropdown
       Layout.fillWidth: true
       showLabel: false
-      enabled: root.busy === ""
+      busy: root.busy === "timezone"
+      enabled: root.busy === "" || busy
       value: root.timezone
       options: root.timezones.length > 0 ? root.timezones : (root.timezone !== "" ? [root.timezone] : [])
       onChanged: function(value) { root.change("timezone", ["timezone", value], "Couldn't change the timezone.") }
@@ -177,6 +178,7 @@ ColumnLayout {
       label: "Set time automatically"
       checked: root.ntp
       busy: root.busy === "ntp"
+      enabled: root.busy === "" || busy
       warning: true
       note: root.loaded && !root.ntp ? "The clock drifts while this is off." : ""
       onToggled: root.change("ntp", ["ntp", checked ? "off" : "on"], "Couldn't change automatic time.")
