@@ -65,4 +65,12 @@ eq(M.formatAge(2), "just now"); eq(M.formatAge(59), "59 s ago"); eq(M.formatAge(
 eq(M.formatAge(7200), "2 h ago"); eq(M.formatAge(200000), "2 days ago")
 eq(M.formatBytes(0), "0 B"); eq(M.formatBytes(999), "999 B"); eq(M.formatBytes(1234567), "1.23 MB")
 eq(M.formatBytes(1e9), "1 GB"); eq(M.formatBytes(-1), ""); eq(M.formatBytes("x"), "")
+// The VPN's line says why it isn't up, where the VPN could tell.
+const why = (state, reason) => M.vpnStatusLine(M.parseVpnStatus(JSON.stringify({ mode: "on", state, reason, network: { trusted: true } })))
+eq(why("connecting", "keys-rejected"), "The server answers, but the keys don't match. Check the profile's preshared key. The internet is blocked.")
+eq(why("failed", "keys-rejected"), why("connecting", "keys-rejected"), "the same words while connecting and once failed")
+eq(why("failed", "probe-unanswered"), "Connected to the server, but its DNS server doesn't answer through the VPN. The internet is blocked.")
+eq(why("connecting", "no-handshake"), "Connecting. The internet is blocked until it's up.")
+eq(why("failed", "no-handshake"), "Can't connect. The internet is blocked.")
+eq(why("connecting", "starting"), "Connecting. The internet is blocked until it's up.")
 console.log("network model ok")

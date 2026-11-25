@@ -18,6 +18,11 @@
 #            On mode, so the NAS and printers still work)
 #   dns=     also plain DNS to these servers on the upstream link (the
 #            router's, for its local names)
+#
+# The table also counts WireGuard's handshake replies from the server
+# (counter "replies"), which the policy reads: replies with no handshake mean
+# the server answers but the keys don't match.
+#
 #   hairpin= the network's router: a home router whose hairpin NAT answers
 #            from its own address (the VPN server behind it, the laptop at
 #            home) sends WireGuard's replies from there, which ufw would drop
@@ -140,6 +145,14 @@ if [[ -n $hairpin && -n $upstream && $endpoint != 127.0.0.1 ]]; then
   }"
 fi
 
+# After the hairpin rewrite (priority raw), so a reply from the router's own
+# address counts too: message type 2 is a handshake reply.
+replies_chain="counter replies { }
+  chain replies {
+    type filter hook prerouting priority raw + 10; policy accept;
+    ip saddr $endpoint udp sport $VPN_ENDPOINT_PORT @th,64,8 2 counter name \"replies\"
+  }"
+
 ruleset="table inet $TABLE {
   chain output {
     type filter hook output priority -50; policy accept;
@@ -155,6 +168,7 @@ $(printf '    %s\n' "${rules[@]}")
     counter drop
   }
   $hairpin_chain
+  $replies_chain
 }"
 
 fingerprint=$(sha256sum <<<"$mode $ruleset" | cut -d' ' -f1)

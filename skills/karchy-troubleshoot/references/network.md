@@ -24,7 +24,7 @@ rfkill list
 4. Internet without names: `ping -c 3 1.1.1.1`.
 5. Names: `resolvectl query archlinux.org`.
 6. A sign-in page: `nmcli networking connectivity` prints `portal`.
-7. A VPN: `karchy-vpn status`. States `connecting`, `failed` and `paused` block ordinary traffic on purpose. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in the network panel or in Settings › Network › VPN. `protecting` with NetworkManager saying the link is "limited" is normal: NetworkManager's check runs outside the tunnel and the kill switch stops it. `off (no-profile)`: the VPN's profile was removed, and nothing is blocked.
+7. A VPN: `karchy-vpn status`. States `connecting`, `failed` and `paused` block ordinary traffic on purpose. That is the VPN working as designed: don't change it. Tell the user, who changes the VPN in the network panel or in Settings › Network › VPN. `protecting` with NetworkManager saying the link is "limited" is normal: NetworkManager's check runs outside the tunnel and the kill switch stops it. `off (no-profile)`: the VPN's profile was removed, and nothing is blocked. The reason in brackets says why a tunnel isn't up: `keys-rejected`, the server answers every handshake but the keys don't match (most often the preshared key: the user exports this computer's configuration from the server again and imports it); `probe-unanswered`, the handshake works but the VPN's DNS server doesn't answer through the tunnel (the server's routing); `no-handshake`, nothing came back (the server, its address or port, or the network on the way).
 
 ## DNS
 

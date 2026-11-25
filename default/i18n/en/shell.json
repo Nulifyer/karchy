@@ -381,6 +381,8 @@
   "network.vpnProtectingHome": "Protecting this connection. Local devices stay reachable.",
   "network.vpnConnecting": "Connecting. The internet is blocked until it's up.",
   "network.vpnFailed": "Can't connect. The internet is blocked.",
+  "network.vpnKeysRejected": "The server answers, but the keys don't match. Check the profile's preshared key. The internet is blocked.",
+  "network.vpnProbeUnanswered": "Connected to the server, but its DNS server doesn't answer through the VPN. The internet is blocked.",
   "network.vpnPaused": "Paused while you sign in",
   "network.vpnPausedUntil": "Paused while you sign in, until %1",
   "network.vpnStandingBy": "Standing by on a trusted network",

@@ -155,8 +155,16 @@ function vpnStatusLine(vpn, tr, formatTime) {
   case "protecting":
     if (vpn.network && vpn.network.trusted) return t("network.vpnProtectingHome", "Protecting this connection. Local devices stay reachable.")
     return t("network.vpnProtecting", "Protecting this connection")
-  case "connecting": return t("network.vpnConnecting", "Connecting. The internet is blocked until it's up.")
-  case "failed": return t("network.vpnFailed", "Can't connect. The internet is blocked.")
+  case "connecting":
+  case "failed":
+    // Why it isn't up yet, where the VPN could tell (system/vpn/policy).
+    if (vpn.reason === "keys-rejected")
+      return t("network.vpnKeysRejected", "The server answers, but the keys don't match. Check the profile's preshared key. The internet is blocked.")
+    if (vpn.reason === "probe-unanswered")
+      return t("network.vpnProbeUnanswered", "Connected to the server, but its DNS server doesn't answer through the VPN. The internet is blocked.")
+    return vpn.state === "connecting"
+      ? t("network.vpnConnecting", "Connecting. The internet is blocked until it's up.")
+      : t("network.vpnFailed", "Can't connect. The internet is blocked.")
   case "paused":
     var until = vpn.until && typeof formatTime === "function" ? formatTime(vpn.until) : ""
     return until !== ""

@@ -136,9 +136,17 @@ polling:
 | `off` | `mode` | direct |
 | `off` | `no-profile` (its profile is gone) | direct |
 | `standing-by` | `trusted` (Auto on a trusted network), `no-network` | direct, or none |
-| `connecting` | `starting`, `no-handshake` | blocked |
+| `connecting` | `starting`, `no-handshake`, `keys-rejected`, `probe-unanswered` | blocked |
 | `protecting` | `tunnel-up` | through the tunnel |
-| `failed` | `no-handshake`, `activation-failed` | blocked; retried every minute |
+| `failed` | `no-handshake`, `keys-rejected`, `probe-unanswered`, `activation-failed` | blocked; retried every minute |
+
+`keys-rejected`: the server answers every handshake, but WireGuard throws its
+replies away, so the keys don't match. Most often it is the preshared key:
+export this computer's configuration from the server again. The kill switch's
+table counts the replies (`nft list counter inet karchy_vpn_guard replies`).
+`probe-unanswered`: a fresh handshake, but `VPN_DNS` doesn't answer a ping
+through the tunnel, so the server's routing or that DNS server is the place to
+look. `no-handshake`: nothing came back.
 | `paused` | `sign-in` (`until`: the deadline) | web and DNS on that network only |
 
 `since` is when the state last changed.

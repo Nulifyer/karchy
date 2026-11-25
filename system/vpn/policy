@@ -69,7 +69,10 @@ publish() {  # publish <state> <reason> [until]
     [[ $since =~ ^[0-9]+$ ]] || since=$now
   fi
   nv_write_atomic "$NV_STATUS" "$(jq -c --argjson since "$since" '. + {since: $since}' <<<"$new")"
-  [[ $(jq -r '.state' <<<"$previous" 2>/dev/null) == "$state" ]] || log "$state${reason:+ ($reason)}${net_name:+ on $net_name}"
+  # A new state or a new reason for it ("connecting" turning into "keys don't
+  # match") is worth a line.
+  [[ $(jq -r '.state + " " + .reason' <<<"$previous" 2>/dev/null) == "$state $reason" ]] ||
+    log "$state${reason:+ ($reason)}${net_name:+ on $net_name}"
 }
 
 # ---- timers -----------------------------------------------------------------
@@ -176,6 +179,47 @@ seed_endpoint() {
   [[ -n $peer ]] || return 0
   wg set "$VPN_INTERFACE" peer "$peer" endpoint "$cached:$VPN_ENDPOINT_PORT"
   log "used the cached endpoint address $cached"
+}
+
+latest_handshake() {
+  wg show "$VPN_INTERFACE" latest-handshakes 2>/dev/null |
+    awk 'BEGIN { newest = 0 } $2 > newest { newest = $2 } END { print newest }' || true
+}
+
+# WireGuard's handshake replies from the server so far, as the guard's table
+# counts them (it starts again from 0 whenever the table is rebuilt).
+replies_counted() {
+  local n
+  n=$(nft -j list counter inet karchy_vpn_guard replies 2>/dev/null |
+    jq -r '[.nftables[]? | .counter? | select(. != null) | .packets][0] // 0' 2>/dev/null || true)
+  [[ $n =~ ^[0-9]+$ ]] && printf '%s\n' "$n" || printf '0\n'
+}
+
+# Why a tunnel that is up is not healthy, for the status:
+#   probe-unanswered  a fresh handshake, but VPN_DNS doesn't answer the probe
+#                     through the tunnel (the server's routing, or the DNS)
+#   keys-rejected     no fresh handshake, yet the server sent handshake
+#                     replies since the tunnel last worked: it read the
+#                     laptop's handshake, and WireGuard here threw its reply
+#                     away, so the keys don't match (most often the preshared
+#                     key; seen on the Framework 2026-11-25)
+#   no-handshake      nothing came back
+why_down() {
+  local latest replies baseline
+  latest=$(latest_handshake)
+  [[ $latest =~ ^[0-9]+$ ]] || latest=0
+  if (( latest > 0 && now - latest <= HANDSHAKE_MAX_AGE )); then
+    printf 'probe-unanswered\n'
+    return
+  fi
+  replies=$(replies_counted)
+  baseline=$(sed -n '1p' "$NV_RUN/replies-baseline" 2>/dev/null || true)
+  [[ $baseline =~ ^[0-9]+$ ]] && (( baseline <= replies )) || baseline=0
+  if (( replies - baseline > 0 )); then
+    printf 'keys-rejected\n'
+  else
+    printf 'no-handshake\n'
+  fi
 }
 
 healthy() {
@@ -338,6 +382,8 @@ now=$(date +%s)
 if healthy; then
   "$NV_LIB/guard" ready "${guard_args[@]}"
   clear_attempt
+  # Replies up to now belonged to handshakes that worked.
+  replies_counted >"$NV_RUN/replies-baseline"
   publish protecting tunnel-up
   schedule "$CHECK_PROTECTING"
   exit 0
@@ -354,14 +400,17 @@ if [[ $previous == protecting && ! -e $NV_RUN/check-failures ]]; then
 fi
 [[ $previous == protecting ]] && { printf '%s\n' "$now" >"$NV_RUN/connecting-since"; since=$now; }
 
+# Read before the guard closes: going from ready to closed rebuilds its
+# table, and the count starts again.
+why=$(why_down)
 "$NV_LIB/guard" closed "${guard_args[@]}"
 if (( now - since < CONNECT_TIMEOUT )); then
-  publish connecting no-handshake
+  publish connecting "$why"
   schedule "$CHECK_CONNECTING"
   exit 0
 fi
 
-publish failed no-handshake
+publish failed "$why"
 # Activation doesn't mean a handshake. A stuck tunnel is restarted now and
 # then with the guard closed, without changing the mode.
 last_retry=$(cat "$NV_RUN/last-retry" 2>/dev/null || printf 0)
