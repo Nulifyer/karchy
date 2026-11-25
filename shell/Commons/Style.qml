@@ -281,7 +281,7 @@ QtObject {
     // A page grows no wider than this in a window that does (a lone tile is
     // the whole screen): its controls end here, not a screen away from
     // their labels.
-    readonly property int pageMaxWidth: root.spacingToken("page-max-width", 720)
+    readonly property int pageMaxWidth: root.spacingToken("page-max-width", 1000)
     readonly property int formLabelWidth: root.spacingToken("form-label-width", 170)
     // Where a form's controls start, from the page's left edge: after the
     // label column and its gap. Values in a page's lists start there too.

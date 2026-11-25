@@ -307,6 +307,7 @@ Item {
         Layout.leftMargin: root.pagePadding
         Layout.rightMargin: root.pagePadding
         Layout.maximumWidth: Style.spacing.pageMaxWidth
+        Layout.alignment: Qt.AlignHCenter
         Layout.topMargin: Style.spacing.panelPadding
         Layout.bottomMargin: Style.spacing.lg
         iconName: "update"
@@ -353,7 +354,8 @@ Item {
 
         ColumnLayout {
           id: page
-          x: root.pagePadding
+          // In a window wider than the page grows, the page stands in the middle.
+          x: Math.max(root.pagePadding, Math.round((content.width - width) / 2))
           y: Style.spacing.lg
           width: Math.min(content.width - root.pagePadding * 2, Style.spacing.pageMaxWidth)
           spacing: Style.spacing.xxl

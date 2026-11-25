@@ -413,8 +413,10 @@ Item {
         Loader {
           id: sectionLoader
           // Less room at the sides in a narrow window, where the page needs it.
-          x: root.narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 2
-          width: Math.min(content.width - x * 2, Style.spacing.pageMaxWidth)
+          // In a window wider than the page grows, the page stands in the middle.
+          readonly property real side: root.narrow ? Style.spacing.panelPadding : Style.spacing.panelPadding * 2
+          x: Math.max(side, Math.round((content.width - width) / 2))
+          width: Math.min(content.width - side * 2, Style.spacing.pageMaxWidth)
           active: root.opened
           source: {
             switch (root.section) {
