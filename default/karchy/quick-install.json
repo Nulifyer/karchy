@@ -10319,9 +10319,9 @@
       "description": "Yet another remote desktop software, written in Rust. Works out of the box, no configuration required. Great alternative to TeamViewer and AnyDesk!",
       "icon": "rustdesk",
       "packages": [
-        "rustdesk-bin"
+        "rustdesk"
       ],
-      "source": "aur",
+      "source": "arch",
       "keywords": [
         "remote desktop",
         "teamviewer",
