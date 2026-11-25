@@ -63,6 +63,8 @@ tools/shell-render --payload '{"section":"power"}' settings wide:0x0 narrow:480x
 RENDER_MACHINE=desktop tools/shell-render --payload '{"section":"power"}' settings desktop:0x0   # the same page on a desktop
 tools/shell-render vms closed:480x700 open:480x700:Return chosen:480x700:Down\ Return   # the narrow pane: closed, opened with Enter, the next VM chosen
 tools/shell-render --repo <export of main> --out out/before quick-install wide:0x0   # another checkout's window, to compare (magick compare -metric AE)
+tools/shell-render ../tools/shell-render.d/BusyGallery.qml gallery:0x0   # every shared control idle, busy, busy while disabled by its caller, and disabled (docs/architecture.md › Busy)
+tools/shell-render --bin <dir with a karchy-update that sleeps> updates busy:0x0:F5\ wait=600   # a busy state: a stand-in command that keeps running, then the key that starts it
 ```
 
 - Each shot prints where the keyboard is, and anything that reaches past the window's edge ("cut") or was cut short ("elided"). `<out>/<name>.txt` is the visible text with its place.

@@ -18,6 +18,12 @@ import qs.Commons as Commons
 // middle of the space; the default inline form (panels) puts a smaller icon
 // beside left-aligned text, so it lines up with the rows it stands in for.
 // `actionHasCursor` lets a panel's keyboard cursor land on the action.
+//
+// `busy` is the same place while its content is being read: the `Spinner`
+// stands where the icon stands and `title` says what is read ("Checking for
+// updates"). It ends when the read does: with the content, with the empty
+// state (only after a read that succeeded), or with the failure and a way to
+// try again. Never leave it up after a read that failed.
 Item {
   id: root
 
@@ -26,6 +32,7 @@ Item {
   property string body: ""
   property string actionText: ""
   property bool centered: false
+  property bool busy: false
   property bool actionHasCursor: false
   property bool actionFocusable: centered
   property color foreground: Commons.Color.foreground
@@ -51,14 +58,24 @@ Item {
     rowSpacing: root.centered ? Style.spacing.lg : Style.spacing.md
 
     Text {
-      visible: root.iconName !== ""
+      id: icon
+      visible: root.iconName !== "" || root.busy
       Layout.alignment: root.centered ? Qt.AlignHCenter : (Qt.AlignTop | Qt.AlignLeft)
       Layout.rowSpan: root.centered ? 1 : 3
+      Layout.preferredWidth: root.busy ? font.pixelSize : -1
       textFormat: Text.PlainText
-      text: root.iconName !== "" ? Icons.glyph(root.iconName) : ""
+      text: root.iconName !== "" && !root.busy ? Icons.glyph(root.iconName) : ""
       color: root.dim
       font.family: Icons.family
       font.pixelSize: root.centered ? Style.font.displayLarge : Style.font.iconLarge
+
+      // Reading: the spinner in the icon's place, at the icon's size.
+      Spinner {
+        visible: root.busy
+        anchors.centerIn: parent
+        size: icon.font.pixelSize
+        color: root.dim
+      }
     }
 
     Text {

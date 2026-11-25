@@ -130,10 +130,12 @@ Every component owns its look; a caller places it and never overrides its height
 
 | Component | What it's for |
 |---|---|
-| `Button` | `variant`: `neutral` (default), `primary` (accent fill; the one action a page or dialog is for), `destructive` (error text and border; keep it apart and confirm it). `busy` spins `ui.busy` and takes no clicks. `focusable: true` in windows. The accessible name is the label, else the tooltip. |
-| `PanelActionButton` | The icon button. Its tooltip is its accessible name. |
+| `Button` | `variant`: `neutral` (default), `primary` (accent fill; the one action a page or dialog is for), `destructive` (error text and border; keep it apart and confirm it). `busy`: see Busy, below. `focusable: true` in windows. The accessible name is the label, else the tooltip. |
+| `PanelActionButton` | The icon button. Its tooltip is its accessible name. `busy` as `Button`. |
+| `Spinner` | The busy indication, and the only one: a ring with a quarter arc that turns about the ring's centre, drawn (not a glyph) so it holds the same `size` square in every frame and at every display scale. `size` is an icon size, `color` the text it stands beside. Still under reduced motion. Every busy control holds it (Busy, below). |
 | `SettingRow` | A switch as one line of a form on a window page: label in the label column, switch, optional `info` behind an (i), and one short `note` (with `warning`) for a consequence or why the setting has no effect, shown only while it applies. The form for every switch in Settings and the VM page (D-113). |
-| `ToggleSwitch`, `Toggle` | The switch and the labelled switch row of the bar panels (`flat: true` there: no box inside the panel's own). `ToggleSwitch.flush` makes the track the switch's box, for a form column or a heading line. `busy` pulses the knob (dims it under reduced motion). `accessibleName` wherever no label sits in the control. |
+| `ToggleSwitch`, `Toggle` | The switch and the labelled switch row of the bar panels (`flat: true` there: no box inside the panel's own). `ToggleSwitch.flush` makes the track the switch's box, for a form column or a heading line. `busy`: see Busy, below. `press()` is the one way a switch is flipped (its own click and keys, and a row that owns the click). `accessibleName` wherever no label sits in the control. |
+| `Dropdown`, `SearchableDropdown` | One choice from a list, the second with a filter. `busy` while the choice just made is applied (Busy, below). |
 | `PanelToolTip` | The one tooltip. `Button` and `PanelActionButton` use it; the bar's own tooltip window in `Bar.qml` does not yet. |
 | `PageHeader` | The top of a window page: title, optional caps status in a status color, optional icon, trailing controls (moved under the title when the page is narrow), and `explanation` behind an (i) button. |
 | `InfoTip` | An (i) for one control or label, opening on click, Enter or Space. Not for errors, warnings or what an action does. |
@@ -141,13 +143,41 @@ Every component owns its look; a caller places it and never overrides its height
 | `InlineMessage` | A condition that persists: `info`, `warning`, `error`. `text` says what failed in plain words; known failures in `details` (a closed password prompt, no network, a missing program; `Ui/Failure.js`) add a sentence; the raw output stays behind Details. Without `text`, the command's last line stands in. |
 | `Section` | A part of a window page: a rule, a small-caps heading with an optional (i) and trailing control (moved under the heading when the page is narrow), an optional status line, then its content, with no box. `titleTo` continues the heading after an arrow icon ("karchy 0.1.0 → 0.2.0" in Updates). What every page of Settings and of the Updates, VMs and Containers windows is built from (D-114). |
 | `Card` | A bordered box for one item among like items (a disk, a key, a connection, an image), with an optional title, subtitle and trailing controls. Not for a part of a page: that is a `Section`. |
-| `EmptyState` | Why a list is empty and the next step: inline in panels, `centered` in windows. |
+| `EmptyState` | Why a list is empty and the next step: inline in panels, `centered` in windows. `busy` is the same place while its content is read: the `Spinner` where the icon stands and a title that says what is read. |
 | `ListScrollBar` | The scrollbar of a list or page that can be longer than its view (`ScrollBar.vertical: ListScrollBar {}`): shown whenever there is more than fits, in the theme's text color. Not Qt's `ScrollBar`, which a dark theme hides and which only appears while scrolling. |
 | `KeyValueGrid` | Facts as label and value pairs with tabular figures; `columns`, `justify` for the panels' narrow form, copyable values. On a page, under 400 wide each label goes above its value (`stacked`). |
 | `OwnSize` | For a shell window that floats at its own size on a floating workspace (D-175): as the window opens, and when `refit()` is called, it asks Hyprland to size a floating window to the size it gives itself and center it. The rule in `default/hypr/apps` names the same size, so this only acts where a larger text size or a changed screen makes the window want another; a tile is left alone. |
 | `SidebarSwitcher` | A window's sidebar when the window is narrow (under `spacing.windowNarrow`): a bar across the top with a menu button and the window's name (the page's own heading is the title, D-178), and the sidebar's list as a pane that the button opens over the page (D-177). The window gives it `title` (its name), `status` (the line under the name), `value` (the open page, bound) and the sidebar's entries as `options` (`icon`, `detail`, `separator` for a rule above); it reports a choice with `changed` and never changes `value` itself. `note` is a line under the bar for what must stay in view, `tabbed` is for a window that keeps its own Tab order, `focusPage` for one that decides where the keyboard goes after a choice, `open()` for its Ctrl+F. The only narrow form of a sidebar. |
 | `PanelHero` | The top of every bar panel: icon (no empty slot without one), title, caps status, trailing control. |
 | `ConfirmDialog` | See above. |
+
+### Busy
+
+A control whose own action is running is **busy**. One rule for every control (D-181), from what the person must be able to tell: that the press was taken, that it is in progress, and when it is done.
+
+- **It looks active.** A busy control keeps its colors and its fill; it is never drawn in the disabled role, whatever `enabled` says. The shared controls draw it so, so `enabled: !proc.running` beside `busy: proc.running` still gives the right picture.
+- **It shows the `Spinner`, and nothing moves.** The control keeps its size, so no neighbor shifts. Where the spinner stands:
+
+| Control | Busy |
+|---|---|
+| `Button` | In the icon's place, the label beside it as before. A button with no icon shows it in place of its label, which still sizes the button and names it to a screen reader (the form of a store's Install button). |
+| `PanelActionButton` | In the icon's place. |
+| `ToggleSwitch`, `Toggle`, `SettingRow` | The knob goes at once to where the person put it and holds the spinner; the track keeps the confirmed state and follows when the change is done. A change that fails puts the knob back. |
+| `Dropdown`, `SearchableDropdown` | The trigger shows the choice just made, the spinner where the chevron stood. It doesn't open. |
+| `EmptyState` (`busy`) | Where the icon stands, for a list or page that is being read. |
+| A row or tile that is the control itself | A line of it says what is going on in words ("Mounting…", "Connecting…"), with the `Spinner` before the words where the line stands in for a button. |
+
+- **It takes no second press**, by pointer, Enter, Space or a screen reader's action, and shows no hover: the pointer is the plain arrow.
+- **It keeps the keyboard.** The Tab stop and the focus ring stay on it. This is why a caller must not disable a control for its own run: Qt takes the keyboard from a disabled item (the shared controls keep the ring drawn and Qt gives the focus back, but Tab starts from the top of the window meanwhile).
+- **Its label doesn't change.** `text` stays what it was; a caller doesn't swap in "Installing…". What a long run is doing is said in a line beside the control (a row's status, a section's subtitle, a page header's status), as a verb with "…", and that line ends with the run.
+- **It is busy for its own run only.** `busy` is bound to the change this control asked for (a tag on the shared process, the command that is running), never to "something on this page is running". A control that can't be used while another's run goes on is disabled for that time: `enabled: !running || busy`.
+- **It stays until its run ends**, even when what it was for has gone (`visible: … || busy`).
+- **Every run ends on screen.** Done: the result is where the person is looking (the knob's track fills, the row's status changes, the list has the item). Failed: the control is back as it was and an `InlineMessage` says what failed; a closed password prompt is not a failure. A place that was being read shows its content, or its empty state after a read that succeeded, or the failure with a way to try again.
+- **Reduced motion:** the arc stands still; the ring and arc still read as "working".
+
+The lock screen, the login screen and the password dialog say "Checking…" where their field's caption is, and the field keeps what is typed; they hold no button to spin.
+
+`tools/shell-render ../tools/shell-render.d/BusyGallery.qml gallery:0x0` draws every shared control idle, busy, busy while disabled by its caller, and disabled.
 
 ### Panels and windows
 

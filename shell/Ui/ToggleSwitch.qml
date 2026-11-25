@@ -11,10 +11,16 @@ import qs.Commons as Commons
 // optimistically (see the Tailscale service's `_desired`) get an instant knob
 // throw for free, because `checked` is already the optimistic value.
 //
-// `busy` marks an operation in flight: the knob pulses (or, with reduced
-// motion, dims) and further clicks are swallowed, while hover, cursor and
-// tooltips stay, so the control doesn't flicker every time a background
-// refresh runs.
+// `busy`: this switch's own change is under way (docs/architecture.md,
+// "Busy"). The knob goes at once to where the person put it and holds the
+// `Spinner`; the track keeps the state that is confirmed and follows when the
+// change is done. A change that fails puts the knob back, and the page says
+// why. Busy, the switch keeps its colors and the keyboard and takes no second
+// flip, whatever `enabled` says. Bind it to this switch's change only, never
+// to a run another control started.
+//
+// `press()` is the one way it is flipped: its own click and keys use it, and
+// so does a row that owns the click (`Toggle`, `SettingRow`).
 //
 // `accessibleName` is what a screen reader announces ("Bluetooth", "Wi-Fi");
 // set it wherever no visible label sits in the same control.
@@ -56,8 +62,38 @@ Item {
   signal toggled()
   signal hovered(bool isHovered)
 
+  // Where the person put the knob, while the change they asked for runs.
+  property bool _asked: false
+  property bool _target: false
+  readonly property bool _knobOn: busy && _asked ? _target : checked
+  // Busy is never drawn as disabled.
+  readonly property bool _shownEnabled: enabled || busy
+  // A busy switch a caller disabled had the keyboard and gets it back when
+  // enabled again (`focus` stays set), so its ring stays meanwhile.
+  readonly property bool _heldFocus: busy && !enabled && focus
+
+  onBusyChanged: if (!busy) _asked = false
+
+  function press() {
+    if (busy || !enabled) return
+    _target = !checked
+    _asked = true
+    toggled()
+    // A process reports that it runs a moment after it is started, so
+    // `busy` may follow the press; the press is forgotten if it doesn't.
+    if (!busy) settle.restart()
+  }
+
+  // Nothing became busy: the caller changed it at once, or refused.
+  Timer {
+    id: settle
+    interval: 250
+    onTriggered: if (!root.busy) root._asked = false
+  }
+
   readonly property alias containsMouse: mouse.containsMouse
-  readonly property bool hot: hasCursor || mouse.containsMouse
+  // Busy, the pointer changes nothing: there is nothing to flip.
+  readonly property bool hot: hasCursor || (mouse.containsMouse && !busy)
 
   activeFocusOnTab: focusable
 
@@ -65,12 +101,13 @@ Item {
   Accessible.name: root.accessibleName
   Accessible.checkable: true
   Accessible.checked: root.checked
-  Accessible.onToggleAction: if (!root.busy) root.toggled()
-  Accessible.onPressAction: if (!root.busy) root.toggled()
+  Accessible.description: root.busy ? Commons.I18n.t("common.busy") : ""
+  Accessible.onToggleAction: root.press()
+  Accessible.onPressAction: root.press()
 
-  Keys.onReturnPressed: if (focusable && !busy) root.toggled()
-  Keys.onEnterPressed: if (focusable && !busy) root.toggled()
-  Keys.onSpacePressed: if (focusable && !busy) root.toggled()
+  Keys.onReturnPressed: if (focusable) root.press()
+  Keys.onEnterPressed: if (focusable) root.press()
+  Keys.onSpacePressed: if (focusable) root.press()
 
   // `trackHeight` is settable so a compact placement — a switch riding a panel
   // section header, say — can ask for a genuinely smaller control instead of
@@ -105,7 +142,7 @@ Item {
 
   FocusRing {
     anchors.margins: root._outside
-    shown: root.cursorRing && (root.hasCursor || root.activeFocus)
+    shown: root.cursorRing && (root.hasCursor || root.activeFocus || root._heldFocus)
     radius: Style.radius.control
   }
 
@@ -127,25 +164,25 @@ Item {
       width: root.knobSize
       height: root.knobSize
       radius: root.rounded ? height / 2 : 0
-      x: root.checked !== root.mirrored ? track.width - width - root.knobInset : root.knobInset
+      x: root._knobOn !== root.mirrored ? track.width - width - root.knobInset : root.knobInset
       anchors.verticalCenter: parent.verticalCenter
       // Off, the knob is a quieter part of the control, still 4.5:1 on the
       // surface so the switch's state reads at a glance.
       // Disabled, it keeps its position but goes to the disabled text role.
-      color: !root.enabled ? Commons.Color.disabledText(root.foreground)
-        : root.checked ? Style.selectedStateColor(root.foreground, root.accent) : Commons.Color.secondaryText(root.foreground)
+      color: !root._shownEnabled ? Commons.Color.disabledText(root.foreground)
+        : root._knobOn ? Style.selectedStateColor(root.foreground, root.accent) : Commons.Color.secondaryText(root.foreground)
 
       Behavior on x { NumberAnimation { duration: Style.duration(Style.motion.fast); easing.type: Easing.OutCubic } }
       Behavior on color { ColorAnimation { duration: Style.duration(Style.motion.fast) } }
 
-      // Busy: the knob breathes while the change is under way.
-      opacity: root.busy && Style.reduceMotion ? 0.5 : 1
-      SequentialAnimation on opacity {
-        running: root.busy && !Style.reduceMotion
-        loops: Animation.Infinite
-        alwaysRunToEnd: true
-        NumberAnimation { from: 1; to: 0.35; duration: 600; easing.type: Easing.InOutSine }
-        NumberAnimation { from: 0.35; to: 1; duration: 600; easing.type: Easing.InOutSine }
+      // Busy: the spinner turns in the knob, in whichever of the page's two
+      // colors reads on it.
+      Spinner {
+        visible: root.busy
+        anchors.centerIn: parent
+        size: Math.max(6, root.knobSize - 2 * Math.max(1, Math.round(root.knobSize / 8)))
+        color: Util.contrast(knob.color, Commons.Color.background) >= Util.contrast(knob.color, Commons.Color.foreground)
+          ? Commons.Color.background : Commons.Color.foreground
       }
     }
   }
@@ -156,8 +193,8 @@ Item {
     anchors.margins: root._outside
     enabled: root.interactive
     hoverEnabled: true
-    cursorShape: root.busy ? Qt.BusyCursor : Qt.PointingHandCursor
+    cursorShape: root.busy ? Qt.ArrowCursor : Qt.PointingHandCursor
     onContainsMouseChanged: root.hovered(containsMouse)
-    onClicked: if (!root.busy) root.toggled()
+    onClicked: root.press()
   }
 }

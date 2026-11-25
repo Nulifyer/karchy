@@ -49,6 +49,7 @@ SettingRow 1.0 SettingRow.qml
 SidebarSwitcher 1.0 SidebarSwitcher.qml
 SizedImage 1.0 SizedImage.qml
 SpeedTestOverlay 1.0 SpeedTestOverlay.qml
+Spinner 1.0 Spinner.qml
 TextField 1.0 TextField.qml
 Toggle 1.0 Toggle.qml
 ToggleSwitch 1.0 ToggleSwitch.qml

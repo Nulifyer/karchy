@@ -31,6 +31,11 @@ import qs.Commons as Commons
 // list and Down comes back. Where neither side fits the whole popup it
 // takes the larger side and the list scrolls. Dropdown places its popup
 // the same way.
+//
+// `busy`: the choice just made is being applied (docs/architecture.md,
+// "Busy"), as in Dropdown: the choice (or `triggerLabel`) in full color, the
+// `Spinner` where the chevron stood, the keyboard kept and no opening,
+// whatever `enabled` says.
 Item {
   id: root
 
@@ -40,6 +45,7 @@ Item {
   property string placeholderText: Commons.I18n.t("common.search")
   property string emptyText: Commons.I18n.t("common.noMatches")
   property string triggerLabel: ""
+  property bool busy: false
 
   property color foreground: Commons.Color.popups.text
   property color background: Commons.Color.popups.background
@@ -69,9 +75,9 @@ Item {
   readonly property bool popupOpen: popup.opened
   // Puts the keyboard on the trigger, as Tab would (a page opened at it).
   function takeFocus() { trigger.forceActiveFocus(Qt.TabFocusReason) }
-  function open() { popup.open() }
+  function open() { if (!busy) popup.open() }
   function close() { popup.close() }
-  function toggle() { popup.opened ? popup.close() : popup.open() }
+  function toggle() { popup.opened ? popup.close() : root.open() }
 
   signal changed(string value)
   signal hovered(bool isHovered)
@@ -133,8 +139,10 @@ Item {
       height: root.rowHeight
       radius: Style.radius.control
 
-      readonly property bool _focused: trigger.activeFocus
-      readonly property bool _hot: triggerHover.hovered || root.hasCursor
+      // A busy trigger a caller disabled had the keyboard and gets it back
+      // when enabled again, so its ring stays meanwhile.
+      readonly property bool _focused: trigger.activeFocus || (root.busy && !root.enabled && trigger.focus)
+      readonly property bool _hot: (triggerHover.hovered && !root.busy) || root.hasCursor
       readonly property var _borderSpec: Border.controlSpec(trigger._focused || trigger._hot ? "hover-cursor" : "normal", root.foreground, root.accent)
 
       color: Style.controlFill(trigger._focused, trigger._hot, root.foreground, root.accent)
@@ -152,7 +160,7 @@ Item {
       Keys.onPressed: function(event) {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
             || event.key === Qt.Key_Space || event.key === Qt.Key_Down) {
-          popup.opened ? popup.close() : popup.open()
+          root.toggle()
           event.accepted = true
         } else if (event.key === Qt.Key_Escape && popup.opened) {
           popup.close(); event.accepted = true
@@ -167,7 +175,8 @@ Item {
         anchors.leftMargin: trigger.borderLeft + Style.spacing.controlPaddingX
         anchors.rightMargin: trigger.borderRight + Style.spacing.md
         text: root.currentLabel() || root.triggerLabel || root.placeholderText
-        color: (root.currentLabel() || root.triggerLabel) ? root.foreground : Commons.Color.secondaryText(root.foreground, root.background)
+        color: !root.enabled && !root.busy ? Commons.Color.disabledText(root.foreground, root.background)
+          : (root.currentLabel() || root.triggerLabel) ? root.foreground : Commons.Color.secondaryText(root.foreground, root.background)
         font.family: root.fontFamily
         font.pixelSize: Style.font.body
         elide: Text.ElideRight
@@ -178,21 +187,28 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: trigger.borderRight + Style.spacing.controlGap
+        opacity: root.busy ? 0 : 1
         text: Icons.glyph("ui.chevron.down")
-        color: Commons.Color.secondaryText(root.foreground, root.background)
+        color: root.enabled ? Commons.Color.secondaryText(root.foreground, root.background) : Commons.Color.disabledText(root.foreground, root.background)
         font.family: Icons.family
         font.pixelSize: Style.font.iconSmall
       }
 
+      Spinner {
+        visible: root.busy
+        anchors.centerIn: chevron
+        color: root.foreground
+      }
+
       MouseArea {
         anchors.fill: parent
-        cursorShape: Qt.PointingHandCursor
+        cursorShape: root.busy ? Qt.ArrowCursor : Qt.PointingHandCursor
         // CloseOnPressOutsideParent treats a press on the trigger as inside,
         // so the popup is still open here and a second click collapses it
         // instead of reopening.
         onClicked: {
           trigger.forceActiveFocus()
-          popup.opened ? popup.close() : popup.open()
+          root.toggle()
         }
       }
 

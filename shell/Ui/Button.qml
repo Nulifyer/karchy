@@ -21,8 +21,17 @@ import qs.Commons as Commons
 //                  it apart from the others and confirm it (ConfirmDialog).
 //
 // `enabled: false` draws the disabled text role and takes no clicks; callers
-// don't dim it themselves. `busy` keeps the label, spins a busy icon in
-// place of the icon and takes no clicks while the action runs.
+// don't dim it themselves.
+//
+// `busy`: the button's own action is running (docs/architecture.md, "Busy").
+// It keeps its size, its colors and the keyboard, and takes no second press.
+// The `Spinner` stands where the icon stood; a button with no icon shows it
+// in place of the label, which still sizes the button and names it to a
+// screen reader. Busy is drawn the same whatever `enabled` says, so a caller
+// that also binds `enabled` to the running action gets the right picture; it
+// should not, though: Qt takes the keyboard away from a disabled item.
+// Callers leave `text` alone while busy, and say what a long run is doing in
+// a line beside the button.
 //
 // All fills/borders come from `qs.Commons.Style` tokens, so themes
 // control the look via [controls] in shell.toml.
@@ -57,7 +66,6 @@ BorderSurface {
   property real fontSize: Style.font.body
   property real iconSize: Style.font.icon
   property real iconRotation: 0
-  property bool iconSpinning: false
   property real horizontalPadding: Style.spacing.controlPaddingX
   property real verticalPadding: Style.spacing.controlPaddingY
   property bool leftAlign: false
@@ -85,6 +93,7 @@ BorderSurface {
 
   Accessible.role: Accessible.Button
   Accessible.name: root.accessibleName
+  Accessible.description: root.busy ? Commons.I18n.t("common.busy") : ""
   Accessible.onPressAction: if (root._live) root.clicked()
 
   // Reserve the largest border any visual state can paint. Otherwise a
@@ -97,17 +106,23 @@ BorderSurface {
   radius: Style.radius.control
 
   readonly property bool _live: enabled && !busy
+  // Busy is never drawn as disabled.
+  readonly property bool _shownEnabled: enabled || busy
   readonly property bool _primary: variant === "primary"
   readonly property bool _destructive: variant === "destructive"
   // The color the label, icon and borders are drawn in.
-  readonly property color _ink: !enabled ? Commons.Color.disabledText(root.foreground)
+  readonly property color _ink: !_shownEnabled ? Commons.Color.disabledText(root.foreground)
     : _primary ? Commons.Color.accentText
     : _destructive ? Commons.Color.status.error
     : root.foreground
-  readonly property bool hot: enabled && (mouseArea.containsMouse || hasCursor)
+  // Busy, the pointer changes nothing: there is nothing to press.
+  readonly property bool hot: _shownEnabled && ((mouseArea.containsMouse && !busy) || hasCursor)
   // Where the keyboard is: Tab focus, or a panel's keyboard cursor (which the
-  // panels also move under the pointer, so it is their one highlight).
-  readonly property bool _showFocusRing: (focusable && activeFocus) || hasCursor
+  // panels also move under the pointer, so it is their one highlight). A busy
+  // button a caller disabled had the keyboard and gets it back when enabled
+  // again (`focus` stays set), so its ring stays meanwhile.
+  readonly property bool _heldFocus: busy && !enabled && focus
+  readonly property bool _showFocusRing: (focusable && (activeFocus || _heldFocus)) || hasCursor
   readonly property color _selectedColor: Style.selectedStateColor(root.foreground, root.accent)
   readonly property var _hoverBorderSpec: _primary ? Border.flat(Commons.Color.accent, Style.hoverBorderWidth)
     : Border.controlSpec("hover-cursor", root._ink, root._destructive ? root._ink : root.accent)
@@ -133,8 +148,9 @@ BorderSurface {
   readonly property real _reservedContentLeftInset: _reservedBorderLeft + leftPadding
   // Keyed on the text, not the Texts' visible: a hidden button (a width probe)
   // reports its children invisible too, which would collapse it to padding.
-  readonly property bool _spinning: root.iconSpinning || root.busy
-  readonly property real _iconRoom: root.iconText !== "" || root.busy ? iconGlyph.implicitWidth + (root.text !== "" ? row.spacing : 0) : 0
+  readonly property real _iconRoom: root.iconText !== "" ? iconGlyph.implicitWidth + (root.text !== "" ? row.spacing : 0) : 0
+  // With no icon to stand in for, the spinner stands in for the label.
+  readonly property bool _spinnerOverLabel: root.busy && root.iconText === ""
   readonly property real _contentNaturalWidth: _iconRoom + (root.text !== "" ? label.implicitWidth : 0)
   // A translated label can outgrow a button laid out at a fixed width (a
   // grid of equal pills): it first spends half the padding, then shrinks to
@@ -147,15 +163,15 @@ BorderSurface {
 
   // A primary button keeps its accent fill and shows hover and press by
   // mixing in its text color; the others lay the state fills over `background`.
-  readonly property color _primaryFill: !enabled ? Util.alpha(Commons.Color.accent, 0.35)
-    : mouseArea.pressed ? Util.mix(Commons.Color.accentText, Commons.Color.accent, 0.2)
+  readonly property color _primaryFill: !_shownEnabled ? Util.alpha(Commons.Color.accent, 0.35)
+    : mouseArea.pressed && _live ? Util.mix(Commons.Color.accentText, Commons.Color.accent, 0.2)
     : hot || _showFocusRing ? Util.mix(Commons.Color.accentText, Commons.Color.accent, 0.1)
     : Commons.Color.accent
   readonly property color _stateTint: _destructive ? Commons.Color.status.error : root.foreground
 
   color: _primary              ? _primaryFill
-    : !enabled                 ? (selected ? Style.selectedFillFor(root._ink, root.accent) : background)
-    : mouseArea.pressed        ? Style.pressedFillFor(root._stateTint, root.accent)
+    : !_shownEnabled           ? (selected ? Style.selectedFillFor(root._ink, root.accent) : background)
+    : mouseArea.pressed && _live ? Style.pressedFillFor(root._stateTint, root.accent)
     : _showFocusRing           ? Style.focusFillFor(root._stateTint, root.accent)
     : hot                      ? Style.hoverFillFor(root._stateTint, root.accent)
     : selected                 ? Style.selectedFillFor(root.foreground, root.accent)
@@ -217,30 +233,25 @@ BorderSurface {
     Text {
       id: iconGlyph
       textFormat: Text.PlainText
-      visible: root.iconText !== "" || root.busy
-      text: root.busy ? Icons.glyph("ui.busy") : root.iconText
-      color: root.selected && root.enabled ? root._selectedColor : root._ink
+      visible: root.iconText !== ""
+      // Busy, the icon keeps its room and the spinner is drawn in it.
+      opacity: root.busy ? 0 : 1
+      text: root.iconText
+      color: root.selected && root._shownEnabled ? root._selectedColor : root._ink
       font.family: Icons.family
       font.pixelSize: root.iconSize
-      rotation: root._spinning ? 0 : root.iconRotation
+      rotation: root.iconRotation
       transformOrigin: Item.Center
       anchors.verticalCenter: parent.verticalCenter
-
-      RotationAnimation on rotation {
-        from: 0
-        to: 360
-        duration: Style.duration(900)
-        loops: Animation.Infinite
-        running: root._spinning && !Style.reduceMotion
-      }
     }
 
     Text {
       id: label
       textFormat: Text.PlainText
       visible: root.text !== ""
+      opacity: root._spinnerOverLabel ? 0 : 1
       text: root.text
-      color: root.selected && root.enabled ? root._selectedColor : root._ink
+      color: root.selected && root._shownEnabled ? root._selectedColor : root._ink
       font.family: root.fontFamily
       font.pixelSize: root.fontSize
       font.bold: root.selected || root._primary
@@ -252,6 +263,15 @@ BorderSurface {
       elide: Text.ElideRight
       anchors.verticalCenter: parent.verticalCenter
     }
+  }
+
+  // In the icon's place, or in the middle of a button that has none.
+  Spinner {
+    visible: root.busy
+    size: root.iconSize
+    color: label.color
+    x: Math.round(root._spinnerOverLabel ? (root.width - width) / 2 : row.x + iconGlyph.x + (iconGlyph.width - width) / 2)
+    y: Math.round((root.height - height) / 2)
   }
 
   MouseArea {

@@ -8,7 +8,9 @@
 # Usage: tools/shell-render [options] <window> <shot>...
 #
 #   <window>   settings, quick-install, updates, vms, containers, or the path
-#              of a plugin's QML under shell/ (plugins/settings/Settings.qml)
+#              of a plugin's QML under shell/ (plugins/settings/Settings.qml).
+#              ../tools/shell-render.d/BusyGallery.qml is every shared
+#              control idle, busy and disabled on one page
 #   <shot>     name:WIDTHxHEIGHT[:steps]   one picture; 0x0 keeps the size the
 #              window gives itself. The steps are played first, in order,
 #              separated by spaces:
@@ -30,7 +32,8 @@
 #   --out <dir>        where the files go (default: out/shell-render)
 #   --bin <dir>        commands of your own, found before the stand-ins
 #                      (repeatable): a made-up `karchy-update --plan`, an
-#                      engine that fails
+#                      engine that fails, a command that sleeps to hold a
+#                      busy state for the picture
 #   --real             no stand-ins: the checkout's own commands on this host
 #   --repo <dir>       draw another checkout's shell with this tool: the same
 #                      window before a change, from an export of main

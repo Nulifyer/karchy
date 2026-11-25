@@ -180,7 +180,6 @@
   "ui.arrow.left": {"cp": "f004d", "nf": "md-arrow_left"},
   "ui.arrow.right": {"cp": "f0054", "nf": "md-arrow_right"},
   "ui.arrow.up": {"cp": "f005d", "nf": "md-arrow_up"},
-  "ui.busy": {"cp": "f0772", "nf": "md-loading"},
   "ui.check": {"cp": "f012c", "nf": "md-check"},
   "ui.checkbox.off": {"cp": "f0131", "nf": "md-checkbox_blank_outline"},
   "ui.checkbox.on": {"cp": "f0132", "nf": "md-checkbox_marked"},

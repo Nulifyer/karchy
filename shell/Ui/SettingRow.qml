@@ -29,6 +29,8 @@ ColumnLayout {
   property string command: ""
   property bool warning: false
   property bool checked: false
+  // This switch's own change is under way (ToggleSwitch;
+  // docs/architecture.md, "Busy").
   property bool busy: false
   // The label column's width; a longer label takes what it needs.
   property real labelWidth: Style.spacing.formLabelWidth
@@ -56,7 +58,7 @@ ColumnLayout {
       Layout.alignment: Qt.AlignVCenter
       textFormat: Text.PlainText
       text: root.label
-      color: root.enabled ? Commons.Color.foreground : Commons.Color.disabledText(Commons.Color.foreground)
+      color: root.enabled || root.busy ? Commons.Color.foreground : Commons.Color.disabledText(Commons.Color.foreground)
       font.family: Style.font.family
       font.pixelSize: Style.font.body
       // A label longer than a narrow page takes a second line before it is cut.
@@ -69,7 +71,7 @@ ColumnLayout {
         anchors.fill: parent
         enabled: root.enabled && !root.busy
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.toggled()
+        onClicked: toggle.press()
       }
     }
 
