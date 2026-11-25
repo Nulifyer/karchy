@@ -99,11 +99,12 @@ def preflight(c):
         fail("VPN_INTERFACE must match the connection's connection.interface-name")
     if c["VPN_DNS"] not in nm("ipv4.dns", profile=profile).replace(",", " ").split():
         fail("VPN_DNS must be in the connection's ipv4.dns")
-    priority = nm("ipv4.dns-priority", profile=profile)
+    # The DNS priority is the policy's: negative, or 50 on a trusted network
+    # in On mode, set on this profile before each connection (D-189).
     search = nm("ipv4.dns-search", profile=profile).split(",")
     routes = nm("wireguard.peer-routes", profile=profile)
-    if routes != "yes" or not priority.lstrip("-").isdigit() or int(priority) >= 0 or "~." not in search:
-        fail("the connection needs wireguard.peer-routes yes, a negative ipv4.dns-priority and ipv4.dns-search '~.'")
+    if routes != "yes" or "~." not in search:
+        fail("the connection needs wireguard.peer-routes yes and ipv4.dns-search '~.'")
     peers = nm("wireguard.peers", profile=profile)
     endpoints = re.findall(r"endpoint=([^\s,]+)", peers)
     if endpoints != [c["VPN_ENDPOINT_HOST"] + ":" + c["VPN_ENDPOINT_PORT"]] or "allowed-ips=0.0.0.0/0" not in peers:

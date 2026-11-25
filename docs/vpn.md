@@ -169,9 +169,14 @@ look. `no-handshake`: nothing came back.
   every 10 seconds after a failure, and at the end of a sign-in pause. In Off
   mode and while standing by, nothing runs.
 - On a trusted network in On mode, the local network stays reachable and the
-  tunnel's live connection (not the saved one) gets NetworkManager's default
-  VPN DNS priority instead of the negative one, so the router answers for its
-  own domains (`nas.lan`) and the VPN for everything else.
+  tunnel gets NetworkManager's default VPN DNS priority (50) instead of the
+  negative one, so the router answers for its own domains (`nas.lan`) and the
+  VPN for everything else. The policy sets the priority on the saved profile
+  before the tunnel comes up (-100 elsewhere), and reconnects once when a
+  network is trusted or untrusted while the tunnel is up. It never changes
+  the live connection: reapplying a WireGuard device makes NetworkManager set
+  the peer again without its preshared key, and the handshake then fails
+  (D-189).
 - If your VPN server is behind your home router, the router's hairpin NAT may
   answer from its own address instead of the server's public one, and the
   firewall would drop those replies. The kill switch's table gives replies

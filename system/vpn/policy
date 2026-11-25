@@ -157,7 +157,6 @@ tunnel_down() {
   if nv_vpn_active; then
     nmcli --wait 10 connection down "$VPN_CONNECTION" >/dev/null 2>&1 || true
   fi
-  rm -f "$NV_RUN/home-dns"
 }
 
 # The policy starts the tunnel itself; NetworkManager must not race it.
@@ -233,19 +232,19 @@ healthy() {
 
 # On a trusted network in On mode the router's own names (nas.lan, the DHCP
 # search domain) must still resolve. The tunnel's negative DNS priority hides
-# every other link's domains, so on its live connection only (never the saved
-# profile) it gets the VPN default priority instead: it still answers every
-# name except the router's own domains. Undone by the next activation.
-home_dns() {
-  local want=$1 applied
-  applied=$(cat "$NV_RUN/home-dns" 2>/dev/null || true)
-  if [[ $want == yes && $applied != yes ]] && nv_vpn_active; then
-    nmcli device modify "$VPN_INTERFACE" ipv4.dns-priority 50 >/dev/null 2>&1 &&
-      printf 'yes\n' >"$NV_RUN/home-dns"
-  elif [[ $want != yes && $applied == yes ]]; then
-    nmcli device reapply "$VPN_INTERFACE" >/dev/null 2>&1 || true
-    rm -f "$NV_RUN/home-dns"
-  fi
+# every other link's domains, so there it gets the VPN default priority
+# instead: it still answers every name except the router's own domains.
+# It is set on the saved profile before the tunnel comes up, never on the
+# live connection: reapplying a WireGuard device makes NetworkManager set the
+# peer again without its preshared key (an applied connection keeps no
+# secrets), and every handshake reply is then rejected (D-189, seen on the
+# Framework 2026-11-25). Returns 0 when the saved profile changed.
+dns_priority() {
+  local want=-100 have
+  [[ $1 == yes ]] && want=50
+  have=$(nmcli --escape no -g ipv4.dns-priority connection show "$VPN_CONNECTION" 2>/dev/null || true)
+  [[ $have == "$want" ]] && return 1
+  nmcli connection modify "$VPN_CONNECTION" ipv4.dns-priority "$want" >/dev/null 2>&1 || return 1
 }
 
 clear_attempt() {
@@ -260,7 +259,7 @@ clear_attempt() {
 if ! nmcli -t -f connection.id connection show "$VPN_CONNECTION" >/dev/null 2>&1; then
   "$NV_LIB/guard" off
   clear_attempt
-  rm -f "$NV_RUN/pause" "$NV_RUN/home-dns"
+  rm -f "$NV_RUN/pause"
   upstream=$(nv_upstream)
   [[ -n $upstream ]] && read_network "$upstream"
   publish off no-profile
@@ -355,6 +354,14 @@ if [[ -e $NV_RUN/restart ]]; then
   tunnel_down
 fi
 
+# The DNS priority for this network takes effect when the tunnel comes up: a
+# tunnel already up when it changes (the network was trusted or untrusted
+# meanwhile) comes up again with it.
+if dns_priority "$home" && nv_vpn_active; then
+  log "reconnecting for this network's DNS"
+  tunnel_down
+fi
+
 [[ -r $NV_RUN/connecting-since ]] || printf '%s\n' "$now" >"$NV_RUN/connecting-since"
 since=$(<"$NV_RUN/connecting-since")
 [[ $since =~ ^[0-9]+$ ]] || since=$now
@@ -376,7 +383,6 @@ if ! nv_vpn_active; then
 fi
 
 seed_endpoint
-home_dns "$home"
 now=$(date +%s)
 
 if healthy; then
