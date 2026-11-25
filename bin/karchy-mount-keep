@@ -125,7 +125,9 @@ keep() {
   # the file manager, doesn't know Windows (NetBIOS) names: use the .local name
   # avahi answers when the plain one doesn't resolve, rather than failing as if
   # the password were wrong.
-  if ! getent hosts "$server" >/dev/null 2>&1; then
+  # An IPv4 address needs no lookup: getent would look its name up instead,
+  # and an address without one would be turned away.
+  if [[ ! $server =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && ! getent hosts "$server" >/dev/null 2>&1; then
     if [[ $server != *.* ]] && getent hosts "$server.local" >/dev/null 2>&1; then
       echo "Using $server.local, the name this computer finds the server by."
       server="$server.local"
