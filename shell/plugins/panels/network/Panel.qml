@@ -1569,7 +1569,10 @@ Panel {
               bordered: true
               fontFamily: root.bar.fontFamily
               foreground: root.panelText
-              busy: (modelData.id === "vpn-retry" || modelData.id === "vpn-off") && vpnProc.running
+              // The one that was pressed: Retry runs `reconnect`, the other `mode off`.
+              busy: vpnProc.running && vpnProc.command.length > 1
+                && ((modelData.id === "vpn-retry" && vpnProc.command[1] === "reconnect")
+                  || (modelData.id === "vpn-off" && vpnProc.command[1] === "mode"))
               hasCursor: root.cursorActive && root.focusSection === "attention" && root.attentionIndex === index
               onHovered: function(on) { if (on) { root.cursorActive = true; root.focusSection = "attention"; root.attentionIndex = index } }
               onClicked: root.activateAttention(index)
@@ -2387,15 +2390,22 @@ Panel {
         borderSpec: Border.controlSpec("normal", root.panelText, Commons.Color.accent)
         radius: Style.cornerRadius
 
-        Text {
-          textFormat: Text.PlainText
-          anchors.fill: parent
-          horizontalAlignment: Text.AlignHCenter
-          verticalAlignment: Text.AlignVCenter
-          text: Commons.I18n.t("network.connecting")
-          color: root.panelText
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.bodySmall
+        // Where Connect stood: the spinner and what is going on.
+        Row {
+          anchors.centerIn: parent
+          spacing: Style.spacing.controlGap
+          Spinner {
+            anchors.verticalCenter: parent.verticalCenter
+            color: root.panelText
+          }
+          Text {
+            textFormat: Text.PlainText
+            anchors.verticalCenter: parent.verticalCenter
+            text: Commons.I18n.t("network.connecting")
+            color: root.panelText
+            font.family: root.bar.fontFamily
+            font.pixelSize: Style.font.bodySmall
+          }
         }
       }
 

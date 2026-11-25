@@ -688,6 +688,8 @@ Panel {
           visible: root.connectedDevices.length === 0 && root.scrollRows.length === 0
           width: parent.width
           iconName: !root.adapter || !root.adapter.enabled ? "bluetooth.off" : "bluetooth"
+          // On with nothing found yet: it keeps looking while the panel is open.
+          busy: !!root.adapter && root.adapter.enabled
           title: !root.adapter ? Commons.I18n.t("bluetooth.noBluetoothAdapter")
             : !root.adapter.enabled ? Commons.I18n.t("bluetooth.turnOnToScan")
             : Commons.I18n.t("bluetooth.scanning")
