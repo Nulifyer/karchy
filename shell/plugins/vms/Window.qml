@@ -161,7 +161,9 @@ Item {
     root.loaded = true
   }
 
-  // Run one karchy-vm command; its message or error shows at the top of the page.
+  // Run one karchy-vm command; its message or error shows at the top of the
+  // page. `label` names the run in `busy`, so the control that asked for it
+  // is the one that is busy ("Restoring <snapshot>", "Saving disk_size").
   function run(args, label, after) {
     if (actionProc.running) return
     root.error = ""
@@ -175,7 +177,7 @@ Item {
 
   function setKey(key, value) {
     if (!root.current) return
-    root.run(["set", root.selected, key, String(value)], "Saving…")
+    root.run(["set", root.selected, key, String(value)], "Saving " + key)
   }
 
   // Stop waits for the guest, so it runs detached and the list catches up.
@@ -189,11 +191,11 @@ Item {
   // Follow-ups live here, not in a page: a page can be gone (create swaps
   // to the new VM's page) by the time its command finishes.
   function startAndOpen(name) {
-    root.run(["start", name], "Starting " + name + "…", function() { root.openVm(name) })
+    root.run(["start", name], "Starting " + name, function() { root.openVm(name) })
   }
 
   function createVm(args, name, start) {
-    root.run(args, "Creating " + name + "…", function() {
+    root.run(args, "Creating " + name, function() {
       root.createIso = ""
       root.selected = name
       if (start) root.startAndOpen(name)
@@ -212,7 +214,7 @@ Item {
   function isoChosen(path) {
     if (root.isoTarget === "create") root.createIso = path
     else if (root.isoTarget === "set") root.setKey("iso", path)
-    else if (root.isoTarget === "boot" && root.current) root.run(["start", root.selected, "--iso", path], "Starting…")
+    else if (root.isoTarget === "boot" && root.current) root.run(["start", root.selected, "--iso", path], "Starting " + root.selected)
     root.isoTarget = ""
   }
 
@@ -798,6 +800,7 @@ Item {
               text: "Grow"
               bordered: true
               enabled: Model.validSize(growField.text.trim())
+              busy: root.busy === "Saving disk_size"
               onClicked: root.setKey("disk_size", growField.text.trim())
             }
           }
@@ -918,9 +921,10 @@ Item {
               focusable: true
               text: "Restore…"
               bordered: true
-              enabled: detail.editable
+              busy: root.busy === "Restoring " + modelData.name
+              enabled: detail.editable || busy
               onClicked: root.ask("Restore " + detail.vm.name + " to “" + modelData.name + "”? Changes since then are lost.", "Restore", function() {
-                root.run(["snapshot", "restore", detail.vm.name, modelData.name], "Restoring…")
+                root.run(["snapshot", "restore", detail.vm.name, modelData.name], "Restoring " + modelData.name)
               })
             }
             PanelActionButton {
@@ -930,9 +934,10 @@ Item {
               iconText: Icons.glyph("ui.delete")
               tooltipText: "Delete snapshot"
               hoverColor: Commons.Color.status.error
-              enabled: detail.editable
+              busy: root.busy === "Deleting snapshot " + modelData.name
+              enabled: detail.editable || busy
               onClicked: root.ask("Delete snapshot “" + modelData.name + "”?", "Delete", function() {
-                root.run(["snapshot", "delete", detail.vm.name, modelData.name], "Deleting snapshot…")
+                root.run(["snapshot", "delete", detail.vm.name, modelData.name], "Deleting snapshot " + modelData.name)
               })
             }
           }
@@ -956,12 +961,14 @@ Item {
             text: "Take snapshot"
             iconText: Icons.glyph("snapshot")
             bordered: true
-            enabled: Model.validName(snapName.text.trim())
+            // The name is cleared as the snapshot starts.
+            enabled: Model.validName(snapName.text.trim()) || busy
+            busy: root.busy === "Saving snapshot"
             onClicked: {
               var snap = snapName.text.trim()
               if (!Model.validName(snap)) return
               snapName.text = ""
-              root.run(["snapshot", "create", detail.vm.name, snap], "Saving snapshot…")
+              root.run(["snapshot", "create", detail.vm.name, snap], "Saving snapshot")
             }
           }
         }
@@ -975,17 +982,19 @@ Item {
           title: "Force off"
           description: "Like pulling the plug: anything unsaved in the VM is lost. Use it when it won't shut down."
           actionText: "Force off…"
+          actionBusy: root.busy === "Forcing off"
           onTriggered: root.ask("Force " + detail.vm.name + " off? Like pulling the plug: anything unsaved in it is lost.", "Force off", function() {
-            root.run(["kill", detail.vm.name], "Forcing off…")
+            root.run(["kill", detail.vm.name], "Forcing off")
           })
         }
         DangerRow {
           title: "Delete this VM"
           description: "Deletes " + detail.vm.path + ": the disk, its snapshots and the firmware settings." + (detail.running ? " Shut it down first." : "")
           actionText: "Delete VM…"
-          actionEnabled: detail.editable
+          actionBusy: root.busy === "Deleting"
+          actionEnabled: detail.editable || actionBusy
           onTriggered: root.ask("Delete " + detail.vm.name + " and its disk? This can't be undone.", "Delete", function() {
-            root.run(["delete", detail.vm.name, "--yes"], "Deleting…")
+            root.run(["delete", detail.vm.name, "--yes"], "Deleting")
           })
         }
       }
@@ -1056,6 +1065,7 @@ Item {
     property string description: ""
     property string actionText: ""
     property bool actionEnabled: true
+    property bool actionBusy: false
     signal triggered()
     Layout.fillWidth: true
     columns: root.wide ? 2 : 1
@@ -1079,6 +1089,7 @@ Item {
       variant: "destructive"
       text: danger.actionText
       enabled: danger.actionEnabled
+      busy: danger.actionBusy
       onClicked: danger.triggered()
     }
   }
