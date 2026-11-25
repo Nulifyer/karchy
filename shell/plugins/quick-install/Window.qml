@@ -96,6 +96,10 @@ Item {
   // The running install is the picked apps' (the bar's button spins for it),
   // not one row's.
   property bool applyingPicked: false
+  // How many apps the bar's Install button is for: the picked ones, and
+  // through its own run the number it started with (they leave the selection
+  // as they finish, and a busy button keeps its size).
+  readonly property int pickedToInstall: applyingPicked ? lastRun.length : selectedToInstall.length
   property string logPath: ""
   property bool multilibOn: false
   property var pendingRemove: null
@@ -922,9 +926,13 @@ Item {
             anchors.centerIn: parent
             width: parent.width
             centered: true
+            // The Installed list is empty until what is installed has been
+            // read, and stays so when that couldn't be.
+            busy: !root.searching && root.category === "installed" && !root.statusLoaded
             iconName: root.searching ? "quick-install" : Model.categoryIcon(root.category)
             title: root.searching ? "No app matches “" + root.query.trim() + "”"
-              : root.category === "installed" ? (root.statusLoaded ? "Nothing from this list is installed yet" : "Reading what's installed…")
+              : root.category === "installed" ? (!root.statusLoaded ? "Reading what's installed"
+                : root.statusFailed ? "What is installed couldn't be read" : "Nothing from this list is installed yet")
               : "This category is empty"
             body: root.searching ? "Any other package can be installed from the menu: Packages › Install Package." : ""
             actionText: root.searching ? "Search all packages…" : ""
@@ -1014,15 +1022,14 @@ Item {
               Button {
                 id: installPickedButton
                 // Kept while its run goes on, though the apps leave the
-                // selection as they finish; busy, it takes no clicks itself,
-                // so it stays enabled and draws its spinner in full color.
+                // selection as they finish.
                 visible: root.selectedToInstall.length > 0 || busy
                 enabled: !root.applying || busy
                 focusable: true
                 busy: root.applyingPicked
                 bordered: true
                 variant: "primary"
-                text: busy ? "Installing…" : "Install " + Model.plural(root.selectedToInstall.length, "app", "apps")
+                text: "Install " + Model.plural(root.pickedToInstall, "app", "apps")
                 Keys.onTabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
                 Keys.onBacktabPressed: function(event) { root.tabFromBar(installPickedButton, event) }
                 onClicked: root.installSelected()
@@ -1289,10 +1296,9 @@ Item {
           focusable: row.current
           bordered: true
           // With apps picked, the bar's Install N apps is the main action.
-          variant: row.current && !row.running && root.selectedToInstall.length === 0 ? "primary" : "neutral"
+          variant: row.current && root.selectedToInstall.length === 0 ? "primary" : "neutral"
           busy: row.running
-          text: row.running ? (root.applyVerb === "remove" ? "Removing…" : "Installing…")
-            : row.installedHere ? "Open" : "Install"
+          text: row.installedHere ? "Open" : "Install"
           tooltipText: ""
           enabled: row.installedHere || !row.otherRunning
           Keys.onTabPressed: function(event) { row.tabFrom(actionButton, event) }
