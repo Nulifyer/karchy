@@ -24,7 +24,7 @@ karchy/
 │                             uwsm env, greetd template, pacman repos and hooks…
 ├── install/                  installer form, disk, base and setup steps, base package list
 ├── packaging/                PKGBUILDs (pkgbuilds/) and the build that makes the [karchy] repo
-├── tools/                    vm, rebrand, icon-check
+├── tools/                    vm, rebrand, icon-check, busy-check
 ├── vendor/upstream.tsv       each file's Omarchy origin path and blob, for upstream review
 ├── LICENSE                   MIT: karchy's and Omarchy's copyright lines
 ├── docs/  .agents/
@@ -177,7 +177,7 @@ A control whose own action is running is **busy**. One rule for every control (D
 
 The lock screen, the login screen and the password dialog say "Checking…" where their field's caption is, and the field keeps what is typed; they hold no button to spin.
 
-`tools/shell-render ../tools/shell-render.d/BusyGallery.qml gallery:0x0` draws every shared control idle, busy, busy while disabled by its caller, and disabled.
+`tools/busy-check` (in CI) fails on a turning or endless animation outside `Spinner`, the busy pointer, the icon font's loading glyph, a shared control with `busy` and no `Spinner`, `enabled` or `text` bound to the same run as `busy`, and a loading `EmptyState` without `busy`. `tools/shell-render ../tools/shell-render.d/BusyGallery.qml gallery:0x0` draws every shared control idle, busy, busy while disabled by its caller, and disabled.
 
 ### Panels and windows
 

@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Icons come from the icon map (D-64)
         run: tools/icon-check
+      - name: Busy is shown the one way (D-181)
+        run: tools/busy-check
 
   nvidia-generation:
     runs-on: ubuntu-latest

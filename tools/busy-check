@@ -1,0 +1,253 @@
+#!/usr/bin/env python3
+"""Check that "busy" is shown the one way (docs/architecture.md, "Busy"; D-181).
+
+Usage:
+  tools/busy-check            Check the working tree; exit 1 on any problem
+
+A control whose own action is running is `busy`: it holds Ui/Spinner, keeps
+its size, its colors, its label and the keyboard, and takes no second press.
+The shared controls draw that whatever `enabled` says. This fails on what
+brought the faded, tumbling spinner (the one fixed in D-181) and on the ways
+it could come back, in the shell's QML and JS (shell/, addons/):
+  - a turning indication outside Ui/Spinner: a RotationAnimation anywhere
+    else, or an endless animation (Animation.Infinite) in a file that isn't
+    named in ENDLESS with what it is
+  - the busy or wait pointer (Qt.BusyCursor, Qt.WaitCursor): a second busy
+    indication, in the cursor theme's own style
+  - the icon font's loading glyph, by its name in the icon map (BUSY_ICONS)
+    or as a map entry (md-loading): a quarter arc stretched to fill its box,
+    which tumbles when turned
+  - a shared control (shell/Ui) that declares `busy` and neither holds a
+    Spinner nor hands `busy` to a part that does
+  - beside a `busy:` binding, in the same object:
+      `enabled:` that turns the control off while the same action runs
+      (`busy: proc.running` with `enabled: … && !proc.running`). Busy already
+      takes no press, and Qt takes the keyboard away from a disabled item.
+      Leave it out, or end it with `|| busy` where other runs disable it
+      `text:` that changes with the same action (`busy ? "Installing…" :
+      "Install"`): a busy control keeps its label and its size; say what a
+      long run is doing in a line beside it
+  - an EmptyState whose title ends in "…" without `busy:`: a place that is
+    being read shows the Spinner, and its title needs no dots
+What it cannot see: a `busy` bound to another control's run (bind it to the
+control's own change), a control that is hidden before its run ends, and a
+run with no end on failure. Those are in the rule; look for them in review.
+`tools/shell-render ../tools/shell-render.d/BusyGallery.qml gallery:0x0`
+draws every shared control idle, busy, busy while disabled, and disabled.
+"""
+
+import os
+import re
+import subprocess
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SHELL_DIRS = ("shell/", "addons/")
+SPINNER = "shell/Ui/Spinner.qml"
+ICON_MAP = "default/karchy/icons.json"
+# Names the loading glyph had in the map.
+BUSY_ICONS = re.compile(r"""["']ui\.busy["']""")
+BUSY_GLYPH = re.compile(r'"nf"\s*:\s*"md-loading"')
+# Animations that never end, and what each one is. None of them says "busy".
+ENDLESS = {
+    SPINNER: "the spinner",
+    "shell/plugins/panels/power/Panel.qml": "the battery bar's pulse while charging",
+    "shell/plugins/services/media/BarWidget.qml": "a long track title scrolling while it plays",
+}
+BUSY_CURSOR = re.compile(r"\bQt\.(?:BusyCursor|WaitCursor)\b")
+DECLARES_BUSY = re.compile(r"^\s*property\s+bool\s+busy\b", re.M)
+HOLDS_SPINNER = re.compile(r"\bSpinner\s*\{")
+HANDS_BUSY_ON = re.compile(r"^\s*busy\s*:\s*root\.busy\s*$", re.M)
+BINDING = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*:(?!:)\s*(.*)$")
+# What a `busy:` expression is made of: root.checking, proc.running,
+# root.busy("add"), card.pairingThis.
+TERM = re.compile(r"[A-Za-z_][\w.]*(?:\([^()]*\))?")
+WORDS = {"true", "false", "null", "undefined", "busy"}
+
+
+def tracked(prefixes, extensions):
+    out = subprocess.run(["git", "ls-files", "-co", "--exclude-standard", "--"] + list(prefixes),
+                         cwd=ROOT, capture_output=True, text=True, check=True).stdout.split("\n")
+    return [f for f in out if f.endswith(extensions) and os.path.isfile(os.path.join(ROOT, f))]
+
+
+def blank(text):
+    """Comments blanked and string contents replaced by spaces, line for line,
+    so braces and words inside them don't count. Returns (code, with_strings):
+    `code` has neither, `with_strings` keeps the strings."""
+    code, kept = [], []
+    i, n, quote = 0, len(text), ""
+    while i < n:
+        ch, two = text[i], text[i:i + 2]
+        if quote:
+            kept.append(ch)
+            if ch == "\\" and i + 1 < n:
+                code.append("  ")
+                kept.append(text[i + 1])
+                i += 2
+                continue
+            if ch == quote or (ch == "\n" and quote != "`"):
+                code.append(ch)
+                quote = ""
+            else:
+                code.append(" " if ch != "\n" else "\n")
+        elif two == "//":
+            end = text.find("\n", i)
+            end = n if end == -1 else end
+            code.append(" " * (end - i))
+            kept.append(" " * (end - i))
+            i = end
+            continue
+        elif two == "/*":
+            end = text.find("*/", i + 2)
+            end = n if end == -1 else end + 2
+            filler = "".join(c if c == "\n" else " " for c in text[i:end])
+            code.append(filler)
+            kept.append(filler)
+            i = end
+            continue
+        else:
+            if ch in "\"'`":
+                quote = ch
+            code.append(ch)
+            kept.append(ch)
+        i += 1
+    return "".join(code), "".join(kept)
+
+
+def objects(code, kept):
+    """Every object in a QML file as {name: (line number, expression)} of the
+    bindings written directly in it. An expression runs to the next binding,
+    child object or the object's end."""
+    lines, kept_lines = code.split("\n"), kept.split("\n")
+    stack, found = [{"bindings": {}, "last": None, "depth": 0}], []
+    paren = 0
+    for number, line in enumerate(lines, 1):
+        here = stack[-1]
+        text = kept_lines[number - 1]
+        match = BINDING.match(line) if paren == 0 else None
+        inline_object = match and re.match(r"^[A-Z][\w.]*\s*\{", match.group(2))
+        if match and not inline_object and not match.group(2).lstrip().startswith("{") or (
+                match and match.group(2).strip() == ""):
+            name = match.group(1)
+            value = text.split(":", 1)[1].strip() if ":" in text else ""
+            here["bindings"][name] = [number, value]
+            here["last"] = name
+        elif match is None and here["last"] and line.strip() and not re.match(r"^\s*[A-Z][\w.]*\s*\{", line) \
+                and not line.strip().startswith(("}", "function ", "signal ", "property ", "readonly ", "component ", "id:")):
+            here["bindings"][here["last"]][1] += " " + text.strip()
+        else:
+            if line.strip():
+                here["last"] = None
+        for ch in line:
+            if ch in "([":
+                paren += 1
+            elif ch in ")]":
+                paren = max(0, paren - 1)
+            elif ch == "{":
+                stack.append({"bindings": {}, "last": None})
+            elif ch == "}" and len(stack) > 1:
+                found.append(stack.pop()["bindings"])
+                stack[-1]["last"] = None
+    found.append(stack[0]["bindings"])
+    return found
+
+
+def terms(expression):
+    out = set()
+    for term in TERM.findall(expression):
+        if term in WORDS or term[0].isdigit() or "." not in term and "(" not in term:
+            continue
+        out.add(term)
+    return out
+
+
+def main():
+    problems = []
+    files = tracked(SHELL_DIRS, (".qml", ".js"))
+
+    for rel in files:
+        with open(os.path.join(ROOT, rel), encoding="utf-8") as handle:
+            raw = handle.read()
+        code, kept = blank(raw)
+
+        if rel != SPINNER:
+            for number, line in enumerate(code.split("\n"), 1):
+                if "RotationAnimation" in line:
+                    problems.append(f"{rel}:{number}: a turning indication outside Ui/Spinner; use Spinner {{}}")
+        if rel not in ENDLESS:
+            for number, line in enumerate(code.split("\n"), 1):
+                if "Animation.Infinite" in line:
+                    problems.append(f"{rel}:{number}: an endless animation; busy is Ui/Spinner, anything else is named in tools/busy-check (ENDLESS) with what it is")
+        for number, line in enumerate(code.split("\n"), 1):
+            if BUSY_CURSOR.search(line):
+                problems.append(f"{rel}:{number}: the busy pointer is a second busy indication; a busy control shows the Spinner and the plain arrow")
+        for number, line in enumerate(kept.split("\n"), 1):
+            if BUSY_ICONS.search(line):
+                problems.append(f"{rel}:{number}: the icon font's loading glyph tumbles when turned; use Spinner {{}}")
+
+        if not rel.endswith(".qml"):
+            continue
+        if rel.startswith("shell/Ui/") and rel != SPINNER and DECLARES_BUSY.search(code):
+            if not HOLDS_SPINNER.search(code) and not HANDS_BUSY_ON.search(code):
+                problems.append(f"{rel}: declares `busy` but holds no Spinner and hands `busy` to no part that does")
+
+        for bindings in objects(code, kept):
+            if "busy" in bindings:
+                line, expression = bindings["busy"]
+                own = terms(expression)
+                if "enabled" in bindings:
+                    at, enabled = bindings["enabled"]
+                    if not re.search(r"\bbusy\b", enabled):
+                        for term in sorted(own):
+                            if re.search(r"!\s*" + re.escape(term) + r"(?![\w.(])", enabled):
+                                problems.append(
+                                    f"{rel}:{at}: `enabled` turns this control off while it is busy (!{term}); "
+                                    "busy takes no press already, and a disabled item loses the keyboard. "
+                                    "Leave that out, or end with `|| busy`")
+                                break
+                if "text" in bindings:
+                    at, text = bindings["text"]
+                    code_only = blank(text)[0]
+                    changes = re.search(r"\bbusy\b", code_only) or any(
+                        re.search(re.escape(term) + r"(?![\w.(])", code_only) for term in own)
+                    if changes:
+                        problems.append(
+                            f"{rel}:{at}: `text` changes while this control is busy; a busy control keeps "
+                            "its label and its size. Say what the run is doing in a line beside it")
+
+        # An EmptyState that is being read shows the Spinner.
+        for match in re.finditer(r"\bEmptyState\s*\{", code):
+            depth, end = 0, match.end() - 1
+            for end in range(match.end() - 1, len(code)):
+                if code[end] == "{":
+                    depth += 1
+                elif code[end] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+            body_code, body_kept = code[match.start():end], kept[match.start():end]
+            title = re.search(r"^\s*title\s*:(.*(?:\n\s+[:?].*)*)", body_kept, re.M)
+            if title and "…\"" in title.group(1) and not re.search(r"^\s*busy\s*:", body_code, re.M):
+                number = code.count("\n", 0, match.start()) + 1
+                problems.append(f"{rel}:{number}: an EmptyState that is being read (a title ending in …) sets `busy`, and its title needs no dots")
+
+    with open(os.path.join(ROOT, ICON_MAP), encoding="utf-8") as handle:
+        for number, line in enumerate(handle, 1):
+            if BUSY_ICONS.search(line) or BUSY_GLYPH.search(line):
+                problems.append(f"{ICON_MAP}:{number}: the icon font's loading glyph; busy is drawn by Ui/Spinner")
+
+    for rel in ENDLESS:
+        if not os.path.isfile(os.path.join(ROOT, rel)):
+            problems.append(f"tools/busy-check: ENDLESS names {rel}, which is gone")
+
+    if problems:
+        print("\n".join(problems))
+        print(f"\nbusy-check: {len(problems)} problem(s). The rule: docs/architecture.md, \"Busy\".", file=sys.stderr)
+        return 1
+    print(f"busy-check: {len(files)} files, busy is shown the one way")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

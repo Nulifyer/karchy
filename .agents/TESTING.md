@@ -27,6 +27,7 @@ Environment: QEMU/KVM on this host, UEFI (OVMF), virtio-gpu with 3D (virgl), and
 shellcheck tools/vm          # extend to install/ and karchy's own bin/ as they land
 tests/installer-network.sh         # the installer's Wi-Fi list from scan text, the network kept from a wpa_supplicant join, and that the network is asked for before the keyring
 tools/quick-install-search-check   # the Quick install window's search ranking and its headings (a category's groups), against the real list, and its sentence about the last install; `bun tools/quick-install-search-check` where node won't start
+tools/busy-check             # busy is shown the one way (D-181): no turning or endless animation outside Ui/Spinner, no busy pointer, no loading glyph, `enabled` and `text` not bound to the run a control is busy for, a loading EmptyState with `busy`. On every push
 python3 tests/keybindings.py       # karchy-settings-keybindings: keys, layers, rules, the generated Lua; with lua installed, karchy's real Lua layer under a stand-in Hyprland
 bun tests/keybindings-model.js "$PWD"   # Settings › Keybindings: key capture, search, filters, grouping
 lua tests/window-stacking.lua      # which window is in front, where Alt+Tab goes and what it tells the switcher, and the halves of a floating workspace (D-159, D-165): the real stacking.lua, window-switch.lua, snap.lua and workspace-modes.lua under a stand-in Hyprland that keeps the stacking order, the focus history and each window's place and size
