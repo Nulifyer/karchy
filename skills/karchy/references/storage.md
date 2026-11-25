@@ -59,7 +59,7 @@ A kept mount is a line in `/etc/fstab` that karchy wrote. Use the commands. Do n
 
 - Internal data disk: `karchy-settings-storage keep <device>` opens a terminal that runs `karchy-disk-keep <device>`. The disk mounts at `/mnt/<label>` with `nofail`. `karchy-disk-keep --remove <device>` unmounts it and takes the line out again. `karchy-disk-keep --ignore <device>` stops the "new disk" notification for it.
 - `karchy-disk-fstab list` shows data partitions that have no fstab line yet. At login `karchy-disks-check` offers them in a notification.
-- Network share: `karchy-mount-keep smb://server/share` keeps an SMB share at `/mnt/<share>`. It writes an automount line tagged `# karchy-kept-mount` and the credentials to `/etc/karchy/smb/<server>-<share>.cred`, readable by root only. `karchy-mount-keep --remove [folder]` undoes both.
+- Network share: `karchy-mount-keep smb://server/share` keeps an SMB share at `/mnt/<share>`. It writes an automount line tagged `# karchy-kept-mount`, with `x-gvfs-show` so the file manager lists it under Devices, and the credentials to `/etc/karchy/smb/<server>-<share>.cred`, readable by root only. `karchy-mount-keep --remove [folder]` undoes both.
 - `karchy-disk-keep` and `karchy-mount-keep` use sudo and ask questions. Run them in a terminal with the user present. Never read or print a `.cred` file.
 - If you must edit `/etc/fstab` for something else, keep `nofail` on every line that is not the system disk. A wrong fstab line is the usual cause of a boot that stops in emergency mode.
 
